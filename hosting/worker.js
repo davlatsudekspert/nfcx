@@ -37,6 +37,7 @@ import * as apiHighlights from './api/highlights.js';
 import * as apiStoryReplies from './api/story-replies.js';
 import * as apiNearby from './api/nearby.js';
 import * as apiProductTags from './api/product-tags.js';
+import * as apiReels from './api/reels.js';
 import { parseMediaInput, mediaOut } from './api/carousel.js';
 import { companyContact as companyContactOut } from './api/post-contact.js';
 import {
@@ -2379,6 +2380,8 @@ async function ensureCoreSchema(env) {
     apiStoryReplies.ensureSchema(env),
     apiProductTags.ensureSchema(env),
     apiSaves.ensureTable(env),
+    // Reels "qiziq emas" (api/reels.js) — hisob o'chirish batch'i unga yozadi.
+    apiReels.ensureSchema(env),
   ]);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
@@ -11945,6 +11948,9 @@ const H = {
   // Saqlangan postlar (api/saves.js) — lenta bilan AYNAN bir shakl va
   // maxfiylik qoidalari (`postsByKeysD1` izohi).
   postsByKeys: postsByKeysD1,
+  // Reels "Siz uchun" (api/reels.js) — lentaning O'ZI: UNION (maxfiylik,
+  // rejadagi post), shakl va `liked`. Ikkinchi nusxa yozilmaydi.
+  feedUnionSql: FEED_UNION_SQL, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
   // Ish vaqti → "hozir ochiqmi" (api/nearby.js) — kompaniya sahifasidagi
   // `openNow` bilan AYNAN bir qoida (Toshkent vaqti).
   companyOpenNow: (hoursJson) => companyOpenStateD1(normalizeHoursD1(parseJsonArray(hoursJson))),
@@ -11956,7 +11962,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

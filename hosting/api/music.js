@@ -195,7 +195,8 @@ export const REEL_IMAGE_SECONDS = 10;
 const EXTRA_KINDS = new Set(['post', 'company_post']);
 
 let extrasReady = null;
-function ensureExtras(env) {
+// Reels lentasi (api/reels.js) ham chaqiradi — reel belgisi bo'yicha saralash.
+export function ensureExtras(env) {
   extrasReady ||= env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_extras (
       post_kind TEXT NOT NULL,
       post_id INTEGER NOT NULL,

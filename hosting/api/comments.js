@@ -729,6 +729,14 @@ export async function deleteLikesFor(env, kind, id) {
   ]);
 }
 
+/// Ko'rish tomoshabini kaliti — `content_views.viewer` / `content_view_hits.viewer`:
+/// kirgan odam `u:<id>`, mehmon `a:<IP+UA+til hash>` (`newsVisitorHash`).
+/// BITTA manba: ko'rishni yozish ham, Reels'da "ko'rilganmi" (api/reels.js)
+/// tekshiruvi ham shu kalitni ishlatadi.
+export async function contentViewerKey(H, request, user) {
+  return user ? `u:${user.id}` : `a:${await H.newsVisitorHash(request)}`;
+}
+
 export async function handle(request, env, url, H) {
   const path = url.pathname;
   const method = request.method;
@@ -832,13 +840,13 @@ export async function handle(request, env, url, H) {
       let viewer = '';
       if (user) {
         if (!(await H.rateLimitD1(env, `cview:u:${user.id}`, VIEW_USER_LIMIT, VIEW_WINDOW_MS))) {
-          viewer = `u:${user.id}`;
+          viewer = await contentViewerKey(H, request, user);
         }
       } else {
         if (await H.rateLimitD1(env, `cview:${H.reqIp(request)}`, 120, VIEW_WINDOW_MS)) {
           return H.json({ error: 'too_many_requests' }, 429);
         }
-        viewer = `a:${await H.newsVisitorHash(request)}`;
+        viewer = await contentViewerKey(H, request, null);
       }
       if (viewer) {
         // Uchala vaqt BITTA `Date.now()` dan va `nowTs()` formatida:

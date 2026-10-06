@@ -95,7 +95,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -154,6 +154,10 @@ jobs:
       # Reels "Obunalar" tabi: faqat obuna bo'lingan odam/kompaniya kontenti.
       - name: Obunalar lentasi (scope=following)
         run: node scripts/test-feed-following.mjs
+      # Reels "Siz uchun": saralash (yangilik, faollik, obuna, ko'rilgan),
+      # "qiziq emas", xilma-xillik, kursor bilan barqaror sahifalash, reklama.
+      - name: Reels saralash (/api/reels)
+        run: node scripts/test-reels-ranking.mjs
       # Murojaatga admin javobi egasiga bildirishnoma bo'lib boradi;
       # holatlar (javob berilgan / hal qilindi / rejada), filtr va sanoq.
       - name: Murojaat javoblari va bildirishnoma

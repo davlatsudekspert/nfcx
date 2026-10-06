@@ -14,6 +14,7 @@ Har modul: `export async function handle(request, env, url, H)` → `Response` y
 - `reqIp(request)`, `logAdminActivity(env,{action,details,oldValue,newValue,ip})`, `sendTelegramMessage(env, text)` (ADMIN_CHAT_ID ga), `sendTelegramTo(env, chatId, text)`
 - `personalIdTierD1(rec)`, `effectiveAccessD1(rec)`, `featureAllowedD1(feature, access)`, `paymentsEnabledD1(env)`
 - `ensureCoreSchema(env)`
+- `feedUnionSql`, `shapeFeedRows(env, rows, viewerId)`, `feedViewerLikedKeys(env, rows, viewerId)`, `feedLikedKey(row)`, `commentTargetKind(row)` — lentaning o'zi (`reels`)
 
 Qoidalar: har query `.bind()`; egalik tekshiruvi SERVER tomonda (`getRecordOwner === user.id`); javob shakllari `server/index.js` (Express) bilan BIR XIL (frontend `src/lib/db.js` shunga bog'langan); D1 = SQLite (JSONB yo'q → TEXT + JSON.parse; `RETURNING` bor; `ON CONFLICT` bor; `NOW()` yo'q → `H.nowTs()`; `ILIKE` yo'q → `LOWER(x) LIKE LOWER(?)`).
 Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` orqali, haqiqiy `worker.fetch` bilan).
@@ -24,7 +25,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
-`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `marketplace`
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
 Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
@@ -150,6 +151,29 @@ kompaniya postlari, `/post/:id` sahifasi) — JAMI ko'rishlar `SUM(hits)`
 bo'lib ko'chirilgan. Kontent o'chirilganda ikkala jadval ham
 `retireTargetStmts`/`deleteLikesFor` bilan, hisob o'chirilganda tomoshabin
 qatorlari `account-purge.js` bilan ketadi.
+
+`reels` — Reels "Siz uchun" (2026-10, saralangan va sahifalanadigan):
+`GET /api/reels?limit=10&cursor=<shaffof>` (kirish ixtiyoriy; `limit` 1..20)
+→ `{items, nextCursor: string|null, hasMore}`. `items` — `/api/feed` kadrlari
+bilan AYNAN bir shakl (`shapeFeedRows` + `liked`, `kind: 'post'`), pullik
+reklama qo'shimcha `featured: true`. Faqat reels: shaxsiy/kompaniya posti,
+videosi yoki rasmli reel belgisi (`post_extras.reel`) bor; istoriya yo'q;
+ko'rinish qoidalari `FEED_UNION_SQL` dan; bloklangan muallif va "qiziq emas"
+yo'q. Nomzodlar — eng yangi 300 reels. Ball: `freshness = 0.5^(soat/36)`,
+`engagement = ln(1 + likes + 2·comments + 3·saves + 0.05·views)`,
+`score = freshness·(1 + 0.6·engagement)`; obuna ×1.8, ko'rilgan
+(`content_views`, tomoshabin `u:<id>`/`a:<hash>`) ×0.12, o'ziniki ×0.35,
+`hash(tomoshabin+kun+nishon)` jitter `[0, 0.05)`. Xilma-xillik: bir muallif
+qo'shni emas, sahifada ≤ 2. Reklama (faol `featured_slots`, reels bo'lsa)
+sahifaning 4 va 9-o'rnida, sahifada ≤ 2, zanjirda bir marta, oddiy kadr
+bo'lib takrorlanmaydi. Kursor — base64url JSON (surat vaqti, o'rin, langar,
+berilgan reklamalar): keyingi sahifalar surat vaqtigacha bo'lgan ma'lumot
+bilan qayta hisoblanadi; buzuq kursor — 1-sahifa (500 emas). Oxirida
+`hasMore:false, nextCursor:null`.
+`POST /api/reels/hide {kind:'post'|'company_post', id}` (kirish shart, 401)
+→ `{ok:true}`, idempotent, yomon nishon 422 `bad_target`, 10 daqiqada 120
+tagacha (429). Jadval `reel_hidden(user_id, target_kind, target_id,
+created_at)`; hisob o'chirilganda tozalanadi.
 
 `my-analytics` — ilovadagi Sozlamalar → Analitika: `GET /api/my/analytics?days=30`
 (auth, 1–90) → `{days, profile:{views, uniqueVisitors, clicks, totalViews},

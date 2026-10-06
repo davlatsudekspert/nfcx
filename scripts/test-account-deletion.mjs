@@ -198,6 +198,9 @@ run(`INSERT INTO story_replies (story_id, story_kind, owner_kind, owner_id, reci
 run(`INSERT INTO save_collections (id, user_id, name, created_at) VALUES (1201, ?, 'U to‘plami', 'x')`, U);
 run(`INSERT INTO save_collections (id, user_id, name, created_at) VALUES (1202, ?, 'B to‘plami', 'x')`, B);
 run(`UPDATE user_saves SET collection_id = 1201 WHERE user_id = ?`, U);
+// Reels "qiziq emas" (api/reels.js) — U niki ketadi, B niki qoladi.
+run(`INSERT INTO reel_hidden (user_id, target_kind, target_id, created_at) VALUES (?, 'post', 501, 'x')`, U);
+run(`INSERT INTO reel_hidden (user_id, target_kind, target_id, created_at) VALUES (?, 'post', 502, 'x')`, B);
 run(`INSERT INTO post_products (target_kind, target_id, item_id, created_at) VALUES ('company_post', 901, 'ci1', 'x')`);
 // Moliyaviy yozuvlar (B sinfi) — QOLADI, PII tozalanadi
 run(`INSERT INTO transactions (user_id, amount, kind, note) VALUES (?, 50000, 'topup', 'x')`, U);
@@ -340,12 +343,14 @@ const purgeNow = deletedAtMs + 31 * DAY;
     highlightItems: n(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id IN (1101, 1102)`),
     storyReplies: n(`SELECT COUNT(*) AS n FROM story_replies WHERE user_id = 1 OR recipient_user_id = 1`),
     saveCollections: n(`SELECT COUNT(*) AS n FROM save_collections WHERE user_id = 1`),
+    reelHidden: n(`SELECT COUNT(*) AS n FROM reel_hidden WHERE user_id = 1`),
     postProducts: n(`SELECT COUNT(*) AS n FROM post_products WHERE target_id = 901`),
   };
   check('T4 U ga tegishli shaxsiy ma’lumot va kontent: hammasi 0', Object.values(zero).every((v) => v === 0) ? 'ok' : zero, 'ok');
   check('T4 B ning Aktuali, javobi va to‘plami QOLDI (2026-10)',
     [n(`SELECT COUNT(*) AS n FROM story_highlights WHERE id = 1103`), n(`SELECT COUNT(*) AS n FROM story_highlight_items WHERE highlight_id = 1103`),
       n(`SELECT COUNT(*) AS n FROM story_replies WHERE user_id = 77`), n(`SELECT COUNT(*) AS n FROM save_collections WHERE id = 1202`)], [1, 1, 1, 1]);
+  check('T4 B ning reels "qiziq emas" belgisi QOLDI', n(`SELECT COUNT(*) AS n FROM reel_hidden WHERE user_id = ?`, B), 1);
   check('T4 B kartasidagi jamoa qatori qoldi, U kodi uzildi', one(`SELECT member_code FROM card_team WHERE code = 'OTH222'`), { member_code: null });
   const cm = one(`SELECT body, author_code, deleted_reason, deleted_at IS NOT NULL AS del FROM content_comments WHERE id = 701`);
   check('T4 U izohi: qator joyida, matni yo‘q, account_purge', cm, { body: '', author_code: '', deleted_reason: 'account_purge', del: 1 });
@@ -630,7 +635,7 @@ const PURGE_POLICY = {
   products: 'A', product_categories: 'A', services: 'A', service_categories: 'A', card_gallery: 'A', card_files: 'A',
   card_videos: 'A', card_team: 'A', card_leads: 'A', card_events: 'A', card_likes: 'A', post_likes: 'A', content_likes: 'A', content_views: 'A', content_view_hits: 'A',
   content_comments: 'A', follows: 'A', company_follows: 'A', user_saves: 'A', notifications: 'A', user_blocks: 'A',
-  save_collections: 'A', story_replies: 'A', story_highlights: 'A', story_highlight_items: 'A', post_products: 'A',
+  save_collections: 'A', reel_hidden: 'A', story_replies: 'A', story_highlights: 'A', story_highlight_items: 'A', post_products: 'A',
   blocked_users: 'A', messages: 'A', conversations: 'A(flag)', auction_demand_votes: 'A', auction_requests: 'A',
   support_messages: 'A(flag)', companies: 'A', company_posts: 'A', company_stats: 'A', company_catalog_items: 'A', company_catalog_item_views: 'A',
   company_orders: 'A(flag)', catalog_item_reactions: 'A', catalog_item_views: 'A', catalog_promotions: 'A', gift_offers: 'B',

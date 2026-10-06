@@ -44,10 +44,13 @@ INSERT INTO company_catalog_items (id, company_id, name, price, created_at, upda
 INSERT INTO company_posts (id,company_id,image_url,caption,created_at) VALUES (1,'ACME','/uploads/c.jpg','z','2026-10-01T00:00:00.000Z');
 INSERT INTO company_posts (id,company_id,image_url,caption,created_at,publish_at) VALUES (2,'ACME','/uploads/d.jpg','r','2026-10-01T00:00:00.000Z','${future}');
 INSERT INTO post_products (target_kind,target_id,item_id,created_at) VALUES ('company_post',1,'i1','x');
-INSERT INTO stories (owner_kind, owner_id, user_id, image_url, created_at, expires_at) VALUES ('card','VIP001',1,'/uploads/st.jpg','2026-10-01','2999-01-01');`);
+INSERT INTO stories (owner_kind, owner_id, user_id, image_url, created_at, expires_at) VALUES ('card','VIP001',1,'/uploads/st.jpg','2026-10-01','2999-01-01');
+INSERT INTO posts (code,user_id,image_url,video_url,caption,created_at) VALUES ('OTH222',2,'/uploads/v.jpg','/uploads/v.mp4','reels','2026-10-01 00:00:00');`);
 const out = {};
 for (const [p, ck] of [['/api/feed', null], ['/api/feed', 't2'], ['/api/records/VIP001/posts', null], ['/api/records/VIP001/posts', 't1'],
-  ['/api/companies/ACME/posts', null], ['/api/companies/ACME/posts', 't1'], ['/api/records/VIP001/stories', 't1']]) {
+  ['/api/companies/ACME/posts', null], ['/api/companies/ACME/posts', 't1'], ['/api/records/VIP001/stories', 't1'],
+  // Reels "Siz uchun" (api/reels.js) — scripts/test-reels-ranking.mjs.
+  ['/api/reels', null], ['/api/reels', 't1']]) {
   await go(p, ck); // isitish: modul sxema keshlari to'lsin
   n = 0;
   const s = await go(p, ck);

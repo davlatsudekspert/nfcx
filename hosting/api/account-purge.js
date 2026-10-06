@@ -483,6 +483,8 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   // ham, unga KELGAN ham (ikkinchisida boshqa odamning matni — lekin u
   // faqat shu hisob egasiga ko'rinardi, egasiz qoladi).
   add(['save_collections'], `DELETE FROM save_collections WHERE user_id = ${id}`);
+  // Reels "qiziq emas" belgilari (api/reels.js) — faqat o'zi qo'ygan.
+  add(['reel_hidden'], `DELETE FROM reel_hidden WHERE user_id = ${id}`);
   add(['story_replies'], `DELETE FROM story_replies WHERE user_id = ${id} OR recipient_user_id = ${id}`);
   add(['notifications'], `DELETE FROM notifications WHERE recipient_user_id = ${id} OR actor_user_id = ${id}`);
   // U ning bloklari va U ning kodi/kompaniyasiga qo'yilgan bloklar: kod
