@@ -37,6 +37,8 @@ import '../features/settings/news_screen.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../features/settings/analytics_screen.dart';
 import '../features/settings/settings_subscreens.dart';
+import '../features/premium/iap_controller.dart' show iapEnabledProvider;
+import '../features/premium/premium_iap_screen.dart';
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
@@ -478,6 +480,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: Routes.orders,
           redirect: _closedOnIos(Routes.settings),
           builder: (_, __) => const OrdersScreen()),
+
+      // PREMIUM — APPLE IN-APP PURCHASE. Faqat iPhone'da va server
+      // kaliti (`/api/iap/apple/config`) yoqilganda ochiladi; aks holda
+      // (Android, kalit o'chiq, javob hali kelmagan) Sozlamalarga
+      // buriladi — xarid ekrani umuman yo'q (`iapEnabledProvider`).
+      GoRoute(
+          path: Routes.premium,
+          redirect: (_, __) =>
+              ref.read(iapEnabledProvider) ? null : Routes.settings,
+          builder: (_, __) => const PremiumIapScreen()),
 
       // Bildirishnomalar va sozlamalar
       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),

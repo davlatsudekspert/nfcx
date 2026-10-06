@@ -11,6 +11,7 @@ import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
+import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
 import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
 import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
@@ -176,6 +177,17 @@ class FakeSavesRepository extends SavesRepository {
   }
 }
 
+/// Apple IAP serveri — sukut bo'yicha kalit O'CHIQ (tarmoqqa chiqmaydi).
+/// iPhone sinovlarida xarid UI paydo bo'lmaydi — bugungi xulq.
+class FakeIapRepository extends IapRepository {
+  FakeIapRepository({this.cfg = IapConfig.disabled}) : super(ApiClient());
+
+  IapConfig cfg;
+
+  @override
+  Future<Result<IapConfig>> config() async => Ok(cfg);
+}
+
 /// Test uchun tayyor `ProviderContainer` overridelari.
 Future<List<Override>> testOverrides({bool signedIn = true}) async {
   SharedPreferences.setMockInitialValues({});
@@ -186,6 +198,8 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
     socialRepositoryProvider.overrideWithValue(FakeSocialRepository()),
     discoverRepositoryProvider.overrideWithValue(FakeDiscoverRepository()),
     savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
+    // Oxirida: ba'zi sinovlar ro'yxatni INDEKS bo'yicha almashtiradi.
+    iapRepositoryProvider.overrideWithValue(FakeIapRepository()),
   ];
 }
 

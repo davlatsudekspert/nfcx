@@ -3092,4 +3092,125 @@ class LEn extends L {
 
   @override
   String get activityGeneric => 'New notification';
+
+  @override
+  String get iapPlanMonthly => 'Monthly';
+
+  @override
+  String get iapPlanYearly => 'Yearly';
+
+  @override
+  String iapPeriodDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: 'day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count weeks',
+      one: 'week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months',
+      one: 'month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count years',
+      one: 'year',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapSubscribe => 'Subscribe';
+
+  @override
+  String get iapRestore => 'Restore purchases';
+
+  @override
+  String get iapManage => 'Manage subscription';
+
+  @override
+  String iapPerkCatalog(int premium, int free) {
+    return 'Up to $premium items in your business catalogue (without Premium — $free)';
+  }
+
+  @override
+  String iapPerkMusic(int premium, int free) {
+    return 'Up to $premium profile tracks (without Premium — $free)';
+  }
+
+  @override
+  String iapPlanUpsell(int premium) {
+    return 'With Premium — up to $premium items.';
+  }
+
+  @override
+  String get iapActivated => 'Premium is active. Thank you!';
+
+  @override
+  String get iapPending =>
+      'Your purchase is awaiting approval. Premium turns on automatically once it is approved.';
+
+  @override
+  String get iapInactive => 'This subscription is not active.';
+
+  @override
+  String get iapNothingToRestore =>
+      'No active subscription was found to restore.';
+
+  @override
+  String get iapUnavailable =>
+      'Subscriptions are not available right now. Please try again later.';
+
+  @override
+  String get iapErrNetwork =>
+      'No internet connection. If the purchase went through, the app will check it again the next time it opens.';
+
+  @override
+  String get iapErrAccountMismatch =>
+      'This purchase belongs to a different NFCSTORE account.';
+
+  @override
+  String get iapErrAlreadyLinked =>
+      'This Apple subscription is already linked to another NFCSTORE account.';
+
+  @override
+  String get iapErrDisabled => 'Purchases are temporarily unavailable.';
+
+  @override
+  String get iapErrServer =>
+      'Could not reach the server. Please try again later.';
+
+  @override
+  String get iapErrStore => 'The App Store could not complete the purchase.';
+
+  @override
+  String get iapTermsOfUse => 'Terms of Use (EULA)';
+
+  @override
+  String get iapDisclosure =>
+      'Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.';
 }

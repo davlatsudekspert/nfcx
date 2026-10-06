@@ -9,6 +9,7 @@ import '../routing/router.dart';
 import 'providers.dart';
 import '../features/settings/app_lock.dart';
 import '../features/auth/session.dart';
+import '../features/premium/iap_controller.dart' show iapWatcherProvider;
 import 'ui_scale.dart';
 
 class NovaApp extends ConsumerWidget {
@@ -21,6 +22,10 @@ class NovaApp extends ConsumerWidget {
     // eshitmasdi. `watch` shu yerda turishi kerak — kuzatuvchi
     // ilovaning umri davomida tirik bo'lishi uchun.
     ref.watch(sessionExpiryWatcherProvider);
+    // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
+    // tranzaksiyalari ilova ochilishidanoq tinglanadi
+    // (`features/premium/iap_controller.dart`). Android'da hech narsa.
+    ref.watch(iapWatcherProvider);
 
     final tokens = ref.watch(themeProvider);
     final locale = ref.watch(localeProvider);

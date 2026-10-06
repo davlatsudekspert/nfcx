@@ -3099,4 +3099,132 @@ class LRu extends L {
 
   @override
   String get activityGeneric => 'Новое уведомление';
+
+  @override
+  String get iapPlanMonthly => 'Ежемесячная';
+
+  @override
+  String get iapPlanYearly => 'Годовая';
+
+  @override
+  String iapPeriodDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: 'день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count недели',
+      many: '$count недель',
+      few: '$count недели',
+      one: 'неделя',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count месяца',
+      many: '$count месяцев',
+      few: '$count месяца',
+      one: 'месяц',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count года',
+      many: '$count лет',
+      few: '$count года',
+      one: 'год',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapSubscribe => 'Оформить подписку';
+
+  @override
+  String get iapRestore => 'Восстановить покупки';
+
+  @override
+  String get iapManage => 'Управлять подпиской';
+
+  @override
+  String iapPerkCatalog(int premium, int free) {
+    return 'До $premium товаров в бизнес-каталоге (без Premium — $free)';
+  }
+
+  @override
+  String iapPerkMusic(int premium, int free) {
+    return 'До $premium треков в профиле (без Premium — $free)';
+  }
+
+  @override
+  String iapPlanUpsell(int premium) {
+    return 'С Premium — до $premium товаров.';
+  }
+
+  @override
+  String get iapActivated => 'Premium активирован. Спасибо!';
+
+  @override
+  String get iapPending =>
+      'Покупка ожидает подтверждения. Premium включится автоматически после подтверждения.';
+
+  @override
+  String get iapInactive => 'Эта подписка сейчас не активна.';
+
+  @override
+  String get iapNothingToRestore =>
+      'Активных подписок для восстановления не найдено.';
+
+  @override
+  String get iapUnavailable => 'Подписки сейчас недоступны. Попробуйте позже.';
+
+  @override
+  String get iapErrNetwork =>
+      'Нет подключения к интернету. Если покупка прошла, приложение проверит её при следующем запуске.';
+
+  @override
+  String get iapErrAccountMismatch =>
+      'Эта покупка относится к другому аккаунту NFCSTORE.';
+
+  @override
+  String get iapErrAlreadyLinked =>
+      'Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.';
+
+  @override
+  String get iapErrDisabled => 'Покупки временно недоступны.';
+
+  @override
+  String get iapErrServer =>
+      'Не удалось связаться с сервером. Попробуйте позже.';
+
+  @override
+  String get iapErrStore => 'App Store не смог завершить покупку.';
+
+  @override
+  String get iapTermsOfUse => 'Условия использования (EULA)';
+
+  @override
+  String get iapDisclosure =>
+      'Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store.';
 }

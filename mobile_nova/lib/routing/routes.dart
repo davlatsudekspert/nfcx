@@ -173,6 +173,11 @@ abstract final class Routes {
   static const settingsPayment = '/settings/payment';
   static const settingsReferral = '/settings/referral';
   static const settingsPremium = '/settings/premium';
+
+  /// Premium obunasi — Apple In-App Purchase. Faqat iPhone'da va server
+  /// kaliti yoqilganda (`features/premium/`); aks holda Sozlamalarga
+  /// buriladi.
+  static const premium = '/premium';
   static const settingsSupport = '/settings/support';
 
   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —

@@ -5762,6 +5762,156 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Yangi bildirishnoma'**
   String get activityGeneric;
+
+  /// No description provided for @iapPlanMonthly.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oylik'**
+  String get iapPlanMonthly;
+
+  /// No description provided for @iapPlanYearly.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yillik'**
+  String get iapPlanYearly;
+
+  /// No description provided for @iapPeriodDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count, plural, =1{kun} other{{count} kun}}'**
+  String iapPeriodDays(int count);
+
+  /// No description provided for @iapPeriodWeeks.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count, plural, =1{hafta} other{{count} hafta}}'**
+  String iapPeriodWeeks(int count);
+
+  /// No description provided for @iapPeriodMonths.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count, plural, =1{oy} other{{count} oy}}'**
+  String iapPeriodMonths(int count);
+
+  /// No description provided for @iapPeriodYears.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count, plural, =1{yil} other{{count} yil}}'**
+  String iapPeriodYears(int count);
+
+  /// No description provided for @iapSubscribe.
+  ///
+  /// In uz, this message translates to:
+  /// **'Obuna bo‘lish'**
+  String get iapSubscribe;
+
+  /// No description provided for @iapRestore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xaridlarni tiklash'**
+  String get iapRestore;
+
+  /// No description provided for @iapManage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Obunani boshqarish'**
+  String get iapManage;
+
+  /// No description provided for @iapPerkCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Biznes katalogida {premium} tagacha tovar (Premium’siz — {free})'**
+  String iapPerkCatalog(int premium, int free);
+
+  /// No description provided for @iapPerkMusic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilda {premium} tagacha qo‘shiq (Premium’siz — {free})'**
+  String iapPerkMusic(int premium, int free);
+
+  /// No description provided for @iapPlanUpsell.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium bilan — {premium} tagacha tovar.'**
+  String iapPlanUpsell(int premium);
+
+  /// No description provided for @iapActivated.
+  ///
+  /// In uz, this message translates to:
+  /// **'Premium faollashdi. Rahmat!'**
+  String get iapActivated;
+
+  /// No description provided for @iapPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xarid tasdiqlanishi kutilmoqda. Tasdiqlangach Premium o‘zi yoqiladi.'**
+  String get iapPending;
+
+  /// No description provided for @iapInactive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu obuna hozir faol emas.'**
+  String get iapInactive;
+
+  /// No description provided for @iapNothingToRestore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tiklanadigan faol obuna topilmadi.'**
+  String get iapNothingToRestore;
+
+  /// No description provided for @iapUnavailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.'**
+  String get iapUnavailable;
+
+  /// No description provided for @iapErrNetwork.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.'**
+  String get iapErrNetwork;
+
+  /// No description provided for @iapErrAccountMismatch.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu xarid boshqa NFCSTORE hisobiga tegishli.'**
+  String get iapErrAccountMismatch;
+
+  /// No description provided for @iapErrAlreadyLinked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.'**
+  String get iapErrAlreadyLinked;
+
+  /// No description provided for @iapErrDisabled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xaridlar vaqtincha mavjud emas.'**
+  String get iapErrDisabled;
+
+  /// No description provided for @iapErrServer.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.'**
+  String get iapErrServer;
+
+  /// No description provided for @iapErrStore.
+  ///
+  /// In uz, this message translates to:
+  /// **'App Store xaridni yakunlay olmadi.'**
+  String get iapErrStore;
+
+  /// No description provided for @iapTermsOfUse.
+  ///
+  /// In uz, this message translates to:
+  /// **'Foydalanish shartlari (EULA)'**
+  String get iapTermsOfUse;
+
+  /// Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone).
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.'**
+  String get iapDisclosure;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

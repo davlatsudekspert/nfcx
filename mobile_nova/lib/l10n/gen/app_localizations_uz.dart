@@ -3072,4 +3072,124 @@ class LUz extends L {
 
   @override
   String get activityGeneric => 'Yangi bildirishnoma';
+
+  @override
+  String get iapPlanMonthly => 'Oylik';
+
+  @override
+  String get iapPlanYearly => 'Yillik';
+
+  @override
+  String iapPeriodDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kun',
+      one: 'kun',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hafta',
+      one: 'hafta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count oy',
+      one: 'oy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String iapPeriodYears(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count yil',
+      one: 'yil',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get iapSubscribe => 'Obuna bo‘lish';
+
+  @override
+  String get iapRestore => 'Xaridlarni tiklash';
+
+  @override
+  String get iapManage => 'Obunani boshqarish';
+
+  @override
+  String iapPerkCatalog(int premium, int free) {
+    return 'Biznes katalogida $premium tagacha tovar (Premium’siz — $free)';
+  }
+
+  @override
+  String iapPerkMusic(int premium, int free) {
+    return 'Profilda $premium tagacha qo‘shiq (Premium’siz — $free)';
+  }
+
+  @override
+  String iapPlanUpsell(int premium) {
+    return 'Premium bilan — $premium tagacha tovar.';
+  }
+
+  @override
+  String get iapActivated => 'Premium faollashdi. Rahmat!';
+
+  @override
+  String get iapPending =>
+      'Xarid tasdiqlanishi kutilmoqda. Tasdiqlangach Premium o‘zi yoqiladi.';
+
+  @override
+  String get iapInactive => 'Bu obuna hozir faol emas.';
+
+  @override
+  String get iapNothingToRestore => 'Tiklanadigan faol obuna topilmadi.';
+
+  @override
+  String get iapUnavailable =>
+      'Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.';
+
+  @override
+  String get iapErrNetwork =>
+      'Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.';
+
+  @override
+  String get iapErrAccountMismatch =>
+      'Bu xarid boshqa NFCSTORE hisobiga tegishli.';
+
+  @override
+  String get iapErrAlreadyLinked =>
+      'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.';
+
+  @override
+  String get iapErrDisabled => 'Xaridlar vaqtincha mavjud emas.';
+
+  @override
+  String get iapErrServer =>
+      'Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.';
+
+  @override
+  String get iapErrStore => 'App Store xaridni yakunlay olmadi.';
+
+  @override
+  String get iapTermsOfUse => 'Foydalanish shartlari (EULA)';
+
+  @override
+  String get iapDisclosure =>
+      'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.';
 }

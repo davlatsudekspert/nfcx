@@ -68,6 +68,7 @@ void main() {
     Routes.settingsPayment,
     Routes.settingsReferral,
     Routes.settingsPremium,
+    Routes.premium,
     Routes.settingsSupport,
     Routes.settingsAbout,
     Routes.settingsNews,

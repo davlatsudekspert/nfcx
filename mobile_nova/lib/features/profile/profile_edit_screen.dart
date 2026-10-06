@@ -21,6 +21,8 @@ import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../home/widgets/avatar.dart';
 import '../shop/store_policy.dart' show isAppStoreBuild;
+import '../premium/premium_iap_screen.dart'
+    show kMusicFreeLimit, kMusicPremiumLimit;
 import 'contact_editor.dart';
 import 'music_player.dart' show musicTitleOf;
 import 'music_source.dart';
@@ -99,7 +101,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   /// Aloqa va havolalar — `ContactEditor` har o'zgarishda yangilaydi.
   ContactInfo? _contact;
-  static const _musicMax = 5;
+
+  /// iPHONE'DA PREMIUM OBUNACHIGA 10 TA — server `musicLimitD1(true)`.
+  /// Premium iPhone'da ilova ichida sotiladi (Apple IAP) va xarid
+  /// ekrani "10 tagacha qo'shiq" deydi — va'da shu yerda ham ishlashi
+  /// kerak. ANDROID O'ZGARMAYDI: har doim 5.
+  int get _musicMax => isAppStoreBuild &&
+          (ref.read(currentUserProvider)?.premium ?? false)
+      ? kMusicPremiumLimit
+      : kMusicFreeLimit;
   double _uploadProgress = 0;
 
   @override

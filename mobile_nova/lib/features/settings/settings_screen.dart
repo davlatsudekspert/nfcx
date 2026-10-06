@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
+import '../premium/iap_controller.dart' show iapEnabledProvider;
 import '../shop/store_policy.dart';
 import '../social/content_rules.dart';
 import '../../design/widgets/brand_icon.dart';
@@ -134,6 +135,18 @@ class SettingsScreen extends ConsumerWidget {
               label: l.settingsSecurity,
               onTap: () => context.push(Routes.settingsSecurity),
             ),
+            // PREMIUM — FAQAT iPHONE'DA VA IAP KALITI YOQILGANDA.
+            //
+            // Xarid Apple In-App Purchase orqali (`features/premium/`).
+            // Kalit o'chiq / javob kelmagan / Android — qator YO'Q,
+            // menyu avvalgidek (Play qoidasi va 3.1.1 izohlari yuqorida
+            // va pastda).
+            if (ref.watch(iapEnabledProvider))
+              SettingsItem(
+                icon: Icons.workspace_premium_rounded,
+                label: l.settingsPremium,
+                onTap: () => context.push(Routes.premium),
+              ),
           ]),
           SectionHeader(color: t.text2, title: l.settingsAppearance),
           SettingsGroup(items: [

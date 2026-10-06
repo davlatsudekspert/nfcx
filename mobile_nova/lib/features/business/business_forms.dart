@@ -31,6 +31,7 @@ import 'business_providers.dart';
 import 'business_screens.dart';
 import 'store_catalog.dart';
 import '../shop/store_policy.dart';
+import '../premium/iap_controller.dart' show iapEnabledProvider;
 
 /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
 ///
@@ -880,16 +881,18 @@ class _AddProductCard extends StatelessWidget {
 /// ham, saytga bosiladigan havola ham YO'Q ([StoreNotice] — faqat matn).
 /// iPhone'da tarif nomi ham, keyingi qadam ham yo'q — faqat limit va
 /// hisoblagich (Apple 3.1.1, `store_policy.dart`).
-class BusinessPlanCard extends StatelessWidget {
+class BusinessPlanCard extends ConsumerWidget {
   const BusinessPlanCard({super.key, required this.plan, required this.count});
 
   final CompanyPlan plan;
   final int count;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
     final t = context.tokens;
+    // iPhone + Apple IAP kaliti yoqilgan (Android'da doim `false`).
+    final iap = ref.watch(iapEnabledProvider);
 
     // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
     // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:
@@ -966,6 +969,25 @@ class BusinessPlanCard extends StatelessWidget {
                   ? l.bizPlanFreeBody(plan.premiumItemLimit!)
                   : l.bizPlanPremiumBody,
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          // iPHONE + IAP KALITI YOQILGAN: Premium ilova ichida (Apple
+          // In-App Purchase) olinadi — bepul tarifda Premium necha tovar
+          // berishi (serverdan) va xarid ekraniga yo'l. Kalit o'chiq
+          // bo'lsa — avvalgidek, hech narsa (`store_policy.dart`).
+          if (iap && plan.free && plan.premiumItemLimit != null) ...[
+            const SizedBox(height: Gap.md),
+            Text(
+              l.iapPlanUpsell(plan.premiumItemLimit!),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: Gap.md),
+            NovaButton(
+              key: const ValueKey('plan-premium'),
+              label: l.premiumBuy,
+              tone: ButtonTone.outline,
+              icon: Icons.workspace_premium_rounded,
+              onPressed: () => context.push(Routes.premium),
             ),
           ],
           const SizedBox(height: Gap.md),
