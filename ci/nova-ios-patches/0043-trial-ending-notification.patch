@@ -1,0 +1,499 @@
+From b60ffaf891f9803445b9227bc6c6f85368061fa7 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 02:49:10 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20"trial=5Fending"=20bildirishnomasi=20?=
+ =?UTF-8?q?=E2=80=94=20sinov=20tugash=20sanasi;=20noma'lum=20turlar=20xavf?=
+ =?UTF-8?q?siz?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- ActivityKind.trial: NFCSTORE brend muhri + "Bepul sinov muddatingiz {sana} da
+  tugaydi" (dd.MM.yyyy, targetId dagi YYYY-MM-DD). Xarid/narx haqida so'z yo'q,
+  bosilsa faqat o'qildi deb belgilanadi (App Store 3.1.1).
+- Sarlavhasiz noma'lum tur: brend muhri + "Yangi bildirishnoma", hech qayerga
+  o'tilmaydi. Sarlavhali tizim xabari avvalgidek.
+- l10n: activityTrialEnding, activityGeneric (uz/ru/en).
+- Testlar: test/trial_notification_test.dart.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/data/models/models.dart       |  18 +-
+ .../features/activity/activity_screen.dart    |  58 ++++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   5 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   5 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   6 +-
+ .../lib/l10n/gen/app_localizations.dart       |  12 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   8 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   8 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   8 +
+ mobile_nova/test/trial_notification_test.dart | 213 ++++++++++++++++++
+ 10 files changed, 330 insertions(+), 11 deletions(-)
+ create mode 100644 mobile_nova/test/trial_notification_test.dart
+
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index d784519..6c32d98 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1696,7 +1696,22 @@ class Comment {
+ 
+ /// `support` — qo'llab-quvvatlash javobi (`support_reply`): yuboruvchi
+ /// tizim, ya'ni ismi ham avatari ham bo'sh keladi.
+-enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business, support }
++enum ActivityKind {
++  like,
++  follow,
++  comment,
++  scan,
++  order,
++  payment,
++  system,
++  security,
++  business,
++  support,
++
++  /// Bepul sinov muddati tugashi haqida eslatma (`trial_ending`).
++  /// `targetId` — tugash sanasi, `YYYY-MM-DD`.
++  trial,
++}
+ 
+ class ActivityEvent {
+   const ActivityEvent({
+@@ -1753,6 +1768,7 @@ class ActivityEvent {
+           'security' => ActivityKind.security,
+           'business' || 'company' => ActivityKind.business,
+           'support_reply' => ActivityKind.support,
++          'trial_ending' => ActivityKind.trial,
+           _ => ActivityKind.system,
+         },
+         title: _s(j['title'] ?? j['text']),
+diff --git a/mobile_nova/lib/features/activity/activity_screen.dart b/mobile_nova/lib/features/activity/activity_screen.dart
+index 1d8e0cf..ff101c7 100644
+--- a/mobile_nova/lib/features/activity/activity_screen.dart
++++ b/mobile_nova/lib/features/activity/activity_screen.dart
+@@ -150,10 +150,51 @@ class _EventTile extends ConsumerWidget {
+         ActivityKind.follow => l.activityFollowed,
+         ActivityKind.like => l.activityLiked,
+         ActivityKind.comment => l.activityCommented,
++        ActivityKind.trial => _trialDate == null
++            ? l.activityGeneric
++            : l.activityTrialEnding(_trialDate!),
++        _ when _generic => l.activityGeneric,
+         _ => null,
+       };
+ 
++  /// SINOV TUGASH SANASI — `targetId` dagi `YYYY-MM-DD` dan.
++  ///
++  /// Bu kalendar sanasi, vaqt emas: soat mintaqasiga o'girilmaydi,
++  /// aks holda g'arbda bir kun oldingi sana chiqardi. Ilovadagi
++  /// boshqa sanalar kabi `dd.MM.yyyy`. Sana buzuq kelsa — umumiy
++  /// matn, "null" yoki bo'sh joy ko'rsatilmaydi.
++  String? get _trialDate {
++    final m =
++        RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(event.targetId.trim());
++    if (m == null) return null;
++    final d = DateTime.tryParse('${m[1]}-${m[2]}-${m[3]}');
++    if (d == null || d.month != int.parse(m[2]!)) return null;
++    String two(int v) => v.toString().padLeft(2, '0');
++    return '${two(d.day)}.${two(d.month)}.${d.year}';
++  }
++
++  /// NOMA'LUM TUR — ilova hali tanimaydigan yangi bildirishnoma.
++  ///
++  /// Server yangi `type` qo'shsa, eski ilova uni `system` deb o'qiydi.
++  /// Sarlavhasi ham bo'lmasa qator bo'sh qolardi; shuning uchun
++  /// NFCSTORE nomidan umumiy matn bilan chiziladi va hech qayerga
++  /// o'tilmaydi — ma'nosi noma'lum manzilni ochish xato bo'lardi.
++  bool get _generic =>
++      event.kind == ActivityKind.system && event.title.trim().isEmpty;
++
++  /// Tizim xabari — avatar o'rnida brend muhri, sarlavha "NFCSTORE".
++  bool get _fromBrand =>
++      event.kind == ActivityKind.support ||
++      event.kind == ActivityKind.trial ||
++      _generic;
++
+   String? get _target {
++    // SINOV ESLATMASI — HECH QAYERGA O'TILMAYDI.
++    //
++    // iOS'da (App Store 3.1.1) ilova ichida tashqi xarid yoki narxga
++    // yo'naltirish taqiqlangan; xabar faqat sanani aytadi. Bosilsa
++    // faqat o'qildi deb belgilanadi.
++    if (event.kind == ActivityKind.trial || _generic) return null;
+     // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
+     // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
+     if (event.kind == ActivityKind.support) {
+@@ -224,13 +265,16 @@ class _EventTile extends ConsumerWidget {
+       ActivityKind.business => (Icons.storefront_rounded, t.accentB),
+       ActivityKind.system => (Icons.info_rounded, t.text3),
+       ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
++      ActivityKind.trial => (Icons.event_rounded, t.accent2),
+     };
+     // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
+     // tilga qarab yoziladi (server tayyor matn yubormaydi).
+-    final support = event.kind == ActivityKind.support;
+-    final title = support
+-        ? l.activitySupportReply
+-        : (event.title.isEmpty ? l.activityTitle : event.title);
++    final brand = _fromBrand;
++    final title = switch (event.kind) {
++      ActivityKind.support => l.activitySupportReply,
++      _ when brand => l.appName,
++      _ => event.title.isEmpty ? l.activityTitle : event.title,
++    };
+ 
+     return FloatingSurface(
+       solid: true,
+@@ -240,9 +284,9 @@ class _EventTile extends ConsumerWidget {
+       onTap: (_target == null && event.read) ? null : () => _open(context, ref),
+       child: Row(
+         children: [
+-          // Yordam javobida avatar o'rnida BREND MUHRI — xabar
+-          // NFCSTORE'ning o'zidan.
+-          if (support)
++          // Yordam javobida, sinov eslatmasida va noma'lum turda
++          // avatar o'rnida BREND MUHRI — xabar NFCSTORE'ning o'zidan.
++          if (brand)
+             const BrandSeal(size: 36, elevated: false)
+           else
+             Container(
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 728df2e..895a128 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1092,5 +1092,8 @@
+   "supportStatusResolved": "Resolved",
+   "supportStatusPlanned": "Planned",
+   "supportReplyLabel": "NFCSTORE reply",
+-  "activitySupportReply": "NFCSTORE Support replied to your request"
++  "activitySupportReply": "NFCSTORE Support replied to your request",
++  "activityTrialEnding": "Your free trial ends on {date}",
++  "@activityTrialEnding": {"placeholders": {"date": {"type": "String"}}},
++  "activityGeneric": "New notification"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index fc822c2..2719408 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1092,5 +1092,8 @@
+   "supportStatusResolved": "Решено",
+   "supportStatusPlanned": "В планах",
+   "supportReplyLabel": "Ответ NFCSTORE",
+-  "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение"
++  "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение",
++  "activityTrialEnding": "Бесплатный пробный период закончится {date}",
++  "@activityTrialEnding": {"placeholders": {"date": {"type": "String"}}},
++  "activityGeneric": "Новое уведомление"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 3c8de65..2ed14d5 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1241,5 +1241,9 @@
+   "supportStatusPlanned": "Rejada",
+   "supportReplyLabel": "NFCSTORE javobi",
+   "activitySupportReply": "NFCSTORE Yordam murojaatingizga javob berdi",
+-  "@activitySupportReply": {"description": "Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi."}
++  "@activitySupportReply": {"description": "Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi."},
++  "activityTrialEnding": "Bepul sinov muddatingiz {date} da tugaydi",
++  "@activityTrialEnding": {"description": "Bildirishnoma (type trial_ending): bepul sinov muddati tugash sanasi. Sotib olish yoki narx haqida HECH NARSA demaydi (App Store 3.1.1). Bosilganda hech narsa ochilmaydi.", "placeholders": {"date": {"type": "String"}}},
++  "activityGeneric": "Yangi bildirishnoma",
++  "@activityGeneric": {"description": "Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 3b67230..b9ad601 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5750,6 +5750,18 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'NFCSTORE Yordam murojaatingizga javob berdi'**
+   String get activitySupportReply;
++
++  /// Bildirishnoma (type trial_ending): bepul sinov muddati tugash sanasi. Sotib olish yoki narx haqida HECH NARSA demaydi (App Store 3.1.1). Bosilganda hech narsa ochilmaydi.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bepul sinov muddatingiz {date} da tugaydi'**
++  String activityTrialEnding(String date);
++
++  /// Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yangi bildirishnoma'**
++  String get activityGeneric;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 833e459..a8cad9b 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3084,4 +3084,12 @@ class LEn extends L {
+ 
+   @override
+   String get activitySupportReply => 'NFCSTORE Support replied to your request';
++
++  @override
++  String activityTrialEnding(String date) {
++    return 'Your free trial ends on $date';
++  }
++
++  @override
++  String get activityGeneric => 'New notification';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index b67045b..67e3092 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3091,4 +3091,12 @@ class LRu extends L {
+   @override
+   String get activitySupportReply =>
+       'Поддержка NFCSTORE ответила на ваше обращение';
++
++  @override
++  String activityTrialEnding(String date) {
++    return 'Бесплатный пробный период закончится $date';
++  }
++
++  @override
++  String get activityGeneric => 'Новое уведомление';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index c0a8679..3ad11d9 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3064,4 +3064,12 @@ class LUz extends L {
+   @override
+   String get activitySupportReply =>
+       'NFCSTORE Yordam murojaatingizga javob berdi';
++
++  @override
++  String activityTrialEnding(String date) {
++    return 'Bepul sinov muddatingiz $date da tugaydi';
++  }
++
++  @override
++  String get activityGeneric => 'Yangi bildirishnoma';
+ }
+diff --git a/mobile_nova/test/trial_notification_test.dart b/mobile_nova/test/trial_notification_test.dart
+new file mode 100644
+index 0000000..f82573f
+--- /dev/null
++++ b/mobile_nova/test/trial_notification_test.dart
+@@ -0,0 +1,213 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/activity_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/brand_logo.dart';
++import 'package:nfcstore_nova/features/activity/activity_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++
++import 'helpers.dart';
++
++/// SINOV MUDDATI ESLATMASI (`trial_ending`) VA NOMA'LUM TURLAR.
++///
++/// Server bepul sinov tugashidan oldin tizim xabarini yuboradi: ism,
++/// avatar, sarlavha yo'q; `targetId` — tugash sanasi. iOS'da (App
++/// Store 3.1.1) xabar xaridga yo'naltirmasligi va narx aytmasligi
++/// kerak — faqat sana.
++
++class _Repo extends ActivityRepository {
++  _Repo(this.rows) : super(ApiClient());
++
++  final List<Map<String, dynamic>> rows;
++  final marked = <int>[];
++
++  @override
++  Future<Result<NotificationPage>> list({int cursor = 0}) async =>
++      Ok(NotificationPage(
++        unreadCount: rows.length,
++        items: [for (final r in rows) ActivityEvent.fromJson(r)],
++      ));
++
++  @override
++  Future<Result<int>> markRead(int id) async {
++    marked.add(id);
++    return const Ok(0);
++  }
++}
++
++Map<String, dynamic> _trial([String date = '2026-10-29']) => {
++      'id': 81,
++      'type': 'trial_ending',
++      'title': '',
++      'actorCode': '',
++      'avatarUrl': '',
++      'targetType': 'trial',
++      'targetId': date,
++      'read': false,
++    };
++
++/// Ochilgan har qanday manzil shu yerga yoziladi.
++final _opened = <String>[];
++
++Future<void> _pump(WidgetTester tester, _Repo repo,
++    {Locale locale = const Locale('uz')}) async {
++  Widget sink(BuildContext _, GoRouterState s) {
++    _opened.add(s.uri.toString());
++    return const SizedBox.shrink();
++  }
++
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      activityRepositoryProvider.overrideWithValue(repo),
++    ],
++    child: MaterialApp.router(
++      routerConfig: GoRouter(
++        initialLocation: '/activity',
++        routes: [
++          GoRoute(
++            path: '/',
++            builder: (_, __) => const SizedBox.shrink(),
++            routes: [
++              GoRoute(
++                  path: 'activity',
++                  builder: (_, __) => const ActivityScreen()),
++              // Xarid, sozlamalar, profil — birortasi ham ochilmasligi
++              // kerak.
++              GoRoute(path: 'settings', builder: sink, routes: [
++                GoRoute(path: ':sub', builder: sink),
++              ]),
++              GoRoute(path: 'shop', builder: sink),
++              GoRoute(path: 'premium', builder: sink),
++              GoRoute(path: 'u/:code', builder: sink),
++            ],
++          ),
++        ],
++        errorBuilder: sink,
++      ),
++      theme: buildTheme(NfcTokens.pearl),
++      locale: locale,
++      supportedLocales: L.supportedLocales,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  await settle(tester, frames: 20);
++}
++
++void main() {
++  setUp(_opened.clear);
++
++  test('trial_ending — alohida tur, sana targetId da', () {
++    final e = ActivityEvent.fromJson(_trial());
++    expect(e.kind, ActivityKind.trial);
++    expect(e.targetId, '2026-10-29');
++  });
++
++  group('trial_ending bildirishnomasi', () {
++    testWidgets('NFCSTORE, brend muhri va sana bilan chiziladi',
++        (tester) async {
++      await _pump(tester, _Repo([_trial()]));
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(find.text('NFCSTORE'), findsOneWidget);
++      expect(find.text('Bepul sinov muddatingiz 29.10.2026 da tugaydi'),
++          findsOneWidget);
++      expect(find.text(l.activityTrialEnding('29.10.2026')), findsOneWidget);
++      expect(find.byType(BrandSeal), findsOneWidget);
++      expect(tester.takeException(), isNull);
++    });
++
++    testWidgets('bosilsa faqat o‘qildi — hech narsa ochilmaydi',
++        (tester) async {
++      final repo = _Repo([_trial()]);
++      await _pump(tester, repo);
++      await tester.tap(find.textContaining('29.10.2026'));
++      await settle(tester, frames: 20);
++      expect(repo.marked, [81]);
++      expect(_opened, isEmpty);
++      expect(find.byType(ActivityScreen), findsOneWidget);
++    });
++
++    testWidgets('ruscha va inglizcha matn', (tester) async {
++      await _pump(tester, _Repo([_trial()]), locale: const Locale('ru'));
++      expect(find.text('Бесплатный пробный период закончится 29.10.2026'),
++          findsOneWidget);
++      await _pump(tester, _Repo([_trial()]), locale: const Locale('en'));
++      expect(find.text('Your free trial ends on 29.10.2026'), findsOneWidget);
++    });
++
++    test('xarid yoki narx haqida so‘z yo‘q (App Store 3.1.1)', () async {
++      for (final code in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(code));
++        final s = l.activityTrialEnding('29.10.2026').toLowerCase();
++        for (final w in [
++          'sotib', 'narx', 'to‘lov', "to'lov", 'premium', 'obuna',
++          'куп', 'цен', 'оплат', 'подпис',
++          'buy', 'price', 'purchase', 'pay', 'subscri', 'upgrade',
++          'so‘m', 'сум', r'$',
++        ]) {
++          expect(s.contains(w), isFalse, reason: '$code: "$w" — $s');
++        }
++      }
++    });
++
++    testWidgets('buzuq sana — umumiy matn, yiqilmaydi', (tester) async {
++      await _pump(tester, _Repo([_trial('2026-02-31'), {
++        ..._trial(''),
++        'id': 82,
++      }]));
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.activityGeneric), findsNWidgets(2));
++      expect(find.textContaining('null'), findsNothing);
++    });
++  });
++
++  group('noma’lum tur', () {
++    testWidgets('NFCSTORE nomidan umumiy qator, hech qayerga o‘tmaydi',
++        (tester) async {
++      final repo = _Repo([
++        {
++          'id': 90,
++          'type': 'kelajakdagi_tur',
++          'title': '',
++          'code': 'ABC123',
++          'targetType': 'nimadir',
++          'targetId': 'xyz',
++          'read': false,
++        },
++      ]);
++      await _pump(tester, repo);
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(tester.takeException(), isNull);
++      expect(find.text('NFCSTORE'), findsOneWidget);
++      expect(find.text(l.activityGeneric), findsOneWidget);
++      expect(find.byType(BrandSeal), findsOneWidget);
++
++      await tester.tap(find.text(l.activityGeneric));
++      await settle(tester, frames: 20);
++      expect(repo.marked, [90]);
++      expect(_opened, isEmpty);
++    });
++
++    testWidgets('sarlavhali tizim xabari avvalgidek chiziladi',
++        (tester) async {
++      await _pump(tester, _Repo([
++        {'id': 91, 'type': 'system', 'title': 'Texnik ishlar', 'read': true},
++      ]));
++      expect(find.text('Texnik ishlar'), findsOneWidget);
++      expect(find.byType(BrandSeal), findsNothing);
++    });
++  });
++}
+-- 
+2.43.0
+
