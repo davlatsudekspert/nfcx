@@ -1149,9 +1149,85 @@ class CatalogCategory {
 }
 
 /// Do'kon mahsuloti — NFC karta va ID paketlari.
+/// Ko'p dona narxi (`/api/settings/physical-nfc-pricing` `tiers`).
+class PriceTier {
+  const PriceTier({required this.minQty, this.maxQty, required this.pricePerUnit});
+  final int minQty;
+
+  /// `null` — yuqori chegara yo'q (`50+`).
+  final int? maxQty;
+  final int pricePerUnit;
+
+  factory PriceTier.fromJson(Map<String, dynamic> j) => PriceTier(
+        minQty: _i(j['minQty']),
+        maxQty: j['maxQty'] == null ? null : _i(j['maxQty']),
+        pricePerUnit: _i(j['pricePerUnit']),
+      );
+}
+
+/// NFC ID yig'ma tarixi (`/api/records/:code/analytics`).
+class CardAnalytics {
+  const CardAnalytics({
+    this.days = 30,
+    this.totalViews = 0,
+    this.uniqueVisitors = 0,
+    this.byType = const {},
+    this.byDay = const [],
+    this.byRef = const [],
+  });
+
+  final int days;
+  final int totalViews;
+  final int uniqueVisitors;
+
+  /// Hodisa turi (`phone_click`, `contact_save`...) -> soni.
+  final Map<String, int> byType;
+
+  /// `YYYY-MM-DD` -> profil ko'rishlari (eski kun birinchi).
+  final List<({String day, int n})> byDay;
+
+  /// Manba (`ref`) -> soni.
+  final List<({String ref, int n})> byRef;
+
+  bool get isEmpty =>
+      totalViews == 0 && byType.values.every((n) => n == 0) && byDay.isEmpty;
+
+  factory CardAnalytics.fromJson(Map<String, dynamic> j) {
+    final types = <String, int>{};
+    final bt = j['byType'];
+    if (bt is Map) {
+      bt.forEach((k, v) {
+        final n = _i(v);
+        if (n > 0) types['$k'] = n;
+      });
+    }
+    return CardAnalytics(
+      days: _i(j['days']) > 0 ? _i(j['days']) : 30,
+      totalViews: _i(j['totalViews']),
+      uniqueVisitors: _i(j['uniqueVisitors']),
+      byType: types,
+      byDay: [
+        for (final e in _list(j['byDay']))
+          if (_s(e['day']).isNotEmpty) (day: _s(e['day']), n: _i(e['n'])),
+      ],
+      byRef: [
+        for (final e in _list(j['byRef']))
+          if (_s(e['ref']).isNotEmpty) (ref: _s(e['ref']), n: _i(e['n'])),
+      ],
+    );
+  }
+}
+
+/// Jismoniy NFC karta mahsulotining identifikatori — server alohida
+/// mahsulot ro'yxati bermaydi, mahsulot narx javobidan quriladi.
+const kPhysicalCardId = 'nfc-card';
+
 class ShopProduct {
   const ShopProduct({
     required this.id,
+    this.priceTiers = const [],
+    this.deliveryMinDays,
+    this.deliveryMaxDays,
     this.name = '',
     this.description = '',
     this.imageUrl = '',
@@ -1175,6 +1251,13 @@ class ShopProduct {
 
   /// ID uzunligi darajasi (backend `tier`) — narx shundan kelib chiqadi.
   final String tier;
+
+  /// Ko'p dona narxlari (jismoniy karta, kompaniyalar uchun).
+  final List<PriceTier> priceTiers;
+  final int? deliveryMinDays;
+  final int? deliveryMaxDays;
+
+  bool get isPhysicalCard => id == kPhysicalCardId;
 
   bool get hasDiscount => oldPrice != null && oldPrice! > price;
 

@@ -1172,5 +1172,21 @@
   "boostErrNotFound": "Post not found.",
   "boostErrCreditUsed": "This credit has already been used.",
   "boostErrCreditRevoked": "This credit was cancelled.",
-  "boostErrCreditNotFound": "Credit not found."
+  "boostErrCreditNotFound": "Credit not found.",
+  "errBadCurrentPassword": "Current password is incorrect",
+  "shopPhysicalCard": "Physical NFC card",
+  "shopPhysicalCardHint": "A card with your NFC ID — tap it with a phone to open your profile.",
+  "shopDelivery": "Delivery: {min}–{max} days",
+  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
+  "shopBulkTitle": "Bulk pricing",
+  "shopBulkTier": "{from}–{to} pcs",
+  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
+  "shopBulkTierOpen": "{from}+ pcs",
+  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
+  "shopPerUnit": "/ pc",
+  "nfcUniqueVisitors": "Unique visitors",
+  "nfcHistoryActions": "Actions",
+  "nfcHistorySources": "Sources",
+  "nfcEventType": "{type, select, profile_view{Profile viewed} phone_click{Phone tapped} telegram_click{Telegram opened} whatsapp_click{WhatsApp opened} instagram_click{Instagram opened} website_click{Website opened} email_click{Email tapped} link_click{Link opened} contact_save{Contact saved} lead{Request submitted} menu_view{Menu viewed} products_view{Products viewed} services_view{Services viewed} other{Other action}}",
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
 }

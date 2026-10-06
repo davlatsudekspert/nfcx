@@ -3351,4 +3351,65 @@ class LUz extends L {
 
   @override
   String get boostErrCreditNotFound => 'Kredit topilmadi.';
+
+  @override
+  String get errBadCurrentPassword => 'Joriy parol noto‘g‘ri';
+
+  @override
+  String get shopPhysicalCard => 'Jismoniy NFC karta';
+
+  @override
+  String get shopPhysicalCardHint =>
+      'NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.';
+
+  @override
+  String shopDelivery(int min, int max) {
+    return 'Yetkazib berish: $min–$max kun';
+  }
+
+  @override
+  String get shopBulkTitle => 'Ko‘p dona uchun narx';
+
+  @override
+  String shopBulkTier(int from, int to) {
+    return '$from–$to dona';
+  }
+
+  @override
+  String shopBulkTierOpen(int from) {
+    return '$from va undan ko‘p dona';
+  }
+
+  @override
+  String get shopPerUnit => '/ dona';
+
+  @override
+  String get nfcUniqueVisitors => 'Noyob tashrifchilar';
+
+  @override
+  String get nfcHistoryActions => 'Harakatlar';
+
+  @override
+  String get nfcHistorySources => 'Manbalar';
+
+  @override
+  String nfcEventType(String type) {
+    String _temp0 = intl.Intl.selectLogic(type, {
+      'profile_view': 'Profil ko‘rildi',
+      'phone_click': 'Telefon raqami bosildi',
+      'telegram_click': 'Telegram bosildi',
+      'whatsapp_click': 'WhatsApp bosildi',
+      'instagram_click': 'Instagram bosildi',
+      'website_click': 'Sayt havolasi bosildi',
+      'email_click': 'Email bosildi',
+      'link_click': 'Havola bosildi',
+      'contact_save': 'Kontakt saqlandi',
+      'lead': 'Ariza qoldirildi',
+      'menu_view': 'Menyu ko‘rildi',
+      'products_view': 'Mahsulotlar ko‘rildi',
+      'services_view': 'Xizmatlar ko‘rildi',
+      'other': 'Boshqa harakat',
+    });
+    return '$_temp0';
+  }
 }

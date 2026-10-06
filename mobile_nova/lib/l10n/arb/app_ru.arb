@@ -1172,5 +1172,21 @@
   "boostErrNotFound": "Пост не найден.",
   "boostErrCreditUsed": "Этот кредит уже использован.",
   "boostErrCreditRevoked": "Этот кредит отменён.",
-  "boostErrCreditNotFound": "Кредит не найден."
+  "boostErrCreditNotFound": "Кредит не найден.",
+  "errBadCurrentPassword": "Текущий пароль неверный",
+  "shopPhysicalCard": "Физическая NFC-карта",
+  "shopPhysicalCardHint": "Карта с вашим NFC ID — при касании телефоном открывается ваш профиль.",
+  "shopDelivery": "Доставка: {min}–{max} дн.",
+  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
+  "shopBulkTitle": "Цена при заказе нескольких штук",
+  "shopBulkTier": "{from}–{to} шт.",
+  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
+  "shopBulkTierOpen": "от {from} шт.",
+  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
+  "shopPerUnit": "/ шт.",
+  "nfcUniqueVisitors": "Уникальные посетители",
+  "nfcHistoryActions": "Действия",
+  "nfcHistorySources": "Источники",
+  "nfcEventType": "{type, select, profile_view{Просмотр профиля} phone_click{Нажатие на телефон} telegram_click{Переход в Telegram} whatsapp_click{Переход в WhatsApp} instagram_click{Переход в Instagram} website_click{Переход на сайт} email_click{Нажатие на email} link_click{Переход по ссылке} contact_save{Контакт сохранён} lead{Оставлена заявка} menu_view{Просмотр меню} products_view{Просмотр товаров} services_view{Просмотр услуг} other{Другое действие}}",
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
 }

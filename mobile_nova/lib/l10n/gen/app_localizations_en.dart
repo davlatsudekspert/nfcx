@@ -3371,4 +3371,65 @@ class LEn extends L {
 
   @override
   String get boostErrCreditNotFound => 'Credit not found.';
+
+  @override
+  String get errBadCurrentPassword => 'Current password is incorrect';
+
+  @override
+  String get shopPhysicalCard => 'Physical NFC card';
+
+  @override
+  String get shopPhysicalCardHint =>
+      'A card with your NFC ID — tap it with a phone to open your profile.';
+
+  @override
+  String shopDelivery(int min, int max) {
+    return 'Delivery: $min–$max days';
+  }
+
+  @override
+  String get shopBulkTitle => 'Bulk pricing';
+
+  @override
+  String shopBulkTier(int from, int to) {
+    return '$from–$to pcs';
+  }
+
+  @override
+  String shopBulkTierOpen(int from) {
+    return '$from+ pcs';
+  }
+
+  @override
+  String get shopPerUnit => '/ pc';
+
+  @override
+  String get nfcUniqueVisitors => 'Unique visitors';
+
+  @override
+  String get nfcHistoryActions => 'Actions';
+
+  @override
+  String get nfcHistorySources => 'Sources';
+
+  @override
+  String nfcEventType(String type) {
+    String _temp0 = intl.Intl.selectLogic(type, {
+      'profile_view': 'Profile viewed',
+      'phone_click': 'Phone tapped',
+      'telegram_click': 'Telegram opened',
+      'whatsapp_click': 'WhatsApp opened',
+      'instagram_click': 'Instagram opened',
+      'website_click': 'Website opened',
+      'email_click': 'Email tapped',
+      'link_click': 'Link opened',
+      'contact_save': 'Contact saved',
+      'lead': 'Request submitted',
+      'menu_view': 'Menu viewed',
+      'products_view': 'Products viewed',
+      'services_view': 'Services viewed',
+      'other': 'Other action',
+    });
+    return '$_temp0';
+  }
 }

@@ -358,7 +358,9 @@ class IapController extends StateNotifier<IapState> {
   }
 
   /// Server tranzaksiyani BUTUNLAY rad etdimi (400 / 422).
-  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
+  /// 413 `payload_too_large` ham — o'sha JWS hech qachon qabul qilinmaydi.
+  static bool _isTerminal(AppError e) =>
+      e.status == 400 || e.status == 413 || e.status == 422;
 
   static IapFailure _failureOf(AppError e) => switch (e.code) {
         'account_mismatch' => IapFailure.accountMismatch,

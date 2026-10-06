@@ -24,6 +24,8 @@ bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
 /// kalit qo'shsa ham ilovada "bo'sh xato" chiqmaydi.
 String describeError(L l, AppError e) => switch (e.code) {
       'bad_credentials' => l.errBadCredentials,
+      // Parolni almashtirish: JORIY parol xato (401, sessiya joyida).
+      'bad_current_password' => l.errBadCurrentPassword,
       'email_taken' => l.errEmailTaken,
       // Telefon boshqa akkauntda. Ilgari kalit tanilmasdi va umumiy
       // "Bu ma'lumot allaqachon band" chiqardi — odam NIMA band

@@ -35,11 +35,19 @@ final ordersProvider = FutureProvider.autoDispose<List<Order>>((ref) async {
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
-final paymentProvidersProvider =
-    FutureProvider<Set<PayProvider>>((ref) async {
-  final res = await ref.watch(shopRepositoryProvider).enabledProviders();
-  return res.when(ok: (v) => v, err: (e) => throw e);
-});
+/// Mahsulot nomi — jismoniy karta uchun tarjima qilingan.
+String shopProductName(L l, ShopProduct p) => p.name.isNotEmpty
+    ? p.name
+    : p.isPhysicalCard
+        ? l.shopPhysicalCard
+        : p.id;
+
+String shopProductDescription(L l, ShopProduct p) =>
+    p.description.isNotEmpty
+        ? p.description
+        : p.isPhysicalCard
+            ? l.shopPhysicalCardHint
+            : '';
 
 /// NFCSTORE do'koni.
 ///
@@ -198,12 +206,12 @@ class _ProductTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name.isEmpty ? product.id : product.name,
+                Text(shopProductName(l, product),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall),
-                if (product.description.isNotEmpty)
-                  Text(product.description,
+                if (shopProductDescription(l, product).isNotEmpty)
+                  Text(shopProductDescription(l, product),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall),
@@ -289,7 +297,7 @@ class ShopProductScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: Gap.xl),
-              Text(p.name.isEmpty ? p.id : p.name,
+              Text(shopProductName(l, p),
                   style: Theme.of(context).textTheme.displayMedium),
               if (p.tier.isNotEmpty) ...[
                 const SizedBox(height: Gap.sm),
@@ -310,10 +318,58 @@ class ShopProductScreen extends ConsumerWidget {
                   ],
                 ],
               ),
-              if (p.description.isNotEmpty) ...[
+              if (shopProductDescription(l, p).isNotEmpty) ...[
                 const SizedBox(height: Gap.xl),
-                Text(p.description,
+                Text(shopProductDescription(l, p),
                     style: Theme.of(context).textTheme.bodyLarge),
+              ],
+              // Yetkazib berish muddati — serverdan (`delivery`).
+              if (p.deliveryMinDays != null && p.deliveryMaxDays != null) ...[
+                const SizedBox(height: Gap.md),
+                Text(
+                  l.shopDelivery(p.deliveryMinDays!, p.deliveryMaxDays!),
+                  key: const ValueKey('shop-delivery'),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+              // KO'P DONA NARXLARI (kompaniyalar uchun) — `tiers`.
+              if (p.priceTiers.isNotEmpty) ...[
+                const SizedBox(height: Gap.xl),
+                FloatingSurface(
+                  key: const ValueKey('shop-tiers'),
+                  solid: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.shopBulkTitle,
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: Gap.sm),
+                      for (final tier in p.priceTiers)
+                        Padding(
+                          padding: const EdgeInsets.only(top: Gap.xs),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  tier.maxQty == null
+                                      ? l.shopBulkTierOpen(tier.minQty)
+                                      : l.shopBulkTier(
+                                          tier.minQty, tier.maxQty!),
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                              Text(
+                                '${formatMoney(tier.pricePerUnit, p.currency)} ${l.shopPerUnit}',
+                                style: AppType.monoStyle(
+                                    color: t.text1, size: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ],
               const SizedBox(height: Gap.section),
               NovaButton(
@@ -371,7 +427,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(p.name.isEmpty ? p.id : p.name,
+                    child: Text(shopProductName(l, p),
                         style: Theme.of(context).textTheme.titleMedium),
                   ),
                   Text(formatMoney(p.price, p.currency),
@@ -406,10 +462,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           // JISMONIY tovar — iPhone'da ham ko'rinadi (Apple 3.1.5(a)).
           // iPhone'da matn "NFC ID xaridi" emas, "buyurtma": raqamli
           // xaridga ishora bo'lmasin (`store_policy.dart`).
+          // Ikkala platformada ham — bu JISMONIY karta buyurtmasi
+          // (ilgari Android'da "NFC ID" xaridi deb yozilardi).
           StoreNotice(
-            text: isAppStoreBuild
-                ? l.storeBuyOnSitePhysical
-                : l.storeBuyOnSiteId,
+            text: l.storeBuyOnSitePhysical,
             physical: true,
           ),
           const SizedBox(height: Gap.xxl),

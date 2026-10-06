@@ -3395,4 +3395,65 @@ class LRu extends L {
 
   @override
   String get boostErrCreditNotFound => 'Кредит не найден.';
+
+  @override
+  String get errBadCurrentPassword => 'Текущий пароль неверный';
+
+  @override
+  String get shopPhysicalCard => 'Физическая NFC-карта';
+
+  @override
+  String get shopPhysicalCardHint =>
+      'Карта с вашим NFC ID — при касании телефоном открывается ваш профиль.';
+
+  @override
+  String shopDelivery(int min, int max) {
+    return 'Доставка: $min–$max дн.';
+  }
+
+  @override
+  String get shopBulkTitle => 'Цена при заказе нескольких штук';
+
+  @override
+  String shopBulkTier(int from, int to) {
+    return '$from–$to шт.';
+  }
+
+  @override
+  String shopBulkTierOpen(int from) {
+    return 'от $from шт.';
+  }
+
+  @override
+  String get shopPerUnit => '/ шт.';
+
+  @override
+  String get nfcUniqueVisitors => 'Уникальные посетители';
+
+  @override
+  String get nfcHistoryActions => 'Действия';
+
+  @override
+  String get nfcHistorySources => 'Источники';
+
+  @override
+  String nfcEventType(String type) {
+    String _temp0 = intl.Intl.selectLogic(type, {
+      'profile_view': 'Просмотр профиля',
+      'phone_click': 'Нажатие на телефон',
+      'telegram_click': 'Переход в Telegram',
+      'whatsapp_click': 'Переход в WhatsApp',
+      'instagram_click': 'Переход в Instagram',
+      'website_click': 'Переход на сайт',
+      'email_click': 'Нажатие на email',
+      'link_click': 'Переход по ссылке',
+      'contact_save': 'Контакт сохранён',
+      'lead': 'Оставлена заявка',
+      'menu_view': 'Просмотр меню',
+      'products_view': 'Просмотр товаров',
+      'services_view': 'Просмотр услуг',
+      'other': 'Другое действие',
+    });
+    return '$_temp0';
+  }
 }

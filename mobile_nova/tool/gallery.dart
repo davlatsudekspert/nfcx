@@ -368,18 +368,13 @@ class _GalleryShop extends ShopRepository {
   _GalleryShop() : super(ApiClient());
 
   @override
-  Future<Result<List<ShopProduct>>> products({String? category}) async =>
-      const Ok(_sampleShop);
+  Future<Result<List<ShopProduct>>> products() async => const Ok(_sampleShop);
 
   @override
   Future<Result<List<Order>>> orders() async => const Ok([
         Order(id: 1042, status: 'paid', total: 149000, itemsText: 'NFC karta — Matte Black'),
         Order(id: 1038, status: 'pending', total: 2400000, itemsText: '4 xonali NFC ID'),
       ]);
-
-  @override
-  Future<Result<Set<PayProvider>>> enabledProviders() async =>
-      const Ok({PayProvider.payme, PayProvider.click});
 }
 
 class _GalleryDiscover extends DiscoverRepository {

@@ -1947,7 +1947,14 @@ void main() {
     );
 
     // ── TO'LOV — FAQAT O'QISH, HECH QANDAY TO'LOV BOSHLANMAYDI ──
-    final providers = await shop.enabledProviders();
+    // `/api/settings/payments-enabled` — to'g'ridan-to'g'ri o'qiladi
+    // (ilovada bu ro'yxatni ishlatadigan ekran yo'q).
+    final providers = (await api
+            .get<Map<String, dynamic>>('/api/settings/payments-enabled'))
+        .map((j) => {
+              for (final p in const ['payme', 'click', 'paynet'])
+                if (j[p] == true || j[p] == 1 || j[p] == 'true') p,
+            });
     switch (providers) {
       case Err(:final error):
         partial('Payment checkout',
@@ -1956,7 +1963,7 @@ void main() {
             cause: why(error),
             pathHint: 'pay');
       case Ok(:final value):
-        final names = value.map((p) => p.name).toList()..sort();
+        final names = value.toList()..sort();
         report.add(MatrixRow(
           name: 'Payment checkout',
           verdict: Verdict.manualPayment,

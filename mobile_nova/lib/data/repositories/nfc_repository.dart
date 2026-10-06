@@ -37,10 +37,16 @@ class NfcRepository {
 
   Future<Result<void>> deleteId(String code) => _api.delete<void>('/api/records/$code');
 
-  /// Skanerlash/ko'rish tarixi.
-  Future<Result<List<ActivityEvent>>> history(String code) async {
-    final res = await _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
-    return res.map((j) => parseList(j['events'] ?? j['items'], ActivityEvent.fromJson));
+  /// NFC ID tarixi — YIG'MA ko'rsatkichlar (`/api/records/:code/analytics`).
+  ///
+  /// Server alohida hodisalar ro'yxatini BERMAYDI (ilgari bu yerda
+  /// `events` o'qilardi va ekran doim bo'sh edi). Javob:
+  /// `{days, totalViews, uniqueVisitors, byType, byDay?, byRef?}` —
+  /// `byDay`/`byRef` faqat kengaytirilgan analitikada.
+  Future<Result<CardAnalytics>> analytics(String code) async {
+    final res =
+        await _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
+    return res.map(CardAnalytics.fromJson);
   }
 
   /// Jismoniy NFC kartalar ro'yxati.

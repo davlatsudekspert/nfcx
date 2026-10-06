@@ -433,7 +433,9 @@ class BoostController extends StateNotifier<BoostState> {
     return null;
   }
 
-  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
+  /// 413 `payload_too_large` ham — o'sha JWS hech qachon qabul qilinmaydi.
+  static bool _isTerminal(AppError e) =>
+      e.status == 400 || e.status == 413 || e.status == 422;
 
   static BoostFailure _failureOf(AppError e) => switch (e.code) {
         'iap_disabled' || 'payments_disabled' => BoostFailure.disabled,

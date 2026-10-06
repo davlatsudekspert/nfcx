@@ -1,36 +1,55 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
 import '../models/models.dart';
-
-/// To'lov provayderi — backend `/api/settings/payments-enabled` orqali
-/// qaysilari YOQILGANINI aytadi. Ilova ro'yxatni o'zi to'qimaydi.
-enum PayProvider { payme, click, paynet }
 
 /// NFCSTORE do'koni, buyurtmalar va to'lovlar.
 class ShopRepository {
   ShopRepository(this._api);
   final ApiClient _api;
 
-  /// Sotuvdagi NFC ID narxlari — daraja (tier) bo'yicha.
-  Future<Result<List<ShopProduct>>> products({String? category}) async {
-    final res = await _api.get<Map<String, dynamic>>(
-      '/api/settings/physical-nfc-pricing',
-      query: {if (category != null) 'category': category},
-    );
-    return res.map((j) =>
-        parseList(j['items'] ?? j['products'] ?? j['pricing'], ShopProduct.fromJson));
+  /// JISMONIY NFC KARTA — do'kondagi yagona mahsulot.
+  ///
+  /// `/api/settings/physical-nfc-pricing` mahsulot RO'YXATI BERMAYDI:
+  ///
+  ///     { tiers: [{minQty, maxQty, pricePerUnit}],
+  ///       delivery: {minDays, maxDays}, physicalCardFee }
+  ///
+  /// Ilgari bu yerda `items`/`products` o'qilardi — server ularni hech
+  /// qachon yubormagan, do'kon DOIM bo'sh edi. Endi bitta mahsulot
+  /// quriladi: narxi — `physicalCardFee` (karta buyurtmasidagi bilan
+  /// bitta manba), `tiers` — ko'p dona narxlari, `delivery` — muddat.
+  /// Hech narsa ilovada yozilmaydi.
+  Future<Result<List<ShopProduct>>> products() async {
+    final res = await _api
+        .get<Map<String, dynamic>>('/api/settings/physical-nfc-pricing');
+    return res.map(physicalProductsFromPricing);
   }
 
-  Future<Result<List<String>>> categories() async {
-    final res = await _api.get<Map<String, dynamic>>('/api/categories');
-    return res.map((j) {
-      final raw = j['categories'] ?? j['items'];
-      return raw is List ? raw.map((e) => '$e').toList() : <String>[];
-    });
+  /// Narx javobidan mahsulot(lar) — testda tarmoqsiz sinaladi.
+  static List<ShopProduct> physicalProductsFromPricing(Map<String, dynamic> j) {
+    final tiers = parseList(j['tiers'], PriceTier.fromJson)
+        .where((t) => t.pricePerUnit > 0)
+        .toList()
+      ..sort((a, b) => a.minQty.compareTo(b.minQty));
+    final fee = j['physicalCardFee'];
+    final price = fee is num && fee > 0
+        ? fee.toInt()
+        : (tiers.isEmpty ? 0 : tiers.first.pricePerUnit);
+    if (price <= 0) return const [];
+    final d = j['delivery'];
+    int? day(Object? v) => v is num && v > 0 ? v.toInt() : null;
+    return [
+      ShopProduct(
+        id: kPhysicalCardId,
+        price: price,
+        priceTiers: tiers,
+        deliveryMinDays: d is Map ? day(d['minDays']) : null,
+        deliveryMaxDays: d is Map ? day(d['maxDays']) : null,
+      ),
+    ];
   }
 
   /// Jismoniy karta buyurtmasi.
@@ -67,33 +86,6 @@ class ShopRepository {
 
   Future<Result<Map<String, dynamic>>> paymentStatus(int orderId) =>
       _api.get<Map<String, dynamic>>('/api/payments/$orderId');
-
-  /// Qaysi to'lov tizimlari YOQILGAN.
-  ///
-  /// NIMA UCHUN MUHIM: agar hech biri yoqilmagan bo'lsa, ilova
-  /// "to'lash" tugmasini ko'rsatib, keyin foydalanuvchini bo'sh
-  /// ekranga olib borishi mumkin emas. Buning o'rniga CONFIG REQUIRED
-  /// holati ko'rsatiladi.
-  Future<Result<Set<PayProvider>>> enabledProviders() async {
-    final res = await _api.get<Map<String, dynamic>>('/api/settings/payments-enabled');
-    return res.map((j) {
-      final out = <PayProvider>{};
-      for (final p in PayProvider.values) {
-        final v = j[p.name];
-        if (v == true || v == 1 || v == 'true') out.add(p);
-      }
-      // Ro'yxat ko'rinishida kelgan variant.
-      final list = j['providers'];
-      if (list is List) {
-        for (final e in list) {
-          final m = PayProvider.values.where((p) => p.name == '$e');
-          if (m.isNotEmpty) out.add(m.first);
-        }
-      }
-      return out;
-    });
-  }
-
 
   // ═══════════════════════════════════════════════════════════════
   // SHAXSIY NFC ID XARIDI
@@ -147,36 +139,6 @@ class ShopRepository {
       },
     );
     return res.map(IdOrderDraft.fromJson);
-  }
-
-  /// To'lov sahifasiga o'tish havolasi.
-  ///
-  /// Provayder sozlanmagan bo'lsa bu yerda SOXTA muvaffaqiyat
-  /// qaytarilmaydi — `AppErrorKind.endpointMissing` chiqadi va ekran
-  /// CONFIG REQUIRED holatini ko'rsatadi.
-  Future<Result<String>> startPayment({
-    required PayProvider provider,
-    required int orderId,
-  }) async {
-    final path = switch (provider) {
-      PayProvider.payme => '/api/pay/payme',
-      PayProvider.click => '/api/pay/click/prepare',
-      PayProvider.paynet => '/api/pay/paynet/webhook',
-    };
-    final res = await _api.post<Map<String, dynamic>>(path, {'orderId': orderId});
-    return switch (res) {
-      Err(:final error) => Err(error),
-      Ok(:final value) => () {
-          final url = '${value['url'] ?? value['payUrl'] ?? value['checkoutUrl'] ?? ''}';
-          if (url.isEmpty) {
-            return const Err<String>(AppError(
-              AppErrorKind.endpointMissing,
-              code: 'payment_not_configured',
-            ));
-          }
-          return Ok(url);
-        }(),
-    };
   }
 }
 

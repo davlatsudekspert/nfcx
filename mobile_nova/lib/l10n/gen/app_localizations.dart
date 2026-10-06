@@ -6128,6 +6128,78 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Kredit topilmadi.'**
   String get boostErrCreditNotFound;
+
+  /// No description provided for @errBadCurrentPassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joriy parol noto‘g‘ri'**
+  String get errBadCurrentPassword;
+
+  /// No description provided for @shopPhysicalCard.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jismoniy NFC karta'**
+  String get shopPhysicalCard;
+
+  /// No description provided for @shopPhysicalCardHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.'**
+  String get shopPhysicalCardHint;
+
+  /// No description provided for @shopDelivery.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yetkazib berish: {min}–{max} kun'**
+  String shopDelivery(int min, int max);
+
+  /// No description provided for @shopBulkTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘p dona uchun narx'**
+  String get shopBulkTitle;
+
+  /// No description provided for @shopBulkTier.
+  ///
+  /// In uz, this message translates to:
+  /// **'{from}–{to} dona'**
+  String shopBulkTier(int from, int to);
+
+  /// No description provided for @shopBulkTierOpen.
+  ///
+  /// In uz, this message translates to:
+  /// **'{from} va undan ko‘p dona'**
+  String shopBulkTierOpen(int from);
+
+  /// No description provided for @shopPerUnit.
+  ///
+  /// In uz, this message translates to:
+  /// **'/ dona'**
+  String get shopPerUnit;
+
+  /// No description provided for @nfcUniqueVisitors.
+  ///
+  /// In uz, this message translates to:
+  /// **'Noyob tashrifchilar'**
+  String get nfcUniqueVisitors;
+
+  /// No description provided for @nfcHistoryActions.
+  ///
+  /// In uz, this message translates to:
+  /// **'Harakatlar'**
+  String get nfcHistoryActions;
+
+  /// No description provided for @nfcHistorySources.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manbalar'**
+  String get nfcHistorySources;
+
+  /// No description provided for @nfcEventType.
+  ///
+  /// In uz, this message translates to:
+  /// **'{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}'**
+  String nfcEventType(String type);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

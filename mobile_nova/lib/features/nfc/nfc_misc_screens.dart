@@ -20,7 +20,6 @@ import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_repository.dart';
-import '../../design/widgets/brand_icon.dart';
 
 // ---------------------------------------------------------------- kartalar
 
@@ -267,20 +266,25 @@ class NfcCardsScreen extends ConsumerWidget {
 // ------------------------------------------------------------------ tarix
 
 final nfcHistoryProvider =
-    FutureProvider.autoDispose<List<ActivityEvent>>((ref) async {
+    FutureProvider.autoDispose<CardAnalytics?>((ref) async {
   final id = ref.watch(activeIdProvider);
-  if (id == null) return const [];
-  final res = await ref.watch(nfcRepositoryProvider).history(id.code);
+  if (id == null) return null;
+  final res = await ref.watch(nfcRepositoryProvider).analytics(id.code);
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
+/// NFC ID TARIXI — yig'ma ko'rsatkichlar.
+///
+/// Server alohida hodisalar ro'yxatini bermaydi, faqat yig'ma son:
+/// ko'rishlar, noyob tashrifchilar, harakatlar (tur bo'yicha), kunlar
+/// va manbalar. Ekran aynan shuni ko'rsatadi — o'ylab topilgan
+/// "hodisa" qatorlari yo'q.
 class NfcHistoryScreen extends ConsumerWidget {
   const NfcHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = L.of(context);
-    final t = context.tokens;
     final history = ref.watch(nfcHistoryProvider);
 
     return NovaScaffold(
@@ -290,53 +294,102 @@ class NfcHistoryScreen extends ConsumerWidget {
         loading: () => const SkeletonList(),
         error: (e, __) => StatePanel.fromError(context, asAppError(e),
             onRetry: () => ref.invalidate(nfcHistoryProvider)),
-        data: (items) => items.isEmpty
+        data: (a) => a == null || a.isEmpty
             ? StatePanel(
+                key: const ValueKey('nfc-history-empty'),
                 icon: Icons.history_toggle_off_rounded,
                 title: l.stateEmpty,
                 message: l.stateEmptyHint)
-            : ListView.separated(
-                padding:
-                    const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.screenX, 120),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: Gap.sm),
-                itemBuilder: (context, i) {
-                  final e = items[i];
-                  return FloatingSurface(
-                    solid: true,
-                    padding: const EdgeInsets.all(Gap.md),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                              color: t.accent2.withValues(alpha: .16),
-                              shape: BoxShape.circle),
-                          child: BrandAwareIcon(Icons.nfc_rounded, size: 15, color: t.accent2),
-                        ),
-                        const SizedBox(width: Gap.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(e.title.isEmpty ? l.nfcScans : e.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleSmall),
-                              if (e.createdAt != null)
-                                Text(relativeTime(e.createdAt!, l),
-                                    style: Theme.of(context).textTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+            : RefreshIndicator(
+                onRefresh: () async => ref.invalidate(nfcHistoryProvider),
+                child: _HistoryBody(a: a),
               ),
       ),
     );
+  }
+}
+
+class _HistoryBody extends StatelessWidget {
+  const _HistoryBody({required this.a});
+  final CardAnalytics a;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L.of(context);
+    final t = context.tokens;
+    final text = Theme.of(context).textTheme;
+    final types = a.byType.entries.toList()
+      ..sort((x, y) => y.value.compareTo(x.value));
+    // Eng yangi kun birinchi.
+    final days = a.byDay.reversed.toList();
+
+    Widget row(String label, int n, {Key? key}) => Padding(
+          key: key,
+          padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+          child: Row(
+            children: [
+              Expanded(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyMedium)),
+              Text('$n', style: AppType.monoStyle(color: t.text1, size: 13)),
+            ],
+          ),
+        );
+
+    return NovaScroll(
+      children: [
+        Text(l.analyticsPeriod(a.days),
+            style: text.bodySmall?.copyWith(color: t.text2)),
+        const SizedBox(height: Gap.md),
+        FloatingSurface(
+          key: const ValueKey('nfc-history-summary'),
+          solid: true,
+          child: Column(
+            children: [
+              row(l.analyticsProfileViews, a.totalViews),
+              row(l.nfcUniqueVisitors, a.uniqueVisitors),
+            ],
+          ),
+        ),
+        if (types.isNotEmpty) ...[
+          SectionHeader(color: t.text2, title: l.nfcHistoryActions),
+          FloatingSurface(
+            solid: true,
+            child: Column(children: [
+              for (final e in types)
+                row(l.nfcEventType(e.key), e.value,
+                    key: ValueKey('nfc-type-${e.key}')),
+            ]),
+          ),
+        ],
+        if (days.isNotEmpty) ...[
+          SectionHeader(color: t.text2, title: l.analyticsByDay),
+          FloatingSurface(
+            solid: true,
+            child: Column(children: [
+              for (final d in days) row(_day(d.day), d.n),
+            ]),
+          ),
+        ],
+        if (a.byRef.isNotEmpty) ...[
+          SectionHeader(color: t.text2, title: l.nfcHistorySources),
+          FloatingSurface(
+            solid: true,
+            child: Column(children: [
+              for (final r in a.byRef) row(r.ref, r.n),
+            ]),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// `2026-10-06` -> `06.10.2026`.
+  static String _day(String iso) {
+    final p = iso.split('-');
+    return p.length == 3 ? '${p[2]}.${p[1]}.${p[0]}' : iso;
   }
 }
 

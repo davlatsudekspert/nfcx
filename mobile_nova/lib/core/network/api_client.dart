@@ -434,7 +434,11 @@ class ApiClient {
       _ => status >= 500 ? AppErrorKind.server : AppErrorKind.unknown,
     };
 
-    if (kind == AppErrorKind.unauthorized) _onUnauthorized(path);
+    // `bad_current_password` (parolni almashtirishda joriy parol xato)
+    // — 401, lekin sessiya JOYIDA. Ilgari bu odamni chiqarib yuborardi.
+    if (kind == AppErrorKind.unauthorized && !_keepsSession(code)) {
+      _onUnauthorized(path);
+    }
     return AppError(kind,
         code: code,
         detail: detail,
@@ -473,8 +477,12 @@ class ApiClient {
   void debugSetTokenForTest(String? v) => _token = v;
 
   @visibleForTesting
-  void debugHandleStatus(int status, String path) =>
-      _httpError(status, const <String, dynamic>{}, path);
+  AppError debugHandleStatus(int status, String path,
+          [Map<String, dynamic> body = const <String, dynamic>{}]) =>
+      _httpError(status, body, path);
+
+  /// 401, lekin "sessiya tugadi" EMAS — server kodi bo'yicha.
+  static bool _keepsSession(String? code) => code == 'bad_current_password';
 
   /// KIRISH YO'LLARI — u yerdagi 401 "sessiya tugadi" EMAS.
   ///
@@ -482,6 +490,9 @@ class ApiClient {
   /// sessiya tugashi deb qabul qilsak, parolni bir marta xato
   /// yozgan odam saqlangan sessiyasidan ham ayrilardi.
   static bool _isAuthEntry(String path) =>
+      // Parolni almashtirish: joriy parol xato bo'lsa 401
+      // (`bad_current_password`) — sessiya joyida qoladi.
+      path.contains('/settings/change-password-direct') ||
       path.contains('/auth/login') ||
       path.contains('/auth/register') ||
       path.contains('/auth/verify') ||

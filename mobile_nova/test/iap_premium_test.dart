@@ -431,6 +431,10 @@ void main() {
         ('400 $code',
             AppError(AppErrorKind.unknown, code: code, status: 400),
             true, (l) => l.iapErrRejected),
+      ('413 payload_too_large',
+          const AppError(AppErrorKind.unknown,
+              code: 'payload_too_large', status: 413),
+          true, (l) => l.iapErrRejected),
       // ── VAQTINCHA (ochiq qoladi) ──
       ('429 too_many_requests',
           const AppError(AppErrorKind.rateLimited,

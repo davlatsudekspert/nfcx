@@ -1323,5 +1323,21 @@
   "boostErrNotFound": "Post topilmadi.",
   "boostErrCreditUsed": "Bu kredit allaqachon ishlatilgan.",
   "boostErrCreditRevoked": "Bu kredit bekor qilingan.",
-  "boostErrCreditNotFound": "Kredit topilmadi."
+  "boostErrCreditNotFound": "Kredit topilmadi.",
+  "errBadCurrentPassword": "Joriy parol noto‘g‘ri",
+  "shopPhysicalCard": "Jismoniy NFC karta",
+  "shopPhysicalCardHint": "NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.",
+  "shopDelivery": "Yetkazib berish: {min}–{max} kun",
+  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
+  "shopBulkTitle": "Ko‘p dona uchun narx",
+  "shopBulkTier": "{from}–{to} dona",
+  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
+  "shopBulkTierOpen": "{from} va undan ko‘p dona",
+  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
+  "shopPerUnit": "/ dona",
+  "nfcUniqueVisitors": "Noyob tashrifchilar",
+  "nfcHistoryActions": "Harakatlar",
+  "nfcHistorySources": "Manbalar",
+  "nfcEventType": "{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}",
+  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
 }

@@ -73,12 +73,6 @@ class BusinessRepository {
   Future<Result<void>> submit(String companyId) =>
       _api.post<void>('/api/companies/$companyId/submit');
 
-  Future<Result<List<Business>>> search(String q) async {
-    final res = await _api
-        .get<Map<String, dynamic>>('/api/companies/search', query: {'q': q});
-    return res.map((j) => parseList(j['companies'] ?? j['items'], Business.fromJson));
-  }
-
   // ---- katalog ------------------------------------------------------------
 
   /// Kompaniya katalogi.
