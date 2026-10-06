@@ -1261,6 +1261,7 @@ async function companyApi(request, env, url) {
     const phone = shortText(body.phone, 40);
     const description = shortText(body.description, 1200);
     if (!displayName || !city || !phone || description.length < 20) return json({ error: 'required_fields' }, 422);
+    if (uzPhoneLengthBadD1(phone)) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
     // Taqiqlangan so'z (companyNameBlockedD1) — frontend tekshiruvi
     // chetlab o'tilgan (paste/autofill/to'g'ridan-to'g'ri API) holatda ham
     // nom bazaga TUSHMAYDI.
@@ -1695,6 +1696,7 @@ async function companyApi(request, env, url) {
     const value = (key, max) => body[key] == null ? current[key] : shortText(body[key], max);
     // Tahrirlashda ham bir xil tekshiruv (yaratishdagi bilan aynan bir xil).
     if (companyNameBlockedD1(value('displayName', 120))) return json({ error: 'name_not_allowed' }, 422);
+    if (body.phone != null && uzPhoneLengthBadD1(value('phone', 40))) return json({ error: 'bad_phone', reason: 'uz_length' }, 422);
     // Koordinata: bo'sh qiymat 0 EMAS. `Number(null)` — bu 0 va profil
     // Gvineya ko'rfazidagi 0,0 nuqtaga "joylashib" qolardi (shaxsiy
     // profilda aynan shu xato bo'lgan).
@@ -4301,6 +4303,24 @@ function normalizePhoneD1(v) {
   // keyin akkauntni yo'qotib qo'yishdan saqlaydi.
   return /^[1-9]\d{8,14}$/.test(digits) ? '+' + digits : '';
 }
+// O'ZBEKISTON RAQAMI UZUNLIGI — profil/kompaniya telefoni (sayt auditi,
+// 2026-10). "+9985009088277" (998 + 10 xona) kabi raqam saqlanib,
+// sahifadagi "Qo'ng'iroq" tugmasi hech qayerga ulanmasdi. Faqat ANIQ xato
+// rad etiladi: 998 bilan boshlangan va 12 xonadan farqli raqam; bo'sh
+// maydon, 9 xonali mahalliy raqam va boshqa davlat raqami o'tadi.
+// Brauzerdagi nusxa: src/lib/phone.js uzPhoneLengthBad()
+// (scripts/test-phone-parity.mjs bir xilligini tekshiradi).
+function uzPhoneLengthBadD1(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return false;
+  const plus = raw.startsWith('+') || raw.startsWith('00');
+  if (!plus && digits.length === 9) return false;
+  const d = raw.startsWith('00') ? digits.slice(2) : digits;
+  if (!d.startsWith('998')) return false;
+  return d.length !== 12;
+}
 function recSafeUrl(v) {
   const s = cleanStr(v, 500);
   if (!s) return '';
@@ -5992,6 +6012,7 @@ function musicLimitD1(isPremium) { return isPremium ? MUSIC_LIMIT_PREMIUM_D1 : M
 function validateRecordBody(body, opts = {}) {
   const name = cleanStr(body.name, 80);
   if (!name) return { error: "Ism bo'sh bo'lishi mumkin emas." };
+  if (uzPhoneLengthBadD1(cleanStr(body.phone, 24))) return { error: "Telefon raqami noto'g'ri: O'zbekiston raqami +998 va 9 ta raqamdan iborat." };
   const hashtags = Array.isArray(body.hashtags)
     ? body.hashtags.map((h) => cleanStr(h, 30).replace(/^#/, '')).filter(Boolean).slice(0, 20) : [];
   const extraLinks = Array.isArray(body.extraLinks)

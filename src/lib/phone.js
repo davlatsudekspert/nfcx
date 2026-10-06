@@ -29,6 +29,29 @@ export function normalizePhone(v) {
   return /^[1-9]\d{8,14}$/.test(digits) ? '+' + digits : '';
 }
 
+// O'ZBEKISTON RAQAMI UZUNLIGI — PROFIL/KOMPANIYA TELEFONI UCHUN (2026-10).
+//
+// Profil va kompaniya sahifasidagi "Qo'ng'iroq" tugmasi `tel:` havolasi
+// bo'ladi. Ilgari maydon hech tekshirilmasdi va bitta raqam ortiq
+// terilgan "+9985009088277" (998 + 10 xona) saqlanib, qo'ng'iroq hech
+// qayerga ulanmasdi (sayt auditi, 2026-10 — rasmiy kompaniya yozuvida
+// aynan shunday). Qoida: raqam 998 bilan boshlansa — 998 + 9 xona
+// (jami 12). Bo'sh maydon va boshqa davlat raqami tekshirilmaydi.
+// Serverdagi nusxa: hosting/worker.js uzPhoneLengthBadD1().
+export function uzPhoneLengthBad(v) {
+  const raw = String(v || '').trim();
+  if (!raw) return false;
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return false;
+  const plus = raw.startsWith('+') || raw.startsWith('00');
+  // 9 xonali mahalliy raqam ("99 812 34 56") — to'g'ri, 998 bilan
+  // boshlansa ham (operator 99).
+  if (!plus && digits.length === 9) return false;
+  const d = raw.startsWith('00') ? digits.slice(2) : digits;
+  if (!d.startsWith('998')) return false;
+  return d.length !== 12;
+}
+
 // Ko'rsatish uchun bo'laklab yozish: +998 90 111 22 33.
 // Faqat O'zbekiston raqamiga qo'llanadi — boshqa davlatlarning
 // bo'lish qoidalari har xil, taxmin qilib bo'lmaydi.

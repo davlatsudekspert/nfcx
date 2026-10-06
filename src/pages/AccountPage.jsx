@@ -7,6 +7,7 @@ import { dbUploadImage, dbUploadCardVideo, dbUploadProfileBgMedia, PROFILE_BG_MA
 import { navigate } from '../lib/router.js';
 import { fmt, timeAgo, initials } from '../lib/format.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { uzPhoneLengthBad } from '../lib/phone.js';
 import { isEmbedMusic, isYoutubeMusic } from '../lib/music.js';
 import { MESSAGING_ENABLED } from '../lib/features.js';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
@@ -2702,6 +2703,7 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
 
   const submit = async () => {
     if (!form.name.trim()) { setMsg({ type: 'err', text: t("Ism bo'sh bo'lmasligi kerak.") }); return; }
+    if (uzPhoneLengthBad(form.phone)) { setMsg({ type: 'err', text: t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).') }); return; }
     setBusy(true);
     setMsg(null);
     try {

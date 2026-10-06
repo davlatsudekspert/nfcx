@@ -4,6 +4,7 @@ import { checkCompanyId, companyIdLocalInfo, normalizeCompanyId, COMPANY_STATUS,
 import { navigate } from '../lib/router.js';
 import { companyNameBlocked } from '../lib/nameGuard.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { uzPhoneLengthBad } from '../lib/phone.js';
 import { fmt } from '../lib/format.js';
 import logo from '../assets/logo-128.png';
 import '../company-system.css';
@@ -91,6 +92,10 @@ export default function CompanyCreatePage() {
     if (!freeMode && (!check?.valid || !check?.available)) return;
     if (companyNameBlocked(form.displayName)) {
       setError(t('Kompaniya nomida ushbu so‘zdan foydalanish mumkin emas.'));
+      return;
+    }
+    if (uzPhoneLengthBad(form.phone)) {
+      setError(t('Telefon raqami noto‘g‘ri: O‘zbekiston raqami +998 va 9 ta raqamdan iborat (masalan +998 90 123 45 67).'));
       return;
     }
     setBusy(true); setError('');
