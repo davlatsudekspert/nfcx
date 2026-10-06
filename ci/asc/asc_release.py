@@ -100,22 +100,26 @@ SUBTITLE = "NFC Writer, Social ID, Reels"
 WHATS_NEW = {
     'en': """What's new in 1.1.1
 
+• Reels: a personal "For you" order — fresh and popular reels first, ones you have already watched move down, and new reels keep loading as you scroll.
 • Reels: new Friends tab — the latest reels from people and businesses you follow, in one place.
 • Stories: swipe between people, hold to pause (videos too), new stories are marked with a ring, and you can see how many people viewed your story.
 • Notifications: tapping a like or a comment now opens that exact post or reel.
 • Posts: tap a photo to zoom, double-tap a video to like, see when it was posted, and load more comments.
 • Comments: authors can remove comments under their posts; businesses can delete their own posts.
-• Reels: "Not interested" hides a reel you don't want to see.
+• Reels: "Not interested" hides a reel you don't want to see — it stays hidden.
+• Help: see our replies to your messages right in the app, with a notification when we answer.
 • Music: the profile music player now also plays and pauses Yandex Music.
 • Faster loading and stability improvements.""",
     'ru': """Что нового в 1.1.1
 
+• Reels: персональный порядок «Для вас» — свежие и популярные ролики выше, просмотренные ниже, новые подгружаются при прокрутке.
 • Reels: новая вкладка «Друзья» — свежие Reels людей и бизнесов, на которых вы подписаны.
 • Истории: листайте между людьми, удерживайте для паузы (и видео тоже), новые истории отмечены кольцом, видно число просмотров вашей истории.
 • Уведомления: нажатие на лайк или комментарий открывает именно тот пост или Reels.
 • Посты: увеличение фото по нажатию, двойное касание видео — лайк, время публикации и загрузка новых комментариев.
 • Комментарии: автор может удалять комментарии под своими постами; бизнес может удалять свои посты.
-• Reels: «Не интересно» скрывает ненужный ролик.
+• Reels: «Не интересно» скрывает ненужный ролик насовсем.
+• Помощь: ответы на ваши обращения видны прямо в приложении, с уведомлением.
 • Музыка: плеер профиля теперь включает и ставит на паузу Яндекс Музыку.
 • Быстрее загрузка и улучшения стабильности.""",
 }
