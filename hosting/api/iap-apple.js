@@ -157,7 +157,33 @@ export function ensureSchema(env) {
       result TEXT,
       received_at TEXT NOT NULL
     )`),
-  ]).catch((e) => { delete ready[key]; throw e; }));
+  ]).then(() => addPriceColumns(env, 'iap_apple_transactions'))
+    .catch((e) => { delete ready[key]; throw e; }));
+}
+
+// NARX (kelajakdagi tushum hisoboti uchun, admin audit 2026-10): StoreKit
+// JWS `price` (milli-birlik, butun son) va `currency` (ISO 4217). Faqat
+// ADD COLUMN — ustun bor bo'lsa xato jim o'tkaziladi.
+export async function addPriceColumns(env, table) {
+  await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN price INTEGER`).run().catch(() => {});
+  await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN currency TEXT`).run().catch(() => {});
+}
+const priceOf = (p) => (Number.isInteger(Number(p?.price)) && p?.price !== null && p?.price !== undefined ? Number(p.price) : null);
+const currencyOf = (p) => (typeof p?.currency === 'string' && /^[A-Z]{3}$/.test(p.currency) ? p.currency : null);
+
+// IMZO XATOLARI SANOG'I (admin "Apple / iOS" holati): faqat son va oxirgi
+// vaqt — tana saqlanmaydi.
+async function countSignatureFailure(env) {
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('iap_apple_sig_fail_count', '1')
+        ON CONFLICT(key) DO UPDATE SET value = CAST(COALESCE(CAST(admin_settings.value AS INTEGER), 0) + 1 AS TEXT)`),
+      env.DB.prepare(`INSERT INTO admin_settings (key, value) VALUES ('iap_apple_sig_fail_last', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(new Date().toISOString()),
+    ]);
+  } catch (e) {
+    console.error('iap apple sig counter', e?.message);
+  }
 }
 
 // ═══ YORDAMCHILAR ═══
@@ -284,6 +310,7 @@ function normalizeTx(p) {
         purchaseDate: msField(p.purchaseDate), revocationDate: msField(p.revocationDate),
         environment: typeof p.environment === 'string' ? p.environment.slice(0, 20) : null,
         appAccountToken: typeof p.appAccountToken === 'string' && p.appAccountToken ? p.appAccountToken.toLowerCase() : null,
+        price: priceOf(p), currency: currencyOf(p),
       },
     };
   }
@@ -304,6 +331,7 @@ function normalizeTx(p) {
       revocationDate: msField(p.revocationDate),
       environment: typeof p.environment === 'string' ? p.environment.slice(0, 20) : null,
       appAccountToken: token,
+      price: priceOf(p), currency: currencyOf(p),
     },
   };
 }
@@ -326,11 +354,11 @@ async function ledgerRow(env, txid) {
 async function insertLedger(env, userId, tx, { prev = null, granted = null, state = LEDGER_NONE, source, revokedAt = null, at }) {
   return env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_transactions
       (transaction_id, original_transaction_id, user_id, product_id, environment, purchase_date, expires_at,
-       prev_premium_expires_at, granted_premium_expires_at, granted, revoked_at, source, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+       prev_premium_expires_at, granted_premium_expires_at, granted, revoked_at, source, created_at, price, currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(tx.transactionId, tx.originalTransactionId, userId, tx.productId, tx.environment,
       tx.purchaseDate ? isoOf(tx.purchaseDate) : null, isoOf(tx.expiresDate),
-      prev, granted, state, revokedAt, source, at || new Date().toISOString())
+      prev, granted, state, revokedAt, source, at || new Date().toISOString(), tx.price ?? null, tx.currency ?? null)
     .run();
 }
 
@@ -674,6 +702,7 @@ async function handleNotification(request, env, H) {
   try { ({ payload } = await verifyJws(signedPayload)); }
   catch (e) {
     console.warn('iap apple notification: imzo rad etildi', e?.code || e?.message);
+    await countSignatureFailure(env);
     return H.json({ error: 'invalid_signature' }, 400);
   }
   const uuid = typeof payload.notificationUUID === 'string' ? payload.notificationUUID.slice(0, 80) : '';
@@ -703,6 +732,7 @@ async function handleNotification(request, env, H) {
     await release();
     if (e instanceof BadInnerSignature) {
       console.warn('iap apple notification: ichki imzo rad etildi', e.message);
+      await countSignatureFailure(env);
       return H.json({ error: 'invalid_signature' }, 400);
     }
     throw e; // baza xatosi — worker 503 beradi, Apple qayta yuboradi

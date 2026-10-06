@@ -837,6 +837,23 @@ export async function handle(request, env, url, H) {
       }
 
       await stopSlot(env, Number(row.id), `admin#${Number(admin.adminId) || 0}: ${reason}`);
+      // APPLE SLOTI (admin audit): manager+ xohlasa, xaridorga yangi
+      // KO'TARISH KREDITI beriladi (to'liq kunlar) — pul Apple'da qoldi,
+      // xizmat esa to'xtatildi. Kreditning tranzaksiya kaliti sintetik:
+      // `admin:<slot>:<apple tx>` (asl tranzaksiya REFUND'i unga tegmaydi).
+      if (body.reissueCredit === true && row.source === 'apple' && row.apple_transaction_id && String(row.status) === 'active') {
+        const key = `admin:${Number(row.id)}:${String(row.apple_transaction_id)}`;
+        await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_boost_credits
+            (user_id, days, product_id, environment, transaction_id, created_at) VALUES (?, ?, NULL, 'admin', ?, ?)`)
+          .bind(Number(row.user_id), Number(row.days) || 1, key, new Date().toISOString()).run();
+        const c = await env.DB.prepare(`SELECT id FROM iap_apple_boost_credits WHERE transaction_id = ?`).bind(key).first();
+        await H.logAdminActivity(env, {
+          action: 'featured_apple_credit_reissue',
+          details: `slot#${Number(row.id)} → kredit#${Number(c?.id) || 0} (${Number(row.days) || 1} kun) · user#${Number(row.user_id)}`,
+          ip: H.reqIp(request),
+        }).catch(() => {});
+        return H.json({ ok: true, creditId: Number(c?.id) || null });
+      }
       return H.json({ ok: true });
     }
 

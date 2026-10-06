@@ -29,6 +29,8 @@ import * as apiLegalRequests from './api/legal-requests.js';
 import * as apiIapApple from './api/iap-apple.js';
 // Promokod mukofoti (+30 kun Premium), taklif havolasi /i/:code, reyting.
 import * as apiReferrals from './api/referrals.js';
+// Admin "Apple / iOS" bo'limi — Apple IAP holati, obunalar, tranzaksiyalar (faqat o'qish).
+import * as apiAdminApple from './api/admin-apple.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
@@ -10127,6 +10129,18 @@ async function adminCoreApi(request, env, url, admin) {
     if (!u) return json({ error: 'not_found' }, 404);
     if (u.deleted_at) return json({ error: 'user_deleted' }, 409);
     if (Number(u.is_premium) === 1) return json({ error: 'lifetime_premium' }, 409);
+    // FAOL APPLE OBUNASI (admin audit, 2026-10): uni faqat Apple qaytaradi
+    // va keyingi yangilanishda muddat yana uzayadi. Olib qo'yish faqat
+    // aniq `force: true` bilan (UI qattiq ogohlantiradi).
+    if (revoke && body?.force !== true) {
+      const apple = await apiAdminApple.activeAppleSubscription(env, id).catch(() => null);
+      if (apple) {
+        return json({ error: 'apple_subscription_active', apple: {
+          productId: apple.product_id, environment: apple.environment, expiresAt: apple.expires_at,
+          autoRenew: apple.auto_renew === null ? null : !!Number(apple.auto_renew),
+        } }, 409);
+      }
+    }
     const nowMs = Date.now();
     const cur = u.premium_expires_at ? Date.parse(String(u.premium_expires_at).replace(' ', 'T').replace(/\+00$/, 'Z')) : NaN;
     const until = revoke
@@ -10135,7 +10149,7 @@ async function adminCoreApi(request, env, url, admin) {
     await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ? AND COALESCE(is_premium, 0) = 0`).bind(until, id).run();
     await logAdminActivity(env, {
       action: revoke ? 'user_premium_revoke' : 'user_premium_grant',
-      details: `Foydalanuvchi #${id}${revoke ? '' : ` — ${months} oy`} · admin#${Number(admin.adminId) || 0}`,
+      details: `Foydalanuvchi #${id}${revoke ? (body?.force === true ? ' · force (Apple obunasi bor)' : '') : ` — ${months} oy`} · admin#${Number(admin.adminId) || 0}`,
       oldValue: u.premium_expires_at || '', newValue: `${until} (${note})`, ip,
     });
     return json({ ok: true, premiumUntil: until, revoked: revoke });
@@ -12047,7 +12061,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex

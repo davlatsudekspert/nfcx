@@ -9,6 +9,7 @@ import { adminPreviewUrl, adminCompanyPreviewUrl } from '../lib/preview.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import MarketplaceTab from '../components/admin/MarketplaceTab.jsx';
 import NovaTab from '../components/admin/NovaTab.jsx';
+import AppleTab from '../components/admin/AppleTab.jsx';
 import MusicTab from '../components/admin/MusicTab.jsx';
 import DemoBusinessesTab from '../components/admin/DemoBusinessesTab.jsx';
 import { useCategories, catPath } from '../lib/categories.js';
@@ -284,7 +285,10 @@ function AdminLogin({ onLoggedIn, expiredMsg }) {
 // bo'limning sarlavhasi siljib ketadi va menyu boshqa sahifani
 // ochadi. Bo'limni yashirish uchun uni faqat `ADMIN_NAV` dan oling:
 // bo'limning o'zi joyida qoladi va indekslar buzilmaydi.
-const TABS = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika', 'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI', 'Premium obunachilar', 'Musiqa kutubxonasi', 'Namuna bizneslar'];
+// Apple obunasi holati (server hisoblaydi — hosting/api/admin-apple.js).
+const APPLE_STATE_TEXT = { active: 'Faol', autorenew_off: 'Avto-yangilanish o‘chiq', expired: 'Tugagan', revoked: 'Qaytarilgan' };
+
+const TABS = ['Boshqaruv markazi', 'Statistika', 'Foydalanuvchilar', 'Buyurtmalar', "To'lanishi kerak pullar", 'Auksionlar', "Auksion so'rovlari", 'Jismoniy kartalar', 'Murojaatlar', 'Tashqi analitika', 'Xavfsizlik', 'Adminlar', 'Gift NFC ID', 'Promokodlar', 'Yangiliklar', 'Kategoriyalar', 'Tasdiqlash (verified)', 'Talab', 'Moliya', 'Business ID', 'Trafik', 'Shikoyatlar', 'Marketplace', 'NFCSTORE ILOVASI', 'Premium obunachilar', 'Musiqa kutubxonasi', 'Namuna bizneslar', 'Apple / iOS'];
 
 // ═══ BOSHQARUV MARKAZI (2026-09-25) ═══
 //
@@ -1454,11 +1458,31 @@ function UserDrawer({ userId, onClose, onChanged }) {
       message: t('{email} Premium muddati hozir tugaydi. Davom etasizmi?', { email: u.email }),
       confirmLabel: t('Olib tashlash'), danger: true,
     });
-    if (ok) act(async () => {
+    if (!ok) return;
+    // FAOL APPLE OBUNASI (admin audit): server 409 `apple_subscription_active`
+    // qaytaradi — qattiq ogohlantirish va faqat aniq tasdiq bilan `force`.
+    setBusy(true); setActErr(null);
+    try {
       await adminApi(`/users/${u.id}/premium`, { method: 'POST', body: JSON.stringify({ action: 'revoke', note: premNote.trim() }) });
-      setPremNote('');
-    });
+      setPremNote(''); await load(); onChanged?.();
+    } catch (e) {
+      if (e?.code !== 'apple_subscription_active') { setActErr(apiErrText(e, t)); return; }
+      const a = e.data?.apple || {};
+      const force = await confirm({
+        title: t('Faol Apple obunasi bor'),
+        message: t('Bu odam Premium’ni iPhone’da Apple orqali sotib olgan ({p}, {d} gacha). Apple to‘lovini faqat Apple qaytaradi — bu yerda olib tashlash pulni qaytarmaydi, keyingi yangilanishda esa muddat yana uzayadi. Baribir olib tashlaysizmi?', { p: a.productId || '—', d: a.expiresAt ? dateTime(tsMs(a.expiresAt)) : '—' }),
+        confirmLabel: t('Baribir olib tashlash'), danger: true,
+      });
+      if (force) {
+        try {
+          await adminApi(`/users/${u.id}/premium`, { method: 'POST', body: JSON.stringify({ action: 'revoke', note: premNote.trim(), force: true }) });
+          setPremNote(''); await load(); onChanged?.();
+        } catch (e2) { setActErr(apiErrText(e2, t)); }
+      }
+    } finally { setBusy(false); }
   };
+  // Apple obunasi (iOS) — kartochkada va Premium bo'limida ko'rsatiladi.
+  const appleSub = d?.apple?.subscriptions?.find((s) => s.state === 'active' || s.state === 'autorenew_off') || null;
   const premiumText = !u ? '' : u.premium.state === 'active' ? (u.premium.legacy ? t('Premium (muddatsiz)') : t('Premium — {d} gacha', { d: dateTime(tsMs(u.premium.until)) }))
     : u.premium.state === 'trial' ? t('Bepul sinov — {d} gacha', { d: dateTime(tsMs(u.premium.until)) })
       : u.premium.state === 'expired' ? t('Premium tugagan ({d})', { d: dateTime(tsMs(u.premium.until)) }) : t('Bepul');
@@ -1565,6 +1589,29 @@ function UserDrawer({ userId, onClose, onChanged }) {
                 )}
               </AdminCard>
 
+              {d.apple && (d.apple.hasToken || d.apple.subscriptions.length > 0 || d.apple.boostTx.length > 0) && (
+                <AdminCard title={t('Apple / iOS')}>
+                  <div className="space-y-2 text-sm" data-testid="user-apple">
+                    {d.apple.subscriptions.length === 0 && <div style={{ color: 'var(--vz-ink-3)' }}>{t('Apple obunasi yo‘q')}</div>}
+                    {d.apple.subscriptions.map((s, i) => (
+                      <div key={`s${i}`} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0"><span className="font-mono text-xs">{s.originalTransactionId}</span> <span style={{ color: 'var(--vz-ink-2)' }}>{s.productId}</span></span>
+                        <span className="flex gap-1">
+                          {s.environment === 'Sandbox' && <span className="vz-badge vz-badge--muted">Sandbox</span>}
+                          <span className={`vz-badge ${s.state === 'active' ? 'vz-badge--ok' : s.state === 'revoked' ? 'vz-badge--danger' : 'vz-badge--muted'}`}>{t(APPLE_STATE_TEXT[s.state] || s.state)}</span>
+                          <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{s.expiresAt ? dateTime(tsMs(s.expiresAt)) : '—'}</span>
+                        </span>
+                      </div>
+                    ))}
+                    {d.apple.boostTx.length > 0 && (
+                      <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>
+                        {t('Ko‘tarish xaridlari')}: {d.apple.boostTx.length} · {t('Kreditlar')}: {d.apple.credits.filter((c) => c.state === 'unused').length} {t('ishlatilmagan')}
+                      </div>
+                    )}
+                  </div>
+                </AdminCard>
+              )}
+
               {d.physicalCards.length > 0 && (
                 <AdminCard title={t('Jismoniy kartalar ({n})', { n: d.physicalCards.length })}>
                   <ul className="space-y-1.5 text-sm">
@@ -1642,6 +1689,12 @@ function UserDrawer({ userId, onClose, onChanged }) {
                   {isManager && (
                     <div className="vz-panel mt-3 space-y-2 p-3" data-testid="premium-grant">
                       <div className="text-sm font-medium" style={{ color: 'var(--vz-ink)' }}>{t('Premium berish')}</div>
+                      {appleSub && (
+                        <div className="vz-err text-xs" data-testid="premium-apple-sub">
+                          {t('Apple obunasi faol: {p} — {d} gacha', { p: appleSub.productId, d: dateTime(tsMs(appleSub.expiresAt)) })}
+                          {appleSub.autoRenew === false ? ` · ${t('avto-yangilanish o‘chiq')}` : ''} — {t('Apple to‘lovini faqat Apple qaytaradi.')}
+                        </div>
+                      )}
                       {u.premium.legacy ? (
                         <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Muddatsiz (eski) Premium — o‘zgartirilmaydi.')}</div>
                       ) : (
@@ -5171,6 +5224,9 @@ const ADMIN_NAV = [
   { index: 22, label: 'Marketplace', icon: 'bag', group: 'Savdo' },
   { index: 12, label: 'Gift NFC ID', icon: 'gift', group: 'Savdo' },
   { index: 13, label: 'Promokodlar', icon: 'tag', group: 'Savdo' },
+  // APPLE / iOS (2026-10): Apple IAP holati, obunalar, tranzaksiyalar,
+  // kreditlar, bildirishnomalar — faqat o'qish, manager+.
+  { index: 27, label: 'Apple / iOS', icon: 'phone', group: 'Savdo', managerOnly: true, badgeKey: 'appleAttention' },
 
   // NFCSTORE ILOVASI — ilovaga tegishli moderatsiya va sotuv.
   // Indeks 23 — TABS oxirida (o'rtaga qo'yilsa keyingi bo'limlarning
@@ -5217,7 +5273,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
   const logout = async () => { try { await adminApi('/logout', { method: 'POST' }); } catch { /* baribir chiqamiz */ } onLogout(); };
   const isSuperAdmin = role === 'super_admin';
   const isManager = isSuperAdmin || role === 'manager';
-  const nav = ADMIN_NAV.filter((n) => !n.superOnly || isSuperAdmin);
+  const nav = ADMIN_NAV.filter((n) => (!n.superOnly || isSuperAdmin) && (!n.managerOnly || isManager));
   const goTo = (index, sub) => { setSecSub(sub || null); setTab(index); };
   // Tezkor qidiruv (sarlavhada): email, telefon yoki NFC ID — Foydalanuvchilar bo'limida ochiladi.
   const onSearch = (e) => {
@@ -5286,6 +5342,7 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
         {tab === 24 && <PremiumUsersTab />}
         {tab === 25 && <MusicTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
         {tab === 26 && <DemoBusinessesTab adminApi={adminApi} apiErrText={apiErrText} isManager={isManager} />}
+        {tab === 27 && (isManager ? <AppleTab adminApi={adminApi} isSuper={isSuperAdmin} goToUser={(userId) => goTo(2, { userId })} /> : <ForbiddenState />)}
       </div>
     </AdminShell>
     </AdminCtx.Provider>

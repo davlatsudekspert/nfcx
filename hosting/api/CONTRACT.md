@@ -25,7 +25,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
-`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `referrals`, `marketplace`
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `referrals`, `admin-apple`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
 Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
@@ -286,3 +286,18 @@ yo'q; bir do'st — bir marta (`referral_rewards.referred_id` UNIQUE); o'zi/o'sh
 `GET /i/:code` (worker.js) → kod bor: `Set-Cookie nfc_ref=<code>` (30 kun, Lax, HttpOnly, Secure) + 302
 `/register?ref=<code>`; yo'q → 302 `/`. Ro'yxat formada promokod bo'lmasa `nfc_ref` cookie'dan oladi.
 AASA yo'llarida `/i/*`. Test: `scripts/test-referral-rewards.mjs`.
+
+`admin-apple` — admin "Apple / iOS" (2026-10, faqat o'qish, manager+; foydalanuvchi — `userId` + asosiy NFC kodi,
+email/telefon/JWS/appAccountToken yo'q; tranzaksiya raqami manager uchun `…oxirgi6`, super_admin uchun to'liq):
+`GET /api/admin/apple/summary` → `{flags:{iapEnabled, boostEnabled, allowSandboxAll, sandboxUserCount, sandboxUserIds?(super),
+featuredSales}, bundleId, products, counts:{subscriptions, boostTx30d, credits} (production|sandbox|other),
+notifications:{last24h, last7d, lastNotificationAt}, problems:{unknownUser7d, staleProcessing, staleBoostClaims,
+signatureFailures, lastSignatureFailureAt}, attention, app:{totals, builds}}`;
+`GET /api/admin/apple/subscriptions|transactions?kind=premium|boost|notifications|credits` — filtrlar, 50 tadan,
+`{items, hasMore, nextCursor}`. Kartochka `GET /api/admin/users/:id/detail` → `apple:{hasToken, subscriptions,
+premiumTx, boostTx, credits}`; overview `badges.appleAttention`. Notification imzo xatolari soni
+`admin_settings.iap_apple_sig_fail_count/last` (tana saqlanmaydi); daftarlarda `price`, `currency` (JWS'dan).
+Premium olib qo'yish (`POST /api/admin/users/:id/premium {action:'revoke'}`) faol Apple obunasida 409
+`apple_subscription_active` (+`apple`), faqat `force:true` bilan. `POST /api/admin/featured/:id/stop {reason,
+reissueCredit:true}` — faol Apple slotida xaridorga kredit (`admin:<slot>:<tx>`, asl REFUND uni ham bekor qiladi).
+Test: `scripts/test-admin-apple.mjs`.

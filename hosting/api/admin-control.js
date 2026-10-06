@@ -23,6 +23,8 @@
 // Jadval yo'q bo'lsa (yangi baza) — o'sha qism 0 qaytaradi, xato emas.
 
 import { ensurePurgeSchema, PURGE_GRACE_DAYS } from './account-purge.js';
+// Apple IAP (admin "Apple / iOS"): kartochkadagi Apple bo'limi va menyu belgisi.
+import { appleForUser, appleAttention } from './admin-apple.js';
 
 const DAY_MS = 86_400_000;
 const SEC = (c) => `replace(substr(${c}, 1, 19), 'T', ' ')`;
@@ -117,6 +119,8 @@ async function overview(env, H, admin, now) {
       FROM users WHERE is_test = 0 AND is_internal = 0 AND deleted_at IS NULL ORDER BY ${SEC('created_at')} DESC, id DESC LIMIT 6`),
     one(env, `SELECT COALESCE(SUM(w.price),0) AS total, COUNT(*) AS n FROM web_orders w WHERE ${H.revenueBucketSqlD1('refunded', 'w')} AND ${SEC('w.cancel_time')} >= ?`, d30),
   ]);
+  // Apple: osilib qolgan bildirishnoma/da'vo va noma'lum foydalanuvchi — faqat manager+.
+  const appleAttn = H.roleAtLeast(admin, 'manager') ? await appleAttention(env).catch(() => 0) : 0;
 
   // O'chirish navbati — faqat super_admin ko'radi va boshqaradi.
   let deletions = null;
@@ -169,6 +173,7 @@ async function overview(env, H, admin, now) {
       reports: queue.reports,
       supportUnanswered: queue.supportUnanswered,
       accountDeletions: queue.deletionsNeedAction,
+      appleAttention: appleAttn,
     },
     recent: {
       payments: recentPays.map((r) => ({ id: r.id, code: r.code, kind: r.kind, amount: num(r.price), channel: r.channel, email: r.email || null, createdAt: r.created_at })),
@@ -218,7 +223,7 @@ async function premiumUsers(env, H, url, now) {
   return { filter, users };
 }
 
-async function userDetail(env, H, id, now) {
+async function userDetail(env, H, id, now, admin) {
   const t = await tableSet(env);
   const cols = await columnSet(env, 'users');
   const pick = (c) => (cols.has(c) ? c : `NULL AS ${c}`);
@@ -268,6 +273,8 @@ async function userDetail(env, H, id, now) {
     app: app ? { platform: app.platform, firstSeen: app.first_seen, lastSeen: app.last_seen, opens: num(app.opens) } : null,
     openReports: num(reports?.n),
     legalHold: hold ? { note: String(hold.note || ''), by: String(hold.set_by || ''), at: hold.set_at || null } : null,
+    // Apple IAP (obuna, tranzaksiyalar, kreditlar) — jadval yo'q bo'lsa null.
+    apple: await appleForUser(env, admin, u.id).catch(() => null),
   };
 }
 
@@ -281,6 +288,6 @@ export async function handle(request, env, url, H) {
   const now = Date.now();
   if (path === '/api/admin/overview') return H.json(await overview(env, H, admin, now));
   if (path === '/api/admin/premium-users') return H.json(await premiumUsers(env, H, url, now));
-  const d = await userDetail(env, H, Number(detailMatch[1]), now);
+  const d = await userDetail(env, H, Number(detailMatch[1]), now, admin);
   return d ? H.json(d) : H.json({ error: 'not_found' }, 404);
 }

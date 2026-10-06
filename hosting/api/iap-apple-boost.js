@@ -121,6 +121,9 @@ export function ensureBoostSchema(env) {
       )`),
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS iap_apple_boost_credits_user_idx ON iap_apple_boost_credits(user_id)`),
     ]);
+    // Narx (admin audit): ADD COLUMN, bor bo'lsa jim.
+    await env.DB.prepare(`ALTER TABLE iap_apple_boost_transactions ADD COLUMN price INTEGER`).run().catch(() => {});
+    await env.DB.prepare(`ALTER TABLE iap_apple_boost_transactions ADD COLUMN currency TEXT`).run().catch(() => {});
   })().catch((e) => { delete ready[key]; throw e; }));
 }
 
@@ -305,6 +308,11 @@ async function undoByTx(env, txid) {
   // Ishlatilgan kredit: uning sloti yuqorida (apple_transaction_id) to'xtatildi; kreditni ham belgilaymiz.
   await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ? WHERE transaction_id = ? AND revoked_at IS NULL`)
     .bind(new Date().toISOString(), txid).run();
+  // Admin qayta bergan kredit (`admin:<slot>:<tx>`, featured.js stop) — asl
+  // tranzaksiya qaytarilsa u ham bekor.
+  const re = await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ?
+      WHERE transaction_id LIKE ? AND revoked_at IS NULL AND used_at IS NULL`).bind(new Date().toISOString(), `admin:%:${txid}`).run();
+  if (changed(re) && outcome === 'not_granted') outcome = 'credit_revoked';
   return outcome;
 }
 
@@ -360,8 +368,9 @@ export async function verifyBoost(env, H, user, tx, body) {
   const claimAt = new Date().toISOString();
   let tookOver = false;
   const ins = await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_boost_transactions
-      (transaction_id, user_id, product_id, days, environment, intent_id, state, created_at) VALUES (?, ?, ?, ?, ?, ?, 'claimed', ?)`)
-    .bind(tx.transactionId, user.id, tx.productId, tx.days, tx.environment, intent ? Number(intent.id) : null, claimAt).run();
+      (transaction_id, user_id, product_id, days, environment, intent_id, state, created_at, price, currency) VALUES (?, ?, ?, ?, ?, ?, 'claimed', ?, ?, ?)`)
+    .bind(tx.transactionId, user.id, tx.productId, tx.days, tx.environment, intent ? Number(intent.id) : null, claimAt,
+      tx.price ?? null, tx.currency ?? null).run();
   if (!changed(ins)) {
     // Boshqa so'rov ishlayapti — qisqa kutamiz.
     for (let i = 0; i < 12; i++) {

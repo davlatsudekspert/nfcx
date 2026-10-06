@@ -932,14 +932,21 @@ function FeaturedSection({ adminApi, apiErrText }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const stop = async (id) => {
+  const stop = async (slot) => {
+    const id = slot.id;
+    // APPLE SLOTI (admin audit): pul Apple'da — qaytarishni faqat Apple qiladi.
+    // Avval aniq ogohlantirish, keyin (manager+) kredit qayta berish taklifi.
+    const isApple = slot.source === 'apple';
+    if (isApple && !window.confirm(t('Bu slot iPhone’da Apple orqali sotib olingan. To‘xtatish pulni qaytarmaydi (qaytarishni faqat Apple qiladi). Davom etasizmi?'))) return;
     // SABAB MAJBURIY: odamning puliga olingan e'lon to'xtatilyapti.
     const reason = window.prompt(t('To‘xtatish sababi (majburiy):'));
     if (!reason || !reason.trim()) return;
+    const reissueCredit = isApple && slot.status === 'active'
+      && window.confirm(t('Xaridorga yangi ko‘tarish krediti (shu kunlar soni) berilsinmi? U boshqa postini ko‘tarishi mumkin bo‘ladi.'));
     try {
       await adminApi(`/featured/${id}/stop`, {
         method: 'POST',
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({ reason: reason.trim(), ...(reissueCredit ? { reissueCredit: true } : {}) }),
       });
       load();
     } catch (e) {
@@ -987,6 +994,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
                 <th className="py-1 pr-3">{t('Kontent')}</th>
                 <th className="py-1 pr-3">{t('Profil')}</th>
                 <th className="py-1 pr-3">{t('Muddat')}</th>
+                <th className="py-1 pr-3">{t('Manba')}</th>
                 <th className="py-1 pr-3">{t('Narx')}</th>
                 <th className="py-1 pr-3">{t('Holat')}</th>
                 <th className="py-1 pr-3">{t('Tugaydi')}</th>
@@ -1000,7 +1008,10 @@ function FeaturedSection({ adminApi, apiErrText }) {
                   <td className="py-1.5 pr-3">{s.targetKind}#{s.targetId}</td>
                   <td className="py-1.5 pr-3">{s.code || `user#${s.userId}`}</td>
                   <td className="py-1.5 pr-3">{s.days} {t('kun')}</td>
-                  <td className="py-1.5 pr-3">{Number(s.price).toLocaleString('uz-UZ')}</td>
+                  <td className="py-1.5 pr-3">
+                    <StatusBadge tone={s.source === 'apple' ? 'info' : s.source === 'admin' ? 'muted' : 'success'}>{s.source === 'apple' ? 'Apple' : s.source === 'admin' ? t('Admin') : t('Sayt')}</StatusBadge>
+                  </td>
+                  <td className="py-1.5 pr-3">{s.source === 'apple' ? <span title={s.appleTransactionId || ''}>Apple IAP</span> : Number(s.price).toLocaleString('uz-UZ')}</td>
                   <td className="py-1.5 pr-3">
                     <StatusBadge tone={SLOT_TONE[s.status] || 'muted'}>{t(s.status)}</StatusBadge>
                   </td>
@@ -1009,7 +1020,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
                     {(s.status === 'active' || s.status === 'pending') && (
                       <button
                         type="button"
-                        onClick={() => stop(s.id)}
+                        onClick={() => stop(s)}
                         className="text-[13px] text-red-400"
                       >
                         {t('To‘xtatish')}
