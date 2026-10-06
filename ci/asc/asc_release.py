@@ -635,6 +635,7 @@ def iap_prices(sid, spec):
     usa = next((p for p in pts if abs(float(p['attributes'].get('customerPrice') or -1) - spec['usd']) < 0.001), None)
     if not usa:
         iap_fail(f'USA {spec["usd"]} narx nuqtasi ({tag})', 404, f'{len(pts)} nuqta ichida topilmadi'); return len(priced)
+    note(f"  {tag}: USA nuqta {usa['id']} attrs={usa['attributes']}")
     eq, einc, c, err = get_all(f"/v1/subscriptionPricePoints/{usa['id']}/equalizations",
                                {'include': 'territory', 'limit': 200})
     if not ok(c):
@@ -690,9 +691,11 @@ def iap():
     for spec in IAP_SUBS:
         s = iap_subscription(gid, spec)
         iap_sub_locs(s['id'], spec)
-        n = iap_prices(s['id'], spec)
+        # Mavjudlik narxdan OLDIN: hududsiz obunaga narx qo'yib bo'lmaydi
+        # (409 UNSUPPORTED_TERRITORY).
         if terr:
             iap_availability(s['id'], spec, terr)
+        n = iap_prices(s['id'], spec)
         c, j = call('GET', f"/v1/subscriptions/{s['id']}")
         st = ((j.get('data') or {}).get('attributes') or {}).get('state') if ok(c) else s['attributes'].get('state')
         summary.append(f"{spec['productId']}={s['id']} state={st} priced_territories={n}")
