@@ -410,7 +410,43 @@ def attach():
 
 def submit():
     aid = app_id(); v = edit_version(aid)
+    # Versiyaga biriktirilgan build'ni tekshirish: BUILD berilgan bo'lsa,
+    # boshqa build yuborilib ketmasin.
+    c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/build")
+    attached = ((j.get('data') or {}).get('attributes') or {}).get('version')
+    note(f"versiya {v['attributes'].get('versionString')} ({v['attributes'].get('appStoreState')}), build {attached}")
+    want = os.environ.get('BUILD', '').strip()
+    if want and attached != want:
+        print(f'::error::versiyaga {attached} biriktirilgan, {want} kutilgan — yuborilmadi')
+        flush('ASC submit'); sys.exit(1)
     free_price(aid)
+
+    # RAD ETILGAN YUBORISH OCHIQ (UNRESOLVED_ISSUES): yangisini yaratib
+    # bo'lmaydi (bitta ochiq yuborish). Elementni "hal qilindi" deb
+    # belgilab, o'sha yuborishni qayta jo'natamiz — UI'dagi "Отправить
+    # на проверку" bilan bir xil. Hech narsa bekor qilinmaydi.
+    c, j = call('GET', '/v1/reviewSubmissions', params={'filter[app]': aid, 'filter[state]': 'UNRESOLVED_ISSUES'})
+    open_sub = (j.get('data') or [None])[0]
+    if open_sub:
+        sid = open_sub['id']
+        note(f'ochiq (rad etilgan) yuborish topildi: {sid}')
+        c, j = call('GET', f'/v1/reviewSubmissions/{sid}/items', params={'include': 'appStoreVersion'})
+        for it in j.get('data') or []:
+            ver = ((it.get('relationships') or {}).get('appStoreVersion') or {}).get('data') or {}
+            st = (it.get('attributes') or {}).get('state')
+            note(f"element {it['id']}: {st}, versiya {ver.get('id')}")
+            if ver.get('id') == v['id'] and st not in ('READY_FOR_REVIEW', 'ACCEPTED', 'APPROVED'):
+                c2, j2 = call('PATCH', f"/v1/reviewSubmissionItems/{it['id']}", {'data': {
+                    'type': 'reviewSubmissionItems', 'id': it['id'], 'attributes': {'resolved': True}}})
+                note(f'element hal qilindi deb belgilandi -> {c2} {j2.get("_error", "")}')
+        c, j = call('PATCH', f'/v1/reviewSubmissions/{sid}', {'data': {'type': 'reviewSubmissions', 'id': sid,
+                    'attributes': {'submitted': True}}})
+        note(f"App Review'ga qayta yuborildi -> {c} {j.get('_error', '')}")
+        flush('ASC submit')
+        if not ok(c):
+            sys.exit(1)
+        return
+
     c, j = call('POST', '/v1/reviewSubmissions', {'data': {'type': 'reviewSubmissions', 'attributes': {'platform': 'IOS'},
                 'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}}})
     if not ok(c):
