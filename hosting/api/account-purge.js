@@ -502,6 +502,8 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   add(['auction_demand_votes'], `DELETE FROM auction_demand_votes WHERE user_id = ${id}`);
   add(['auction_requests'], `DELETE FROM auction_requests WHERE user_id = ${id}`);
   add(['app_users'], `DELETE FROM app_users WHERE user_id = ${id}`);
+  // Javoblar tarixi (admin audit) — murojaat bilan birga.
+  if (flag('PURGE_SUPPORT_MESSAGES')) add(['support_replies', 'support_messages'], `DELETE FROM support_replies WHERE message_id IN (SELECT id FROM support_messages WHERE user_id = ${id})`);
   if (flag('PURGE_SUPPORT_MESSAGES')) add(['support_messages'], `DELETE FROM support_messages WHERE user_id = ${id}`);
   add(['content_reports'], `UPDATE content_reports SET reporter_ip = '' WHERE reporter_id = ${id}`);
   add(['sessions'], `DELETE FROM sessions WHERE user_id = ${id}`);

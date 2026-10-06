@@ -205,22 +205,36 @@ async function premiumUsers(env, H, url, now) {
     where.push(`(LOWER(u.email) LIKE ? OR u.phone LIKE ? OR EXISTS (SELECT 1 FROM cards c WHERE c.user_id = u.id AND LOWER(c.code) LIKE ?))`);
     binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
   }
+  // Sahifalash (admin audit): `limit` (standart 100, ko'pi 500) + `hasMore`.
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 100));
+  // Apple obunasi (iOS) — faol bo'lsa belgi va mahsulot.
+  const hasApple = (await tableSet(env)).has('iap_apple_subscriptions');
+  const appleSel = hasApple
+    ? `(SELECT s.product_id || '|' || s.environment FROM iap_apple_subscriptions s WHERE s.user_id = u.id AND s.expires_at > ? ORDER BY s.expires_at DESC LIMIT 1) AS apple_sub,`
+    : 'NULL AS apple_sub,';
   const rows = await all(env, `SELECT u.id, u.email, u.phone, u.is_premium, u.is_test, u.is_internal, u.created_at,
+      ${appleSel}
       ${prem} AS premium_expires_at, ${trial} AS trial_expires_at,
       (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = u.id) AS codes,
       (SELECT MAX(w.created_at) FROM web_orders w WHERE w.user_id = u.id AND w.kind = 'premium_upgrade' AND w.status = 'paid') AS last_paid_at,
       (SELECT COUNT(*) FROM web_orders w WHERE w.user_id = u.id AND w.kind = 'premium_upgrade' AND w.status = 'paid') AS paid_count
     FROM users u WHERE ${where.join(' AND ')}
-    ORDER BY COALESCE(${prem}, ${trial}, '') ASC, u.id DESC LIMIT 300`, ...binds);
-  const users = rows.map((r) => {
+    ORDER BY COALESCE(${prem}, ${trial}, '') ASC, u.id DESC LIMIT ?`, ...(hasApple ? [nowIso] : []), ...binds, limit + 1);
+  const hasMore = rows.length > limit;
+  const users = rows.slice(0, limit).map((r) => {
     const p = premiumState(r, nowIso);
     return {
       id: r.id, email: r.email, phone: r.phone || null, codes: r.codes ? String(r.codes).split(',') : [],
       state: p.state, until: p.until, legacy: p.legacy, isTest: !!r.is_test, isInternal: !!r.is_internal,
       lastPaidAt: r.last_paid_at || null, paidCount: num(r.paid_count), createdAt: r.created_at,
+      apple: r.apple_sub ? { productId: String(r.apple_sub).split('|')[0], environment: String(r.apple_sub).split('|')[1] || null } : null,
     };
   });
-  return { filter, users };
+  // Apple sonlari (Premium bo'limi tepasida).
+  const appleCount = hasApple ? await one(env, `SELECT COUNT(*) AS n,
+      SUM(CASE WHEN environment = 'Sandbox' THEN 1 ELSE 0 END) AS sandbox
+    FROM iap_apple_subscriptions WHERE expires_at > ?`, nowIso) : null;
+  return { filter, users, limit, hasMore, apple: { active: num(appleCount?.n), sandbox: num(appleCount?.sandbox) } };
 }
 
 async function userDetail(env, H, id, now, admin) {

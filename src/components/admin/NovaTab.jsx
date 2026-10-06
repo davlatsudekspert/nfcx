@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AdminCard, AdminLoading, EmptyState, KpiCard, LoadError, StatusBadge } from './AdminUI.jsx';
+import { useConfirm } from './ConfirmDialog.jsx';
 import { useLanguage } from '../../lib/i18n.jsx';
 import LegalRequestSection from './LegalRequestSection.jsx';
 
@@ -84,13 +85,32 @@ function dbMs(v) {
   return Number.isNaN(ms) ? null : ms;
 }
 
+// ── TASDIQ / SO'ROV OYNASI (admin audit) ─────────────────────────────
+// window.confirm/prompt/alert o'rniga panelning o'z oynasi (useConfirm).
+// `dlg.confirm(matn)` → boolean, `dlg.prompt(matn, {optional})` → satr|null,
+// `dlg.alert(matn)` → hech narsa.
+const DialogCtx = createContext(null);
+function useDialog() { return useContext(DialogCtx); }
+// Rol: tugmalarni server ruxsat bermaydigan odamga ko'rsatmaslik uchun.
+const RoleCtx = createContext({ isManager: false, isSuper: false });
+
 export default function NovaTab({ adminApi, apiErrText, isManager = false, isSuper = false }) {
   const { t } = useLanguage();
   const [sub, setSub] = useState('users');
-  // "Huquqiy so'rov" — content_manager uchun yopiq (server ham 403 beradi).
-  const tabs = SUBTABS.filter(([key]) => key !== 'legal' || isManager || isSuper);
+  const { confirm, dialog } = useConfirm();
+  const dlg = {
+    confirm: (message, opts = {}) => confirm({ title: opts.title || t('Tasdiqlaysizmi?'), message, danger: !!opts.danger, confirmLabel: opts.confirmLabel }),
+    prompt: (message, opts = {}) => confirm({ title: opts.title || message, message: opts.title ? message : undefined, input: { label: '', optional: !!opts.optional } }),
+    alert: async (message) => { await confirm({ title: t('Ma’lumot'), message, confirmLabel: 'OK' }); },
+  };
+  // "Huquqiy so'rov" — content_manager uchun yopiq; "O'chirish navbati" —
+  // faqat super_admin (server ham 403 beradi).
+  const tabs = SUBTABS.filter(([key]) => (key !== 'legal' || isManager || isSuper) && (key !== 'deletions' || isSuper));
 
   return (
+    <DialogCtx.Provider value={dlg}>
+    <RoleCtx.Provider value={{ isManager: isManager || isSuper, isSuper }}>
+    {dialog}
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         {tabs.map(([key, label]) => (
@@ -109,7 +129,7 @@ export default function NovaTab({ adminApi, apiErrText, isManager = false, isSup
         ))}
       </div>
 
-      {sub === 'users' && <ReviewAccountCard adminApi={adminApi} />}
+      {sub === 'users' && isSuper && <ReviewAccountCard adminApi={adminApi} />}
       {sub === 'users' && <UsersSection adminApi={adminApi} />}
       {sub === 'content' && <ContentSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'comments' && <CommentsSection adminApi={adminApi} apiErrText={apiErrText} />}
@@ -118,14 +138,17 @@ export default function NovaTab({ adminApi, apiErrText, isManager = false, isSup
       {sub === 'legal' && <LegalRequestSection adminApi={adminApi} apiErrText={apiErrText} isSuper={isSuper} />}
       {sub === 'featured' && <FeaturedSection adminApi={adminApi} apiErrText={apiErrText} />}
       {sub === 'orders' && <OrdersSection adminApi={adminApi} />}
-      {sub === 'deletions' && <DeletionsSection adminApi={adminApi} apiErrText={apiErrText} />}
+      {sub === 'deletions' && isSuper && <DeletionsSection adminApi={adminApi} apiErrText={apiErrText} />}
     </div>
+    </RoleCtx.Provider>
+    </DialogCtx.Provider>
   );
 }
 
 // ── IZOHLAR ─────────────────────────────────────────────────────────
 function CommentsSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [state, setState] = useState('live');
   const [q, setQ] = useState('');
   const [data, setData] = useState(null);
@@ -172,7 +195,7 @@ function CommentsSection({ adminApi, apiErrText }) {
         // SABAB MAJBURIY — server ham shuni talab qiladi (422).
         // Uni bu yerda so'rash: so'rov yuborib, rad javobini olib,
         // keyin qayta so'rashdan yaxshiroq.
-        const reason = window.prompt(t('O‘chirish sababi (majburiy):'));
+        const reason = await dlg.prompt(t('O‘chirish sababi (majburiy):'));
         if (!reason || !reason.trim()) return;
         await adminApi(`/comments/${id}`, {
           method: 'DELETE',
@@ -183,7 +206,7 @@ function CommentsSection({ adminApi, apiErrText }) {
       }
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+      dlg.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -252,7 +275,7 @@ function CommentsSection({ adminApi, apiErrText }) {
                     <button
                       type="button"
                       onClick={() => act(c.id, 'delete')}
-                      className="text-[13px] text-red-400"
+                      className="text-[13px] text-[color:var(--danger)]"
                     >
                       {t('O‘chirish')}
                     </button>
@@ -290,13 +313,17 @@ function CommentsSection({ adminApi, apiErrText }) {
 // serverda oldindan tasdiqlangan (email kodi so'ralmaydi). Parol faqat
 // shu yerda bir marta ko'rinadi; qayta bosilsa yangisi beriladi va
 // eskisi ishlamay qoladi (hosting/api/app-usage.js `reviewAccount`).
+// Google Play VA App Store tekshiruvchisi uchun bitta hisob (super_admin).
+// Uning ID'si IAP_APPLE_SANDBOX_USER_IDS ga yoziladi — App Review sandbox
+// xaridlari faqat shunda Premium beradi.
 function ReviewAccountCard({ adminApi }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState(null);
   const [err, setErr] = useState(null);
   const create = async () => {
-    if (res && !confirm(t('Yangi parol beriladi, eskisi ishlamay qoladi. Davom etasizmi?'))) return;
+    if (res && !(await dlg.confirm(t('Yangi parol beriladi, eskisi ishlamay qoladi. Davom etasizmi?')))) return;
     setBusy(true); setErr(null);
     try {
       setRes(await adminApi('/review-account', { method: 'POST' }));
@@ -305,14 +332,14 @@ function ReviewAccountCard({ adminApi }) {
   };
   const copy = (v) => { try { navigator.clipboard.writeText(v); } catch { /* jim */ } };
   return (
-    <AdminCard title={t('Google Play tekshiruvchisi hisobi')}>
+    <AdminCard title={t('Google Play va App Store tekshiruvchisi hisobi')}>
       <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
-        {t('Play Console → Политика → Доступ к приложению uchun login va parol. Hisob alohida, email kodi so‘ralmaydi, Premium bilan. Parol faqat hozir bir marta ko‘rinadi.')}
+        {t('Play Console (Доступ к приложению) va App Store Connect (App Review Information) uchun login va parol. Hisob alohida, email kodi so‘ralmaydi, Premium bilan. Parol faqat hozir bir marta ko‘rinadi. Foydalanuvchi ID’sini IAP_APPLE_SANDBOX_USER_IDS ga yozing — App Review sandbox xaridlari shunda ishlaydi.')}
       </p>
       {err && <LoadError err={err} onRetry={create} />}
       {res ? (
         <div className="flex flex-col gap-2 text-[14px]">
-          {[['Login', res.email], [t('Parol'), res.password], ['NFC ID', res.code]].map(([k, v]) => (
+          {[['Login', res.email], [t('Parol'), res.password], ['NFC ID', res.code], [t('Foydalanuvchi ID'), res.userId != null ? String(res.userId) : '—']].map(([k, v]) => (
             <div key={k} className="flex flex-wrap items-center gap-2">
               <span className="w-20 text-[color:var(--vz-ink-faint)]">{k}</span>
               <code className="rounded-md border border-[color:var(--vz-line)] px-2 py-1 font-mono">{v}</code>
@@ -541,6 +568,7 @@ function Person({ label, p }) {
 
 function ArchiveSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [kind, setKind] = useState('');
   const [flagged, setFlagged] = useState(false);
   const [q, setQ] = useState('');
@@ -571,7 +599,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
     try {
       let note = '';
       if (on) {
-        const v = window.prompt(t('Izoh (masalan: so‘rov raqami):'), '');
+        const v = await dlg.prompt(t('Izoh (masalan: so‘rov raqami):'), { optional: true });
         if (v === null) return;
         note = v.trim();
       }
@@ -581,7 +609,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
       });
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+      dlg.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -656,7 +684,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
                   {t('Belgini olib tashlash')}
                 </button>
               ) : (
-                <button type="button" onClick={() => flag(a, true)} className="text-[13px] text-red-400">
+                <button type="button" onClick={() => flag(a, true)} className="text-[13px] text-[color:var(--danger)]">
                   {t('Shubhali deb belgilash')}
                 </button>
               )}
@@ -684,7 +712,7 @@ function ArchiveSection({ adminApi, apiErrText }) {
               {a.reason ? ` · ${t(REASON_LABEL[a.reason] || a.reason)}` : ''}
             </span>
             {a.flag && (
-              <span className="text-red-400">
+              <span className="text-[color:var(--danger)]">
                 {t('Shubhali')}: {a.flag.note || '—'} · {a.flag.by} · {when(a.flag.at)}
               </span>
             )}
@@ -701,11 +729,14 @@ function ArchiveSection({ adminApi, apiErrText }) {
 // (POST /api/admin/featured/sales). Navbat soni — GET /api/admin/featured/waitlist.
 function SalesControl({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [data, setData] = useState(null);
   const [msg, setMsg] = useState('');
 
+  const [err, setErr] = useState(null);
   const load = useCallback(async () => {
-    try { setData(await adminApi('/featured/waitlist')); } catch { setData(false); }
+    setErr(null);
+    try { setData(await adminApi('/featured/waitlist')); } catch (e) { setErr(e); }
   }, [adminApi]);
   useEffect(() => { load(); }, [load]);
 
@@ -718,7 +749,7 @@ function SalesControl({ adminApi, apiErrText }) {
       : mode === 'closed'
         ? t('Sotuv yopiladi: hech kim sotib ololmaydi (qo‘lda ko‘tarish ishlaydi). Davom etasizmi?')
         : t('Avtomatik: 1000 foydalanuvchida ochiladi; sotuv avval ochilgan bo‘lsa — darhol ochiq. Davom etasizmi?');
-    if (!window.confirm(warn)) return;
+    if (!(await dlg.confirm(warn))) return;
     setMsg('');
     try {
       await adminApi('/featured/sales', { method: 'POST', body: JSON.stringify({ mode }) });
@@ -729,6 +760,8 @@ function SalesControl({ adminApi, apiErrText }) {
     }
   };
 
+  // Xato holati (admin audit) — jim yashirilmaydi.
+  if (err) return <div className="mb-4"><LoadError err={err} onRetry={load} title={t('Sotuv holatini yuklab bo‘lmadi.')} /></div>;
   if (!data) return null;
   const { sales, counts } = data;
   return (
@@ -809,7 +842,7 @@ function PricingEditor({ adminApi, apiErrText }) {
           <span>{t('kun')}</span>
           <input type="number" min="1000" step="1000" value={r.price} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, price: e.target.value } : x)))} className={field} />
           <span>{t('so‘m')}</span>
-          <button type="button" onClick={() => setRows(rows.filter((_, k) => k !== i))} className="text-red-400">×</button>
+          <button type="button" onClick={() => setRows(rows.filter((_, k) => k !== i))} className="text-[color:var(--danger)]">×</button>
         </div>
       ))}
       <div className="mt-2 flex gap-2">
@@ -919,17 +952,23 @@ function GrantForm({ adminApi, apiErrText, onDone }) {
 
 function FeaturedSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
+  // Server ruxsat bermaydigan boshqaruvlar ko'rsatilmaydi (admin audit):
+  // sotuv rejimi va narxlar — super_admin; qo'lda ko'tarish va to'xtatish — manager+.
+  const { isManager, isSuper } = useContext(RoleCtx);
   const [state, setState] = useState('all');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
 
+  // Serverda sahifalash (admin audit): `limit` oshadi, `hasMore` — serverdan.
+  const [limit, setLimit] = useState(50);
   const load = useCallback(async () => {
     setErr(null);
-    setData(null);
-    try { setData(await adminApi(`/featured?state=${encodeURIComponent(state)}`)); }
+    try { setData(await adminApi(`/featured?state=${encodeURIComponent(state)}&limit=${limit}`)); }
     catch (e) { setErr(e); }
-  }, [adminApi, state]);
+  }, [adminApi, state, limit]);
 
+  useEffect(() => { setLimit(50); setData(null); }, [state]);
   useEffect(() => { load(); }, [load]);
 
   const stop = async (slot) => {
@@ -937,12 +976,12 @@ function FeaturedSection({ adminApi, apiErrText }) {
     // APPLE SLOTI (admin audit): pul Apple'da — qaytarishni faqat Apple qiladi.
     // Avval aniq ogohlantirish, keyin (manager+) kredit qayta berish taklifi.
     const isApple = slot.source === 'apple';
-    if (isApple && !window.confirm(t('Bu slot iPhone’da Apple orqali sotib olingan. To‘xtatish pulni qaytarmaydi (qaytarishni faqat Apple qiladi). Davom etasizmi?'))) return;
+    if (isApple && !(await dlg.confirm(t('Bu slot iPhone’da Apple orqali sotib olingan. To‘xtatish pulni qaytarmaydi (qaytarishni faqat Apple qiladi). Davom etasizmi?')))) return;
     // SABAB MAJBURIY: odamning puliga olingan e'lon to'xtatilyapti.
-    const reason = window.prompt(t('To‘xtatish sababi (majburiy):'));
+    const reason = await dlg.prompt(t('To‘xtatish sababi (majburiy):'));
     if (!reason || !reason.trim()) return;
     const reissueCredit = isApple && slot.status === 'active'
-      && window.confirm(t('Xaridorga yangi ko‘tarish krediti (shu kunlar soni) berilsinmi? U boshqa postini ko‘tarishi mumkin bo‘ladi.'));
+      && (await dlg.confirm(t('Xaridorga yangi ko‘tarish krediti (shu kunlar soni) berilsinmi? U boshqa postini ko‘tarishi mumkin bo‘ladi.')));
     try {
       await adminApi(`/featured/${id}/stop`, {
         method: 'POST',
@@ -950,7 +989,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
       });
       load();
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+      dlg.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -968,6 +1007,7 @@ function FeaturedSection({ adminApi, apiErrText }) {
           <option value="pending">{t('To‘lov kutilmoqda')}</option>
           <option value="expired">{t('Muddati tugagan')}</option>
           <option value="stopped">{t('To‘xtatilgan')}</option>
+          <option value="cancelled">{t('Bekor qilingan')}</option>
         </select>
       }
     >
@@ -975,11 +1015,11 @@ function FeaturedSection({ adminApi, apiErrText }) {
           yonadi. Qo'lda ko'tarish — faqat to'g'ridan-to'g'ri kelishuv
           uchun (manager+, izoh majburiy, narx 0 — moliyaga tushmaydi). */}
       <p className="mb-3 text-[13px] text-[color:var(--vz-ink-faint)]">
-        {t('Mijoz sotib olgan slot faqat Payme yoki Click to‘lovi tasdiqlangandan keyin yonadi. Qo‘lda ko‘tarish — faqat to‘g‘ridan-to‘g‘ri kelishuv uchun, izoh majburiy.')}
+        {t('Saytda sotib olingan slot faqat Payme yoki Click to‘lovi tasdiqlangandan keyin yonadi; iPhone’da — Apple xaridi tasdiqlangach (manba: Apple). Qo‘lda ko‘tarish — faqat to‘g‘ridan-to‘g‘ri kelishuv uchun, izoh majburiy.')}
       </p>
-      <SalesControl adminApi={adminApi} apiErrText={apiErrText} />
-      <PricingEditor adminApi={adminApi} apiErrText={apiErrText} />
-      <GrantForm adminApi={adminApi} apiErrText={apiErrText} onDone={load} />
+      {isSuper && <SalesControl adminApi={adminApi} apiErrText={apiErrText} />}
+      {isSuper && <PricingEditor adminApi={adminApi} apiErrText={apiErrText} />}
+      {isManager && <GrantForm adminApi={adminApi} apiErrText={apiErrText} onDone={load} />}
       {err && <LoadError err={err} onRetry={load} />}
       {!err && data === null && <AdminLoading rows={4} />}
       {!err && data && data.slots.length === 0 && (
@@ -1017,11 +1057,11 @@ function FeaturedSection({ adminApi, apiErrText }) {
                   </td>
                   <td className="py-1.5 pr-3">{when(s.endsAt)}</td>
                   <td className="py-1.5">
-                    {(s.status === 'active' || s.status === 'pending') && (
+                    {isManager && (s.status === 'active' || s.status === 'pending') && (
                       <button
                         type="button"
                         onClick={() => stop(s)}
-                        className="text-[13px] text-red-400"
+                        className="text-[13px] text-[color:var(--danger)]"
                       >
                         {t('To‘xtatish')}
                       </button>
@@ -1039,6 +1079,11 @@ function FeaturedSection({ adminApi, apiErrText }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {!err && data?.hasMore && (
+        <div className="flex justify-center pt-3">
+          <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={() => setLimit((n) => Math.min(500, n + 50))}>{t("Ko'proq yuklash")}</button>
         </div>
       )}
     </AdminCard>
@@ -1061,6 +1106,7 @@ const CONTENT_KINDS = [
 
 function ContentSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
   // Qidiruv so'zi `ref` orqali o'qiladi: `load` faqat filtr o'zgarganda
@@ -1110,9 +1156,9 @@ function ContentSection({ adminApi, apiErrText }) {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (item) => {
-    if (!window.confirm(t('Bu kontent o‘chirilsinmi? Nusxasi dalil arxivida qoladi.'))) return;
+    if (!(await dlg.confirm(t('Bu kontent o‘chirilsinmi? Nusxasi dalil arxivida qoladi.')))) return;
     // SABAB MAJBURIY — izohlardagi kabi; dalil arxiviga yoziladi.
-    const reason = window.prompt(t('O‘chirish sababi (majburiy):'));
+    const reason = await dlg.prompt(t('O‘chirish sababi (majburiy):'));
     if (!reason || !reason.trim()) return;
     try {
       await adminApi(`/content/${item.deleteKind}/${item.id}`, {
@@ -1126,7 +1172,7 @@ function ContentSection({ adminApi, apiErrText }) {
         items: d.items.filter((x) => !(x.deleteKind === item.deleteKind && x.id === item.id)),
       }));
     } catch (e) {
-      window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+      dlg.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
     }
   };
 
@@ -1186,7 +1232,7 @@ function ContentSection({ adminApi, apiErrText }) {
                   <span>· #{c.id}</span>
                   <span>· {when(c.createdAt)}</span>
                   <span className="ml-auto">
-                    <button type="button" onClick={() => remove(c)} className="text-[13px] text-red-400">
+                    <button type="button" onClick={() => remove(c)} className="text-[13px] text-[color:var(--danger)]">
                       {t('O‘chirish')}
                     </button>
                   </span>
@@ -1559,6 +1605,7 @@ const DEL_MODE = {
 
 function DeletionsSection({ adminApi, apiErrText }) {
   const { t } = useLanguage();
+  const dlg = useDialog();
   const [state, setState] = useState('all');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
@@ -1571,7 +1618,7 @@ function DeletionsSection({ adminApi, apiErrText }) {
   }, [adminApi, state]);
   useEffect(() => { load(); }, [load]);
 
-  const fail = (e) => window.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
+  const fail = (e) => dlg.alert(apiErrText ? apiErrText(e, t, t('Amal bajarilmadi.')) : t('Amal bajarilmadi.'));
   const act = async (id, path, init, done) => {
     setBusy(id);
     try {
@@ -1580,13 +1627,13 @@ function DeletionsSection({ adminApi, apiErrText }) {
       await load();
     } catch (e) { fail(e); } finally { setBusy(0); }
   };
-  const restore = (it) => {
-    if (!window.confirm(t('Hisob tiklansinmi? Egasi yana kira oladi.'))) return;
+  const restore = async (it) => {
+    if (!(await dlg.confirm(t('Hisob tiklansinmi? Egasi yana kira oladi.')))) return;
     act(it.id, 'restore', { method: 'POST' });
   };
   const review = (it) => act(it.id, 'review', { method: 'POST' });
-  const hold = (it) => {
-    const note = window.prompt(t('Tekshiruv sababi (masalan: so‘rov raqami):'), '');
+  const hold = async (it) => {
+    const note = await dlg.prompt(t('Tekshiruv sababi (masalan: so‘rov raqami):'), { optional: true });
     if (note === null || !note.trim()) return;
     act(it.id, 'hold', { method: 'POST', body: JSON.stringify({ note: note.trim() }) });
   };
@@ -1596,10 +1643,10 @@ function DeletionsSection({ adminApi, apiErrText }) {
     const lines = r?.status === 'blocked'
       ? [t('To‘siq bor') + ': ' + (r.blockers || []).map((b) => t(DEL_REASON[b] || b)).join(', ')]
       : Object.entries(c).map(([k, v]) => `${k}: ${v}`);
-    window.alert(`#${it.id} — ${t('Nima o‘chishi (sinov)')}\n\n${lines.join('\n') || '—'}`);
+    dlg.alert(`#${it.id} — ${t('Nima o‘chishi (sinov)')}\n\n${lines.join('\n') || '—'}`);
   });
-  const purgeNow = (it) => {
-    const typed = window.prompt(t('Qaytarib bo‘lmaydi. Tasdiqlash uchun yozing:') + ` PURGE #${it.id}`, '');
+  const purgeNow = async (it) => {
+    const typed = await dlg.prompt(t('Qaytarib bo‘lmaydi. Tasdiqlash uchun yozing:') + ` PURGE #${it.id}`, { optional: true });
     if (typed === null) return;
     act(it.id, 'purge', { method: 'POST', body: JSON.stringify({ dryRun: false, confirm: typed.trim() }) });
   };

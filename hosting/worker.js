@@ -8351,6 +8351,33 @@ async function resetRateLimitD1(env, key) {
 // Murojaat holatlari (support_messages.status). Javob bilan qo'yiladiganlari
 // — 'pending' dan tashqari hammasi.
 const SUPPORT_STATUSES = ['pending', 'replied', 'resolved', 'planned'];
+// ADMIN RO'YXATLARI — SERVERDA SAHIFALASH (admin audit, 2026-10): `limit`
+// (standart 50, ko'pi 500) + `hasMore`. "Ko'proq yuklash" `limit` ni oshiradi.
+const adminListLimitD1 = (url, def = 50, max = 500) => Math.min(max, Math.max(1, Number(url.searchParams.get('limit')) || def));
+// content_manager uchun email/telefon niqoblanadi (admin audit).
+const maskEmailD1 = (e) => {
+  const s = String(e || '');
+  const at = s.indexOf('@');
+  return at > 0 ? `${s[0]}***${s.slice(at)}` : (s ? '***' : s);
+};
+const maskPhoneD1 = (p) => (p ? `***${String(p).slice(-4)}` : p);
+// Murojaatga javoblar TARIXI (admin audit): har javob alohida qator;
+// eng oxirgisi moslik uchun `support_messages.reply` da ham turadi.
+let supportRepliesReadyD1 = null;
+function ensureSupportRepliesD1(env) {
+  supportRepliesReadyD1 ||= env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS support_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      admin_id INTEGER,
+      reply TEXT NOT NULL,
+      status TEXT,
+      created_at TEXT NOT NULL
+    )`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS support_replies_msg_idx ON support_replies(message_id, id)`),
+  ]).catch((e) => { supportRepliesReadyD1 = null; throw e; });
+  return supportRepliesReadyD1;
+}
 const SUPPORT_REPLY_STATUSES = ['replied', 'resolved', 'planned'];
 const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
 // `/api/admin/users?plan=` — ruxsat etilgan qiymatlar (boshqasi e'tiborsiz).
@@ -9578,10 +9605,32 @@ async function adminCoreApi(request, env, url, admin) {
     // `?status=` — ixtiyoriy filtr; noma'lum qiymat — hammasi.
     const want = String(url.searchParams.get('status') || '');
     const filter = SUPPORT_STATUSES.includes(want) ? want : '';
+    const limit = adminListLimitD1(url, 50, 500);
+    // Ilova platformasi va build (app_users) — qaysi versiyadan yozilgani.
+    const appCols = await env.DB.prepare(`PRAGMA table_info(app_users)`).all().catch(() => null);
+    const appNames = new Set((appCols?.results || []).map((c) => c.name));
+    const appSel = appNames.size
+      ? `, (SELECT platform FROM app_users au WHERE au.user_id = sm.user_id) AS app_platform,
+         ${appNames.has('app_build') ? '(SELECT app_build FROM app_users au WHERE au.user_id = sm.user_id)' : 'NULL'} AS app_build`
+      : ', NULL AS app_platform, NULL AS app_build';
     const rows = await env.DB.prepare(`SELECT sm.*, u.email AS user_email,
-      (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code
+      (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code${appSel}
       FROM support_messages sm JOIN users u ON u.id = sm.user_id${filter ? ' WHERE sm.status = ?' : ''}
-      ORDER BY sm.created_at DESC LIMIT 200`).bind(...(filter ? [filter] : [])).all();
+      ORDER BY sm.created_at DESC LIMIT ?`).bind(...(filter ? [filter] : []), limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    await ensureSupportRepliesD1(env).catch(() => {});
+    const ids = list.map((r) => Number(r.id));
+    const replies = ids.length
+      ? await env.DB.prepare(`SELECT message_id, admin_id, reply, status, created_at FROM support_replies
+          WHERE message_id IN (${ids.map(() => '?').join(',')}) ORDER BY id ASC`).bind(...ids).all().catch(() => null)
+      : null;
+    const byMsg = new Map();
+    for (const r of replies?.results || []) {
+      const k = Number(r.message_id);
+      if (!byMsg.has(k)) byMsg.set(k, []);
+      byMsg.get(k).push({ reply: r.reply, status: r.status, adminId: r.admin_id, createdAt: r.created_at });
+    }
+    const masked = admin.role === 'content_manager';
     // Tablar uchun sanoq — ro'yxat bilan bir xil (JOIN users) asosda.
     const grouped = await env.DB.prepare(`SELECT sm.status AS status, COUNT(*) AS n
       FROM support_messages sm JOIN users u ON u.id = sm.user_id GROUP BY sm.status`).all();
@@ -9592,15 +9641,20 @@ async function adminCoreApi(request, env, url, admin) {
       if (SUPPORT_STATUSES.includes(g.status)) counts[g.status] += n;
     }
     return json({
-      messages: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, userEmail: r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at })),
+      messages: list.map((r) => ({ id: r.id, userId: r.user_id, userEmail: masked ? maskEmailD1(r.user_email) : r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at,
+        // Javoblar tarixi (eskisidan yangisiga); eski javoblar (jadval bo'lmagan payt) — `reply` da.
+        replies: byMsg.get(Number(r.id)) || (r.reply ? [{ reply: r.reply, status: r.status, adminId: null, createdAt: r.replied_at }] : []),
+        platform: r.app_platform || null, appBuild: r.app_build === null || r.app_build === undefined ? null : Number(r.app_build) })),
       counts,
+      limit,
+      hasMore: (rows.results || []).length > limit,
     });
   }
 
   const supportReplyMatch = path.match(/^\/api\/admin\/support-messages\/(\d+)\/reply$/);
   if (supportReplyMatch && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
-    const reply = shortText(body.reply, 1000);
+    const reply = shortText(body.reply, 4000);
     if (!reply) return json({ error: 'reply_required' }, 422);
     // `status` ixtiyoriy: eski admin (faqat {reply}) — 'replied'.
     const status = body.status == null || body.status === '' ? 'replied' : String(body.status);
@@ -9608,6 +9662,10 @@ async function adminCoreApi(request, env, url, admin) {
     const row = await env.DB.prepare(`UPDATE support_messages SET reply = ?, status = ?, replied_at = ? WHERE id = ? RETURNING id, user_id`)
       .bind(reply, status, nowTs(), Number(supportReplyMatch[1])).first();
     if (!row) return json({ error: 'not_found' }, 404);
+    // Tarix: har javob alohida (eskisi o'chmaydi).
+    await ensureSupportRepliesD1(env).catch(() => {});
+    await env.DB.prepare(`INSERT INTO support_replies (message_id, admin_id, reply, status, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .bind(Number(row.id), Number(admin.adminId) || null, reply, status, nowTs()).run().catch(() => {});
     // Egasiga ilova ichidagi bildirishnoma. Aktyor yo'q (tizim nomidan);
     // matnni ilova o'zi yig'adi. Xato javobni HECH QACHON buzmaydi —
     // createNotification xatoni o'zi yutadi, bu yerdagi catch — ehtiyot.
@@ -9673,8 +9731,13 @@ async function adminCoreApi(request, env, url, admin) {
   }
 
   if (path === '/api/admin/physical-cards' && request.method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT 100`).all();
-    return json({ cards: (rows.results || []).map((r) => ({ id: r.id, chipToken: r.chip_token, linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
+    const limit = adminListLimitD1(url, 100, 500);
+    const rows = await env.DB.prepare(`SELECT pc.*, u.email AS owner_email FROM physical_cards pc LEFT JOIN users u ON u.id = pc.owner_user_id ORDER BY pc.created_at DESC LIMIT ?`).bind(limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    const masked = admin.role === 'content_manager';
+    // `chip_token` TO'LIQ QAYTARILMAYDI (admin audit) — u kartaning maxfiy
+    // manzili; faqat oxirgi 4 belgi.
+    return json({ limit, hasMore: (rows.results || []).length > limit, cards: list.map((r) => ({ id: r.id, tokenTail: String(r.chip_token || '').slice(-4).toUpperCase(), linkedCode: r.linked_code, ownerUserId: r.owner_user_id, ownerEmail: masked ? maskEmailD1(r.owner_email) : r.owner_email, active: !!r.active, status: r.status, shippingName: r.shipping_name, shippingPhone: masked ? maskPhoneD1(r.shipping_phone) : r.shipping_phone, shippingAddress: r.shipping_address, trackingNumber: r.tracking_number || '', carrier: r.carrier || '', createdAt: r.created_at })) });
   }
 
   // Kuzatuv raqami uchun ustunlar. `physical_cards` jadvali D1'da
@@ -10036,6 +10099,8 @@ async function adminCoreApi(request, env, url, admin) {
     // `q` — email, telefon yoki NFC ID bo'lagi.
     const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
     const limit = Math.min(500, Math.max(20, Number(url.searchParams.get('limit')) || 200));
+    // HOLAT FILTRI — SERVERDA (admin audit): premium | flagged | blocked | deleted.
+    const status = ['premium', 'flagged', 'blocked', 'deleted'].includes(url.searchParams.get('status')) ? url.searchParams.get('status') : '';
     const trial = usersHaveTrialColumnsD1();
     const nowIso = new Date().toISOString();
     const conds = [];
@@ -10062,6 +10127,10 @@ async function adminCoreApi(request, env, url, admin) {
       if (trial) { conds.push(`trial_expires_at IS NOT NULL AND trial_expires_at <> '' AND trial_expires_at <= ?`); binds.push(nowIso); } else conds.push('0');
     }
     if (plan === 'free' && trial) { conds.push(`NOT (COALESCE(trial_expires_at, '') > ?)`); binds.push(nowIso); }
+    if (status === 'premium') { conds.push(premiumSql); binds.push(...premiumBinds); }
+    if (status === 'flagged') conds.push(`(is_test = 1 OR is_internal = 1)`);
+    if (status === 'blocked') { conds.push(`deleted_at IS NULL AND suspended_until IS NOT NULL AND suspended_until > ?`); binds.push(nowIso); }
+    if (status === 'deleted') conds.push(`deleted_at IS NOT NULL`);
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const rows = await env.DB.prepare(
       `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal, is_premium,
@@ -10069,10 +10138,11 @@ async function adminCoreApi(request, env, url, admin) {
               ${trial ? 'premium_expires_at, trial_expires_at' : 'NULL AS premium_expires_at, NULL AS trial_expires_at'},
               (SELECT COUNT(*) FROM cards WHERE user_id = users.id) AS card_count,
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
-       FROM users ${where} ORDER BY created_at DESC LIMIT ?`
-    ).bind(...binds, limit).all();
-    const users = (rows.results || []).map((r) => ({
-      id: r.id, email: r.email, phone: r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
+       FROM users ${where} ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(...binds, limit + 1).all();
+    const masked = admin.role === 'content_manager';
+    const users = (rows.results || []).slice(0, limit).map((r) => ({
+      id: r.id, email: masked ? maskEmailD1(r.email) : r.email, phone: masked ? maskPhoneD1(r.phone) : r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
       heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
       suspendedUntil: r.suspended_until, suspendReason: r.suspend_reason, deletedAt: r.deleted_at,
       cardCount: Number(r.card_count), codes: r.codes ? r.codes.split(',') : [],
@@ -10083,7 +10153,7 @@ async function adminCoreApi(request, env, url, admin) {
       // Sinov tugash sanasi (bo'lmasa null) — admin "N kun qoldi" / "Sinov tugagan" yozadi.
       trialUntil: r.trial_expires_at || null,
     }));
-    return json({ users, q, limit, plan });
+    return json({ users, q, limit, plan, status, hasMore: (rows.results || []).length > limit });
   }
 
   // Ichki akkaunt belgisi — pul hisobiga kirmasin.
@@ -10196,8 +10266,14 @@ async function adminCoreApi(request, env, url, admin) {
 
   if (path === '/api/admin/activity-log' && request.method === 'GET') {
     if (admin.role !== 'super_admin') return json({ error: 'forbidden' }, 403);
-    const rows = await env.DB.prepare(`SELECT id, action, details, old_value, new_value, ip, created_at FROM admin_activity_log ORDER BY created_at DESC LIMIT 200`).all();
-    return json({ log: (rows.results || []).map((r) => ({ id: r.id, action: r.action, details: r.details, oldValue: r.old_value, newValue: r.new_value, ip: r.ip, createdAt: r.created_at })) });
+    const limit = adminListLimitD1(url, 100, 1000);
+    // `q` — amal nomi yoki tafsilot bo'lagi (serverda).
+    const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
+    const rows = await env.DB.prepare(`SELECT id, action, details, old_value, new_value, ip, created_at FROM admin_activity_log
+      ${q ? 'WHERE LOWER(action) LIKE ? OR LOWER(COALESCE(details, \'\')) LIKE ?' : ''} ORDER BY created_at DESC, id DESC LIMIT ?`)
+      .bind(...(q ? [`%${q}%`, `%${q}%`] : []), limit + 1).all();
+    const list = (rows.results || []).slice(0, limit);
+    return json({ limit, hasMore: (rows.results || []).length > limit, log: list.map((r) => ({ id: r.id, action: r.action, details: r.details, oldValue: r.old_value, newValue: r.new_value, ip: r.ip, createdAt: r.created_at })) });
   }
 
   if (path === '/api/admin/login-history' && request.method === 'GET') {

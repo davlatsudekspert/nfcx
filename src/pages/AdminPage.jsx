@@ -390,7 +390,7 @@ function ControlCenter() {
           <ul className="divide-y" style={{ borderColor: 'var(--vz-line)' }}>
             {open.map((x) => (
               <li key={x.title} style={{ borderColor: 'var(--vz-line)' }}>
-                <button type="button" onClick={x.go} className="group flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.03]">
+                <button type="button" onClick={x.go} className="group flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-[var(--vz-card-2)]">
                   <span className="font-display min-w-[44px] text-[26px] font-semibold leading-none tabular-nums" style={{ color: x.tone === 'danger' ? 'var(--danger)' : 'var(--vz-gold-2)' }}>{x.n}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-semibold" style={{ color: 'var(--vz-ink)' }}>{x.title}</span>
@@ -545,6 +545,11 @@ function ReportPeople({ r, t }) {
 
 // SHIKOYAT TAFSILOTI — qatorni bosganda: to'liq kontent, shikoyatchi,
 // muallif, sabab, izoh va amallar bir joyda.
+// Shikoyatdan o'chirish mumkin bo'lgan kontent turlari (server yo'llari:
+// DELETE /api/admin/content/:kind/:id — post|story|company_post|company_story;
+// izoh — /comments/:id; Aktual — DELETE /api/admin/highlights/:id {reason}).
+const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight'];
+
 function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -558,7 +563,7 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
     ? (r.author.kind === 'company' ? `/c/${r.author.code.toLowerCase()}` : `/${r.author.code.toLowerCase()}`)
     : '';
   const reporterUrl = !rep.guest && rep.code ? `/${rep.code.toLowerCase()}` : '';
-  const canDelete = ['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && !p.missing;
+  const canDelete = REPORT_DELETABLE.includes(r.targetKind) && !p.missing;
   const Row = ({ label, children }) => (
     <div className="grid grid-cols-[110px_1fr] gap-2 py-1.5 text-sm">
       <span className="opacity-50">{label}</span><span className="min-w-0 break-words">{children}</span>
@@ -575,7 +580,7 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
           <CloseButton onClick={onClose} />
         </div>
 
-        <div className="mt-4 rounded-xl border border-white/10 p-4">
+        <div className="mt-4 rounded-xl border border-[color:var(--vz-line)] p-4">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider opacity-60">{t('Kontent')} · <span className="font-mono">{r.targetKind} #{r.targetId}</span></div>
           {p.missing ? (
             <span className="vz-badge">{t('Kontent allaqachon o‘chirilgan')}</span>
@@ -591,7 +596,7 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
           )}
         </div>
 
-        <div className="mt-4 divide-y divide-white/5">
+        <div className="mt-4 divide-y divide-[color:var(--vz-line)]">
           <Row label={t('Kimdan')}>
             {rep.guest ? (
               <>{t('Mehmon (kirmagan)')}{rep.ip ? <span className="font-mono opacity-60"> · IP {rep.ip}</span> : null}</>
@@ -636,6 +641,7 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
 
 function ReportsTab() {
   const { t } = useLanguage();
+  const { confirm: ask, dialog } = useConfirm();
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState(null);
   const [status, setStatus] = useState('new');
@@ -701,11 +707,18 @@ function ReportsTab() {
     // uni bu yerdan o'chirib bo'lmaydi (butun profilni o'chirish
     // boshqa, ancha jiddiy amal va bu yerga sig'maydi).
     const kind = r.targetKind;
-    if (!['post', 'story', 'company_post', 'comment'].includes(kind)) return;
-    if (!confirm(t('Bu kontent butunlay o‘chiriladi. Davom etasizmi?'))) return;
+    if (!REPORT_DELETABLE.includes(kind)) return;
+    if (!(await ask({ title: t('Kontentni o‘chirish'), message: t('Bu kontent butunlay o‘chiriladi. Davom etasizmi?'), danger: true }))) return;
     setBusy(r.id);
     try {
-      if (kind === 'comment') {
+      if (kind === 'highlight') {
+        // AKTUAL (admin audit): o'z moderatsiya yo'li — sabab bilan, dalil arxiviga.
+        await adminApi(`/highlights/${encodeURIComponent(r.targetId)}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ reason: `Shikoyat #${r.id}: ${r.reason}` }),
+        });
+        await adminApi(`/reports/${r.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'resolved' }) });
+      } else if (kind === 'comment') {
         // IZOH (2026-09): ilova izoh shikoyatini endi `comment` turi
         // bilan yuboradi. Izoh o'z moderatsiya yo'li orqali o'chiriladi
         // (dalil arxivi bilan), keyin shikoyat yopiladi.
@@ -730,6 +743,7 @@ function ReportsTab() {
 
   return (
     <div>
+      {dialog}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {Object.entries(REPORT_STATUS_LABEL).map(([key, label]) => (
           <button
@@ -796,7 +810,7 @@ function ReportsTab() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="cursor-pointer hover:bg-white/5" onClick={() => setOpenId(r.id)} title={t('To‘liq ko‘rish')}>
+                <tr key={r.id} className="cursor-pointer hover:bg-[var(--vz-card-2)]" onClick={() => setOpenId(r.id)} title={t('To‘liq ko‘rish')}>
                   <td className="font-mono text-xs">{r.id}</td>
                   <td className="whitespace-nowrap text-xs">{String(r.createdAt || '').slice(0, 16)}</td>
                   <td className="text-xs">
@@ -814,7 +828,7 @@ function ReportsTab() {
                   <td className="text-xs">{t(REPORT_REASON_LABEL[r.reason] || r.reason)}</td>
                   <td className="max-w-[280px] text-xs opacity-80">{r.note}</td>
                   <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    {['post', 'story', 'company_post', 'comment'].includes(r.targetKind) && !r.preview?.missing && (
+                    {REPORT_DELETABLE.includes(r.targetKind) && !r.preview?.missing && (
                       <button
                         type="button"
                         disabled={busy === r.id}
@@ -1199,7 +1213,9 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
   const { t } = useLanguage();
   const [users, setUsers] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
-  const [shown, setShown] = useState(50);
+  // SERVERDA SAHIFALASH VA HOLAT FILTRI (admin audit): `limit` oshadi, `hasMore` — serverdan.
+  const [limit, setLimit] = useState(50);
+  const [hasMore, setHasMore] = useState(false);
   const [q, setQ] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery);
   const [filter, setFilter] = useState('all');
@@ -1207,26 +1223,26 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
   const [openId, setOpenId] = useState(openUserId);
 
   useEffect(() => { const id = setTimeout(() => setDebounced(q.trim()), 350); return () => clearTimeout(id); }, [q]);
-  const load = () => {
+  const load = (lim = limit) => {
     setLoadErr(null);
-    const qs = new URLSearchParams({ limit: '300' });
+    const qs = new URLSearchParams({ limit: String(lim) });
     if (debounced) qs.set('q', debounced);
     if (plan) qs.set('plan', plan);
-    return adminApi(`/users?${qs}`).then((d) => setUsers(Array.isArray(d?.users) ? d.users : [])).catch((e) => setLoadErr(e));
+    if (filter && filter !== 'all') qs.set('status', filter);
+    return adminApi(`/users?${qs}`).then((d) => { setUsers(Array.isArray(d?.users) ? d.users : []); setHasMore(!!d?.hasMore); }).catch((e) => setLoadErr(e));
   };
-  useEffect(() => { setUsers(null); setShown(50); load(); }, [debounced, plan]);
-  useEffect(() => { setShown(50); }, [filter]);
+  useEffect(() => { setUsers(null); setLimit(50); load(50); }, [debounced, plan, filter]);
+  const loadMore = () => { const next = Math.min(500, limit + 50); setLimit(next); load(next); };
 
   if (loadErr) return <LoadError err={loadErr} onRetry={() => load()} title={t("Foydalanuvchilarni yuklab bo'lmadi.")} />;
-  const now = new Date();
-  const filtered = (users || []).filter((u) => {
-    if (filter === 'premium') return u.premium;
-    if (filter === 'flagged') return u.isTest || u.isInternal;
-    if (filter === 'blocked') return !u.deletedAt && u.suspendedUntil && new Date(u.suspendedUntil) > now;
-    if (filter === 'deleted') return !!u.deletedAt;
-    return true;
-  });
-  const visible = filtered.slice(0, shown);
+  // Filtr serverda qo'llanadi (`status`) — bu yerda faqat ko'rsatish.
+  const filtered = users || [];
+  const visible = filtered;
+  const moreBtn = hasMore ? (
+    <div className="flex justify-center pt-3">
+      <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={loadMore}>{t("Ko'proq yuklash")}</button>
+    </div>
+  ) : null;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -1265,14 +1281,14 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
                 </button>
               </li>
             ))}
-            {visible.length < filtered.length && <li className="px-4 py-2" style={{ borderColor: 'var(--vz-line)' }}><LoadMore shown={visible.length} total={filtered.length} onMore={setShown} /></li>}
+            {moreBtn && <li className="px-4 py-2" style={{ borderColor: 'var(--vz-line)' }}>{moreBtn}</li>}
           </ul>
           <div className="vz-card hidden overflow-x-auto sm:block">
             <table className="table table-sm">
               <thead><tr><th>{t('Foydalanuvchi')}</th><th>{t('NFC ID')}</th><th>{t('Holat')}</th><th>{t("Ro'yxatdan o'tgan")}</th><th className="text-right"></th></tr></thead>
               <tbody>
                 {visible.map((u) => (
-                  <tr key={u.id} className={`cursor-pointer hover:bg-white/[0.03] ${u.isTest ? 'opacity-60' : ''}`} onClick={() => setOpenId(u.id)}>
+                  <tr key={u.id} className={`cursor-pointer hover:bg-[var(--vz-card-2)] ${u.isTest ? 'opacity-60' : ''}`} onClick={() => setOpenId(u.id)}>
                     <td className="min-w-[200px]">
                       <div className="font-medium" style={{ color: 'var(--vz-ink)' }}>{u.email}</div>
                       <div className="font-mono text-xs" style={{ color: 'var(--vz-ink-3)' }}>#{u.id}{u.phone ? ` · ${u.phone}` : ''}</div>
@@ -1299,7 +1315,7 @@ function UsersTab({ initialQuery = '', openUserId = null }) {
                 ))}
               </tbody>
             </table>
-            <div className="px-4 pb-3"><LoadMore shown={visible.length} total={filtered.length} onMore={setShown} /></div>
+            {moreBtn && <div className="px-4 pb-3">{moreBtn}</div>}
           </div>
           </>
         )}
@@ -1320,14 +1336,19 @@ function PremiumUsersTab() {
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState(null);
   const [openId, setOpenId] = useState(null);
+  // Serverda sahifalash (admin audit) va Apple obunalari soni.
+  const [limit, setLimit] = useState(100);
+  const [hasMore, setHasMore] = useState(false);
+  const [apple, setApple] = useState(null);
   useEffect(() => { const id = setTimeout(() => setDebounced(q.trim()), 350); return () => clearTimeout(id); }, [q]);
-  const load = () => {
-    setErr(null); setRows(null);
-    const qs = new URLSearchParams({ filter });
+  const load = (lim = limit) => {
+    setErr(null);
+    const qs = new URLSearchParams({ filter, limit: String(lim) });
     if (debounced) qs.set('q', debounced);
-    adminApi(`/premium-users?${qs}`).then((d) => setRows(d.users || [])).catch((e) => setErr(e));
+    adminApi(`/premium-users?${qs}`).then((d) => { setRows(d.users || []); setHasMore(!!d.hasMore); setApple(d.apple || null); }).catch((e) => setErr(e));
   };
-  useEffect(() => { load(); }, [filter, debounced]);
+  useEffect(() => { setRows(null); setLimit(100); load(100); }, [filter, debounced]);
+  const loadMore = () => { const next = Math.min(500, limit + 100); setLimit(next); load(next); };
   const daysLeft = (until) => (until ? Math.ceil((tsMs(until) - Date.now()) / 86_400_000) : null);
   return (
     <div className="space-y-4">
@@ -1342,8 +1363,13 @@ function PremiumUsersTab() {
           <AdminIcon name="search" className="h-4 w-4 shrink-0 text-[color:var(--vz-ink-3)]" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Email, telefon yoki NFC ID')} aria-label={t('Qidirish')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
+        {apple && apple.active > 0 && (
+          <span className="vz-badge vz-badge--muted" data-testid="premium-apple-count">
+            {t('Apple obunalari')}: {apple.active}{apple.sandbox ? ` (Sandbox: ${apple.sandbox})` : ''}
+          </span>
+        )}
       </div>
-      {err ? <LoadError err={err} onRetry={load} title={t("Premium obunachilarni yuklab bo'lmadi.")} />
+      {err ? <LoadError err={err} onRetry={() => load()} title={t("Premium obunachilarni yuklab bo'lmadi.")} />
         : !rows ? <AdminLoading rows={6} />
         : rows.length === 0 ? <EmptyState icon="crown" title={t('Bu ro‘yxat bo‘sh.')} />
         : (
@@ -1377,10 +1403,11 @@ function PremiumUsersTab() {
                 {rows.map((u) => {
                   const left = daysLeft(u.until);
                   return (
-                    <tr key={u.id} className="cursor-pointer hover:bg-white/[0.03]" onClick={() => setOpenId(u.id)}>
+                    <tr key={u.id} className="cursor-pointer hover:bg-[var(--vz-card-2)]" onClick={() => setOpenId(u.id)}>
                       <td className="min-w-[200px]">
                         <div className="font-medium">{u.email}</div>
                         <div className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{u.phone || `#${u.id}`}{u.isTest ? ` · ${t('TEST HISOB')}` : ''}{u.isInternal ? ` · ${t('ICHKI')}` : ''}</div>
+                        {u.apple && <span className="vz-badge vz-badge--muted mt-1" title={u.apple.productId}>Apple{u.apple.environment === 'Sandbox' ? ' · Sandbox' : ''}</span>}
                       </td>
                       <td className="font-mono text-xs">{u.codes.slice(0, 3).join(', ') || '—'}</td>
                       <td className="whitespace-nowrap">
@@ -1402,9 +1429,14 @@ function PremiumUsersTab() {
               </tbody>
             </table>
           </div>
+          {hasMore && (
+            <div className="flex justify-center pt-1">
+              <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={loadMore}>{t("Ko'proq yuklash")}</button>
+            </div>
+          )}
           </>
         )}
-      {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={load} />}
+      {openId && <UserDrawer userId={openId} onClose={() => setOpenId(null)} onChanged={() => load()} />}
     </div>
   );
 }
@@ -1665,12 +1697,19 @@ function UserDrawer({ userId, onClose, onChanged }) {
                       ? <button className="btn btn-success btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/unsuspend`, { method: 'POST' }))}>{t('Blokdan chiqarish')}</button>
                       : <button className="btn btn-warning btn-sm min-h-11" disabled={busy} onClick={() => setSuspendOpen((v) => !v)}>{t('Bloklash')}</button>)}
                     {isSuper && (
-                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }))}>
+                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={async () => {
+                        // Tasdiq (admin audit): hisob ro'yxat va statistikadan yashiriladi / qaytadi.
+                        if (!(await confirm({ title: u.isTest ? t('Test hisobdan chiqarish') : t('Test hisob deb belgilash'), message: t('Test hisob ro‘yxatlar va statistikadan yashiriladi. Davom etasizmi?') }))) return;
+                        act(() => adminApi(`/users/${u.id}/set-test`, { method: 'POST', body: JSON.stringify({ isTest: !u.isTest }) }));
+                      }}>
                         {u.isTest ? t('Test hisobdan chiqarish') : t('Test hisob deb belgilash')}
                       </button>
                     )}
                     {isSuper && (
-                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={() => act(() => adminApi(`/users/${u.id}/set-internal`, { method: 'POST', body: JSON.stringify({ isInternal: !u.isInternal }) }))}>
+                      <button className="btn btn-ghost-vz btn-sm min-h-11" disabled={busy} onClick={async () => {
+                        if (!(await confirm({ title: u.isInternal ? t('Hisobga qo‘shish') : t('Hisobga qo‘shmaslik'), message: t('«Hisobga qo‘shmaslik» — akkaunt ko‘rinadi, lekin pul va statistikaga kirmaydi. Davom etasizmi?') }))) return;
+                        act(() => adminApi(`/users/${u.id}/set-internal`, { method: 'POST', body: JSON.stringify({ isInternal: !u.isInternal }) }));
+                      }}>
                         {u.isInternal ? t('Hisobga qo‘shish') : t('Hisobga qo‘shmaslik')}
                       </button>
                     )}
@@ -1829,7 +1868,7 @@ function PrintSide({ order, label, url, slug }) {
           src={src} alt={t(label)} loading="lazy"
           onLoad={(e) => setSize([e.currentTarget.naturalWidth, e.currentTarget.naturalHeight])}
           onError={() => setBroken(true)}
-          className="h-[104px] w-[165px] rounded-lg border border-white/15 bg-black object-cover"
+          className="h-[104px] w-[165px] rounded-lg border border-[color:var(--vz-line)] bg-black object-cover"
         />
       </a>
 
@@ -2554,7 +2593,16 @@ function SecurityTab({ initialSub }) {
 
   const loadIp = () => { setIpErr(null); return adminApi('/ip-whitelist').then(setIpData).catch((e) => setIpErr(e)); };
   const loadHistory = () => { setHistoryErr(null); setHistory(null); adminApi('/login-history').then((d) => setHistory(d.history || [])).catch((e) => setHistoryErr(e)); };
-  const loadActivity = () => { setActivityErr(null); setActivity(null); adminApi('/activity-log').then((d) => setActivity(d.log || [])).catch((e) => setActivityErr(e)); };
+  // Amallar jurnali — serverda sahifalash va qidiruv (admin audit).
+  const [activityLimit, setActivityLimit] = useState(100);
+  const [activityMore, setActivityMore] = useState(false);
+  const [activityQ, setActivityQ] = useState('');
+  const loadActivity = (lim = activityLimit, q = activityQ) => {
+    setActivityErr(null);
+    const qs = new URLSearchParams({ limit: String(lim) });
+    if (q.trim()) qs.set('q', q.trim());
+    adminApi(`/activity-log?${qs}`).then((d) => { setActivity(d.log || []); setActivityMore(!!d.hasMore); }).catch((e) => setActivityErr(e));
+  };
 
   // ---------- 2FA / Google Authenticator (TOTP) ----------
   const [totpStatus, setTotpStatus] = useState(null); // { enabled }
@@ -2735,7 +2783,13 @@ function SecurityTab({ initialSub }) {
         </div>
       ))}
       {subTab === 'activity' && !isSuper && <ForbiddenState />}
-      {subTab === 'activity' && isSuper && (activityErr ? <LoadError err={activityErr} onRetry={loadActivity} title={t("Amallar jurnalini yuklab bo'lmadi.")} />
+      {subTab === 'activity' && isSuper && (
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setActivity(null); setActivityLimit(100); loadActivity(100, activityQ); }}>
+          <input value={activityQ} onChange={(e) => setActivityQ(e.target.value)} placeholder={t('Amal yoki tafsilot bo‘yicha')} className="vz-input min-w-0 flex-1" />
+          <button type="submit" className="btn btn-outline-gold btn-sm min-h-11">{t('Qidirish')}</button>
+        </form>
+      )}
+      {subTab === 'activity' && isSuper && (activityErr ? <LoadError err={activityErr} onRetry={() => loadActivity()} title={t("Amallar jurnalini yuklab bo'lmadi.")} />
         : !activity ? <AdminLoading rows={6} />
         : activity.length === 0 ? <EmptyState icon="activity" title={t("Hozircha yozuv yo'q.")} />
         : (
@@ -2753,6 +2807,11 @@ function SecurityTab({ initialSub }) {
               ))}
             </tbody>
           </table>
+          {activityMore && (
+            <div className="flex justify-center pt-3">
+              <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={() => { const n = Math.min(1000, activityLimit + 100); setActivityLimit(n); loadActivity(n); }}>{t("Ko'proq yuklash")}</button>
+            </div>
+          )}
           <p className="p-3 text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>{t("Bu jurnal oddiy admin tomonidan o'chirilmaydi.")}</p>
         </div>
       ))}
@@ -2978,16 +3037,21 @@ function NotificationsTab() {
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState(null);
   const [actErr, setActErr] = useState(null);
-  const [shown, setShown] = useState(30);
+  // Serverda sahifalash (admin audit): `limit` oshadi, `hasMore` — serverdan.
+  const [limit, setLimit] = useState(30);
+  const [hasMore, setHasMore] = useState(false);
 
-  const load = (f = filter) => {
-    setLoadErr(null); setMessages(null);
-    return adminApi('/support-messages' + (f ? `?status=${f}` : '')).then((d) => {
+  const load = (f = filter, lim = limit) => {
+    setLoadErr(null);
+    const qs = new URLSearchParams({ limit: String(lim) });
+    if (f) qs.set('status', f);
+    return adminApi(`/support-messages?${qs}`).then((d) => {
       setMessages(Array.isArray(d?.messages) ? d.messages : []);
       setCounts(d?.counts || null);
+      setHasMore(!!d?.hasMore);
     }).catch((e) => setLoadErr(e));
   };
-  useEffect(() => { load(filter); setShown(30); }, [filter]);
+  useEffect(() => { setMessages(null); setLimit(30); load(filter, 30); }, [filter]);
 
   const openReply = (id) => { setReplyFor(id); setReplyText(''); setReplyStatus('replied'); };
 
@@ -3040,7 +3104,7 @@ function NotificationsTab() {
 
   if (loadErr) return <div className="space-y-3">{filterBar}<LoadError err={loadErr} onRetry={() => load()} title={t("Murojaatlarni yuklab bo'lmadi.")} /></div>;
   if (!messages) return <div className="space-y-3">{filterBar}<AdminLoading rows={5} /></div>;
-  const visible = messages.slice(0, shown);
+  const visible = messages;
   return (
     <div className="space-y-3">
       {filterBar}
@@ -3055,11 +3119,19 @@ function NotificationsTab() {
                 <a href={'/' + m.userCode} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{m.userEmail}</a>
               ) : m.userEmail}
               {' — '}{timeAgo(new Date(m.createdAt).getTime())}
+              {/* Qaysi ilova va versiyadan (app_users) — admin audit. */}
+              {m.platform && <span className="vz-badge vz-badge--muted ml-2">{m.platform}{m.appBuild != null ? ` · build ${m.appBuild}` : ''}</span>}
             </div>
             <SupportStatusBadge status={m.status} />
           </div>
           <p className="mt-2 whitespace-pre-wrap break-words text-sm">{m.message}</p>
-          {m.reply && <p className="vz-panel mt-2 break-words p-2 text-sm" style={{ color: 'var(--vz-gold-2)' }}><b>{t('Javobingiz:')}</b> {m.reply}</p>}
+          {/* Javoblar TARIXI (eskisidan yangisiga); eski yozuvlarda — bitta `reply`. */}
+          {(m.replies && m.replies.length ? m.replies : (m.reply ? [{ reply: m.reply, createdAt: m.repliedAt }] : [])).map((r, i) => (
+            <p key={i} className="vz-panel mt-2 whitespace-pre-wrap break-words p-2 text-sm" style={{ color: 'var(--vz-gold-2)' }}>
+              <b>{t('Javobingiz:')}</b> {r.reply}
+              {r.createdAt && <span className="ml-2 text-xs" style={{ color: 'var(--vz-ink-3)' }}>{timeAgo(tsMs(r.createdAt))}</span>}
+            </p>
+          ))}
           {replyFor === m.id ? (
             <div className="mt-3 space-y-2">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -3071,7 +3143,7 @@ function NotificationsTab() {
                   </button>
                 ))}
               </div>
-              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={t("Javob yozing...")} rows={3} maxLength={1000}
+              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={t("Javob yozing...")} rows={3} maxLength={4000}
                 className="vz-input w-full min-w-0" aria-label={t("Javob yozing...")} />
               <div className="flex flex-wrap items-center gap-2">
                 <select value={replyStatus} onChange={(e) => setReplyStatus(e.target.value)} aria-label={t('Javobdan keyingi holat')}
@@ -3097,7 +3169,11 @@ function NotificationsTab() {
           )}
         </div>
       ))}
-      <LoadMore shown={visible.length} total={messages.length} onMore={setShown} step={30} />
+      {hasMore && (
+        <div className="flex justify-center pt-1">
+          <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={() => { const next = Math.min(500, limit + 30); setLimit(next); load(filter, next); }}>{t("Ko'proq yuklash")}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -3111,7 +3187,10 @@ function PhysicalCardsTab() {
   const [busy, setBusy] = useState(null);
   const [loadErr, setLoadErr] = useState(null);
   const [actErr, setActErr] = useState(null);
-  const load = () => { setLoadErr(null); setCards(null); return adminApi('/physical-cards').then((d) => setCards(Array.isArray(d?.cards) ? d.cards : [])).catch((e) => setLoadErr(e)); };
+  // Serverda sahifalash (admin audit).
+  const [limit, setLimit] = useState(100);
+  const [hasMore, setHasMore] = useState(false);
+  const load = (lim = limit) => { setLoadErr(null); return adminApi(`/physical-cards?limit=${lim}`).then((d) => { setCards(Array.isArray(d?.cards) ? d.cards : []); setHasMore(!!d?.hasMore); }).catch((e) => setLoadErr(e)); };
   useEffect(() => { load(); }, []);
 
   // Kuzatuv raqami — har bir qator uchun alohida (id -> {carrier, tracking}).
@@ -3147,7 +3226,7 @@ function PhysicalCardsTab() {
     }
   };
 
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Jismoniy kartalarni yuklab bo'lmadi.")} />;
+  if (loadErr) return <LoadError err={loadErr} onRetry={() => load()} title={t("Jismoniy kartalarni yuklab bo'lmadi.")} />;
   if (!cards) return <AdminLoading />;
   if (cards.length === 0) return <EmptyState icon="idcard" title={t("Hozircha jismoniy karta buyurtmasi yo'q.")} />;
   // Har karta — alohida kartochka: telefonda ham hamma maydon ko'rinadi
@@ -3202,6 +3281,11 @@ function PhysicalCardsTab() {
           </article>
         ))}
       </div>
+      {hasMore && (
+        <div className="flex justify-center pt-3">
+          <button type="button" className="btn btn-outline-gold btn-sm min-h-11" onClick={() => { const n = Math.min(500, limit + 100); setLimit(n); load(n); }}>{t("Ko'proq yuklash")}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -3312,9 +3396,13 @@ function GiftNfcIdTab() {
 function ReferralLeaderboard() {
   const { t } = useLanguage();
   const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
   const [range, setRange] = useState('last30');
-  useEffect(() => { adminApi('/referrals/leaderboard').then(setData).catch(() => setData(false)); }, []);
-  if (!data) return null;
+  const load = () => { setErr(null); adminApi('/referrals/leaderboard').then(setData).catch((e) => setErr(e)); };
+  useEffect(() => { load(); }, []);
+  // Xato holati (admin audit) — jim yashirilmaydi.
+  if (err) return <LoadError err={err} onRetry={load} title={t('Promokod reytingini yuklab bo‘lmadi.')} />;
+  if (!data) return <AdminLoading rows={3} />;
   const rows = data[range] || [];
   return (
     <div>
@@ -3730,6 +3818,7 @@ function CategoriesTab() {
 // beradi/oladi (haqiqiy shaxs / rasmiy biznes).
 function VerificationTab() {
   const { t } = useLanguage();
+  const { confirm: ask, dialog } = useConfirm();
   const { isSuper } = useAdmin();
   const [code, setCode] = useState('');
   const [found, setFound] = useState(null);
@@ -3769,9 +3858,9 @@ function VerificationTab() {
     const warn = free
       ? t('Profil va uning butun kontenti (post, story, galereya, katalog) BUTUNLAY o‘chiriladi. Kod qayta sotuvga chiqadi. Davom etasizmi?')
       : t('Profil va uning butun kontenti (post, story, galereya, katalog) BUTUNLAY o‘chiriladi. Davom etasizmi?');
-    if (!confirm(warn)) return;
+    if (!(await ask({ title: t('Profilni o‘chirish'), message: warn, danger: true }))) return;
     // Ikkinchi tasdiq — bu amal qaytarilmaydi.
-    if (!confirm(t('Bu amalni qaytarib bo‘lmaydi. Aniqmisiz?'))) return;
+    if (!(await ask({ title: t('Profilni o‘chirish'), message: t('Bu amalni qaytarib bo‘lmaydi. Aniqmisiz?'), danger: true }))) return;
     setBusy(true);
     try {
       await adminApi(`/records/${encodeURIComponent(found.code)}`, { method: 'DELETE' });
@@ -3787,6 +3876,7 @@ function VerificationTab() {
 
   return (
     <div className="space-y-6">
+      {dialog}
       <div className="vz-card p-5">
         <span className="vz-kicker">{t('Profilni tasdiqlash')}</span>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -4207,7 +4297,7 @@ function FinanceRateCard({ scope, current, history, onSaved }) {
         {msg && <span className={`text-xs ${msg.ok ? 'text-success' : 'text-error'}`}>{msg.ok ? t('Saqlandi') : (msg.text || t('Xatolik yuz berdi.'))}</span>}
       </div>
       {history && history.length > 1 && (
-        <div className="mt-3 border-t border-white/5 pt-2 text-[14px] text-base-content/40">
+        <div className="mt-3 border-t border-[color:var(--vz-line)] pt-2 text-[14px] text-base-content/40">
           {history.slice(0, 5).map((h) => (
             <div key={h.id} className="flex justify-between py-0.5">
               <span>{h.effectiveFrom}</span>
@@ -4696,6 +4786,7 @@ function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
   const [form, setForm] = useState({ cat: '', item: '', images: true });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const { confirm: ask, dialog } = useConfirm();
 
   if (!limits) return null;
 
@@ -4709,6 +4800,8 @@ function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
     finally { setBusy(false); }
   };
   const resetDefault = async (tier) => {
+    // Tasdiq (admin audit): limit standart qiymatga qaytariladi.
+    if (!(await ask({ title: t('Limitni standartga qaytarish'), message: t('Bu daraja uchun limit standart qiymatga qaytariladi. Davom etasizmi?') }))) return;
     setBusy(true); setErr(null);
     try { await adminApi(`/company-settings/limits/${kind}/${tier}`, { method: 'DELETE' }); await onSaved(); }
     catch (e) { setErr(apiErrText(e, t)); }
@@ -4717,6 +4810,7 @@ function LimitsTable({ title, subtitle, kind, limits, onSaved }) {
 
   return (
     <AdminCard title={title} right={<span className="text-[13px]" style={{ color: 'var(--vz-ink-3)' }}>{subtitle}</span>}>
+      {dialog}
       {err && <div role="alert" className="vz-err mb-2">{err}</div>}
       <div className="overflow-x-auto">
         <table className="table table-sm">
@@ -5235,7 +5329,7 @@ const ADMIN_NAV = [
   { index: 21, label: 'Shikoyatlar', icon: 'flag', group: 'Kontent', badgeKey: 'reports' },
   // Ilovada rasm/videoga qo'yiladigan musiqa (hosting/api/music.js).
   { index: 25, label: 'Musiqa kutubxonasi', icon: 'music', group: 'Kontent' },
-  { index: 26, label: 'Namuna bizneslar', icon: 'building', group: 'Kontent' },
+  { index: 26, label: 'Namuna bizneslar', icon: 'building', group: 'Kontent', managerOnly: true },
   { index: 14, label: 'Yangiliklar', icon: 'news', group: 'Kontent' },
   { index: 15, label: 'Kategoriyalar', icon: 'folder', group: 'Kontent' },
 
@@ -5268,7 +5362,8 @@ function Dashboard({ onLogout, role, totpEnabled, refreshMe }) {
     pull();
     const id = setInterval(pull, 60_000);
     return () => { alive = false; clearInterval(id); };
-  }, [tab]);
+    // Bo'lim almashganda QAYTA so'ralmaydi (admin audit) — daqiqada bir marta yetarli.
+  }, []);
   const [search, setSearch] = useState('');
   const logout = async () => { try { await adminApi('/logout', { method: 'POST' }); } catch { /* baribir chiqamiz */ } onLogout(); };
   const isSuperAdmin = role === 'super_admin';

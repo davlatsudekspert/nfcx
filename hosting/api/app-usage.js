@@ -187,7 +187,8 @@ async function reviewAccount(request, env, H) {
     ip: H.reqIp?.(request),
   })?.catch?.(() => {});
 
-  return H.json({ ok: true, created, email: REVIEW_EMAIL, password, code, premiumUntil });
+  // `userId` — IAP_APPLE_SANDBOX_USER_IDS uchun (App Review sandbox xaridlari).
+  return H.json({ ok: true, created, email: REVIEW_EMAIL, password, code, premiumUntil, userId: id });
 }
 
 export async function handle(request, env, url, H) {
@@ -213,7 +214,9 @@ export async function handle(request, env, url, H) {
             SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS month,
             SUM(CASE WHEN ${PLATFORM_SQL.ios} THEN 1 ELSE 0 END) AS ios,
             SUM(CASE WHEN ${PLATFORM_SQL.android} THEN 1 ELSE 0 END) AS android
-       FROM app_users a`
+       FROM app_users a JOIN users u ON u.id = a.user_id
+      -- Sanoqqa test/ichki va o'chirilgan hisoblar kirmaydi (admin audit).
+      WHERE u.deleted_at IS NULL AND COALESCE(u.is_test, 0) = 0 AND COALESCE(u.is_internal, 0) = 0`
   ).bind(since(1), since(7), since(30)).first();
 
   const conds = [];
@@ -237,9 +240,12 @@ export async function handle(request, env, url, H) {
   }
   // FILTR: `premium` — faqat Premium; `today`/`week` — shu davrda ochganlar.
   const filter = url.searchParams.get('filter') || '';
+  // Premium ifodasi BITTA: filtr ham, ro'yxatdagi belgi ham (admin audit).
+  const nowIso = new Date().toISOString();
+  const PREMIUM_SQL = '(u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?))';
   if (filter === 'premium') {
-    conds.push('(u.is_premium = 1 OR (u.premium_expires_at IS NOT NULL AND u.premium_expires_at > ?))');
-    binds.push(new Date().toISOString());
+    conds.push(PREMIUM_SQL);
+    binds.push(nowIso);
   }
   if (filter === 'today') { conds.push('a.last_seen >= ?'); binds.push(since(1)); }
   if (filter === 'week') { conds.push('a.last_seen >= ?'); binds.push(since(7)); }
@@ -249,11 +255,11 @@ export async function handle(request, env, url, H) {
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
   const rows = await env.DB.prepare(
     // `a.*` — `app_build` ustuni hali qo'shilmagan bazada ham so'rov yiqilmasin.
-    `SELECT a.*, u.email, u.phone, u.created_at, u.deleted_at, u.is_premium
+    `SELECT a.*, u.email, u.phone, u.created_at, u.deleted_at, ${PREMIUM_SQL} AS premium_now
        FROM app_users a LEFT JOIN users u ON u.id = a.user_id
        ${where}
       ORDER BY ${order} LIMIT ? OFFSET ?`
-  ).bind(...binds, limit + 1, (page - 1) * limit).all();
+  ).bind(nowIso, ...binds, limit + 1, (page - 1) * limit).all();
   const all = rows?.results || [];
   const pageRows = all.slice(0, limit);
 
@@ -294,7 +300,7 @@ export async function handle(request, env, url, H) {
       userId: Number(r.user_id),
       email: r.email || '',
       phone: r.phone || '',
-      premium: !!r.is_premium,
+      premium: !!Number(r.premium_now),
       deleted: !!r.deleted_at,
       platform: r.platform || '',
       appBuild: r.app_build == null ? null : Number(r.app_build),

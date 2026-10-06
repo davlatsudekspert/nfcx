@@ -110,8 +110,9 @@ sqlite.prepare(`INSERT INTO support_messages (user_id, message, reply, status, c
 r = await list();
 check('8) hammasi: 5 ta', r.body.messages.length, 5);
 check('8) sanoq', r.body.counts, { pending: 1, replied: 1, resolved: 2, planned: 1, total: 5 });
-check('8) eski maydonlar joyida', Object.keys(r.body.messages[0]).sort(),
-  ['createdAt', 'id', 'message', 'repliedAt', 'reply', 'status', 'userCode', 'userEmail', 'userId'].sort());
+// Eski maydonlar joyida; admin audit (2026-10) faqat QO'SHDI: javoblar tarixi, ilova platformasi va build.
+check('8) eski maydonlar joyida', ['createdAt', 'id', 'message', 'repliedAt', 'reply', 'status', 'userCode', 'userEmail', 'userId'].every((k) => k in r.body.messages[0]), true);
+check('8) yangi maydonlar', Object.keys(r.body.messages[0]).filter((k) => !['createdAt', 'id', 'message', 'repliedAt', 'reply', 'status', 'userCode', 'userEmail', 'userId'].includes(k)).sort(), ['appBuild', 'platform', 'replies']);
 const ids = async (q) => (await list(q)).body.messages.map((m) => m.id).sort((a, b) => a - b);
 check('8) filtr: pending', await ids('?status=pending'), [m4.body.id]);
 check('8) filtr: resolved', await ids('?status=resolved'), [m1.body.id, m3.body.id].sort((a, b) => a - b));
@@ -132,5 +133,25 @@ sqlite.prepare(`INSERT OR IGNORE INTO admins (id, phone, password_hash, role, to
 r = await reply(m4.body.id, { reply: 'Batafsilroq yozing.' }, cookie.manager);
 check('10) manager javob bera oladi', [r.status, statusOf(m4.body.id)], [200, 'replied']);
 check('10) begonaga (m4 egasi) bildirishnoma keldi', (await notifs(cookie.other)).body.items.map((i) => [i.type, i.targetId]), [['support_reply', String(m4.body.id)]]);
+
+// ── 11) Javoblar tarixi, 4000 belgi, sahifalash, platforma (admin audit) ──
+{
+  const h = await send(cookie.user, 'Tarix uchun murojaat');
+  await reply(h.body.id, { reply: 'Birinchi javob', status: 'planned' });
+  const long = 'x'.repeat(3900);
+  await reply(h.body.id, { reply: long, status: 'resolved' });
+  const item = (await list()).body.messages.find((m) => m.id === h.body.id);
+  check('11) tarix: ikkala javob tartibda', item.replies.map((x) => [x.reply.length, x.status]), [[14, 'planned'], [3900, 'resolved']]);
+  check('11) oxirgisi `reply` da (moslik)', item.reply.length, 3900);
+  check('11) 4000 belgigacha', (await reply(h.body.id, { reply: 'y'.repeat(5000) })).status, 200);
+  check('11) 4000 da kesildi', sqlite.prepare(`SELECT length(reply) AS n FROM support_messages WHERE id = ?`).get(h.body.id).n, 4000);
+  const old = (await list('?status=replied')).body.messages.find((m) => m.message === 'eski');
+  check('11) eski javob (jadvalgacha) — tarixda bitta', old.replies.map((x) => x.reply), ['eski javob']);
+  await call('/api/auth/me', { cookie: cookie.user, headers: { 'x-app': 'nova', 'x-client': 'ios', 'x-app-build': '77' } });
+  const withApp = (await list()).body.messages.find((m) => m.id === h.body.id);
+  check('11) ilova platformasi va build', [withApp.platform, withApp.appBuild], ['ios', 77]);
+  const page = await list('?limit=2');
+  check('11) sahifalash: limit + hasMore', [page.body.messages.length, page.body.hasMore], [2, true]);
+}
 
 done();

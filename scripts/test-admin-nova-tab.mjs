@@ -145,7 +145,9 @@ for (const want of ['GET /content-blocks', 'GET /app-content', 'GET /company-ord
 // Kontentni o'chirish YANGI yo'l emas — mavjud, arxivlaydigan yo'l.
 checkTrue('6) kontent mavjud DELETE /content/:tur/:id orqali o‘chiriladi',
   concreteCalls.has('DELETE /content/post/1'));
-checkTrue('6) kontent o‘chirishdan oldin tasdiq so‘raladi', /window\.confirm\(/.test(CODE));
+// Tasdiq panelning o'z oynasi orqali (window.confirm emas — admin audit).
+checkTrue('6) kontent o‘chirishdan oldin tasdiq so‘raladi', /await dlg\.confirm\(t\('Bu kontent o‘chirilsinmi\?/.test(CODE));
+checkTrue('6) window.confirm/prompt/alert qolmagan', !/window\.(confirm|prompt|alert)\(/.test(CODE));
 for (const label of ['Avto-filtr', 'Kontent', 'Buyurtmalar']) {
   checkTrue(`6) "${label}" sub-tabi bor`, new RegExp(`\\['\\w+', '${label}'\\]`).test(CODE));
 }

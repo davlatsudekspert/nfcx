@@ -301,3 +301,11 @@ Premium olib qo'yish (`POST /api/admin/users/:id/premium {action:'revoke'}`) fao
 `apple_subscription_active` (+`apple`), faqat `force:true` bilan. `POST /api/admin/featured/:id/stop {reason,
 reissueCredit:true}` — faol Apple slotida xaridorga kredit (`admin:<slot>:<tx>`, asl REFUND uni ham bekor qiladi).
 Test: `scripts/test-admin-apple.mjs`.
+
+ADMIN AUDIT (2026-10): ro'yxatlar serverda sahifalanadi — `limit` + `hasMore`: `/api/admin/users`
+(+ `status=premium|flagged|blocked|deleted` serverda), `/premium-users` (+ `apple` belgisi va sanog'i),
+`/support-messages` (+ `replies[]` tarixi — `support_replies`, javob ≤ 4000 belgi, `platform`, `appBuild`),
+`/physical-cards` (`chipToken` o'rniga faqat `tokenTail`), `/featured`, `/activity-log` (+ `q`).
+content_manager uchun email/telefon niqoblanadi. `/api/admin/app-users` sanog'ida test/ichki/o'chirilgan yo'q,
+Premium belgisi filtr bilan bir xil ifoda. `/api/admin/review-account` → `userId` ham.
+Test: `scripts/test-admin-audit.mjs`.

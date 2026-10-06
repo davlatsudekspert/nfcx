@@ -682,11 +682,16 @@ export async function handle(request, env, url, H) {
       const where = ['pending', 'active', 'expired', 'cancelled', 'stopped'].includes(state)
         ? `WHERE status = ?` : '';
       const args = where ? [state] : [];
+      // Sahifalash (admin audit): `limit` (50, ko'pi 500) + `hasMore`.
+      const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       const rows = await env.DB.prepare(
-        `SELECT * FROM featured_slots ${where} ORDER BY created_at DESC, id DESC LIMIT 200`
-      ).bind(...args).all().catch(() => null);
+        `SELECT * FROM featured_slots ${where} ORDER BY created_at DESC, id DESC LIMIT ?`
+      ).bind(...args, limit + 1).all().catch(() => null);
+      const all = rows?.results || [];
       return H.json({
-        slots: (rows?.results || []).map((r) => ({
+        limit,
+        hasMore: all.length > limit,
+        slots: all.slice(0, limit).map((r) => ({
           ...slotOut(r, H),
           userId: Number(r.user_id),
           orderId: Number(r.order_id) || 0,
