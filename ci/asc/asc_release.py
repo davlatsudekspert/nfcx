@@ -91,17 +91,17 @@ NFCSTORE is made in Uzbekistan and available in Uzbek, Russian and English."""
 # Qidiruv uchun (egasi, 2026-10-05): "NFC tools" deb qidirganlar topsin,
 # lekin "NFC Tools" brend iborasi va "Instagram" so'zi ISHLATILMAYDI.
 APP_NAME = "NFCSTORE: Social NFC"
-# Nom ("NFCSTORE: Social NFC") va subtitle'dagi so'zlar (nfc, social, writer,
-# id, reels) Apple'da avtomatik hisoblanadi — bu yerda TAKRORLANMAYDI, joy
+# Nom ("NFCSTORE: Social NFC") va subtitle'dagi so'zlar (nfc, social, reader,
+# writer, id) Apple'da avtomatik hisoblanadi — bu yerda TAKRORLANMAYDI, joy
 # qidiruv so'zlariga qoladi. Apple ularni nom bilan birlashtiradi: "nfc" +
 # "reader" -> "NFC reader", "nfc" + "tools" -> "NFC tools" va h.k.
-KEYWORDS_LIST = ['tools', 'reader', 'scanner', 'tag', 'read', 'write', 'sticker', 'scan', 'ntag',
-                 'card', 'business', 'contact', 'qr', 'vizitka', 'yozish', 'karta', 'chip']
+KEYWORDS_LIST = ['tools', 'scanner', 'tag', 'reels', 'read', 'write', 'sticker', 'scan', 'ntag',
+                 'card', 'business', 'qr', 'vizitka', 'yozish', 'karta', 'contact', 'chip']
 # Ruscha App Store (O'zbekistonda ko'p telefonlar rus tilida).
 KEYWORDS_LIST_RU = ['nfc', 'метки', 'метка', 'сканер', 'запись', 'чтение', 'считыватель', 'визитка',
                     'наклейка', 'tools', 'reader', 'tag', 'карта', 'чип', 'qr', 'бизнес']
 PROMO = "Tap. Share. Connect — your social NFC profile, feed and Reels on an NFC card or sticker."
-SUBTITLE = "NFC Writer, Social ID, Reels"
+SUBTITLE = "NFC Reader & Writer, Social ID"  # 30 belgi — Apple chegarasi
 
 # "What's New" — YANGILANISH matni (birinchi versiyada Apple uni qabul
 # qilmaydi; yangilanishda MAJBURIY). Faqat ilovada HAQIQATAN bor narsa
