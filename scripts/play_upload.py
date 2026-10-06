@@ -115,8 +115,13 @@ def listing_set(s, edit):
                 check(s.get(f"{API}/edits/{edit}/listings"), "listinglar").get("listings", [])}
     for lang, fields in data.items():
         body = {k: fields[k] for k in LIMITS}
-        # PATCH — faqat berilgan maydonlar o'zgaradi (video tegilmaydi).
-        out = check(s.patch(f"{API}/edits/{edit}/listings/{lang}", json=body), f"listing {lang}")
+        if lang in existing:
+            # PATCH — faqat berilgan maydonlar o'zgaradi (video tegilmaydi).
+            out = check(s.patch(f"{API}/edits/{edit}/listings/{lang}", json=body), f"listing {lang}")
+        else:
+            # Yangi til: PUT (listings.update) yaratadi.
+            body["language"] = lang
+            out = check(s.put(f"{API}/edits/{edit}/listings/{lang}", json=body), f"listing {lang} (yangi)")
         notice(f"[{lang}] {'yangilandi' if lang in existing else 'YANGI til qo`shildi'}: "
                f"title={len(out.get('title', ''))} short={len(out.get('shortDescription', ''))} "
                f"full={len(out.get('fullDescription', ''))}")
