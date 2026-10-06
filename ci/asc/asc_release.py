@@ -91,8 +91,15 @@ NFCSTORE is made in Uzbekistan and available in Uzbek, Russian and English."""
 # Qidiruv uchun (egasi, 2026-10-05): "NFC tools" deb qidirganlar topsin,
 # lekin "NFC Tools" brend iborasi va "Instagram" so'zi ISHLATILMAYDI.
 APP_NAME = "NFCSTORE: Social NFC"
-KEYWORDS_LIST = ['nfc', 'tools', 'tag', 'writer', 'reader', 'yozish', 'vizitka', 'social', 'reels',
-                 'biznes', 'qr', 'card', 'profil', 'karta']
+# Nom ("NFCSTORE: Social NFC") va subtitle'dagi so'zlar (nfc, social, writer,
+# id, reels) Apple'da avtomatik hisoblanadi — bu yerda TAKRORLANMAYDI, joy
+# qidiruv so'zlariga qoladi. Apple ularni nom bilan birlashtiradi: "nfc" +
+# "reader" -> "NFC reader", "nfc" + "tools" -> "NFC tools" va h.k.
+KEYWORDS_LIST = ['tools', 'reader', 'scanner', 'tag', 'read', 'write', 'sticker', 'scan', 'ntag',
+                 'card', 'business', 'contact', 'qr', 'vizitka', 'yozish', 'karta', 'chip']
+# Ruscha App Store (O'zbekistonda ko'p telefonlar rus tilida).
+KEYWORDS_LIST_RU = ['nfc', 'метки', 'метка', 'сканер', 'запись', 'чтение', 'считыватель', 'визитка',
+                    'наклейка', 'tools', 'reader', 'tag', 'карта', 'чип', 'qr', 'бизнес']
 PROMO = "Tap. Share. Connect — your social NFC profile, feed and Reels on an NFC card or sticker."
 SUBTITLE = "NFC Writer, Social ID, Reels"
 
@@ -154,9 +161,9 @@ The app works the same in all regions. Content is user-generated; the interface 
 Not a regulated industry. The in-app music library for Reels contains only original tracks from NFCSTORE's own music channel (NEOMSONGS), created with Suno under a paid Pro plan that grants commercial use rights, or tracks released under free licenses (CC0 / public domain); each track's source is recorded. Profile music from YouTube / Yandex Music is played only through their official embedded players."""
 
 
-def keywords():
+def keywords(words=None):
     out = ''
-    for k in KEYWORDS_LIST:
+    for k in (words or KEYWORDS_LIST):
         nxt = (out + ',' + k) if out else k
         if len(nxt) > 100:
             break
@@ -233,8 +240,12 @@ def fill():
     for l in j.get('data', []):
         loc_code = l['attributes']['locale']
         text = WHATS_NEW['ru' if loc_code.startswith('ru') else 'en']
+        la = {'whatsNew': text}
+        # Ruscha do'konda ruscha qidiruv so'zlari ("nfc метки", "сканер" ...).
+        if loc_code.startswith('ru'):
+            la['keywords'] = keywords(KEYWORDS_LIST_RU)
         c2, j2 = call('PATCH', f"/v1/appStoreVersionLocalizations/{l['id']}", {'data': {
-            'type': 'appStoreVersionLocalizations', 'id': l['id'], 'attributes': {'whatsNew': text}}})
+            'type': 'appStoreVersionLocalizations', 'id': l['id'], 'attributes': la}})
         note(f"[{loc_code}] What's New ({len(text)} belgi) -> {c2} {j2.get('_error', '')}")
     # app info: subtitle, privacy URL, kategoriya, yosh reytingi
     c, j = call('GET', f'/v1/apps/{aid}/appInfos')
