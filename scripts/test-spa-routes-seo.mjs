@@ -52,6 +52,11 @@ check('2) /register — noindex', seoForRoute('register', 'uz').noindex, true);
 check('2) /privacy — canonical o‘zi', seoForRoute('privacy', 'en').path, '/privacy');
 check('2) /ilova-yuklash sarlavhasi App Store holatidan', seoForRoute('ilova-yuklash', 'ru').title, appPageTitle('ru'));
 check('2) App Store holati URL dan', APP_STORE_STATUS, APP_STORE_URL ? 'live' : 'review');
+// Sahifalar App Store holatini o'zi yozmaydi — hammasi app-store.js dan.
+for (const f of ['src/pages/AppDownloadPage.jsx', 'src/pages/NfcStickerHelpPage.jsx', 'src/components/HomeWhatsNew.jsx', 'src/components/AppWelcomeModal.jsx']) {
+  const src = read(f);
+  checkTrue(`2) ${f}: App Store holati yagona manbadan`, /appStore(Badge|Text)\(/.test(src) && !/'Tez kunda'|'App Store — (tez kunda|скоро|coming soon)'/.test(src));
+}
 
 // ── 3) Shaxsiy profil va kompaniya (brauzer tomoni) ───────────────────
 {

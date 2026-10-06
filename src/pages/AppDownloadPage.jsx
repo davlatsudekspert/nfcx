@@ -1,6 +1,6 @@
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
-import { APP_APK_URL, APP_STORE_URL, PLAY_STORE_LIVE, PLAY_STORE_URL, isIos } from '../lib/appDownload.js';
+import { APP_APK_URL, APP_STORE_URL, APP_STORE_LIVE, PLAY_STORE_LIVE, PLAY_STORE_URL, appStoreBadge, isIos } from '../lib/appDownload.js';
 import { PhoneShot, PhoneRow } from '../components/PhoneShot.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -50,9 +50,9 @@ const CONTENT = {
     android: 'Android uchun yuklab olish',
     androidPlay: 'Google Play’dan yuklab olish',
     appStore: 'App Store',
-    soon: 'Tez kunda',
+    soon: appStoreBadge('uz'),
     meta: 'Bepul · Google Play imzosi bilan · o‘zbek, rus, ingliz tilida',
-    iosNote: 'iPhone ilovasi tez kunda App Store’da chiqadi. Shu vaqtgacha profilingiz saytda to‘liq ishlaydi, iPhone esa NFC stiker va kartalarni ilovasiz o‘qiydi.',
+    iosNote: 'iPhone ilovasi tez orada App Store’da chiqadi. Shu vaqtgacha profilingiz saytda to‘liq ishlaydi, iPhone esa NFC stiker va kartalarni ilovasiz o‘qiydi.',
     stats: [['NFC + QR', 'har qanday telefonda'], ['2 profil', 'shaxsiy va biznes'], ['3 til', 'uz · ru · en'], ['0 so‘m', 'boshlash bepul']],
     featK: 'Imkoniyatlar',
     featT: 'Ilovada nimalar bor',
@@ -104,7 +104,7 @@ const CONTENT = {
     android: 'Скачать для Android',
     androidPlay: 'Скачать в Google Play',
     appStore: 'App Store',
-    soon: 'Скоро',
+    soon: appStoreBadge('ru'),
     meta: 'Бесплатно · подписано Google Play · на узбекском, русском и английском',
     iosNote: 'Приложение для iPhone скоро появится в App Store. А пока ваш профиль полностью работает на сайте, и iPhone читает NFC-наклейки и карты без приложения.',
     stats: [['NFC + QR', 'на любом телефоне'], ['2 профиля', 'личный и бизнес'], ['3 языка', 'uz · ru · en'], ['0 сум', 'начать бесплатно']],
@@ -158,7 +158,7 @@ const CONTENT = {
     android: 'Download for Android',
     androidPlay: 'Get it on Google Play',
     appStore: 'App Store',
-    soon: 'Coming soon',
+    soon: appStoreBadge('en'),
     meta: 'Free · signed by Google Play · in Uzbek, Russian and English',
     iosNote: 'The iPhone app is coming soon to the App Store. Until then your profile works fully on the website, and iPhone reads NFC stickers and cards without an app.',
     stats: [['NFC + QR', 'on any phone'], ['2 profiles', 'personal and business'], ['3 languages', 'uz · ru · en'], ['Free', 'to get started']],
@@ -224,7 +224,7 @@ function StoreButtons({ c, ios }) {
           <PlayMark />{PLAY_STORE_LIVE ? c.androidPlay : c.android}
         </a>
       )}
-      {APP_STORE_URL ? (
+      {APP_STORE_LIVE ? (
         <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="btn btn-outline min-h-[52px] gap-2.5 rounded-full px-6 text-[15px] no-underline"><AppleMark />{c.appStore}</a>
       ) : (
         <span className="inline-flex min-h-[52px] cursor-default items-center gap-2.5 rounded-full border border-[color:var(--vz-line)] px-6 text-[15px] font-semibold text-[color:var(--vz-ink-2)]" aria-disabled="true" data-testid="app-ios-soon">
@@ -251,7 +251,7 @@ export default function AppDownloadPage() {
           <p className="max-w-[56ch] text-[17px] leading-relaxed text-[color:var(--vz-ink-2)]">{c.lead}</p>
           <StoreButtons c={c} ios={ios} />
           {ios
-            ? <p className="max-w-[56ch] rounded-2xl border border-[color:var(--vz-line)] p-4 text-[14px] leading-relaxed text-[color:var(--vz-ink-2)]">{c.iosNote}</p>
+            ? (!APP_STORE_LIVE && <p className="max-w-[56ch] rounded-2xl border border-[color:var(--vz-line)] p-4 text-[14px] leading-relaxed text-[color:var(--vz-ink-2)]">{c.iosNote}</p>)
             : <p className="text-[13px] text-[color:var(--vz-ink-2)]">{c.meta}</p>}
         </div>
         {/* Uch telefon: o'rtadagisi oldinda. Kichik ekranda faqat o'rtadagi. */}

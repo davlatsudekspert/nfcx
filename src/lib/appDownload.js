@@ -22,8 +22,14 @@ export function isIos() {
 // chiqqan kuni shu bayroqni `true` qilish kifoya.
 export const PLAY_STORE_LIVE = false;
 export const PLAY_STORE_URL = APP_APK_URL;
-// iPhone ilovasi hali yo'q — tugma "Tez kunda" bo'lib turadi.
-export const APP_STORE_URL = '';
+// iPhone ilovasi (App Store) — holat va havola BITTA joyda:
+// hosting/api/app-store.js (Worker SEO sarlavhasi ham undan o'qiydi).
+// Ilova chiqqan kuni o'sha fayldagi APP_STORE_URL qatorini to'ldirish kifoya:
+// /ilova-yuklash, bosh sahifa, /nfc-stiker, xush kelibsiz oynasi va SEO
+// o'zi "tez orada" dan "App Store" tugmasiga o'tadi.
+export {
+  APP_STORE_URL, APP_STORE_STATUS, APP_STORE_LIVE, appStoreBadge, appStoreText,
+} from '../../hosting/api/app-store.js';
 
 // Ro'yxatdan o'tgandan keyin BIR MARTA ko'rsatiladigan "ilovani yuklab
 // oling" oynasi. Bayroq sessiyada turadi va oyna ko'ringach o'chadi.
