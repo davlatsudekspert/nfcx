@@ -645,6 +645,8 @@ const PURGE_POLICY = {
   company_orders: 'A(flag)', catalog_item_reactions: 'A', catalog_item_views: 'A', catalog_promotions: 'A', gift_offers: 'B',
   transactions: 'B', wallet_topups: 'B', web_orders: 'B', bids: 'B', premium_requests: 'B', auctions: 'B', bot_orders: 'B',
   physical_cards: 'B', featured_slots: 'B', company_payments: 'B', nfc_gifts: 'B', referral_uses: 'B', marketplace_activations: 'B',
+  // Apple IAP (api/iap-apple.js): moliyaviy daftar — qoladi; email/telefon yo'q, faqat user_id va Apple raqamlari.
+  iap_apple_account_tokens: 'B', iap_apple_subscriptions: 'B', iap_apple_transactions: 'B', iap_apple_notifications: 'B',
   content_archive: 'C', content_comment_archive: 'C', evidence_flags: 'C', post_likes_orphans: 'C', content_likes_orphans: 'C',
   content_scan_blocks: 'C', evidence_identity: 'C', evidence_owner_history: 'C', user_reports: 'C', content_reports: 'C',
   account_deletion_log: 'D', account_legal_holds: 'D', purge_media_queue: 'D', rate_limits: 'D', admin_activity_log: 'D',

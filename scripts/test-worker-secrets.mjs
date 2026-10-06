@@ -63,6 +63,8 @@ const REQUIRED = {
 const OPTIONAL = new Set([
   'ASSISTANT_MODEL', 'ASSISTANT_OFF', 'AI_API_KEY', 'ANTHROPIC_API_KEY', 'CLAUDE_MODEL',
   'ADMIN_IP_WHITELIST_BYPASS', 'ANDROID_APP_PACKAGE',
+  // Apple In-App Purchase (api/iap-apple.js): '1' bo'lmasa — o'chiq (standart).
+  'IAP_APPLE_ENABLED',
 ]);
 
 // wrangler.jsonc o'zi qo'yadigan bog'lanishlar — secret emas.

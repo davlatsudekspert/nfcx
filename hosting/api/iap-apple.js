@@ -1,0 +1,462 @@
+// hosting/api/iap-apple.js — APPLE IN-APP PURCHASE: PREMIUM OBUNASI (iOS).
+//
+// ═══ NIMA UCHUN BOR ═══
+//
+// App Store qoidasi (3.1.1): iOS ilovada raqamli imkoniyat (Premium)
+// faqat Apple In-App Purchase orqali sotiladi. Sayt va Android'dagi
+// Payme/Click to'lovi o'zgarmaydi — bu modul ularga TEGMAYDI. Ikkala yo'l
+// ham BITTA ustunni uzaytiradi: `users.premium_expires_at`.
+//
+// ═══ KONTRAKT (ilova shunga qarab yozilgan) ═══
+//
+//   Bundle ID: uz.nfcstore.nova. Mahsulotlar (auto-renewable, bitta
+//   "NFCSTORE Premium" guruhi): PRODUCTS (pastda).
+//   Bayroq: env `IAP_APPLE_ENABLED` = '1' — yoqiq; boshqa har qanday qiymat — o'chiq.
+//
+//   GET  /api/iap/apple/config          (kirish ixtiyoriy)
+//        → { enabled: boolean, products: [...] }
+//   GET  /api/iap/apple/account-token   (kirish SHART, aks holda 401)
+//        → { token: '<uuid v4>' }  — har foydalanuvchiga bitta, o'zgarmaydi.
+//        Ilova uni `applicationUserName` qilib beradi → StoreKit 2 `appAccountToken`.
+//   POST /api/iap/apple/verify          (kirish SHART) { signedTransaction }
+//        401 unauthorized | 503 iap_disabled | 400 bad_request | 400 invalid_signature
+//        | 422 wrong_bundle | unknown_product | wrong_type | bad_transaction
+//        | 403 account_mismatch | 409 already_linked | 429 too_many_requests
+//        → 200 { premium: true, premiumExpiresAt, productId, environment }
+//        → 200 { premium: false, reason: 'expired' | 'revoked', premiumExpiresAt }
+//   POST /api/iap/apple/notifications   (kirishsiz — App Store Server Notifications V2)
+//        { signedPayload } → 200 { ok: true, result, duplicate? } | 400 bad_request | invalid_signature
+//
+// ═══ QOIDALAR ═══
+//
+//   * Imzo: hosting/api/apple-jws.js (Apple Root CA - G3 ga pin).
+//   * EGALIK: tranzaksiyada `appAccountToken` bo'lsa — u SHU foydalanuvchining
+//     tokeni bo'lishi shart (403). `originalTransactionId` birinchi ko'rilganda
+//     foydalanuvchiga bog'lanadi (`iap_apple_subscriptions`, PRIMARY KEY);
+//     boshqasiga bog'langan bo'lsa — 409. Bitta Apple obunasi bilan ikki
+//     hisobga Premium berib bo'lmaydi.
+//   * BERISH: `premium_expires_at = max(joriy, expiresDate)`. max() tufayli
+//     tabiiy idempotent: bitta tranzaksiya ikki marta kelsa ham muddat
+//     ikki marta uzaymaydi. Har `transactionId` uchun daftar qatori
+//     (`iap_apple_transactions`, INSERT OR IGNORE): oldingi va bergan qiymat.
+//   * QAYTARISH (REFUND/REVOKE): faqat foydalanuvchining joriy muddati
+//     (±2 soniya) AYNAN shu Apple tranzaksiyasi bergan qiymatga teng bo'lsa —
+//     daftardagi oldingi qiymatga qaytariladi. Aks holda (keyin sayt orqali
+//     Payme/Click bilan uzaytirilgan) — tegilmaydi: to'langan sayt vaqti
+//     HECH QACHON olib tashlanmaydi. Qaytarilgan tranzaksiya qayta berilmaydi
+//     (eski JWS bilan ham), REFUND_REVERSED bo'lmaguncha.
+//   * Sandbox ham beriladi (App Review production build'ni sandbox'da
+//     tekshiradi — bu Apple talabi); muhit daftarga yoziladi.
+//   * Bildirishnomalar bayroq O'CHIQ bo'lsa ham qayta ishlanadi (Apple TEST
+//     va sandbox yuboradi). Imzosi to'g'ri har payload'ga 200 (foydalanuvchi
+//     topilmasa ham — log); imzo noto'g'ri — 400. `notificationUUID` bo'yicha
+//     takror e'tiborsiz (qayta ishlangandan KEYIN yoziladi — baza xatosida
+//     500, Apple qayta yuboradi).
+//
+// ═══ JADVALLAR (faqat CREATE TABLE IF NOT EXISTS) ═══
+//
+//   iap_apple_account_tokens (user_id PK, token UNIQUE)
+//   iap_apple_subscriptions  (original_transaction_id PK → user_id, holat)
+//   iap_apple_transactions   (transaction_id PK — daftar)
+//   iap_apple_notifications  (notification_uuid PK — takrorga qarshi)
+// Shaxsiy ma'lumot (email/telefon) YO'Q — faqat user_id va Apple raqamlari.
+// Moliyaviy yozuv sifatida hisob o'chirilganda ham qoladi.
+
+import { verifyAppleJws } from './apple-jws.js';
+
+export const BUNDLE_ID = 'uz.nfcstore.nova';
+export const PRODUCTS = ['uz.nfcstore.nova.premium.monthly', 'uz.nfcstore.nova.premium.yearly'];
+const SUBSCRIPTION_TYPE = 'Auto-Renewable Subscription';
+const ROLLBACK_TOLERANCE_MS = 2000;
+const VERIFY_RATE_LIMIT = 60;
+const VERIFY_RATE_WINDOW_MS = 10 * 60_000;
+
+export const iapAppleEnabled = (env) => String(env.IAP_APPLE_ENABLED ?? '') === '1';
+
+// ═══ FAQAT TESTLAR UCHUN ═══
+// scripts/test-iap-apple.mjs soxta zanjir yasaydi va uning ildizini shu
+// yerda beradi. env orqali EMAS — production'da hech qanday sozlama
+// (secret, var) ildizni almashtira olmaydi; bu funksiyani worker hech
+// qayerda chaqirmaydi.
+let testRootB64 = null;
+export function __setTrustedRootForTests(b64) { testRootB64 = b64 || null; }
+const verifyJws = (jws) => verifyAppleJws(jws, testRootB64 ? { rootCertB64: testRootB64 } : {});
+
+// Isolate bo'yicha bir marta — lekin D1 va O'zbekiston bazasi uchun
+// alohida (ko'chirish paytida env.DB almashsa, jadval yangi bazada ham bo'lsin).
+const ready = {};
+export function ensureSchema(env) {
+  const key = env.UZ_STORE_ACTIVE ? 'uz' : 'd1';
+  return (ready[key] ||= env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS iap_apple_account_tokens (
+      user_id INTEGER PRIMARY KEY NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS iap_apple_subscriptions (
+      original_transaction_id TEXT PRIMARY KEY NOT NULL,
+      user_id INTEGER NOT NULL,
+      product_id TEXT,
+      environment TEXT,
+      last_transaction_id TEXT,
+      expires_at TEXT,
+      status TEXT,
+      auto_renew INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS iap_apple_subscriptions_user_idx ON iap_apple_subscriptions(user_id)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS iap_apple_transactions (
+      transaction_id TEXT PRIMARY KEY NOT NULL,
+      original_transaction_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      product_id TEXT,
+      environment TEXT,
+      purchase_date TEXT,
+      expires_at TEXT,
+      prev_premium_expires_at TEXT,
+      granted_premium_expires_at TEXT,
+      granted INTEGER NOT NULL DEFAULT 0,
+      revoked_at TEXT,
+      rolled_back_at TEXT,
+      source TEXT,
+      created_at TEXT NOT NULL
+    )`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS iap_apple_transactions_orig_idx ON iap_apple_transactions(original_transaction_id)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS iap_apple_notifications (
+      notification_uuid TEXT PRIMARY KEY NOT NULL,
+      notification_type TEXT,
+      subtype TEXT,
+      environment TEXT,
+      original_transaction_id TEXT,
+      transaction_id TEXT,
+      user_id INTEGER,
+      result TEXT,
+      received_at TEXT NOT NULL
+    )`),
+  ]).catch((e) => { delete ready[key]; throw e; }));
+}
+
+// ═══ YORDAMCHILAR ═══
+
+// Bazadagi sana uch shaklda bo'ladi (ISO, 'YYYY-MM-DD HH:MM:SS', '...+00') — hammasi UTC.
+function toMs(v) {
+  if (v === null || v === undefined || v === '') return NaN;
+  let s = String(v).trim().replace(' ', 'T');
+  if (/\+00$/.test(s)) s = s.replace(/\+00$/, 'Z');
+  else if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(s)) s += 'Z';
+  return Date.parse(s);
+}
+const isoOf = (ms) => new Date(ms).toISOString();
+const msField = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+
+async function currentExpiry(env, userId) {
+  const row = await env.DB.prepare(`SELECT premium_expires_at AS exp FROM users WHERE id = ?`).bind(userId).first();
+  return row ? (row.exp ?? null) : undefined; // undefined — foydalanuvchi yo'q
+}
+
+async function getOrCreateToken(env, userId) {
+  const sel = () => env.DB.prepare(`SELECT token FROM iap_apple_account_tokens WHERE user_id = ?`).bind(userId).first();
+  let row = await sel();
+  if (row?.token) return row.token;
+  await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_account_tokens (user_id, token, created_at) VALUES (?, ?, ?)`)
+    .bind(userId, crypto.randomUUID(), new Date().toISOString()).run();
+  row = await sel();
+  return row?.token || null;
+}
+
+async function userIdByToken(env, token) {
+  if (!token) return null;
+  const row = await env.DB.prepare(`SELECT user_id FROM iap_apple_account_tokens WHERE token = ?`)
+    .bind(String(token).toLowerCase()).first();
+  return row ? Number(row.user_id) : null;
+}
+
+async function ownerOf(env, otid) {
+  const row = await env.DB.prepare(`SELECT user_id FROM iap_apple_subscriptions WHERE original_transaction_id = ?`).bind(otid).first();
+  return row ? Number(row.user_id) : null;
+}
+
+// `originalTransactionId` → foydalanuvchi. Birinchi kelgan yutadi
+// (PRIMARY KEY + INSERT OR IGNORE). Qaytaradi: haqiqiy egasi.
+async function bindOwner(env, tx, userId) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_subscriptions
+      (original_transaction_id, user_id, product_id, environment, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(tx.originalTransactionId, userId, tx.productId, tx.environment, now, now).run();
+  return ownerOf(env, tx.originalTransactionId);
+}
+
+async function touchSubscription(env, tx, status, renewal) {
+  const autoRenew = renewal && Number.isFinite(Number(renewal.autoRenewStatus)) ? Number(renewal.autoRenewStatus) : null;
+  await env.DB.prepare(`UPDATE iap_apple_subscriptions SET
+        product_id = ?, environment = ?, last_transaction_id = ?, status = ?,
+        auto_renew = COALESCE(?, auto_renew),
+        expires_at = CASE WHEN expires_at IS NULL OR expires_at < ? THEN ? ELSE expires_at END,
+        updated_at = ?
+      WHERE original_transaction_id = ?`)
+    .bind(tx.productId, tx.environment, tx.transactionId, status, autoRenew,
+      isoOf(tx.expiresDate), isoOf(tx.expiresDate), new Date().toISOString(), tx.originalTransactionId)
+    .run().catch((e) => console.error('iap apple subscription status', e?.message || e));
+}
+
+// JWS payload'ini (StoreKit `JWSTransactionDecodedPayload`) tekshiradi va
+// keraklisini oladi. Muammo bo'lsa — `{ problem }`.
+function normalizeTx(p) {
+  if (!p || typeof p !== 'object') return { problem: 'bad_transaction' };
+  if (p.bundleId !== BUNDLE_ID) return { problem: 'wrong_bundle' };
+  if (!PRODUCTS.includes(p.productId)) return { problem: 'unknown_product' };
+  if (p.type !== SUBSCRIPTION_TYPE) return { problem: 'wrong_type' };
+  const transactionId = p.transactionId != null ? String(p.transactionId) : '';
+  const originalTransactionId = p.originalTransactionId != null ? String(p.originalTransactionId) : '';
+  if (!/^[0-9A-Za-z_-]{1,64}$/.test(transactionId) || !/^[0-9A-Za-z_-]{1,64}$/.test(originalTransactionId)) return { problem: 'bad_transaction' };
+  const expiresDate = msField(p.expiresDate);
+  if (!expiresDate) return { problem: 'bad_transaction' };
+  const token = typeof p.appAccountToken === 'string' && p.appAccountToken ? p.appAccountToken.toLowerCase() : null;
+  return {
+    tx: {
+      transactionId, originalTransactionId, productId: p.productId, expiresDate,
+      purchaseDate: msField(p.purchaseDate),
+      revocationDate: msField(p.revocationDate),
+      environment: typeof p.environment === 'string' ? p.environment.slice(0, 20) : null,
+      appAccountToken: token,
+    },
+  };
+}
+
+async function ledgerRow(env, txid) {
+  return env.DB.prepare(`SELECT * FROM iap_apple_transactions WHERE transaction_id = ?`).bind(txid).first();
+}
+
+async function insertLedger(env, userId, tx, { prev, granted, didGrant, source, revokedAt = null }) {
+  await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_transactions
+      (transaction_id, original_transaction_id, user_id, product_id, environment, purchase_date, expires_at,
+       prev_premium_expires_at, granted_premium_expires_at, granted, revoked_at, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(tx.transactionId, tx.originalTransactionId, userId, tx.productId, tx.environment,
+      tx.purchaseDate ? isoOf(tx.purchaseDate) : null, isoOf(tx.expiresDate),
+      prev ?? null, granted ?? null, didGrant ? 1 : 0, revokedAt, source, new Date().toISOString())
+    .run();
+}
+
+// ═══ BERISH ═══
+// Qaytaradi: { premium, reason?, premiumExpiresAt }.
+async function grantTransaction(env, userId, tx, source) {
+  if (tx.revocationDate) return revokeTransaction(env, userId, tx, source);
+  const prior = await ledgerRow(env, tx.transactionId);
+  if (prior?.revoked_at) {
+    return { premium: false, reason: 'revoked', premiumExpiresAt: (await currentExpiry(env, userId)) ?? null };
+  }
+  const now = Date.now();
+  if (!(tx.expiresDate > now)) {
+    const cur = (await currentExpiry(env, userId)) ?? null;
+    await insertLedger(env, userId, tx, { prev: cur, granted: null, didGrant: false, source });
+    return { premium: false, reason: 'expired', premiumExpiresAt: cur };
+  }
+  // max(joriy, expiresDate). Bir vaqtda boshqa yozuv (masalan Payme) kelsa —
+  // shartli UPDATE 0 qator qaytaradi va qayta o'qib hisoblaymiz.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const cur = await currentExpiry(env, userId);
+    if (cur === undefined) return { premium: false, reason: 'no_user', premiumExpiresAt: null };
+    const curMs = toMs(cur);
+    const next = Number.isFinite(curMs) && curMs >= tx.expiresDate ? cur : isoOf(tx.expiresDate);
+    if (next !== cur) {
+      const res = await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ? AND premium_expires_at IS ?`)
+        .bind(next, userId, cur).run();
+      if (!Number(res?.meta?.changes || 0)) continue;
+    }
+    await insertLedger(env, userId, tx, { prev: cur, granted: next, didGrant: true, source });
+    return { premium: true, premiumExpiresAt: next };
+  }
+  throw new Error('iap_apple_grant_conflict');
+}
+
+// ═══ QAYTARISH (REFUND / REVOKE) ═══
+// Joriy muddat AYNAN shu tranzaksiya bergan qiymat (±2 s) bo'lsagina —
+// daftardagi oldingi qiymatga. Sayt orqali to'langan vaqt saqlanadi.
+async function revokeTransaction(env, userId, tx, source) {
+  const nowIso = new Date().toISOString();
+  const row = await ledgerRow(env, tx.transactionId);
+  let outcome = 'not_granted';
+  if (!row) {
+    await insertLedger(env, userId, tx, { prev: null, granted: null, didGrant: false, source, revokedAt: nowIso });
+  } else if (row.rolled_back_at) {
+    outcome = 'rolled_back';
+  } else {
+    if (Number(row.granted) === 1 && row.granted_premium_expires_at) {
+      const cur = await currentExpiry(env, userId);
+      const curMs = toMs(cur);
+      const gMs = toMs(row.granted_premium_expires_at);
+      const prev = row.prev_premium_expires_at ?? null;
+      if (Number.isFinite(curMs) && Number.isFinite(gMs) && Math.abs(curMs - gMs) <= ROLLBACK_TOLERANCE_MS) {
+        const res = await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ? AND premium_expires_at IS ?`)
+          .bind(prev, userId, cur).run();
+        outcome = Number(res?.meta?.changes || 0) ? 'rolled_back' : 'rollback_skipped';
+      } else {
+        outcome = 'rollback_skipped';
+      }
+    }
+    await env.DB.prepare(`UPDATE iap_apple_transactions SET revoked_at = COALESCE(revoked_at, ?),
+        rolled_back_at = CASE WHEN ? = 'rolled_back' THEN ? ELSE rolled_back_at END WHERE transaction_id = ?`)
+      .bind(nowIso, outcome, nowIso, tx.transactionId).run();
+  }
+  if (outcome === 'rollback_skipped') {
+    console.warn('iap apple: qaytarish o‘tkazib yuborildi (muddat keyin boshqa yo‘l bilan o‘zgargan)', `user#${userId}`, `tx=${tx.transactionId}`);
+  }
+  return { premium: false, reason: 'revoked', premiumExpiresAt: (await currentExpiry(env, userId)) ?? null, outcome };
+}
+
+// ═══ MARSHRUTLAR ═══
+
+async function readJson(request) {
+  const text = await request.text().catch(() => '');
+  if (!text || text.length > 128 * 1024) return null;
+  try { const v = JSON.parse(text); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; }
+  catch { return null; }
+}
+
+async function handleVerify(request, env, H) {
+  const user = await H.getCurrentUser(request, env);
+  if (!user) return H.json({ error: 'unauthorized' }, 401);
+  if (!iapAppleEnabled(env)) return H.json({ error: 'iap_disabled' }, 503);
+  if (await H.rateLimitD1(env, `iap_apple_verify:${user.id}`, VERIFY_RATE_LIMIT, VERIFY_RATE_WINDOW_MS)) {
+    return H.json({ error: 'too_many_requests' }, 429);
+  }
+  const body = await readJson(request);
+  const signed = body?.signedTransaction;
+  if (typeof signed !== 'string' || !signed) return H.json({ error: 'bad_request' }, 400);
+  let payload;
+  try { ({ payload } = await verifyJws(signed)); }
+  catch (e) {
+    console.warn('iap apple verify: imzo rad etildi', e?.code || e?.message);
+    return H.json({ error: 'invalid_signature' }, 400);
+  }
+  const { tx, problem } = normalizeTx(payload);
+  if (problem) return H.json({ error: problem }, 422);
+  await ensureSchema(env);
+  const myToken = await getOrCreateToken(env, user.id);
+  if (tx.appAccountToken && tx.appAccountToken !== String(myToken || '').toLowerCase()) {
+    return H.json({ error: 'account_mismatch' }, 403);
+  }
+  const owner = await bindOwner(env, tx, user.id);
+  if (owner !== Number(user.id)) return H.json({ error: 'already_linked' }, 409);
+  const r = await grantTransaction(env, user.id, tx, 'verify');
+  await touchSubscription(env, tx, r.premium ? 'active' : r.reason, null);
+  if (!r.premium) return H.json({ premium: false, reason: r.reason === 'revoked' ? 'revoked' : 'expired', premiumExpiresAt: r.premiumExpiresAt });
+  return H.json({ premium: true, premiumExpiresAt: r.premiumExpiresAt, productId: tx.productId, environment: tx.environment });
+}
+
+// Muddatni uzaytirishi mumkin bo'lgan turlar (tranzaksiya o'zi hal qiladi:
+// tugagan bo'lsa — berilmaydi, hech narsa olib tashlanmaydi).
+const APPLY_TYPES = new Set([
+  'SUBSCRIBED', 'DID_RENEW', 'DID_CHANGE_RENEWAL_STATUS', 'DID_CHANGE_RENEWAL_PREF', 'DID_FAIL_TO_RENEW',
+  'EXPIRED', 'GRACE_PERIOD_EXPIRED', 'OFFER_REDEEMED', 'RENEWAL_EXTENDED', 'REFUND_REVERSED', 'REFUND_DECLINED',
+  'PRICE_INCREASE',
+]);
+const REVOKE_TYPES = new Set(['REFUND', 'REVOKE']);
+
+class BadInnerSignature extends Error {}
+
+async function processNotification(env, p) {
+  const type = String(p.notificationType || '');
+  const data = p.data && typeof p.data === 'object' ? p.data : {};
+  const base = { type, subtype: p.subtype ? String(p.subtype) : null, environment: data.environment || null, otid: null, txid: null, userId: null };
+  if (type === 'TEST') return { ...base, result: 'test' };
+  if (data.bundleId && data.bundleId !== BUNDLE_ID) return { ...base, result: 'other_bundle' };
+  if (typeof data.signedTransactionInfo !== 'string') return { ...base, result: 'no_transaction' };
+  let txPayload, renewal = null;
+  try {
+    txPayload = (await verifyJws(data.signedTransactionInfo)).payload;
+    if (typeof data.signedRenewalInfo === 'string') renewal = (await verifyJws(data.signedRenewalInfo)).payload;
+  } catch (e) {
+    throw new BadInnerSignature(e?.code || 'inner');
+  }
+  const { tx, problem } = normalizeTx(txPayload);
+  if (problem) return { ...base, result: problem };
+  Object.assign(base, { otid: tx.originalTransactionId, txid: tx.transactionId, environment: tx.environment || base.environment });
+
+  // Kim? Avval bog'lanish, bo'lmasa appAccountToken → bog'laymiz.
+  let userId = await ownerOf(env, tx.originalTransactionId);
+  if (!userId && tx.appAccountToken) {
+    const byToken = await userIdByToken(env, tx.appAccountToken);
+    if (byToken) userId = await bindOwner(env, tx, byToken);
+  }
+  if (!userId) {
+    console.warn('iap apple notification: foydalanuvchi topilmadi', type, `otid=${tx.originalTransactionId}`);
+    return { ...base, result: 'unknown_user' };
+  }
+  base.userId = userId;
+  let result;
+  if (REVOKE_TYPES.has(type) || tx.revocationDate) {
+    result = (await revokeTransaction(env, userId, tx, `notification:${type}`)).outcome;
+  } else if (APPLY_TYPES.has(type)) {
+    if (type === 'REFUND_REVERSED') {
+      // Pul qaytarish bekor qilindi — tranzaksiya yana kuchda.
+      // Daftardagi qaytarilgan qator olib tashlanadi — pastda yangidan yoziladi.
+      await env.DB.prepare(`DELETE FROM iap_apple_transactions WHERE transaction_id = ? AND revoked_at IS NOT NULL`)
+        .bind(tx.transactionId).run();
+    }
+    const r = await grantTransaction(env, userId, tx, `notification:${type}`);
+    result = r.premium ? 'granted' : r.reason;
+  } else {
+    result = 'ignored';
+  }
+  await touchSubscription(env, tx, type.toLowerCase(), renewal);
+  return { ...base, result };
+}
+
+async function handleNotification(request, env, H) {
+  const body = await readJson(request);
+  if (typeof body?.signedPayload !== 'string' || !body.signedPayload) return H.json({ error: 'bad_request' }, 400);
+  let payload;
+  try { ({ payload } = await verifyJws(body.signedPayload)); }
+  catch (e) {
+    console.warn('iap apple notification: imzo rad etildi', e?.code || e?.message);
+    return H.json({ error: 'invalid_signature' }, 400);
+  }
+  const uuid = typeof payload.notificationUUID === 'string' ? payload.notificationUUID.slice(0, 80) : '';
+  if (!uuid) return H.json({ error: 'bad_request' }, 400);
+  await ensureSchema(env);
+  const seen = await env.DB.prepare(`SELECT result FROM iap_apple_notifications WHERE notification_uuid = ?`).bind(uuid).first();
+  if (seen) return H.json({ ok: true, duplicate: true, result: seen.result });
+  let r;
+  try { r = await processNotification(env, payload); }
+  catch (e) {
+    if (e instanceof BadInnerSignature) {
+      console.warn('iap apple notification: ichki imzo rad etildi', e.message);
+      return H.json({ error: 'invalid_signature' }, 400);
+    }
+    throw e; // baza xatosi — worker 503 beradi, Apple qayta yuboradi
+  }
+  await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_notifications
+      (notification_uuid, notification_type, subtype, environment, original_transaction_id, transaction_id, user_id, result, received_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(uuid, r.type, r.subtype, r.environment, r.otid, r.txid, r.userId, r.result, new Date().toISOString()).run();
+  return H.json({ ok: true, result: r.result });
+}
+
+export async function handle(request, env, url, H) {
+  const p = url.pathname;
+  if (!p.startsWith('/api/iap/apple/')) return null;
+  const m = request.method;
+  if (p === '/api/iap/apple/config') {
+    if (m !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    return H.json({ enabled: iapAppleEnabled(env), products: PRODUCTS });
+  }
+  if (p === '/api/iap/apple/account-token') {
+    if (m !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    const user = await H.getCurrentUser(request, env);
+    if (!user) return H.json({ error: 'unauthorized' }, 401);
+    await ensureSchema(env);
+    return H.json({ token: await getOrCreateToken(env, user.id) });
+  }
+  if (p === '/api/iap/apple/verify') {
+    if (m !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);
+    return handleVerify(request, env, H);
+  }
+  if (p === '/api/iap/apple/notifications') {
+    if (m !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);
+    return handleNotification(request, env, H);
+  }
+  return null;
+}

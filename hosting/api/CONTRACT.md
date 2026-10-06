@@ -25,11 +25,11 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
-`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `marketplace`
+`demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `iap-apple`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
 Yordamchi (marshrutsiz) modullar: `carousel`, `product-tags`, `post-contact`,
-`scheduled-posts` — lenta va post yo'llari ularni chaqiradi.
+`scheduled-posts`, `apple-jws` (Apple JWS imzosi — `iap-apple` chaqiradi) — lenta va post yo'llari ularni chaqiradi.
 
 `catalog-feed` — ilova "Tanlov" katalogi, BARCHA bizneslarning
 mahsulot va xizmatlari: `GET /api/catalog/feed` (`page`, `limit`,
@@ -197,3 +197,19 @@ tegmaydi). Mobil ilovaning uchma-uch testi shunga ulanadi:
 `POST /api/admin/legal/hold {userId, hold, note}` (hold=true — `note` majburiy; olib tashlash faqat super_admin; `account_legal_holds`);
 `GET /api/admin/legal/export?userId=&format=json` → `{format, generatedAt, generatedBy, subject, items (≤5000), total, truncated}`.
 Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`, `legal_export`).
+
+`iap-apple` — iOS Premium obunasi, Apple In-App Purchase (StoreKit 2). Bayroq
+`IAP_APPLE_ENABLED=1` (boshqa qiymat — o'chiq; standart o'chiq). Bundle
+`uz.nfcstore.nova`, mahsulotlar `uz.nfcstore.nova.premium.monthly|yearly`.
+`GET /api/iap/apple/config` → `{enabled, products}`;
+`GET /api/iap/apple/account-token` (auth, 401) → `{token}` (barqaror UUID v4 → `appAccountToken`);
+`POST /api/iap/apple/verify {signedTransaction}` (auth) → `{premium:true, premiumExpiresAt, productId, environment}`
+yoki `{premium:false, reason:'expired'|'revoked', premiumExpiresAt}`; xatolar: 503 `iap_disabled`,
+400 `bad_request`|`invalid_signature`, 422 `wrong_bundle`|`unknown_product`|`wrong_type`|`bad_transaction`,
+403 `account_mismatch`, 409 `already_linked`, 429 `too_many_requests`;
+`POST /api/iap/apple/notifications {signedPayload}` (kirishsiz, App Store Server Notifications V2,
+bayroq o'chiq bo'lsa ham) → 200 `{ok, result}` | 400. JWS — `apple-jws.js` (Apple Root CA - G3 pin,
+zanjir, OID, muddat, ES256). Muddat `users.premium_expires_at = max(joriy, expiresDate)`;
+REFUND/REVOKE faqat Apple bergan qiymatni (±2 s) daftardagi oldingisiga qaytaradi — sayt
+(Payme/Click) vaqti olinmaydi. Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`,
+`iap_apple_transactions`, `iap_apple_notifications`. Test: `scripts/test-iap-apple.mjs`, `scripts/test-apple-jws.mjs`.
