@@ -69,6 +69,7 @@ void main() {
     Routes.settingsReferral,
     Routes.settingsPremium,
     Routes.premium,
+    Routes.boostCredits,
     Routes.settingsSupport,
     Routes.settingsAbout,
     Routes.settingsNews,

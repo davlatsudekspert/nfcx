@@ -3276,4 +3276,123 @@ class LRu extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get boostAction => 'Продвинуть';
+
+  @override
+  String get boostTitle => 'Продвижение поста';
+
+  @override
+  String get boostExplain =>
+      'Ваш пост увидит больше людей в ленте в разделе «Рекомендуемое».';
+
+  @override
+  String boostDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days дня',
+      many: '$days дней',
+      few: '$days дня',
+      one: '$days день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostSoldOut(String time) {
+    return 'Мест нет — освободится $time';
+  }
+
+  @override
+  String get boostSoldOutLater => 'Мест нет — попробуйте позже';
+
+  @override
+  String get boostNotOpen => 'Скоро откроется';
+
+  @override
+  String boostPriority(String time) {
+    return 'Сейчас очередь занята — попробуйте после $time';
+  }
+
+  @override
+  String boostAlready(String time) {
+    return 'Этот пост уже продвигается, до: $time';
+  }
+
+  @override
+  String boostTooMany(int max) {
+    return 'Одновременно можно продвигать не более $max постов.';
+  }
+
+  @override
+  String get boostScheduled => 'Запланированный пост пока нельзя продвигать.';
+
+  @override
+  String boostActiveDone(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Пост продвигается $days дня',
+      many: 'Пост продвигается $days дней',
+      few: 'Пост продвигается $days дня',
+      one: 'Пост продвигается $days день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostEndsAt(String time) {
+    return 'До: $time';
+  }
+
+  @override
+  String get boostCredited =>
+      'Оплата сохранена — используйте, когда освободится место';
+
+  @override
+  String get boostRevoked => 'Этот платёж отменён.';
+
+  @override
+  String get boostCredits => 'Кредиты продвижения';
+
+  @override
+  String get boostCreditsOpen => 'К кредитам';
+
+  @override
+  String get boostUse => 'Использовать';
+
+  @override
+  String get boostCreditsEmpty => 'Неиспользованных кредитов нет.';
+
+  @override
+  String get boostPickPost => 'Выберите пост';
+
+  @override
+  String get boostPickEmpty => 'Нет постов для продвижения.';
+
+  @override
+  String get boostPaymentNote =>
+      'Оплата спишется с вашего Apple ID. Это разовая покупка без автопродления.';
+
+  @override
+  String get boostErrInProgress =>
+      'Покупка ещё проверяется. Откройте снова чуть позже.';
+
+  @override
+  String get boostErrIntentForbidden =>
+      'Не удалось привязать покупку к этому посту. При следующем запуске приложение сохранит её как кредит.';
+
+  @override
+  String get boostErrNotFound => 'Пост не найден.';
+
+  @override
+  String get boostErrCreditUsed => 'Этот кредит уже использован.';
+
+  @override
+  String get boostErrCreditRevoked => 'Этот кредит отменён.';
+
+  @override
+  String get boostErrCreditNotFound => 'Кредит не найден.';
 }

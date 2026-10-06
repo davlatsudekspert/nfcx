@@ -77,6 +77,10 @@ class _Store implements IapStore {
   }
 
   @override
+  Future<void> buyConsumable(String productId, {String? accountToken}) =>
+      buy(productId, accountToken: accountToken);
+
+  @override
   Future<void> restore() async {
     _log.add('restore');
     if (restorable.isNotEmpty) emit(restorable);

@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import '../auth/session.dart';
 import '../home/widgets/avatar.dart';
+import '../premium/boost_controller.dart' show boostCreditsProvider;
 import '../premium/iap_controller.dart'
     show iapEnabledProvider, iapTrialDaysLeft;
 import '../shop/store_policy.dart';
@@ -152,6 +153,15 @@ class SettingsScreen extends ConsumerWidget {
                   null => null,
                 },
                 onTap: () => context.push(Routes.premium),
+              ),
+            // KO'TARISH KREDITLARI — iPhone + kalit va kredit BOR bo'lsa.
+            if (ref.watch(boostCreditsProvider).valueOrNull?.isNotEmpty ??
+                false)
+              SettingsItem(
+                icon: Icons.trending_up_rounded,
+                label: l.boostCredits,
+                value: '${ref.watch(boostCreditsProvider).value!.length}',
+                onTap: () => context.push(Routes.boostCredits),
               ),
           ]),
           SectionHeader(color: t.text2, title: l.settingsAppearance),

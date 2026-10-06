@@ -3236,4 +3236,119 @@ class LUz extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get boostAction => 'Ko‘tarish';
+
+  @override
+  String get boostTitle => 'Postni ko‘tarish';
+
+  @override
+  String get boostExplain =>
+      'Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.';
+
+  @override
+  String boostDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days kun',
+      one: '1 kun',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostSoldOut(String time) {
+    return 'Joylar band — $time da bo‘shaydi';
+  }
+
+  @override
+  String get boostSoldOutLater => 'Joylar band — keyinroq urinib ko‘ring';
+
+  @override
+  String get boostNotOpen => 'Tez orada ochiladi';
+
+  @override
+  String boostPriority(String time) {
+    return 'Hozircha navbat band — $time dan keyin urinib ko‘ring';
+  }
+
+  @override
+  String boostAlready(String time) {
+    return 'Bu post hozir ko‘tarilgan, tugashi: $time';
+  }
+
+  @override
+  String boostTooMany(int max) {
+    return 'Bir vaqtda ko‘pi bilan $max ta post ko‘tarilishi mumkin.';
+  }
+
+  @override
+  String get boostScheduled =>
+      'Rejalashtirilgan postni hali ko‘tarib bo‘lmaydi.';
+
+  @override
+  String boostActiveDone(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Postingiz $days kun davomida ko‘tarildi',
+      one: 'Postingiz 1 kun davomida ko‘tarildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostEndsAt(String time) {
+    return 'Tugashi: $time';
+  }
+
+  @override
+  String get boostCredited => 'To‘lov saqlandi — joy bo‘shaganda ishlating';
+
+  @override
+  String get boostRevoked => 'Bu to‘lov bekor qilingan.';
+
+  @override
+  String get boostCredits => 'Ko‘tarish kreditlari';
+
+  @override
+  String get boostCreditsOpen => 'Kreditlarga o‘tish';
+
+  @override
+  String get boostUse => 'Ishlatish';
+
+  @override
+  String get boostCreditsEmpty => 'Ishlatilmagan kredit yo‘q.';
+
+  @override
+  String get boostPickPost => 'Postni tanlang';
+
+  @override
+  String get boostPickEmpty => 'Ko‘tariladigan post yo‘q.';
+
+  @override
+  String get boostPaymentNote =>
+      'To‘lov Apple ID hisobingizdan yechiladi. Bu bir martalik xarid, avtomatik yangilanmaydi.';
+
+  @override
+  String get boostErrInProgress =>
+      'Xarid hali tekshirilmoqda. Birozdan keyin qayta oching.';
+
+  @override
+  String get boostErrIntentForbidden =>
+      'Xaridni bu postga bog‘lab bo‘lmadi. Ilova keyingi ochilishda uni kredit sifatida saqlaydi.';
+
+  @override
+  String get boostErrNotFound => 'Post topilmadi.';
+
+  @override
+  String get boostErrCreditUsed => 'Bu kredit allaqachon ishlatilgan.';
+
+  @override
+  String get boostErrCreditRevoked => 'Bu kredit bekor qilingan.';
+
+  @override
+  String get boostErrCreditNotFound => 'Kredit topilmadi.';
 }

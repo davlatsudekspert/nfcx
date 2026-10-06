@@ -41,6 +41,8 @@ import '../shop/store_policy.dart';
 import 'music_picker.dart';
 import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
+import '../premium/boost_controller.dart' show iapBoostEnabledProvider;
+import '../premium/boost_sheet.dart' show showBoostSheet;
 
 /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
 typedef PostRef = ({String code, int id, bool company});
@@ -278,6 +280,20 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     // xaridi, narx va sayt yozuvisiz u bo'sh qoladi
                     // (`store_policy.dart`). Ko'tarilgan postlar
                     // lentada iPhone'da ham ko'rinadi.
+                    //
+                    // iPhone'da — Apple consumable orqali "Ko'tarish"
+                    // varag'i, faqat server kaliti (`boostEnabled`)
+                    // yoqilganda. Kalit o'chiq — hech narsa.
+                    if (isAppStoreBuild &&
+                        ref.watch(iapBoostEnabledProvider) &&
+                        !p.isStory)
+                      NovaIconButton(
+                        key: const ValueKey('post-boost'),
+                        icon: Icons.trending_up_rounded,
+                        tooltip: l.boostAction,
+                        size: 38,
+                        onPressed: () => showBoostSheet(context, ref, p),
+                      ),
                     if (!isAppStoreBuild)
                       NovaIconButton(
                         icon: Icons.trending_up_rounded,

@@ -178,6 +178,10 @@ abstract final class Routes {
   /// kaliti yoqilganda (`features/premium/`); aks holda Sozlamalarga
   /// buriladi.
   static const premium = '/premium';
+
+  /// "Ko'tarish kreditlari" — Apple consumable bilan to'langan, lekin
+  /// hali ishlatilmagan ko'tarishlar. Faqat iPhone + `boostEnabled`.
+  static const boostCredits = '/boost/credits';
   static const settingsSupport = '/settings/support';
 
   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —

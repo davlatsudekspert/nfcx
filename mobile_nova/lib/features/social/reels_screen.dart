@@ -37,6 +37,8 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import '../profile/music_player.dart';
 import '../../design/icons/nova_icons.dart';
+import '../premium/boost_controller.dart' show iapBoostEnabledProvider;
+import '../premium/boost_sheet.dart' show showBoostSheet;
 
 /// Ovoz o'chirilganmi — BUTUN lenta uchun bitta holat.
 ///
@@ -1934,6 +1936,21 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                 );
               },
             ),
+            // KO'TARISH — faqat O'Z reelim, iPhone va `boostEnabled`
+            // (Apple consumable). Android va kalit o'chiq — yo'q.
+            if (ref.read(isMineProvider(p.code)) &&
+                !p.isStory &&
+                p.id > 0 &&
+                ref.read(iapBoostEnabledProvider))
+              ListTile(
+                key: const ValueKey('reel-boost'),
+                leading: const Icon(Icons.trending_up_rounded),
+                title: Text(l.boostAction),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  showBoostSheet(context, ref, p);
+                },
+              ),
             // QIZIQ EMAS — reel shu ro'yxatdan darhol olinadi (Instagram
             // kabi) va serverga aytiladi (`/api/reels/hide`). Javob
             // kutilmaydi, xatosi ko'rsatilmaydi: eski serverda bu manzil

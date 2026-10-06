@@ -91,6 +91,11 @@ abstract class IapStore {
   /// [accountToken] — server bergan UUID (StoreKit 2 `appAccountToken`).
   Future<void> buy(String productId, {String? accountToken});
 
+  /// Bir martalik (consumable) xarid — "Ko'tarish" paketlari. Natija
+  /// [purchases] oqimiga keladi; server javobidan keyin [complete]
+  /// SHART (aks holda StoreKit uni qayta-qayta beradi).
+  Future<void> buyConsumable(String productId, {String? accountToken});
+
   /// Faol obunalarni qayta yuboradi ([IapPurchaseStatus.restored]).
   Future<void> restore();
 
@@ -172,6 +177,18 @@ class StoreKitIapStore implements IapStore {
         // server tranzaksiyani shu hisobga bog'laydi.
         applicationUserName: accountToken,
       ),
+    );
+  }
+
+  @override
+  Future<void> buyConsumable(String productId, {String? accountToken}) async {
+    final d = _details[productId];
+    if (d == null) {
+      throw PlatformException(code: 'product_not_loaded', message: productId);
+    }
+    await _platform.buyConsumable(
+      purchaseParam:
+          PurchaseParam(productDetails: d, applicationUserName: accountToken),
     );
   }
 

@@ -10,6 +10,7 @@ import 'providers.dart';
 import '../features/settings/app_lock.dart';
 import '../features/auth/session.dart';
 import '../features/premium/iap_controller.dart' show iapWatcherProvider;
+import '../features/premium/boost_controller.dart' show boostWatcherProvider;
 import 'ui_scale.dart';
 
 class NovaApp extends ConsumerWidget {
@@ -26,6 +27,8 @@ class NovaApp extends ConsumerWidget {
     // tranzaksiyalari ilova ochilishidanoq tinglanadi
     // (`features/premium/iap_controller.dart`). Android'da hech narsa.
     ref.watch(iapWatcherProvider);
+    // "Ko'tarish" (consumable) — ochiq tranzaksiyalar kredit bo'ladi.
+    ref.watch(boostWatcherProvider);
 
     final tokens = ref.watch(themeProvider);
     final locale = ref.watch(localeProvider);

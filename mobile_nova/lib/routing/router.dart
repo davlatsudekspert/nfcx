@@ -39,6 +39,8 @@ import '../features/settings/analytics_screen.dart';
 import '../features/settings/settings_subscreens.dart';
 import '../features/premium/iap_controller.dart' show iapEnabledProvider;
 import '../features/premium/premium_iap_screen.dart';
+import '../features/premium/boost_controller.dart' show iapBoostEnabledProvider;
+import '../features/premium/boost_sheet.dart' show BoostCreditsScreen;
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
@@ -490,6 +492,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           redirect: (_, __) =>
               ref.read(iapEnabledProvider) ? null : Routes.settings,
           builder: (_, __) => const PremiumIapScreen()),
+      // KO'TARISH KREDITLARI — faqat iPhone + `boostEnabled`.
+      GoRoute(
+          path: Routes.boostCredits,
+          redirect: (_, __) =>
+              ref.read(iapBoostEnabledProvider) ? null : Routes.settings,
+          builder: (_, __) => const BoostCreditsScreen()),
 
       // Bildirishnomalar va sozlamalar
       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),

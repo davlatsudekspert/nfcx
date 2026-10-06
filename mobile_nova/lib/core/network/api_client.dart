@@ -435,7 +435,11 @@ class ApiClient {
     };
 
     if (kind == AppErrorKind.unauthorized) _onUnauthorized(path);
-    return AppError(kind, code: code, detail: detail, status: status);
+    return AppError(kind,
+        code: code,
+        detail: detail,
+        status: status,
+        data: map.isEmpty ? null : map);
   }
 
   /// SESSIYA TUGAGANINI BOSHQA QATLAM ANIQLAGANDA.

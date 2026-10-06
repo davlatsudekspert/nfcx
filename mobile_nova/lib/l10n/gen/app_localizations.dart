@@ -5960,6 +5960,174 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
   String iapTrialSettings(int days);
+
+  /// No description provided for @boostAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘tarish'**
+  String get boostAction;
+
+  /// No description provided for @boostTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postni ko‘tarish'**
+  String get boostTitle;
+
+  /// No description provided for @boostExplain.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.'**
+  String get boostExplain;
+
+  /// No description provided for @boostDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days, plural, =1{1 kun} other{{days} kun}}'**
+  String boostDays(int days);
+
+  /// No description provided for @boostSoldOut.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joylar band — {time} da bo‘shaydi'**
+  String boostSoldOut(String time);
+
+  /// No description provided for @boostSoldOutLater.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joylar band — keyinroq urinib ko‘ring'**
+  String get boostSoldOutLater;
+
+  /// No description provided for @boostNotOpen.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tez orada ochiladi'**
+  String get boostNotOpen;
+
+  /// No description provided for @boostPriority.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha navbat band — {time} dan keyin urinib ko‘ring'**
+  String boostPriority(String time);
+
+  /// No description provided for @boostAlready.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu post hozir ko‘tarilgan, tugashi: {time}'**
+  String boostAlready(String time);
+
+  /// No description provided for @boostTooMany.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bir vaqtda ko‘pi bilan {max} ta post ko‘tarilishi mumkin.'**
+  String boostTooMany(int max);
+
+  /// No description provided for @boostScheduled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rejalashtirilgan postni hali ko‘tarib bo‘lmaydi.'**
+  String get boostScheduled;
+
+  /// No description provided for @boostActiveDone.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days, plural, =1{Postingiz 1 kun davomida ko‘tarildi} other{Postingiz {days} kun davomida ko‘tarildi}}'**
+  String boostActiveDone(int days);
+
+  /// No description provided for @boostEndsAt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tugashi: {time}'**
+  String boostEndsAt(String time);
+
+  /// No description provided for @boostCredited.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov saqlandi — joy bo‘shaganda ishlating'**
+  String get boostCredited;
+
+  /// No description provided for @boostRevoked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu to‘lov bekor qilingan.'**
+  String get boostRevoked;
+
+  /// No description provided for @boostCredits.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘tarish kreditlari'**
+  String get boostCredits;
+
+  /// No description provided for @boostCreditsOpen.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kreditlarga o‘tish'**
+  String get boostCreditsOpen;
+
+  /// No description provided for @boostUse.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ishlatish'**
+  String get boostUse;
+
+  /// No description provided for @boostCreditsEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ishlatilmagan kredit yo‘q.'**
+  String get boostCreditsEmpty;
+
+  /// No description provided for @boostPickPost.
+  ///
+  /// In uz, this message translates to:
+  /// **'Postni tanlang'**
+  String get boostPickPost;
+
+  /// No description provided for @boostPickEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘tariladigan post yo‘q.'**
+  String get boostPickEmpty;
+
+  /// No description provided for @boostPaymentNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'To‘lov Apple ID hisobingizdan yechiladi. Bu bir martalik xarid, avtomatik yangilanmaydi.'**
+  String get boostPaymentNote;
+
+  /// No description provided for @boostErrInProgress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xarid hali tekshirilmoqda. Birozdan keyin qayta oching.'**
+  String get boostErrInProgress;
+
+  /// No description provided for @boostErrIntentForbidden.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xaridni bu postga bog‘lab bo‘lmadi. Ilova keyingi ochilishda uni kredit sifatida saqlaydi.'**
+  String get boostErrIntentForbidden;
+
+  /// No description provided for @boostErrNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post topilmadi.'**
+  String get boostErrNotFound;
+
+  /// No description provided for @boostErrCreditUsed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kredit allaqachon ishlatilgan.'**
+  String get boostErrCreditUsed;
+
+  /// No description provided for @boostErrCreditRevoked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kredit bekor qilingan.'**
+  String get boostErrCreditRevoked;
+
+  /// No description provided for @boostErrCreditNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kredit topilmadi.'**
+  String get boostErrCreditNotFound;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -22,7 +22,7 @@ enum AppErrorKind {
 }
 
 class AppError implements Exception {
-  const AppError(this.kind, {this.code, this.detail, this.status});
+  const AppError(this.kind, {this.code, this.detail, this.status, this.data});
 
   /// Server qaytargan kalit: `bad_credentials`, `email_taken`, ...
   final String? code;
@@ -32,6 +32,10 @@ class AppError implements Exception {
   final String? detail;
   final int? status;
   final AppErrorKind kind;
+
+  /// Xato javobining qolgan maydonlari (masalan `sold_out` da
+  /// `nextFreeAt`, `already_featured` da `slotId`). Bo'lmasa `null`.
+  final Map<String, dynamic>? data;
 
   bool get isAuth => kind == AppErrorKind.unauthorized;
   bool get isOffline => kind == AppErrorKind.offline;

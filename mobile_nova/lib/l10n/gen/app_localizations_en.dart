@@ -3257,4 +3257,118 @@ class LEn extends L {
     );
     return '$_temp0';
   }
+
+  @override
+  String get boostAction => 'Boost';
+
+  @override
+  String get boostTitle => 'Boost post';
+
+  @override
+  String get boostExplain =>
+      'Your post is shown to more people in the feed as «Recommended».';
+
+  @override
+  String boostDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostSoldOut(String time) {
+    return 'All slots are taken — one frees up at $time';
+  }
+
+  @override
+  String get boostSoldOutLater => 'All slots are taken — please try later';
+
+  @override
+  String get boostNotOpen => 'Opening soon';
+
+  @override
+  String boostPriority(String time) {
+    return 'The queue is busy — try again after $time';
+  }
+
+  @override
+  String boostAlready(String time) {
+    return 'This post is already boosted, ends: $time';
+  }
+
+  @override
+  String boostTooMany(int max) {
+    return 'You can boost at most $max posts at a time.';
+  }
+
+  @override
+  String get boostScheduled => 'A scheduled post can’t be boosted yet.';
+
+  @override
+  String boostActiveDone(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Your post is boosted for $days days',
+      one: 'Your post is boosted for 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String boostEndsAt(String time) {
+    return 'Ends: $time';
+  }
+
+  @override
+  String get boostCredited => 'Payment saved — use it when a slot frees up';
+
+  @override
+  String get boostRevoked => 'This payment was cancelled.';
+
+  @override
+  String get boostCredits => 'Boost credits';
+
+  @override
+  String get boostCreditsOpen => 'Go to credits';
+
+  @override
+  String get boostUse => 'Use';
+
+  @override
+  String get boostCreditsEmpty => 'No unused credits.';
+
+  @override
+  String get boostPickPost => 'Choose a post';
+
+  @override
+  String get boostPickEmpty => 'No posts to boost.';
+
+  @override
+  String get boostPaymentNote =>
+      'Payment is charged to your Apple ID. This is a one-time purchase and does not renew.';
+
+  @override
+  String get boostErrInProgress =>
+      'The purchase is still being checked. Please reopen in a moment.';
+
+  @override
+  String get boostErrIntentForbidden =>
+      'The purchase could not be linked to this post. The app will save it as a credit next time it opens.';
+
+  @override
+  String get boostErrNotFound => 'Post not found.';
+
+  @override
+  String get boostErrCreditUsed => 'This credit has already been used.';
+
+  @override
+  String get boostErrCreditRevoked => 'This credit was cancelled.';
+
+  @override
+  String get boostErrCreditNotFound => 'Credit not found.';
 }

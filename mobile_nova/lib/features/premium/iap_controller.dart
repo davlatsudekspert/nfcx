@@ -48,6 +48,14 @@ final iapEnabledProvider = Provider<bool>((ref) {
   return ref.watch(iapConfigProvider).valueOrNull?.enabled ?? false;
 });
 
+/// "Ko'tarish" (consumable) mahsulotimi — ular `BoostController` da
+/// (`boost_controller.dart`), Premium oqimi ularga tegmaydi.
+const kBoostProductPrefix = 'uz.nfcstore.nova.boost.';
+
+bool isBoostProductId(String id, [IapConfig? cfg]) =>
+    id.startsWith(kBoostProductPrefix) ||
+    (cfg?.boostProducts.any((b) => b.productId == id) ?? false);
+
 /// Ekranda ko'rsatiladigan natija.
 enum IapNotice {
   /// Server tasdiqladi — Premium faol.
@@ -265,8 +273,11 @@ class IapController extends StateNotifier<IapState> {
   }
 
   Future<void> _onPurchases(List<IapPurchase> list) async {
+    final cfg = _ref.read(iapConfigProvider).valueOrNull;
     for (final p in list) {
       if (!mounted) return;
+      // Ko'tarish xaridlari — boshqa oqim (`BoostController`).
+      if (isBoostProductId(p.productId, cfg)) continue;
       switch (p.status) {
         case IapPurchaseStatus.pending:
           state = state.copyWith(
