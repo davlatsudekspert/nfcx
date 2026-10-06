@@ -83,4 +83,15 @@ const get = async (path, method = 'GET') => {
   checkTrue('4) /post/abc bu ishlovchiga tushmaydi', !r.html.includes('Post topilmadi'));
 }
 
+// ═══ 5. iOS Universal Links fayli ═══
+{
+  const res = await worker.fetch(req('/.well-known/apple-app-site-association'), env);
+  check('5) AASA 200 + application/json', [res.status, res.headers.get('content-type')], [200, 'application/json']);
+  const j = await res.json();
+  const d = j.applinks.details[0];
+  check('5) ilova ID', d.appIDs, ['5Z9CT2W378.uz.nfcstore.nova']);
+  checkTrue('5) /post/* ilovaga', d.components.some((c) => c['/'] === '/post/*'));
+  checkTrue('5) sayt bosh sahifasi ilovaga emas', !d.components.some((c) => c['/'] === '/*' || c['/'] === '/'));
+}
+
 done();

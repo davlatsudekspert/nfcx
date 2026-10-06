@@ -231,7 +231,7 @@ async function userDetail(env, H, id, now) {
   const nowIso = new Date(now).toISOString();
   const cardCols = await columnSet(env, 'cards');
   const cPick = (c) => (cardCols.has(c) ? c : `NULL AS ${c}`);
-  const [cards, companies, orders, physical, support, app, reports] = await Promise.all([
+  const [cards, companies, orders, physical, support, app, reports, hold] = await Promise.all([
     all(env, `SELECT code, name, ${cPick('profile_type')}, ${cPick('verified')}, ${cPick('tier_override')}, ${cPick('is_primary')}, views, created_at
       FROM cards WHERE user_id = ? ORDER BY ${cardCols.has('is_primary') ? 'is_primary DESC, ' : ''}ts ASC`, id),
     t.has('companies') ? all(env, `SELECT company_id, display_name, status, plan, created_at FROM companies WHERE CAST(owner_user_id AS TEXT) = CAST(? AS TEXT) ORDER BY created_at DESC`, id) : [],
@@ -242,6 +242,8 @@ async function userDetail(env, H, id, now) {
     all(env, `SELECT id, message, reply, status, created_at FROM support_messages WHERE user_id = ? ORDER BY id DESC LIMIT 10`, id),
     t.has('app_users') ? one(env, `SELECT platform, first_seen, last_seen, opens FROM app_users WHERE user_id = ?`, id) : null,
     t.has('content_reports') ? one(env, `SELECT COUNT(*) AS n FROM content_reports WHERE owner_code IN (SELECT code FROM cards WHERE user_id = ?) AND status IN ('new','reviewing')`, id) : null,
+    // Huquqiy so'rov belgisi (legal-requests.js) — kartochkada ko'rinadi.
+    t.has('account_legal_holds') ? one(env, `SELECT note, set_by, set_at FROM account_legal_holds WHERE user_id = ?`, id) : null,
   ]);
   const p = premiumState(u, nowIso);
   const paid = orders.filter((o) => o.status === 'paid');
@@ -265,6 +267,7 @@ async function userDetail(env, H, id, now) {
     support: support.map((s) => ({ id: s.id, message: s.message, reply: s.reply, status: s.status, createdAt: s.created_at })),
     app: app ? { platform: app.platform, firstSeen: app.first_seen, lastSeen: app.last_seen, opens: num(app.opens) } : null,
     openReports: num(reports?.n),
+    legalHold: hold ? { note: String(hold.note || ''), by: String(hold.set_by || ''), at: hold.set_at || null } : null,
   };
 }
 

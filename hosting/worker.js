@@ -18,10 +18,12 @@ import * as apiComments from './api/comments.js';
 import * as apiMyAnalytics from './api/my-analytics.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
+import { applyLaunchTrialExtension } from './api/trial-promo.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
 import * as apiContentArchive from './api/content-archive.js';
+import * as apiLegalRequests from './api/legal-requests.js';
 import * as apiAppUsage from './api/app-usage.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
@@ -3006,9 +3008,19 @@ export function usersHaveTrialColumnsD1() {
   return hasColumnD1('users', 'trial_expires_at') && hasColumnD1('users', 'premium_expires_at');
 }
 
-// SINOV MUDDATI — 30 kun.
-const TRIAL_DAYS = 30;
-export const trialEndsAtD1 = (from = new Date()) => new Date(from.getTime() + TRIAL_DAYS * 86400_000).toISOString();
+// SINOV MUDDATI — odatda 30 kun.
+//
+// ISHGA TUSHIRISH AKSIYASI (egasining qarori, 2026-10): 2026-12-31
+// 23:59:59 Toshkent vaqtigacha (= 18:59:59Z) yaratilgan foydalanuvchi va
+// kompaniyaga 90 kun, undan keyin yaratilganlarga yana 30 kun. Sana
+// YARATILISH paytiga qarab hisoblanadi — shuning uchun `from` beriladi.
+// Muddati NULL (eski) hisoblarga bu umuman tegmaydi.
+export const TRIAL_DAYS_DEFAULT = 30;
+export const TRIAL_DAYS_LAUNCH = 90;
+export const LAUNCH_PROMO_UNTIL = '2026-12-31T18:59:59.999Z';
+export const trialDaysForD1 = (from = new Date()) =>
+  (from.getTime() <= Date.parse(LAUNCH_PROMO_UNTIL) ? TRIAL_DAYS_LAUNCH : TRIAL_DAYS_DEFAULT);
+export const trialEndsAtD1 = (from = new Date()) => new Date(from.getTime() + trialDaysForD1(from) * 86400_000).toISOString();
 // Premium obunasi — 1 oy (30 kun). Mavjud muddat tugamagan bo'lsa,
 // yangi to'lov uning USTIGA qo'shiladi (odam ikki marta to'lab,
 // bir oyni yo'qotmasin).
@@ -8331,6 +8343,8 @@ async function resetRateLimitD1(env, key) {
 const SUPPORT_STATUSES = ['pending', 'replied', 'resolved', 'planned'];
 const SUPPORT_REPLY_STATUSES = ['replied', 'resolved', 'planned'];
 const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
+// `/api/admin/users?plan=` — ruxsat etilgan qiymatlar (boshqasi e'tiborsiz).
+const ADMIN_USER_PLANS = ['premium', 'trial', 'trial_expired', 'free'];
 function roleAtLeast(admin, role) { return (ADMIN_ROLE_RANK[admin?.role] || 0) >= (ADMIN_ROLE_RANK[role] || 99); }
 
 // 2026-09 hotfix: bu limitlar avval BITTA umumiy `ip` kaliti ostida
@@ -10013,8 +10027,32 @@ async function adminCoreApi(request, env, url, admin) {
     const q = cleanStr(url.searchParams.get('q'), 60).toLowerCase();
     const limit = Math.min(500, Math.max(20, Number(url.searchParams.get('limit')) || 200));
     const trial = usersHaveTrialColumnsD1();
-    const where = q ? `WHERE LOWER(email) LIKE ? OR phone LIKE ? OR EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND LOWER(cq.code) LIKE ?)` : '';
-    const binds = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+    const nowIso = new Date().toISOString();
+    const conds = [];
+    const binds = [];
+    if (q) {
+      conds.push(`(LOWER(email) LIKE ? OR phone LIKE ? OR EXISTS (SELECT 1 FROM cards cq WHERE cq.user_id = users.id AND LOWER(cq.code) LIKE ?))`);
+      binds.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    }
+    // TARIF FILTRI (2026-10) — serverda, faqat ro'yxatdagi qiymatlar:
+    //   premium        — Premium faol (eski muddatsiz yoki muddati kelajakda);
+    //   trial          — Premium yo'q, bepul sinov davom etyapti;
+    //   trial_expired  — Premium yo'q, sinov BOR EDI va tugagan;
+    //   free           — "Oddiy": Premium ham, faol sinov ham yo'q.
+    // Sana solishtirish ro'yxatdagi `premium`/`trial` maydonlari bilan bir xil.
+    const plan = ADMIN_USER_PLANS.includes(url.searchParams.get('plan')) ? url.searchParams.get('plan') : '';
+    const premiumSql = trial ? `(is_premium = 1 OR COALESCE(premium_expires_at, '') > ?)` : `(is_premium = 1)`;
+    const premiumBinds = trial ? [nowIso] : [];
+    if (plan === 'premium') { conds.push(premiumSql); binds.push(...premiumBinds); }
+    if (plan && plan !== 'premium') { conds.push(`NOT ${premiumSql}`); binds.push(...premiumBinds); }
+    if (plan === 'trial') {
+      if (trial) { conds.push(`COALESCE(trial_expires_at, '') > ?`); binds.push(nowIso); } else conds.push('0');
+    }
+    if (plan === 'trial_expired') {
+      if (trial) { conds.push(`trial_expires_at IS NOT NULL AND trial_expires_at <> '' AND trial_expires_at <= ?`); binds.push(nowIso); } else conds.push('0');
+    }
+    if (plan === 'free' && trial) { conds.push(`NOT (COALESCE(trial_expires_at, '') > ?)`); binds.push(nowIso); }
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const rows = await env.DB.prepare(
       `SELECT id, email, phone, bot_ack, balance, held_balance, created_at, is_test, is_internal, is_premium,
               suspended_until, suspend_reason, deleted_at,
@@ -10023,7 +10061,6 @@ async function adminCoreApi(request, env, url, admin) {
               (SELECT GROUP_CONCAT(code) FROM cards WHERE user_id = users.id) AS codes
        FROM users ${where} ORDER BY created_at DESC LIMIT ?`
     ).bind(...binds, limit).all();
-    const nowIso = new Date().toISOString();
     const users = (rows.results || []).map((r) => ({
       id: r.id, email: r.email, phone: r.phone, botAck: !!r.bot_ack, balance: Number(r.balance),
       heldBalance: Number(r.held_balance), createdAt: r.created_at, isTest: !!r.is_test, isInternal: !!r.is_internal,
@@ -10033,8 +10070,10 @@ async function adminCoreApi(request, env, url, admin) {
       premium: Number(r.is_premium) === 1 || (!!r.premium_expires_at && String(r.premium_expires_at) > nowIso),
       premiumUntil: r.premium_expires_at || null,
       trial: !!r.trial_expires_at && String(r.trial_expires_at) > nowIso,
+      // Sinov tugash sanasi (bo'lmasa null) — admin "N kun qoldi" / "Sinov tugagan" yozadi.
+      trialUntil: r.trial_expires_at || null,
     }));
-    return json({ users, q, limit });
+    return json({ users, q, limit, plan });
   }
 
   // Ichki akkaunt belgisi — pul hisobiga kirmasin.
@@ -10054,6 +10093,44 @@ async function adminCoreApi(request, env, url, admin) {
     const body = await request.json().catch(() => ({}));
     await env.DB.prepare(`UPDATE users SET is_test = ? WHERE id = ?`).bind(body.isTest !== false ? 1 : 0, Number(setTestMatch[1])).run();
     return json({ ok: true });
+  }
+
+  // ADMIN PREMIUM BERADI / OLADI (egasining ruxsati, 2026-10).
+  //   POST /api/admin/users/:id/premium {months: 1|3|6|12, note}
+  //     -> muddat max(hozir, joriy premium_expires_at) dan months×30 kun
+  //        uzayadi (to'lovdagi `premiumExtendD1` bilan bir xil "oy" = 30 kun);
+  //   POST /api/admin/users/:id/premium {action: 'revoke', note}
+  //     -> premium_expires_at = hozir (darhol tugaydi).
+  // Eski MUDDATSIZ Premium (`is_premium = 1`) tegilmaydi: 409 'lifetime_premium'.
+  // Izoh (sabab) majburiy; har amal admin jurnaliga yoziladi.
+  // Rollar: super_admin va manager (content_manager — yo'q).
+  const premiumMatch = path.match(/^\/api\/admin\/users\/(\d+)\/premium$/);
+  if (premiumMatch && request.method === 'POST') {
+    if (!roleAtLeast(admin, 'manager')) return json({ error: 'forbidden' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const id = Number(premiumMatch[1]);
+    const note = cleanStr(body?.note, 300);
+    if (!note) return json({ error: 'note_required' }, 422);
+    const revoke = body?.action === 'revoke';
+    const months = Number(body?.months);
+    if (!revoke && ![1, 3, 6, 12].includes(months)) return json({ error: 'bad_months' }, 422);
+    await ensureTrialColumns(env);
+    const u = await env.DB.prepare(`SELECT id, is_premium, premium_expires_at, deleted_at FROM users WHERE id = ?`).bind(id).first();
+    if (!u) return json({ error: 'not_found' }, 404);
+    if (u.deleted_at) return json({ error: 'user_deleted' }, 409);
+    if (Number(u.is_premium) === 1) return json({ error: 'lifetime_premium' }, 409);
+    const nowMs = Date.now();
+    const cur = u.premium_expires_at ? Date.parse(String(u.premium_expires_at).replace(' ', 'T').replace(/\+00$/, 'Z')) : NaN;
+    const until = revoke
+      ? new Date(nowMs).toISOString()
+      : new Date(Math.max(nowMs, Number.isFinite(cur) ? cur : 0) + months * 30 * 86400_000).toISOString();
+    await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = ? AND COALESCE(is_premium, 0) = 0`).bind(until, id).run();
+    await logAdminActivity(env, {
+      action: revoke ? 'user_premium_revoke' : 'user_premium_grant',
+      details: `Foydalanuvchi #${id}${revoke ? '' : ` — ${months} oy`} · admin#${Number(admin.adminId) || 0}`,
+      oldValue: u.premium_expires_at || '', newValue: `${until} (${note})`, ip,
+    });
+    return json({ ok: true, premiumUntil: until, revoked: revoke });
   }
 
   const suspendMatch = path.match(/^\/api\/admin\/users\/(\d+)\/suspend$/);
@@ -11962,7 +12039,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12092,6 +12169,19 @@ export default {
       } catch (e) {
         console.error('orders_expire', String(e?.message || e).slice(0, 120));
       }
+      // Aksiya (egasi, 2026-10-06): mavjud sinovlar BIR MARTA 90 kunga
+      // uzaytiriladi (api/trial-promo.js). Eslatmadan OLDIN — aks holda
+      // uzaytiriladigan odamga "sinov tugayapti" xabari ketardi.
+      try {
+        const ext = await applyLaunchTrialExtension(env);
+        if (ext?.applied) console.log('launch_trial_extended', JSON.stringify({ users: ext.users, companies: ext.companies }));
+      } catch (e) {
+        console.error('launch_trial_extend', String(e?.message || e).slice(0, 160));
+      }
+      // Bepul sinovi 3 kun ichida tugaydiganlarga bitta ilova ichidagi
+      // eslatma (api/notifications.js). Xatoni o'zi yutadi; logga faqat son.
+      const tr = await apiNotifications.runTrialEndingReminders(env).catch(() => null);
+      if (tr?.created) console.log('trial_ending_notified', tr.created);
     })());
   },
 };

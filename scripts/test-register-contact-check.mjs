@@ -20,6 +20,37 @@ check('mail.kz — to‘g‘ri (mahalliy domen)', emailTypoSuggestion('ali@mail.
 check('yandex.uz — to‘g‘ri', emailTypoSuggestion('ali@yandex.uz'), null);
 check('kompaniya domeni — to‘g‘ri', emailTypoSuggestion('ali@nfcstore.uz'), null);
 check('gmail.com — to‘g‘ri', emailTypoSuggestion('ali@gmail.com'), null);
+
+// 1b) HAQIQIY DOMENLAR HECH QACHON "xato" EMAS (App Store, 2026-10).
+// Ilgari mac.com/aol.com/aim.com → mail.com, ymail.com/email.com →
+// gmail.com deb rad etilardi va ro'yxat cheksiz halqaga tushardi.
+const REAL_DOMAINS = [
+  // topshiriqdagi ro'yxat
+  'mac.com', 'aol.com', 'aim.com', 'ymail.com', 'email.com',
+  'me.com', 'icloud.com', 'yandex.ru', 'mail.ru', 'inbox.ru', 'bk.ru', 'list.ru', 'rambler.ru',
+  'outlook.com', 'hotmail.com', 'live.com', 'proton.me', 'protonmail.com', 'gmx.com', 'zoho.com',
+  // Apple "Hide My Email" va boshqa keng tarqalganlar
+  'privaterelay.appleid.com', 'googlemail.com', 'msn.com', 'rocketmail.com', 'yahoo.com', 'yahoo.co.uk',
+  'hotmail.co.uk', 'live.ru', 'gmx.de', 'gmx.net', 'web.de', 'pm.me', 'tutanota.com', 'fastmail.com',
+  'foxmail.com', 'qq.com', '163.com', 'naver.com', 'myrambler.ru', 'email.ua', 'ukr.net', 'i.ua',
+  'yandex.com', 'ya.ru', 'yandex.kz', 'mail.com', 'comcast.net', 'att.net', 'libero.it', 'orange.fr',
+  'umail.uz', 'inbox.uz', 'mail.uz',
+];
+for (const d of REAL_DOMAINS) check(`haqiqiy domen: ${d} — taklif YO‘Q`, emailTypoSuggestion(`ali@${d}`), null);
+// Katta harf va bo'shliq ham hisobga olinmaydi.
+check('MAC.COM (katta harf) — taklif yo‘q', emailTypoSuggestion('  Ali@MAC.COM '), null);
+// O'ziga o'zini taklif qilmaydi (cheksiz halqa bo'lardi).
+check('googlemail.com o‘ziga taklif qilinmaydi', emailTypoSuggestion('ali@googlemail.com'), null);
+
+// 1c) Haqiqiy xatolar hamon tutiladi (qo'shni harflar almashsa ham).
+for (const [typo, fixed] of [
+  ['gmai.com', 'gmail.com'], ['gamil.com', 'gmail.com'], ['gnail.com', 'gmail.com'], ['gmail.cm', 'gmail.com'],
+  ['gmail.con', 'gmail.com'], ['hotmial.com', 'hotmail.com'], ['hotmail.co', 'hotmail.com'], ['outlok.com', 'outlook.com'],
+  ['yahooo.com', 'yahoo.com'], ['iclod.com', 'icloud.com'], ['icloud.co', 'icloud.com'], ['mial.ru', 'mail.ru'],
+  ['yanex.ru', 'yandex.ru'], ['ramler.ru', 'rambler.ru'], ['inbox.r', 'inbox.ru'], ['protonmial.com', 'protonmail.com'],
+  ['gmail', 'gmail.com'],
+]) check(`xato: ${typo} → ${fixed}`, emailTypoSuggestion(`ali@${typo}`), `ali@${fixed}`);
+
 check('UZ to‘liq', phoneProblem('+998901234567'), null);
 check('UZ bitta kam', phoneProblem('+99890123456'), 'phone_short');
 check('RU to‘liq', phoneProblem('+79161234567'), null);
@@ -66,6 +97,16 @@ check('haqiqiy domen + to‘liq RU raqam: kod ketdi', [r.status, r.body?.channel
 r = await ask({ email: 'vali@gmail.com', phone: '+998901112244' }, '10.0.0.6');
 check('gmail + to‘liq UZ raqam: kod ketdi', [r.status, r.body?.channel], [200, 'email']);
 check('ikkala xat yuborildi', sent.length, 2);
+
+// Ilgari "xato" deb 422 olgan haqiqiy domenlar — endi kod ketadi (DNS
+// stubida ular YO'Q: ma'lum pochta xizmati DNS'siz qabul qilinadi).
+r = await ask({ email: 'reviewer@mac.com', phone: '+12025550101' }, '10.0.0.8');
+check('mac.com + AQSh raqami: kod ketdi (422 email_typo EMAS)', [r.status, r.body?.channel], [200, 'email']);
+r = await ask({ email: 'reviewer@aol.com', phone: '+12025550102' }, '10.0.0.9');
+check('aol.com: kod ketdi', [r.status, r.body?.channel], [200, 'email']);
+r = await ask({ email: 'reviewer@ymail.com', phone: '+12025550103' }, '10.0.0.10');
+check('ymail.com: kod ketdi', [r.status, r.body?.channel], [200, 'email']);
+check('uchala xat ham yuborildi', sent.length, 5);
 
 // DNS ishlamasa — to'sib qo'yilmaydi.
 globalThis.fetch = async (url, init) => {

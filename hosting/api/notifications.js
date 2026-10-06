@@ -24,7 +24,12 @@
 // (tizim nomidan): `title` bo'sh keladi, nishon — `support`/<murojaat ID>.
 // Ro'yxat aktyorni LEFT JOIN bilan oladi, shuning uchun bunday qator
 // tushib qolmaydi va o'qilmaganlar sanog'iga ham kiradi.
-const KINDS = ['follow', 'like', 'comment', 'support_reply'];
+//
+// `trial_ending` (2026-10) — bepul sinov 3 kun ichida tugaydi. Tizim nomidan
+// (aktyor NULL), nishon `trial`/<tugash sanasi YYYY-MM-DD>. Kunlik cron
+// yaratadi (`runTrialEndingReminders`); matnni mijoz yig'adi — xarid
+// havolasi YO'Q (App Store qoidasi: neytral eslatma).
+const KINDS = ['follow', 'like', 'comment', 'support_reply', 'trial_ending'];
 const PAGE = 30;
 const PAGE_MAX = 50;
 
@@ -106,6 +111,65 @@ export async function createNotification(env, { recipientUserId, actorUserId, ki
     // Ko'rinadigan bo'lsin, lekin chaqiruvchini yiqitmasin.
     console.error('notification create', kind, error?.message);
     return false;
+  }
+}
+
+/// SINOV TUGAYAPTI — KUNLIK CRON (worker.js `scheduled`).
+///
+/// Sinovi 3 kun ichida tugaydigan, Premium'i yo'q, o'chirilmagan har bir
+/// foydalanuvchiga BITTA `trial_ending` bildirishnomasi. Nishon ID —
+/// tugash sanasi (Toshkent vaqti, YYYY-MM-DD): bir sinov uchun bir marta,
+/// muddat o'zgarsa (masalan uzaytirilsa) yangi sana — yangi eslatma.
+///
+/// NIMA UCHUN `NOT EXISTS`: aktyor NULL, SQLite'da esa NULL'lar bir-biriga
+/// teng emas — `idx_notif_dedup` bunday qatorlarni to'smaydi. Shuning uchun
+/// takror bitta `INSERT ... SELECT` ichidagi shart bilan to'siladi (cron
+/// kuniga bir marta ishlaydi; bitta statement — atomik).
+///
+/// Bir ishga tushishda ko'pi bilan `limit` ta (eng yaqin tugaydiganlar
+/// birinchi). Hech qachon xato otmaydi — natija `{ created }` yoki `{ error }`.
+export const TRIAL_REMIND_DAYS = 3;
+export async function runTrialEndingReminders(env, { now = Date.now(), limit = 500 } = {}) {
+  try {
+    if (!env?.DB) return { created: 0, skipped: 'no_db' };
+    const info = await env.DB.prepare(`PRAGMA table_info(users)`).all();
+    const cols = new Set((info?.results || []).map((c) => String(c.name)));
+    if (!cols.has('trial_expires_at')) return { created: 0, skipped: 'no_column' };
+    await ensureSchema(env);
+    const sec = (c) => `substr(replace(${c}, 'T', ' '), 1, 19)`;
+    const at = (ms) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+    const nowIso = new Date(now).toISOString();
+    // Toshkent sanasi (UTC+5). `datetime()` ni normallashtirilgan qiymat bilan
+    // chaqiramiz ("…+00" shaklini SQLite tanimaydi).
+    const dateSql = `date(${sec('u.trial_expires_at')}, '+5 hours')`;
+    const premium = cols.has('premium_expires_at')
+      ? `(COALESCE(u.is_premium, 0) = 1 OR COALESCE(u.premium_expires_at, '') > ?)`
+      : `(COALESCE(u.is_premium, 0) = 1)`;
+    const res = await env.DB.prepare(
+      `INSERT INTO notifications
+         (recipient_user_id, actor_user_id, kind, target_type, target_id, target_code, created_at)
+       SELECT u.id, NULL, 'trial_ending', 'trial', ${dateSql}, '', ?
+         FROM users u
+        WHERE u.trial_expires_at IS NOT NULL AND u.trial_expires_at <> ''
+          AND u.deleted_at IS NULL
+          AND ${sec('u.trial_expires_at')} > ? AND ${sec('u.trial_expires_at')} <= ?
+          AND ${dateSql} IS NOT NULL
+          AND NOT ${premium}
+          AND NOT EXISTS (SELECT 1 FROM notifications n
+                           WHERE n.recipient_user_id = u.id AND n.kind = 'trial_ending'
+                             AND n.target_type = 'trial' AND n.target_id = ${dateSql})
+        ORDER BY ${sec('u.trial_expires_at')} ASC, u.id ASC
+        LIMIT ?`
+    ).bind(
+      new Date(now).toISOString().replace('T', ' ').replace('Z', '+00'),
+      at(now), at(now + TRIAL_REMIND_DAYS * 86_400_000),
+      ...(cols.has('premium_expires_at') ? [nowIso] : []),
+      Math.max(1, Math.min(2000, Number(limit) || 500)),
+    ).run();
+    return { created: Number(res?.meta?.changes || 0) };
+  } catch (error) {
+    console.error('trial_ending', String(error?.message || error).slice(0, 160));
+    return { created: 0, error: true };
   }
 }
 

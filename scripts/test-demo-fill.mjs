@@ -422,7 +422,6 @@ resetStore();
     '/api/companies/:p/catalog/:p', // rollback: faqat SKRIPT qo'shganini o'chirish
     '/api/companies/mine',        // o'qish
     '/api/records/:p',            // profil o'qish/yozish
-    '/api/upload-file',           // NFCSTORE do'koni: mahsulot rasmi
   ].sort();
 
   check('25) mijozdagi endpointlar AYNAN ruxsat etilganlar',

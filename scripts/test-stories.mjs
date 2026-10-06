@@ -5,7 +5,7 @@
 //     o'tib bo'lmasin);
 //   • media faqat o'zimizning R2 dan;
 //   • istorya 24 soatdan keyin ko'rinmaydi;
-//   • daraja chegarasi: gold+ yoki premium obunachi;
+//   • daraja chegarasi YO'Q (2026-10-04: hammaga bepul), faqat ban yopadi;
 //   • egalik: begona odam qo'shmaydi va o'chirmaydi;
 //   • shaxsiy karta va kompaniya istoryalari ARALASHMAYDI.
 //
@@ -37,22 +37,22 @@ for (const bad of ['https://evil.example/x.jpg', '/uploads/../secret', '/uploads
   checkTrue(`2) begona manba rad etildi: ${JSON.stringify(bad)}`, r.status === 422);
 }
 
-// ── 3) DARAJA CHEGARASI ───────────────────────────────────────────────
-// Avval past darajaga tushiramiz — istorya YOPIQ bo'lishi kerak.
+// ── 3) DARAJA CHEGARASI YO'Q — ISTORYA HAMMAGA BEPUL (2026-10-04) ────
+// Ilgari: free darajada 403 feature_locked, gold+ yoki Premium obunachi
+// ochiq edi. Endi daraja, Premium va sinov ahamiyatsiz; faqat ban yopadi.
 await env.DB.prepare(`UPDATE cards SET tier_override = 'free' WHERE code = 'VIP001'`).run().catch(() => {});
-const locked = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
-check('3) free darajada yopiq', [locked.status, locked.body?.error, locked.body?.feature], [403, 'feature_locked', 'story']);
-
-// Gold — ochiladi.
-await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
+await env.DB.prepare(`UPDATE users SET is_premium = 0, trial_expires_at = NULL WHERE id = 1`).run().catch(() => {});
 const okStory = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true, caption: 'salom' } });
-check('3) gold darajada ochiq', okStory.status, 201);
+check('3) free daraja, Premium/sinovsiz — istorya ochiq', okStory.status, 201);
 
-// Premium OBUNACHI — ID darajasi past bo'lsa ham qo'ya oladi.
-await env.DB.prepare(`UPDATE cards SET tier_override = 'free' WHERE code = 'VIP001'`).run();
-await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 1`).run().catch(() => {});
+// Bloklangan — yopiq (yagona qulf).
+await env.DB.prepare(`UPDATE users SET banned_until = ? WHERE id = 1`).bind(new Date(Date.now() + 86400000).toISOString()).run();
+const banned = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
+check('3) bloklangan — 403 banned', [banned.status, banned.body?.error], [403, 'banned']);
+await env.DB.prepare(`UPDATE users SET banned_until = NULL WHERE id = 1`).run();
+
 const premSub = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: IMG, agreed: true } });
-check('3) premium obunachi qo‘ya oladi', premSub.status, 201);
+check('3) ban olingach yana qo‘ya oladi', premSub.status, 201);
 await env.DB.prepare(`UPDATE cards SET tier_override = 'gold' WHERE code = 'VIP001'`).run();
 
 // ── 4) O'QISH VA MUDDAT ───────────────────────────────────────────────
@@ -323,10 +323,10 @@ console.log('\\naccess:', access || '(nomaʼlum)');
   const list = await j('/api/records/VIP001/stories');
   checkTrue('12) profilda ko‘rinadi', list.body.stories.some((x) => x.imageUrl === up.body.url));
 
-  // 12.2 Daraja qoidasi — egasining talabi: FAQAT gold, premium,
-  // ekskluziv yoki premium OBUNACHI.
+  // 12.2 Daraja qoidasi YO'Q — 2026-10-04 dan istorya HAMMAGA bepul
+  // (ilgari faqat gold, premium, ekskluziv yoki premium OBUNACHI edi).
   const cases = [
-    ['free', false], ['silver', false], ['gold', true], ['premium', true], ['exclusive', true],
+    ['free', true], ['silver', true], ['gold', true], ['premium', true], ['exclusive', true],
   ];
   for (const [tierName, allowed] of cases) {
     await env.DB.prepare(`UPDATE cards SET tier_override = ? WHERE code = 'VIP001'`).bind(tierName).run();

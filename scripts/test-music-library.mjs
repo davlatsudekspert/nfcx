@@ -102,4 +102,11 @@ check('rasm rad etiladi', r.status >= 400, true);
 r = await upload(mp3, 'audio/mpeg', cookie.user);
 check('oddiy foydalanuvchi: 401', r.status, 401);
 
+// Boshqa muallif qo'shig'ining "AI Cover"i ochiq ro'yxatga chiqmaydi (5.2.1).
+r = await call('/api/admin/music', { method: 'POST', cookie: cookie.admin, json: { title: 'Qo‘shiq | NeomSongs AI Cover', audioUrl: '/uploads/music_9.mp3' } });
+check('cover admin tomonidan qo‘shiladi', r.status, 201);
+const coverId = r.body.track.id;
+check('cover ommaviy ro‘yxatda yo‘q', (await call('/api/music')).body.tracks.some((t) => t.id === coverId), false);
+check('cover admin ro‘yxatida bor', ((await call('/api/admin/music', { cookie: cookie.admin })).body.tracks || []).some((t) => t.id === coverId), true);
+
 done();

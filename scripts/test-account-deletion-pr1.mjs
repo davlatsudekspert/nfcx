@@ -57,7 +57,7 @@
 import worker from '../hosting/worker.js';
 import { makeEnv, seedBasic, req, cookie, makeChecker } from './lib/d1-harness.mjs';
 import { stripComments } from './lib/strip-comments.mjs';
-import { scryptSync, randomBytes } from 'node:crypto';
+import { scryptSync, randomBytes, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const { check, checkTrue, done } = makeChecker();
@@ -90,6 +90,8 @@ globalThis.fetch = async (input, init = {}) => {
   }
   throw new Error('unexpected fetch ' + u);
 };
+const mailCount = () => mails.length;
+const tsIn = (ms) => new Date(Date.now() + ms).toISOString().replace('T', ' ').replace('Z', '+00');
 const lastMailCode = () => (String(mails[mails.length - 1]?.html || '').match(/>(\d{6})</) || [])[1];
 
 // Email xizmati kalit bilan yoqiladi (`emailEnabledD1` har so'rovda
@@ -230,19 +232,26 @@ function snapshot(uid, code) {
   checkTrue('a2) konsolga telefon chiqmadi', !logged.some((l) => l.includes('+998907770061')));
 }
 
-// a3) Email xizmati YOQIQ va kod TO'G'RI. PR-1 da bu ham 409: xavfsiz
-// purge (tombstone) keyingi bosqichda (PR-2). Hozircha hech narsa
-// o'chirilmaydi.
+// a3) Email xizmati YOQIQ. O'chirish navbatidagi emailga KOD YUBORILMAYDI
+// (egasi, 2026-09-28): javob faol hisobdagi bilan bir xil `email_taken`
+// — begona odam hisob o'chirilganini bilmaydi. Kod qandaydir yo'l bilan
+// qo'lga kirgan bo'lsa ham (eski ilova, oldin so'ralgan kod) register
+// baribir 409 `account_pending_deletion` beradi va hech narsa o'chirmaydi.
 {
   emailOn();
   noLimit();
   const before = snapshot(60, 'VIC060');
+  const mailsBefore = mailCount();
   const rc = await call('/api/auth/request-register-code', {
     method: 'POST', json: { email: 'victim@test.local', phone: '+998907771162' },
   });
-  check('a3) kod so‘rash -> 200 (email)', [rc.status, rc.body?.channel], [200, 'email']);
-  const code = lastMailCode();
-  checkTrue('a3) kod emailga ketdi', /^\d{6}$/.test(code || ''));
+  check('a3) kod so‘rash -> 409 email_taken (faol hisobdagi bilan bir xil)', [rc.status, rc.body], [409, { error: 'email_taken' }]);
+  check('a3) xat ketmadi', mailCount(), mailsBefore);
+  // Oldin so'ralgan kod (masalan, o'chirishdan oldin) — bazaga qo'lda.
+  const code = '482913';
+  sqlite.prepare(`INSERT INTO email_otp_codes (email, code, purpose, expires_at, used, created_at)
+    VALUES ('victim@test.local', ?, 'register', ?, 0, ?)`).run(
+    createHash('sha256').update(code).digest('hex'), tsIn(600_000), tsIn(0));
   noLimit();
   const r = await call('/api/auth/register', {
     method: 'POST',

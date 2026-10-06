@@ -289,7 +289,8 @@ async function createUser(env, H, { email, passwordHash, phone, botAck, tosAccep
   const cols = ['email', 'password_hash', 'phone', 'bot_ack', 'tos_accepted', 'created_at'];
   const vals = [email, passwordHash, phone || null, botAck ? 1 : 0, tosAccepted ? 1 : 0, H.nowTs()];
 
-  // 30 KUNLIK SINOV (2026-09). Yangi hisob birinchi oy davomida barcha
+  // SINOV (2026-09). Yangi hisob dastlabki 30 kun (aksiya: 2026 yil
+  // oxirigacha ro'yxatdan o'tganlarga 90 kun — `H.trialEndsAtD1`) barcha
   // pullik imkoniyatlardan foydalanadi. Muddat tugagach tarifga
   // qaytadi. Ustun bo'lmasa (juda eski baza) — yozilmaydi, hisob
   // avvalgidek ochiladi: sinov "qo'shimcha", "shart" emas.

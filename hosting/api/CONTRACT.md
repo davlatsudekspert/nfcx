@@ -24,7 +24,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 `auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
-`app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
+`legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
 `demo-businesses`, `highlights`, `story-replies`, `my-analytics`, `reels`, `marketplace`
 (shu tartibda chaqiriladi — `worker.js: API_MODULES`).
 `nearby` — `companyApi` dan OLDIN alohida ulangan (`/api/companies/nearby`).
@@ -190,3 +190,10 @@ takrorsiz tomoshabinlar soni.
 ostida, xotiradagi D1 va demo ma'lumot bilan ko'taradi (production'ga
 tegmaydi). Mobil ilovaning uchma-uch testi shunga ulanadi:
 `node scripts/test-live-app.mjs`.
+
+`legal-requests` — admin "Huquqiy so'rov" (faqat super_admin va manager):
+`GET /api/admin/legal/subject?q=<telefon|email|NFC ID|Business ID|#id>&kind=post|reel|story|comment|card_video|card_file&source=live|archive&cursor=&limit=`
+→ `{subject, items:[{source:'live'|'archive', kind, id, uid, ownerKind, ownerCode, text, imageUrl, videoUrl, fileUrl, mediaUrls, createdAt, expiresAt, deletedAt, deletedBy, reason, target}], nextCursor}`;
+`POST /api/admin/legal/hold {userId, hold, note}` (hold=true — `note` majburiy; olib tashlash faqat super_admin; `account_legal_holds`);
+`GET /api/admin/legal/export?userId=&format=json` → `{format, generatedAt, generatedBy, subject, items (≤5000), total, truncated}`.
+Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`, `legal_export`).
