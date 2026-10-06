@@ -3407,6 +3407,53 @@ class LUz extends L {
   String get nfcOpenInBrowser => 'Brauzerda ochish';
 
   @override
+  String get nfcForeignWritableHint =>
+      'Bu yorliq qulflanmagan — unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.';
+
+  @override
+  String get nfcForeignLocked =>
+      'Bu yorliq qulflangan — uni o‘zgartirib bo‘lmaydi.';
+
+  @override
+  String get nfcTagBlank => 'Bu yorliq bo‘sh';
+
+  @override
+  String get nfcBlankHint =>
+      'Unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.';
+
+  @override
+  String get nfcForeignWrite => 'Profilimni yozish';
+
+  @override
+  String get nfcForeignGetId => 'Avval NFC ID oling';
+
+  @override
+  String get nfcForeignSignUp => 'Ro‘yxatdan o‘tib yozish';
+
+  @override
+  String get nfcEraseAction => 'Yorliqni tozalash';
+
+  @override
+  String get nfcEraseTitle => 'Yorliq tozalansinmi?';
+
+  @override
+  String get nfcEraseBody =>
+      'Bu yorliqdagi ma’lumot butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.';
+
+  @override
+  String get nfcEraseConfirm => 'Ha, tozalash';
+
+  @override
+  String get nfcEraseTapAgain => 'Tozalash uchun yorliqni yana tegizing';
+
+  @override
+  String get nfcEraseDone => 'Yorliq tozalandi';
+
+  @override
+  String get nfcEraseErrVerify =>
+      'Yozildi, lekin qayta o‘qiganda yorliq bo‘sh chiqmadi. Yana urinib ko‘ring.';
+
+  @override
   String get deleteAccountAppleSub =>
       'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.';
 

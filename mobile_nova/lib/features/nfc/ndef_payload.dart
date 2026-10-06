@@ -259,12 +259,17 @@ String profileTagUrl(String base, String code) {
 /// ketma-ket qaraladi. Hech biri bo'lmasa (iOS'dagi ba'zi teglar)
 /// bo'sh satr qaytadi va CHAQIRUVCHI buni "solishtirib bo'lmaydi" deb
 /// qabul qiladi — yo'qlik "boshqa teg" degani EMAS.
+///
+/// `mifare` — iPhone kaliti (`NFCMiFareTag`: NTAG213/215/216 va
+/// Ultralight stikerlar shu yerda). Ilgari u ro'yxatda yo'q edi va
+/// iPhone'da eng ko'p uchraydigan stikerlarning identifikatori bo'sh
+/// chiqardi — ya'ni "boshqa teg" himoyasi u yerda ishlamasdi.
 String tagIdentity(Map<String, dynamic> data) {
   // Tartib muhim emas — bitta tegda odatda bittasi bo'ladi.
   const keys = [
     'nfca', 'nfcb', 'nfcf', 'nfcv',
     'mifareclassic', 'mifareultralight', 'ndefformatable',
-    'iso7816', 'iso15693',
+    'iso7816', 'iso15693', 'mifare',
   ];
   for (final k in keys) {
     final raw = data[k];
@@ -355,3 +360,11 @@ bool sameWrittenUrl(String expected, String actual) {
 
   return host(a) == host(b) && path(a) == path(b) && a.query == b.query;
 }
+
+/// TOZALANGANNI QAYTA O'QIB TASDIQLASH.
+///
+/// Tozalashdan keyin tegda o'qiladigan HECH NARSA qolmasligi kerak:
+/// bitta bo'sh yozuv (TNF empty) yoki umuman yozuvsiz xabar. Qiymati
+/// bo'sh bo'lmagan bitta yozuv qolsa ham — tozalanmagan.
+bool looksErased(Iterable<NdefRecordData> records) =>
+    records.every((r) => r.value.trim().isEmpty);

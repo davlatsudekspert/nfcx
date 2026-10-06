@@ -11,7 +11,7 @@ import 'helpers.dart';
 
 /// Egasining talabi: "scan/write flow qotib qolmasin".
 ///
-/// Ilgari `readOnce` ichidagi `startSession` xato bersa (masalan,
+/// Ilgari `readOnce` (endi `inspect`) ichidagi `startSession` xato bersa (masalan,
 /// yozish ekranidan qolgan sessiya yopilmagan bo'lsa), istisno skaner
 /// ekranigacha uchib borar va ekran "Qidirilmoqda…" holatida ABADIY
 /// qolardi: tugma o'chiq, orb bosilmaydi, chiqishdan boshqa yo'l yo'q.
@@ -21,8 +21,9 @@ class _ThrowingNfc extends NfcService {
   @override
   Future<NfcAvailability> check() async => NfcAvailability.ready;
 
+  // Skaner `inspect` orqali o'qiydi (begona yorliq holati uchun).
   @override
-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) {
+  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) {
     reads++;
     return Future.error(StateError('session already started'));
   }
@@ -30,13 +31,13 @@ class _ThrowingNfc extends NfcService {
 
 class _SlowNfc extends NfcService {
   int reads = 0;
-  final gate = Completer<String?>();
+  final gate = Completer<TagInspection>();
 
   @override
   Future<NfcAvailability> check() async => NfcAvailability.ready;
 
   @override
-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) {
+  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) {
     reads++;
     return gate.future;
   }
@@ -89,7 +90,7 @@ void main() {
     await settle(tester, frames: 3);
     expect(nfc.reads, 1);
 
-    nfc.gate.complete(null);
+    nfc.gate.complete(const TagInspection(found: false, error: TagError.timeout));
     await settle(tester);
     expect(find.text(l.nfcScanFailed), findsOneWidget);
   });

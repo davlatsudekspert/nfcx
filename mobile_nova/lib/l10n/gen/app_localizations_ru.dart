@@ -3446,6 +3446,53 @@ class LRu extends L {
   String get nfcOpenInBrowser => 'Открыть в браузере';
 
   @override
+  String get nfcForeignWritableHint =>
+      'Эта метка не заблокирована — запишите на неё свой профиль NFCSTORE, и она станет визиткой, которая открывается на любом телефоне.';
+
+  @override
+  String get nfcForeignLocked =>
+      'Эта метка заблокирована — её нельзя изменить.';
+
+  @override
+  String get nfcTagBlank => 'Эта метка пустая';
+
+  @override
+  String get nfcBlankHint =>
+      'Запишите на неё свой профиль NFCSTORE — она станет визиткой, которая открывается на любом телефоне.';
+
+  @override
+  String get nfcForeignWrite => 'Записать мой профиль';
+
+  @override
+  String get nfcForeignGetId => 'Сначала получите NFC ID';
+
+  @override
+  String get nfcForeignSignUp => 'Зарегистрироваться и записать';
+
+  @override
+  String get nfcEraseAction => 'Очистить метку';
+
+  @override
+  String get nfcEraseTitle => 'Очистить метку?';
+
+  @override
+  String get nfcEraseBody =>
+      'Данные на этой метке будут удалены безвозвратно. Это действие нельзя отменить.';
+
+  @override
+  String get nfcEraseConfirm => 'Да, очистить';
+
+  @override
+  String get nfcEraseTapAgain => 'Приложите метку ещё раз, чтобы очистить';
+
+  @override
+  String get nfcEraseDone => 'Метка очищена';
+
+  @override
+  String get nfcEraseErrVerify =>
+      'Запись прошла, но при проверке метка не оказалась пустой. Попробуйте ещё раз.';
+
+  @override
   String get deleteAccountAppleSub =>
       'Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.';
 

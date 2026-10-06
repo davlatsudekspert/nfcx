@@ -6219,6 +6219,90 @@ abstract class L {
   /// **'Brauzerda ochish'**
   String get nfcOpenInBrowser;
 
+  /// Skaner: begona, qulflanmagan yorliq ostidagi izoh. Maqsad — yorliqni NFCSTORE profiliga ulash (asosiy tugma), tozalash — ikkinchi darajali.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu yorliq qulflanmagan — unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.'**
+  String get nfcForeignWritableHint;
+
+  /// No description provided for @nfcForeignLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu yorliq qulflangan — uni o‘zgartirib bo‘lmaydi.'**
+  String get nfcForeignLocked;
+
+  /// No description provided for @nfcTagBlank.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu yorliq bo‘sh'**
+  String get nfcTagBlank;
+
+  /// No description provided for @nfcBlankHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Unga o‘z NFCSTORE profilingizni yozib, istalgan telefonda ochiladigan vizitkaga aylantirishingiz mumkin.'**
+  String get nfcBlankHint;
+
+  /// No description provided for @nfcForeignWrite.
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilimni yozish'**
+  String get nfcForeignWrite;
+
+  /// No description provided for @nfcForeignGetId.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval NFC ID oling'**
+  String get nfcForeignGetId;
+
+  /// No description provided for @nfcForeignSignUp.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ro‘yxatdan o‘tib yozish'**
+  String get nfcForeignSignUp;
+
+  /// No description provided for @nfcEraseAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yorliqni tozalash'**
+  String get nfcEraseAction;
+
+  /// No description provided for @nfcEraseTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yorliq tozalansinmi?'**
+  String get nfcEraseTitle;
+
+  /// Tozalash oynasi: tasdiqlashdan oldin yorliqdagi mazmun pastda ko‘rsatiladi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu yorliqdagi ma’lumot butunlay o‘chiriladi. Buni qaytarib bo‘lmaydi.'**
+  String get nfcEraseBody;
+
+  /// No description provided for @nfcEraseConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha, tozalash'**
+  String get nfcEraseConfirm;
+
+  /// No description provided for @nfcEraseTapAgain.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tozalash uchun yorliqni yana tegizing'**
+  String get nfcEraseTapAgain;
+
+  /// No description provided for @nfcEraseDone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yorliq tozalandi'**
+  String get nfcEraseDone;
+
+  /// No description provided for @nfcEraseErrVerify.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yozildi, lekin qayta o‘qiganda yorliq bo‘sh chiqmadi. Yana urinib ko‘ring.'**
+  String get nfcEraseErrVerify;
+
   /// No description provided for @deleteAccountAppleSub.
   ///
   /// In uz, this message translates to:

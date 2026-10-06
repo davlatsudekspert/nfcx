@@ -8,6 +8,7 @@ import 'package:nfcstore_nova/app/providers.dart';
 import 'package:nfcstore_nova/core/utils/external_link.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+import 'package:nfcstore_nova/features/nfc/ndef_payload.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_scan_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
 import 'package:nfcstore_nova/features/nfc/scan_target.dart';
@@ -41,10 +42,26 @@ class _Nfc extends NfcService {
   @override
   Future<NfcAvailability> check() async => NfcAvailability.ready;
 
+  // Skaner `inspect` orqali o'qiydi: matn + teg holati.
   @override
-  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) async {
+  Future<TagInspection> inspect({Duration timeout = const Duration(seconds: 30)}) async {
     lastCancelled = cancelled;
-    return payload;
+    final p = payload;
+    if (p == null) {
+      return TagInspection(
+          found: false,
+          error: cancelled ? TagError.cancelled : TagError.timeout);
+    }
+    return TagInspection(
+      found: true,
+      isNdef: true,
+      writable: true,
+      identity: '04aa',
+      records: [
+        NdefRecordData(
+            kind: p.contains(':') ? NdefKind.uri : NdefKind.text, value: p),
+      ],
+    );
   }
 }
 

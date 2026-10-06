@@ -64,7 +64,41 @@ class TagInspection {
 
   /// Tegda allaqachon biror narsa bormi — ogohlantirish shu bo'yicha.
   bool get hasContent => records.any((r) => r.value.trim().isNotEmpty);
+
+  /// Ustiga yozish MUMKINMI: qulflanmagan NDEF yoki formatlanadigan
+  /// (bo'sh) teg.
+  bool get canWrite => isNdef ? writable : formattable;
+
+  /// Skaner uchun tegning MATNI — `readOnce` bilan bir xil qoida:
+  /// birinchi URI yoki matn yozuvi. Ular bo'lmasa (vCard, MIME) —
+  /// birinchi bo'sh bo'lmagan yozuv; hech narsa bo'lmasa `null`.
+  String? get text {
+    for (final r in records) {
+      if ((r.kind == NdefKind.uri || r.kind == NdefKind.text) &&
+          r.value.trim().isNotEmpty) {
+        return r.value;
+      }
+    }
+    for (final r in records) {
+      if (r.value.trim().isNotEmpty) return r.value;
+    }
+    return null;
+  }
 }
+
+/// TOZALASH UCHUN XABAR — bitta bo'sh yozuv (TNF empty).
+///
+/// NFC Forum bo'yicha "bo'sh teg" shunday ko'rinadi. Umuman yozuvsiz
+/// xabarni Android ham, iPhone ham yozmaydi, shuning uchun bitta bo'sh
+/// yozuv — tegni tozalashning standart usuli.
+NdefMessage emptyNdefMessage() => NdefMessage([
+      NdefRecord(
+        typeNameFormat: NdefTypeNameFormat.empty,
+        type: Uint8List(0),
+        identifier: Uint8List(0),
+        payload: Uint8List(0),
+      ),
+    ]);
 
 /// NFC amaliyoti nega bajarilmadi.
 enum TagError {
@@ -340,6 +374,36 @@ class NfcService {
     }
 
     final message = NdefMessage([NdefRecord.createUri(Uri.parse(url))]);
+    return _tagWrite(
+      (tag) => _writeTag(tag, message, url, expectIdentity),
+      timeout: timeout,
+    );
+  }
+
+  /// YORLIQNI TOZALASH — begona, qulflanmagan teg (skaner ekrani).
+  ///
+  /// `writeProfileUrl` bilan BIR XIL himoya: [expectIdentity] —
+  /// skanerda ko'rsatilgan va odam "Ha, tozalash" degan teg. Boshqa
+  /// teg tutilsa tegilmaydi (`differentTag`). Bitta bo'sh yozuv
+  /// yoziladi va QAYTA O'QIB tekshiriladi: tegda o'qiladigan hech
+  /// narsa qolmaganidan keyingina `ok`.
+  ///
+  /// Formatlanmagan (NDEF bo'lmagan, formatlanadigan) teg allaqachon
+  /// bo'sh — hech narsa yozilmaydi, `ok`.
+  Future<NfcWriteResult> eraseTag({
+    required String expectIdentity,
+    Duration timeout = const Duration(seconds: 30),
+  }) =>
+      _tagWrite((tag) => _eraseTag(tag, expectIdentity), timeout: timeout);
+
+  /// Yozish sessiyasi — tegizishni kutadi va [body] ni bajaradi.
+  ///
+  /// Bekor qilish (iPhone), vaqt tugashi va platforma xatosi bu yerda
+  /// BIR JOYDA `NfcWriteResult` ga aylanadi.
+  Future<NfcWriteResult> _tagWrite(
+    Future<NfcWriteResult> Function(NfcTag tag) body, {
+    required Duration timeout,
+  }) async {
     final completer = Completer<NfcWriteResult>();
 
     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
@@ -353,7 +417,7 @@ class NfcService {
           if (completer.isCompleted) return;
           NfcWriteResult r;
           try {
-            r = await _writeTag(tag, message, url, expectIdentity);
+            r = await body(tag);
           } catch (_) {
             r = const NfcWriteResult(ok: false, error: TagError.io);
           }
@@ -377,6 +441,45 @@ class NfcService {
       await stop();
       return const NfcWriteResult(ok: false, error: TagError.timeout);
     });
+  }
+
+  Future<NfcWriteResult> _eraseTag(NfcTag tag, String expectIdentity) async {
+    // Rozilik berilgan tegmi.
+    final identity = tagIdentity(tag.data);
+    if (expectIdentity.isNotEmpty && identity.isNotEmpty && identity != expectIdentity) {
+      return const NfcWriteResult(ok: false, error: TagError.differentTag);
+    }
+
+    try {
+      final ndef = Ndef.from(tag);
+      if (ndef == null) {
+        // Formatlanmagan teg — unda o'chiriladigan narsa yo'q.
+        return NdefFormatable.from(tag) != null
+            ? const NfcWriteResult(ok: true)
+            : const NfcWriteResult(ok: false, error: TagError.notNdef);
+      }
+      if (!ndef.isWritable) {
+        return const NfcWriteResult(ok: false, error: TagError.readOnly);
+      }
+
+      await ndef.write(emptyNdefMessage());
+
+      // QAYTA O'QIB TASDIQLASH — "tozalandi" yozuvining YAGONA asosi.
+      final back = await ndef.read();
+      final records = [
+        for (final r in back.records)
+          classifyRecord(
+            typeNameFormat: r.typeNameFormat.index,
+            type: r.type,
+            payload: r.payload,
+          ),
+      ];
+      return looksErased(records)
+          ? const NfcWriteResult(ok: true)
+          : const NfcWriteResult(ok: false, error: TagError.verifyFailed);
+    } catch (_) {
+      return const NfcWriteResult(ok: false, error: TagError.io);
+    }
   }
 
   Future<NfcWriteResult> _writeTag(

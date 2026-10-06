@@ -80,3 +80,75 @@ ScanTarget classifyScan(String payload) {
   return ScanRoute(
       '/${seg.join('/')}${uri.hasQuery ? '?${uri.query}' : ''}');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// BEGONA YORLIQ — QAYSI AMALLAR KO'RINADI
+//
+// Maqsad (egasi, 2026-10-06): boshqa kompaniyalarning NFC yorliqlarini
+// NFCSTORE'ga ulash. Qulflanmagan begona yorliqda ASOSIY amal —
+// "Profilimni yozish" (mavjud yozish oqimi: u o'zi ustiga yozishdan
+// oldin so'raydi va tegning o'zi ekanini tekshiradi). "Tozalash" —
+// ikkinchi darajali. Qulflangan yorliq — faqat ma'lumot.
+//
+// Mantiq telefonsiz sinalishi uchun shu yerda, ekran faqat chizadi.
+// ═══════════════════════════════════════════════════════════════════
+
+/// Asosiy (to'ldirilgan) tugma nima qiladi.
+enum ForeignPrimary {
+  /// NFC ID bor — yozish ekrani.
+  writeProfile,
+
+  /// Kirgan, lekin NFC ID hali yo'q — avval ID, keyin yozish.
+  getId,
+
+  /// Kirmagan — avval ro'yxatdan o'tish / kirish, keyin yozish.
+  signUp,
+}
+
+/// Begona (yoki bo'sh) yorliq uchun ko'rinadigan amallar.
+class ForeignTagActions {
+  const ForeignTagActions({
+    this.primary,
+    this.canErase = false,
+    this.locked = false,
+    this.openUrl,
+  });
+
+  /// `null` — asosiy tugma yo'q (qulflangan / yozib bo'lmaydigan teg).
+  final ForeignPrimary? primary;
+
+  /// "Yorliqni tozalash" — faqat qulflanmagan, ICHIDA NIMADIR BOR
+  /// NDEF tegda. Bo'sh yoki formatlanmagan tegni tozalashga hojat yo'q.
+  final bool canErase;
+
+  /// "Bu yorliq qulflangan — uni o'zgartirib bo'lmaydi."
+  final bool locked;
+
+  /// Veb manzil bo'lsa — kichik "Brauzerda ochish" havolasi.
+  final Uri? openUrl;
+}
+
+ForeignTagActions foreignTagActions({
+  required bool isNdef,
+  required bool writable,
+  required bool formattable,
+  required bool hasContent,
+  required bool loggedIn,
+  required bool hasId,
+  Uri? webUrl,
+}) {
+  final locked = isNdef && !writable;
+  final canWrite = isNdef ? writable : formattable;
+  return ForeignTagActions(
+    primary: !canWrite
+        ? null
+        : !loggedIn
+            ? ForeignPrimary.signUp
+            : hasId
+                ? ForeignPrimary.writeProfile
+                : ForeignPrimary.getId,
+    canErase: canWrite && isNdef && hasContent,
+    locked: locked,
+    openUrl: webUrl,
+  );
+}

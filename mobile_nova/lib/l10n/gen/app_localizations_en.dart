@@ -3427,6 +3427,52 @@ class LEn extends L {
   String get nfcOpenInBrowser => 'Open in browser';
 
   @override
+  String get nfcForeignWritableHint =>
+      'This tag isn’t locked — write your NFCSTORE profile to it and turn it into a business card that opens on any phone.';
+
+  @override
+  String get nfcForeignLocked => 'This tag is locked — it can’t be changed.';
+
+  @override
+  String get nfcTagBlank => 'This tag is empty';
+
+  @override
+  String get nfcBlankHint =>
+      'Write your NFCSTORE profile to it and turn it into a business card that opens on any phone.';
+
+  @override
+  String get nfcForeignWrite => 'Write my profile';
+
+  @override
+  String get nfcForeignGetId => 'Get an NFC ID first';
+
+  @override
+  String get nfcForeignSignUp => 'Sign up to write';
+
+  @override
+  String get nfcEraseAction => 'Erase tag';
+
+  @override
+  String get nfcEraseTitle => 'Erase this tag?';
+
+  @override
+  String get nfcEraseBody =>
+      'Everything on this tag will be permanently deleted. This can’t be undone.';
+
+  @override
+  String get nfcEraseConfirm => 'Yes, erase';
+
+  @override
+  String get nfcEraseTapAgain => 'Tap the tag again to erase it';
+
+  @override
+  String get nfcEraseDone => 'Tag erased';
+
+  @override
+  String get nfcEraseErrVerify =>
+      'Written, but the tag wasn’t empty when read back. Try again.';
+
+  @override
   String get deleteAccountAppleSub =>
       'A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.';
 
