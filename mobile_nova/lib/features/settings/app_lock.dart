@@ -164,6 +164,20 @@ final appLockProvider = StateNotifierProvider<AppLock, AppLockState>(
   (ref) => AppLock(ref.watch(prefsProvider), ref.watch(secureStoreProvider)),
 );
 
+/// CHIQISH / SESSIYA TUGASHI — ILOVA QULFI O'CHADI (audit 2026-10-06).
+///
+/// PIN shu telefondagi HISOB uchun o'rnatilgan. Ilgari chiqishdan
+/// keyin u qolardi: keyingi (boshqa) odam ilovani ochganda oldingi
+/// odamning PIN'i so'ralardi. Faol sessiyadan anonimga o'tishda —
+/// qo'lda chiqish ham, 401 bilan tugash ham — qulf va PIN o'chadi.
+final appLockSessionGuardProvider = Provider<void>((ref) {
+  ref.listen<SessionState>(sessionProvider, (prev, next) {
+    if (prev is SessionActive && next is SessionAnonymous) {
+      ref.read(appLockProvider.notifier).disable();
+    }
+  });
+});
+
 /// Qurilmada ISHLATSA BO'LADIGAN biometrika bormi.
 ///
 /// `isDeviceSupported()` yetarli emas: u faqat ekran kodi bo'lsa ham

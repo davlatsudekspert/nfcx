@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../home/widgets/identity_card.dart' show formatCount;
 import '../../app/providers.dart';
+import '../auth/session.dart' show currentUserProvider;
 import '../../core/errors/app_error.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/business_repository.dart';
@@ -191,9 +192,9 @@ final catalogFeedProvider = StateNotifierProvider.autoDispose
 /// bo'lmasa ham bosish darhol ishlaydi). Batafsil: `SyncedSaves`.
 final catalogFavoritesProvider =
     StateNotifierProvider<SyncedSaves, Set<String>>((ref) {
-  final prefs = ref.watch(prefsProvider);
-  return SyncedSaves(ref.watch(savesRepositoryProvider), SaveKind.listing,
-      initial: prefs.catalogFavorites, persist: prefs.setCatalogFavorites);
+  final uid = ref.watch(currentUserProvider.select((u) => u?.id));
+  return SyncedSaves.forUser(ref.watch(savesRepositoryProvider),
+      SaveKind.listing, ref.watch(prefsProvider), uid);
 });
 
 String _sortLabel(L l, CatalogSort s) => switch (s) {

@@ -8,7 +8,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../app/profile_context.dart';
 import '../../app/providers.dart';
-import '../../core/storage/secure_store.dart';
+import '../auth/session.dart' show currentUserProvider;
 import 'comments.dart';
 import 'engagement.dart';
 import 'fullscreen_video.dart' show immersiveVideoFit;
@@ -397,20 +397,22 @@ class ViewSession with WidgetsBindingObserver {
   }
 }
 
-class SavedReels extends SyncedSaves {
-  SavedReels(SavesRepository repo, Prefs prefs)
-      : super(repo, SaveKind.reel,
-            initial: prefs.savedReels, persist: prefs.setSavedReels);
-
+/// Saqlangan Reels — `toggleReel` qulaylik uchun.
+extension SavedReelsX on SyncedSaves {
   /// `true` — endi saqlangan.
   Future<bool> toggleReel(Post p) => toggle(likeKey(p));
 }
 
 /// Saqlangan Reels — HISOBGA bog'langan (`/api/saves`), telefon xotirasi
-/// faqat kesh. Batafsil: `SyncedSaves`.
-final savedReelsProvider = StateNotifierProvider<SavedReels, Set<String>>(
-    (ref) => SavedReels(
-        ref.watch(savesRepositoryProvider), ref.watch(prefsProvider)));
+/// faqat kesh (hisob bo'yicha). Hisob almashsa provayder qaytadan
+/// quriladi — boshqa odamning ro'yxati ko'rinmaydi. Batafsil:
+/// `SyncedSaves`.
+final savedReelsProvider =
+    StateNotifierProvider<SyncedSaves, Set<String>>((ref) {
+  final uid = ref.watch(currentUserProvider.select((u) => u?.id));
+  return SyncedSaves.forUser(ref.watch(savesRepositoryProvider),
+      SaveKind.reel, ref.watch(prefsProvider), uid);
+});
 
 /// Vertikal Reels lentasi.
 ///

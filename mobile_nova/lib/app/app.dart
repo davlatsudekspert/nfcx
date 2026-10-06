@@ -23,6 +23,8 @@ class NovaApp extends ConsumerWidget {
     // eshitmasdi. `watch` shu yerda turishi kerak — kuzatuvchi
     // ilovaning umri davomida tirik bo'lishi uchun.
     ref.watch(sessionExpiryWatcherProvider);
+    // Chiqish / sessiya tugashi — ilova qulfi va PIN o'chadi.
+    ref.watch(appLockSessionGuardProvider);
     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
     // tranzaksiyalari ilova ochilishidanoq tinglanadi
     // (`features/premium/iap_controller.dart`). Android'da hech narsa.

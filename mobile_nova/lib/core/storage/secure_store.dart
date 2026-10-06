@@ -170,26 +170,76 @@ class Prefs {
   Future<void> setNotif(String key, bool v) =>
       _p.setBool('$_kNotif$key', v);
 
-  List<String> get recentSearches => _p.getStringList(_kSearches) ?? const [];
+  // ── HISOBGA BOG'LANGAN KESH (audit 2026-10-06) ─────────────────
+  //
+  // Qidiruvlar, saqlangan Reels va katalog sevimlilari ilgari BITTA
+  // umumiy kalitda turardi: bir telefonda hisob almashtirilsa, oldingi
+  // odamning ro'yxati yangi hisobga "oqib" o'tardi (va keyingi sinxronda
+  // uning serveriga yozilardi). Endi har biri `.u<id>` kalitida.
+  //
+  // ESKI UMUMIY KALIT: yangilanishdan keyin uni BIRINCHI ochgan hisob
+  // oladi (u o'sha telefondagi hisob edi), kalit o'chiriladi.
 
-  /// Oxirgi 8 ta qidiruv, eng yangisi boshida, takrorlarsiz.
-  Future<void> pushSearch(String q) async {
-    final s = q.trim();
-    if (s.isEmpty) return;
-    final list = [s, ...recentSearches.where((e) => e != s)].take(8).toList();
-    await _p.setStringList(_kSearches, list);
+  String _u(String base, int uid) => '$base.u$uid';
+
+  List<String> _ofUser(String legacy, int uid) {
+    final key = _u(legacy, uid);
+    final mine = _p.getStringList(key);
+    if (mine != null) return mine;
+    final old = _p.getStringList(legacy);
+    if (old == null) return const [];
+    _p.setStringList(key, old);
+    _p.remove(legacy);
+    return old;
   }
 
-  Future<void> clearSearches() => _p.remove(_kSearches);
+  /// Joriy hisobning oxirgi qidiruvlari. Hisob yo'q — bo'sh.
+  List<String> recentSearchesOf(int? uid) =>
+      uid == null ? const [] : _ofUser(_kSearches, uid);
 
-  /// Tanlov katalogidagi sevimli tovarlar (`kompaniya/tovar`).
-  /// Faqat shu qurilmada — serverda saqlash API'si yo'q.
+  /// Oxirgi 8 ta qidiruv, eng yangisi boshida, takrorlarsiz.
+  Future<void> pushSearchFor(int? uid, String q) async {
+    final s = q.trim();
+    if (s.isEmpty || uid == null) return;
+    final list =
+        [s, ...recentSearchesOf(uid).where((e) => e != s)].take(8).toList();
+    await _p.setStringList(_u(_kSearches, uid), list);
+  }
+
+  Future<void> clearSearchesFor(int? uid) async {
+    if (uid == null) return;
+    await _p.setStringList(_u(_kSearches, uid), const []);
+  }
+
+  String _savesKey(String kind) =>
+      kind == 'reel' ? _kSavedReels : _kCatalogFav;
+
+  /// Saqlanganlar keshi (`reel` / `listing`) — hisob bo'yicha.
+  List<String> savesOf(String kind, int uid) => _ofUser(_savesKey(kind), uid);
+  Future<void> setSavesOf(String kind, int uid, List<String> keys) =>
+      _p.setStringList(_u(_savesKey(kind), uid), keys);
+
+  /// Eski (faqat telefondagi) yozuvlar serverga BIR MARTA ko'chirildimi.
+  bool savesMigrated(String kind, int uid) =>
+      _p.getBool(_u('${_savesKey(kind)}.migrated', uid)) ?? false;
+  Future<void> setSavesMigrated(String kind, int uid) =>
+      _p.setBool(_u('${_savesKey(kind)}.migrated', uid), true);
+
+  /// Serverga yetmagan bosishlar (`1:key` — saqlash, `0:key` — olib
+  /// tashlash) — keyingi sinxronda qayta yuboriladi.
+  List<String> savesPending(String kind, int uid) =>
+      _p.getStringList(_u('${_savesKey(kind)}.pending', uid)) ?? const [];
+  Future<void> setSavesPending(String kind, int uid, List<String> ops) =>
+      _p.setStringList(_u('${_savesKey(kind)}.pending', uid), ops);
+
+  /// ESKI umumiy kalit (hisobsiz) — faqat ko'chirish va sinov uchun.
+  /// Ishlatiladigani: [savesOf].
   List<String> get catalogFavorites =>
       _p.getStringList(_kCatalogFav) ?? const [];
   Future<void> setCatalogFavorites(List<String> keys) =>
       _p.setStringList(_kCatalogFav, keys);
 
-  /// Saqlangan reel'lar (`p:12`, `c:7`). Faqat shu qurilmada.
+  /// ESKI umumiy kalit (hisobsiz) — faqat ko'chirish va sinov uchun.
   List<String> get savedReels => _p.getStringList(_kSavedReels) ?? const [];
   Future<void> setSavedReels(List<String> keys) =>
       _p.setStringList(_kSavedReels, keys);

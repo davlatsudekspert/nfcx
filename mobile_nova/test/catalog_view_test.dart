@@ -207,7 +207,9 @@ void main() {
     await tester.tap(find.bySemanticsLabel(l.catalogFavorite).first);
     await settle(tester, frames: 4);
     expect(c.read(catalogFavoritesProvider), contains('KARTAUZ/u0'));
-    expect(c.read(prefsProvider).catalogFavorites, contains('KARTAUZ/u0'));
+    // Kesh HISOB kalitida (audit 2026-10-06).
+    expect(c.read(prefsProvider).savesOf('listing', testUser.id),
+        contains('KARTAUZ/u0'));
   });
 
   testWidgets('endpoint hali deploy qilinmagan — "tez orada", xato emas',

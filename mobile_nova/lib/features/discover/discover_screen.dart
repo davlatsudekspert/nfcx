@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../auth/session.dart' show currentUserProvider;
 import '../../data/models/models.dart';
 import '../../data/repositories/discover_repository.dart';
 import '../../design/theme/typography.dart';
@@ -162,6 +163,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     final results = ref.watch(discoverResultsProvider);
     final query = ref.watch(searchQueryProvider);
     final prefs = ref.watch(prefsProvider);
+    // Qidiruvlar tarixi HISOBGA bog'langan (audit 2026-10-06).
+    final uid = ref.watch(currentUserProvider.select((u) => u?.id));
 
     return NovaScaffold(
       // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
@@ -198,7 +201,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                       onChanged: ref.read(searchQueryProvider.notifier).update,
                       onSubmitted: (v) {
                         ref.read(searchQueryProvider.notifier).submit(v);
-                        prefs.pushSearch(v);
+                        prefs.pushSearchFor(uid, v);
                       },
                       textInputAction: TextInputAction.search,
                       style: TextStyle(
@@ -275,15 +278,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
           if (tab == DiscoverTab.catalog)
             Expanded(child: CatalogView(query: query))
           else ...[
-          if (query.isEmpty && prefs.recentSearches.isNotEmpty)
+          if (query.isEmpty && prefs.recentSearchesOf(uid).isNotEmpty)
             _RecentSearches(
-              items: prefs.recentSearches,
+              items: prefs.recentSearchesOf(uid),
               onPick: (v) {
                 _controller.text = v;
                 ref.read(searchQueryProvider.notifier).submit(v);
               },
               onClear: () async {
-                await prefs.clearSearches();
+                await prefs.clearSearchesFor(uid);
                 if (mounted) setState(() {});
               },
             ),
