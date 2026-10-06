@@ -1,0 +1,1272 @@
+From 167154c26ab91c8d451c1e182a9c0aa76b85e4e3 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 00:30:05 +0000
+Subject: [PATCH] Nova: iPhone'da X-Client=ios; Yordam ekranida murojaatlar va
+ NFCSTORE javoblari
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- api_client: x-client platformaga qarab (iOS → ios, aks holda android)
+- GET /api/support: SupportMessage modeli, supportMessages() repozitoriyda
+- Yordam ekrani: "Mening murojaatlarim" — holat kapsulasi, javob pufagi,
+  yuborilgach ro'yxat yangilanadi, pastga tortib yangilash, ?id= ajratish
+- Bildirishnoma support_reply: brend muhri, matn, bosilsa Yordam ochiladi
+- l10n (uz/ru/en) va sinovlar
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/network/api_client.dart  |  21 +-
+ mobile_nova/lib/data/models/models.dart       |  71 +++-
+ .../features/activity/activity_screen.dart    |  36 +-
+ .../features/profile/profile_repository.dart  |  17 +
+ .../settings/settings_subscreens.dart         | 256 ++++++++++++--
+ mobile_nova/lib/l10n/arb/app_en.arb           |  10 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  10 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  11 +-
+ .../lib/l10n/gen/app_localizations.dart       |  48 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  24 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  25 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  25 ++
+ mobile_nova/lib/routing/router.dart           |   7 +-
+ mobile_nova/lib/routing/routes.dart           |   4 +
+ mobile_nova/test/client_header_test.dart      |  40 +++
+ mobile_nova/test/routes_test.dart             |   2 +
+ mobile_nova/test/support/rich_fakes.dart      |   5 +
+ mobile_nova/test/support_replies_test.dart    | 330 ++++++++++++++++++
+ 18 files changed, 906 insertions(+), 36 deletions(-)
+ create mode 100644 mobile_nova/test/client_header_test.dart
+ create mode 100644 mobile_nova/test/support_replies_test.dart
+
+diff --git a/mobile_nova/lib/core/network/api_client.dart b/mobile_nova/lib/core/network/api_client.dart
+index 9b82d6c..9bb8e15 100644
+--- a/mobile_nova/lib/core/network/api_client.dart
++++ b/mobile_nova/lib/core/network/api_client.dart
+@@ -22,6 +22,15 @@ const kApiBase = String.fromEnvironment(
+   defaultValue: 'https://nfcstore.uz',
+ );
+ 
++/// `X-Client` qiymati — server tanigan to'plamdan (`android`, `ios`).
++///
++/// `defaultTargetPlatform` orqali: testda
++/// `debugDefaultTargetPlatformOverride` bilan almashtiriladi
++/// (`dart:io` `Platform` esa testda doim mezbon tizim). Boshqa
++/// platformalar (desktop/veb nusxa yo'q) — eski qiymat `android`.
++String clientPlatform() =>
++    defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
++
+ /// Backend bilan yagona aloqa nuqtasi.
+ ///
+ /// QARORLAR:
+@@ -30,8 +39,8 @@ const kApiBase = String.fromEnvironment(
+ ///    `currentUser()` ichida cookie bo'lmasa Bearer'ni o'qiydi. Mobil
+ ///    cookie jar ilova fondan qaytganda yo'qolishi mumkin, Keystore esa yo'q.
+ ///
+-/// 2) `X-Client: android` — BU QIYMAT ANIQ TANLANGAN, xohlagancha
+-///    o'zgartirilmaydi. Backend uni TO'LIQ moslik bilan tekshiradi:
++/// 2) `X-Client: android` (iPhone'da `ios`) — BU QIYMAT ANIQ TANLANGAN,
++///    xohlagancha o'zgartirilmaydi. Backend uni TO'LIQ moslik bilan tekshiradi:
+ ///
+ ///        const MOBILE_CLIENTS_D1 = new Set(['mobile', 'android', 'ios']);
+ ///        MOBILE_CLIENTS_D1.has(headers.get('x-client').toLowerCase())
+@@ -50,6 +59,12 @@ const kApiBase = String.fromEnvironment(
+ ///    Eski ilova ham aynan `android` yuboradi, demak ikkalasi ham
+ ///    `signupSourceD1` da `android` bo'lib qoladi.
+ ///
++///    iPHONE'DA `ios` (2026-10-06). Ilgari har platformada `android`
++///    ketardi va admin panelda iPhone foydalanuvchilari ham Android
++///    bo'lib ko'rinardi (ro'yxatdan o'tish manbai, ilova statistikasi).
++///    `ios` ham o'sha to'plamda, ya'ni token yo'li buzilmaydi. Qiymat
++///    [clientPlatform] dan keladi.
++///
+ /// 3) Metodlar ISTISNO OTMAYDI: `Result` qaytaradi. Shu sabab har bir
+ ///    chaqiruvda xato holati hisobga olinishi shart bo'ladi.
+ class ApiClient {
+@@ -77,7 +92,7 @@ class ApiClient {
+       sendTimeout: const Duration(seconds: 20),
+       headers: {
+         'accept': 'application/json',
+-        'x-client': 'android',
++        'x-client': clientPlatform(),
+         'x-app': 'nova',
+         // Qurilish raqami (CI beradi) — admin panelda "kim qaysi
+         // versiyada" ko'rinadi. Mahalliy qurilishda yuborilmaydi.
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index 617cfcf..d784519 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1694,7 +1694,9 @@ class Comment {
+       );
+ }
+ 
+-enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business }
++/// `support` — qo'llab-quvvatlash javobi (`support_reply`): yuboruvchi
++/// tizim, ya'ni ismi ham avatari ham bo'sh keladi.
++enum ActivityKind { like, follow, comment, scan, order, payment, system, security, business, support }
+ 
+ class ActivityEvent {
+   const ActivityEvent({
+@@ -1750,6 +1752,7 @@ class ActivityEvent {
+           'payment' => ActivityKind.payment,
+           'security' => ActivityKind.security,
+           'business' || 'company' => ActivityKind.business,
++          'support_reply' => ActivityKind.support,
+           _ => ActivityKind.system,
+         },
+         title: _s(j['title'] ?? j['text']),
+@@ -1791,6 +1794,72 @@ class NotificationPage {
+       );
+ }
+ 
++/// Murojaat holati — `GET /api/support` dagi `status`.
++enum SupportStatus { pending, replied, resolved, planned }
++
++/// QO'LLAB-QUVVATLASHGA MUROJAAT VA UNGA JAVOB.
++///
++/// Ilgari ilova faqat yuborardi: javob saytdagi admin panelda
++/// yozilar, odam esa uni hech qayerda ko'rmasdi. Endi Yordam
++/// ekranida o'z murojaatlari va javoblar turadi.
++///
++/// Noma'lum holat — `pending`: server yangi holat qo'shsa ham ekran
++/// yiqilmaydi, faqat "Kutilmoqda" ko'rinadi.
++class SupportMessage {
++  const SupportMessage({
++    required this.id,
++    this.message = '',
++    this.reply,
++    this.status = SupportStatus.pending,
++    this.createdAt,
++    this.repliedAt,
++  });
++
++  final int id;
++  final String message;
++
++  /// Javob yo'q bo'lsa `null` (bo'sh satr ham `null` ga aylanadi).
++  final String? reply;
++  final SupportStatus status;
++  final DateTime? createdAt;
++  final DateTime? repliedAt;
++
++  bool get hasReply => reply != null;
++
++  factory SupportMessage.fromJson(Map<String, dynamic> j) {
++    final reply = _s(j['reply']).trim();
++    return SupportMessage(
++      id: _i(j['id']),
++      message: _s(j['message']),
++      reply: reply.isEmpty ? null : reply,
++      status: switch (_s(j['status']).toLowerCase()) {
++        'replied' => SupportStatus.replied,
++        'resolved' => SupportStatus.resolved,
++        'planned' => SupportStatus.planned,
++        _ => SupportStatus.pending,
++      },
++      createdAt: _utcDt(j['createdAt'] ?? j['created_at']),
++      repliedAt: _utcDt(j['repliedAt'] ?? j['replied_at']),
++    );
++  }
++}
++
++/// SQLite vaqti (`2026-10-06 05:11:00`) — zonasiz, lekin UTC.
++///
++/// `DateTime.tryParse` zonasiz satrni TELEFON vaqti deb oladi va
++/// Toshkentda murojaat "5 soat oldin" yozilgandek ko'rinardi. Shuning
++/// uchun zona belgisi bo'lmasa `Z` qo'shiladi. ISO va raqam — [_dt].
++DateTime? _utcDt(dynamic v) {
++  if (v is String) {
++    final t = v.trim();
++    final zoned = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(t);
++    if (!zoned && RegExp(r'^\d{4}-\d{2}-\d{2}[ T]\d').hasMatch(t)) {
++      return DateTime.tryParse('${t.replaceFirst(' ', 'T')}Z');
++    }
++  }
++  return _dt(v);
++}
++
+ /// `fromJson` uchun ro'yxat yordamchisi — repository'larda takrorlanmasin.
+ List<T> parseList<T>(dynamic raw, T Function(Map<String, dynamic>) f) =>
+     _list(raw is Map ? (raw['items'] ?? raw['data'] ?? raw['rows']) : raw)
+diff --git a/mobile_nova/lib/features/activity/activity_screen.dart b/mobile_nova/lib/features/activity/activity_screen.dart
+index 1c97d02..1d8e0cf 100644
+--- a/mobile_nova/lib/features/activity/activity_screen.dart
++++ b/mobile_nova/lib/features/activity/activity_screen.dart
+@@ -12,6 +12,7 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../../design/widgets/brand_icon.dart';
++import '../../design/widgets/brand_logo.dart';
+ 
+ /// BILDIRISHNOMALAR — SAYT BILAN BITTA MANBADAN.
+ ///
+@@ -153,6 +154,12 @@ class _EventTile extends ConsumerWidget {
+       };
+ 
+   String? get _target {
++    // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
++    // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
++    if (event.kind == ActivityKind.support) {
++      final id = int.tryParse(event.targetId) ?? 0;
++      return id > 0 ? Routes.supportMessage(id) : Routes.settingsSupport;
++    }
+     if (event.kind == ActivityKind.follow) {
+       final code =
+           event.actorCode.isNotEmpty ? event.actorCode : event.targetCode;
+@@ -216,7 +223,14 @@ class _EventTile extends ConsumerWidget {
+       ActivityKind.security => (Icons.shield_rounded, t.warn),
+       ActivityKind.business => (Icons.storefront_rounded, t.accentB),
+       ActivityKind.system => (Icons.info_rounded, t.text3),
++      ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
+     };
++    // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
++    // tilga qarab yoziladi (server tayyor matn yubormaydi).
++    final support = event.kind == ActivityKind.support;
++    final title = support
++        ? l.activitySupportReply
++        : (event.title.isEmpty ? l.activityTitle : event.title);
+ 
+     return FloatingSurface(
+       solid: true,
+@@ -226,20 +240,26 @@ class _EventTile extends ConsumerWidget {
+       onTap: (_target == null && event.read) ? null : () => _open(context, ref),
+       child: Row(
+         children: [
+-          Container(
+-            width: 36,
+-            height: 36,
+-            decoration: BoxDecoration(
+-                color: tone.withValues(alpha: .16), shape: BoxShape.circle),
+-            child: BrandAwareIcon(icon, size: 16, color: t.isDark ? tone : t.text1),
+-          ),
++          // Yordam javobida avatar o'rnida BREND MUHRI — xabar
++          // NFCSTORE'ning o'zidan.
++          if (support)
++            const BrandSeal(size: 36, elevated: false)
++          else
++            Container(
++              width: 36,
++              height: 36,
++              decoration: BoxDecoration(
++                  color: tone.withValues(alpha: .16), shape: BoxShape.circle),
++              child: BrandAwareIcon(icon,
++                  size: 16, color: t.isDark ? tone : t.text1),
++            ),
+           const SizedBox(width: Gap.md),
+           Expanded(
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Text(
+-                  event.title.isEmpty ? l.activityTitle : event.title,
++                  title,
+                   maxLines: 2,
+                   overflow: TextOverflow.ellipsis,
+                   style: Theme.of(context).textTheme.bodyLarge,
+diff --git a/mobile_nova/lib/features/profile/profile_repository.dart b/mobile_nova/lib/features/profile/profile_repository.dart
+index c4bc158..3036e45 100644
+--- a/mobile_nova/lib/features/profile/profile_repository.dart
++++ b/mobile_nova/lib/features/profile/profile_repository.dart
+@@ -326,6 +326,23 @@ class ProfileRepository {
+   Future<Result<void>> support(String message) =>
+       _api.post<void>('/api/support', {'message': message});
+ 
++  /// O'Z MUROJAATLARI VA JAVOBLAR — `GET /api/support`.
++  ///
++  /// Server eng yangisini birinchi beradi (≤30 ta). Tartib baribir
++  /// shu yerda tekshiriladi: ro'yxat tepasida doim oxirgi murojaat
++  /// turishi kerak (yuborilgandan keyin u o'sha yerda chiqadi).
++  Future<Result<List<SupportMessage>>> supportMessages() async {
++    final res = await _api.get<Map<String, dynamic>>('/api/support');
++    return res.map((j) {
++      final items = parseList(j['messages'] ?? j['items'],
++              SupportMessage.fromJson)
++          .where((m) => m.id > 0)
++          .toList();
++      items.sort((a, b) => b.id.compareTo(a.id));
++      return items;
++    });
++  }
++
+   Future<Result<List<Map<String, dynamic>>>> referrals() async {
+     final res = await _api.get<Map<String, dynamic>>('/api/referrals');
+     return res.map((j) {
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index de821d4..0ceb916 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
+ 
+ import '../../app/profile_context.dart';
+ import '../../app/providers.dart';
++import '../../core/errors/app_error.dart';
+ import '../../core/utils/external_link.dart';
+ import '../../core/utils/result.dart';
+ import '../../core/utils/validators.dart';
+@@ -31,6 +32,7 @@ import 'settings_screen.dart';
+ import '../social/moderation.dart';
+ import 'app_lock.dart';
+ import '../../design/widgets/brand_icon.dart';
++import '../social/time_ago.dart';
+ 
+ // ------------------------------------------------------------------ mavzu
+ 
+@@ -1298,8 +1300,38 @@ class _Perks extends StatelessWidget {
+   }
+ }
+ 
++/// Odamning o'z murojaatlari — eng yangisi tepada.
++final supportMessagesProvider =
++    FutureProvider.autoDispose<List<SupportMessage>>((ref) async {
++  final res = await ref.watch(profileRepositoryProvider).supportMessages();
++  return res.when(ok: (v) => v, err: (e) => throw e);
++});
++
++/// Murojaat holati — yorliq va rang. Ranglar mavzu tokenlaridan,
++/// hammasi tus (kapsula), qizil yo'q: murojaat xato emas.
++({String text, Color tone}) supportStatusView(
++        L l, NfcTokens t, SupportStatus s) =>
++    switch (s) {
++      SupportStatus.pending => (text: l.supportStatusPending, tone: t.warn),
++      SupportStatus.replied => (text: l.supportStatusReplied, tone: t.accentB),
++      SupportStatus.resolved =>
++        (text: l.supportStatusResolved, tone: t.success),
++      SupportStatus.planned => (text: l.supportStatusPlanned, tone: t.accentC),
++    };
++
++/// YORDAM — murojaat yozish va unga kelgan JAVOBLAR.
++///
++/// Ilgari ekran faqat yuborar va yopilardi: admin javob yozsa ham
++/// odam uni ilovada hech qachon ko'rmasdi. Endi forma ostida
++/// "Mening murojaatlarim" turadi; yuborilgandan keyin ekran
++/// YOPILMAYDI — yangi murojaat ro'yxat tepasida paydo bo'ladi.
++///
++/// [highlightId] — `support_reply` bildirishnomasidan kelganda o'sha
++/// murojaatga suriladi va u ajratib ko'rsatiladi.
+ class SupportScreen extends ConsumerStatefulWidget {
+-  const SupportScreen({super.key});
++  const SupportScreen({super.key, this.highlightId});
++
++  final int? highlightId;
+ 
+   @override
+   ConsumerState<SupportScreen> createState() => _SupportScreenState();
+@@ -1307,7 +1339,9 @@ class SupportScreen extends ConsumerStatefulWidget {
+ 
+ class _SupportScreenState extends ConsumerState<SupportScreen> {
+   final _message = TextEditingController();
++  final _highlightKey = GlobalKey();
+   bool _busy = false;
++  bool _scrolled = false;
+   String? _error;
+ 
+   @override
+@@ -1334,42 +1368,224 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
+       ok: (_) {
+         ScaffoldMessenger.of(context)
+             .showSnackBar(SnackBar(content: Text(l.supportSent)));
+-        context.pop();
++        _message.clear();
++        FocusScope.of(context).unfocus();
++        // Ro'yxat qayta o'qiladi — yangi murojaat tepada chiqadi.
++        ref.invalidate(supportMessagesProvider);
+       },
+       err: (e) => setState(() => _error = describeError(l, e)),
+     );
+   }
+ 
++  Future<void> _refresh() async {
++    ref.invalidate(supportMessagesProvider);
++    try {
++      await ref.read(supportMessagesProvider.future);
++    } catch (_) {
++      // Xato ro'yxat o'rnida panel bo'lib chiqadi.
++    }
++  }
++
++  /// Bildirishnomadan kelgan murojaatga BIR MARTA suriladi.
++  void _scrollToHighlight() {
++    if (_scrolled || widget.highlightId == null) return;
++    _scrolled = true;
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      final ctx = _highlightKey.currentContext;
++      if (ctx == null || !ctx.mounted) return;
++      Scrollable.ensureVisible(ctx,
++          duration: Motion.theme, curve: Motion.smooth, alignment: .1);
++    });
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
++    final t = context.tokens;
+     return NovaScaffold(
+       title: l.settingsSupport,
+       showBack: true,
+-      body: NovaScroll(
++      body: RefreshIndicator(
++        color: t.accent2,
++        onRefresh: _refresh,
++        child: NovaScroll(
++          children: [
++            NovaField(
++              label: l.supportWriteUs,
++              controller: _message,
++              maxLines: 6,
++              maxLength: 1000,
++              enabled: !_busy,
++            ),
++            if (_error != null) ...[
++              const SizedBox(height: Gap.lg),
++              Text(_error!,
++                  textAlign: TextAlign.center,
++                  style: TextStyle(
++                      fontFamily: AppType.sans,
++                      fontSize: 12.5,
++                      fontWeight: FontWeight.w600,
++                      color: context.tokens.error)),
++            ],
++            const SizedBox(height: Gap.xxl),
++            NovaButton(label: l.actionConfirm, busy: _busy, onPressed: _send),
++            ..._history(context),
++          ],
++        ),
++      ),
++    );
++  }
++
++  /// "Mening murojaatlarim" bo'limi.
++  List<Widget> _history(BuildContext context) {
++    final l = L.of(context);
++    final tt = Theme.of(context).textTheme;
++    final messages = ref.watch(supportMessagesProvider);
++
++    // ESKI SERVER (`GET /api/support` hali yo'q) — bo'lim umuman
++    // chizilmaydi: forma ishlaydi, "qurilmoqda" paneli esa odamni
++    // chalg'itardi.
++    final err = messages.hasError && !messages.hasValue
++        ? asAppError(messages.error!)
++        : null;
++    if (err?.kind == AppErrorKind.endpointMissing) return const [];
++
++    final header = [
++      const SizedBox(height: Gap.section),
++      Text(l.supportMyMessages, style: tt.titleMedium),
++      const SizedBox(height: Gap.md),
++    ];
++    return [
++      ...header,
++      ...messages.when(
++        loading: () => [
++          for (var i = 0; i < 2; i++)
++            const Padding(
++              padding: EdgeInsets.only(bottom: Gap.md),
++              child: Skeleton(height: 72, radius: R.soft),
++            ),
++        ],
++        error: (e, _) => [
++          StatePanel.fromError(context, asAppError(e),
++              onRetry: () => ref.invalidate(supportMessagesProvider)),
++        ],
++        data: (items) {
++          if (items.isEmpty) {
++            return [Text(l.supportNoMessages, style: tt.bodySmall)];
++          }
++          if (items.any((m) => m.id == widget.highlightId)) {
++            _scrollToHighlight();
++          }
++          return [
++            for (final m in items)
++              Padding(
++                padding: const EdgeInsets.only(bottom: Gap.md),
++                child: _SupportMessageCard(
++                  key: m.id == widget.highlightId
++                      ? _highlightKey
++                      : ValueKey('support-${m.id}'),
++                  message: m,
++                  highlighted: m.id == widget.highlightId,
++                ),
++              ),
++          ];
++        },
++      ),
++    ];
++  }
++}
++
++/// Bitta murojaat: matn, vaqt, holat va (bo'lsa) NFCSTORE javobi.
++class _SupportMessageCard extends StatelessWidget {
++  const _SupportMessageCard({
++    super.key,
++    required this.message,
++    this.highlighted = false,
++  });
++
++  final SupportMessage message;
++  final bool highlighted;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final tt = Theme.of(context).textTheme;
++    final status = supportStatusView(l, t, message.status);
++    final at = message.createdAt;
++    final reply = message.reply;
++
++    final card = FloatingSurface(
++      solid: true,
++      padding: const EdgeInsets.all(Gap.lg),
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+-          NovaField(
+-            label: l.supportWriteUs,
+-            controller: _message,
+-            maxLines: 6,
+-            maxLength: 1000,
+-            enabled: !_busy,
++          Row(
++            children: [
++              Expanded(
++                child: Text(at == null ? '' : timeAgo(at, l),
++                    maxLines: 1,
++                    overflow: TextOverflow.ellipsis,
++                    style: tt.bodySmall),
++              ),
++              const SizedBox(width: Gap.sm),
++              Capsule(
++                  label: status.text,
++                  dense: true,
++                  selected: true,
++                  tone: status.tone),
++            ],
+           ),
+-          if (_error != null) ...[
+-            const SizedBox(height: Gap.lg),
+-            Text(_error!,
+-                textAlign: TextAlign.center,
+-                style: TextStyle(
+-                    fontFamily: AppType.sans,
+-                    fontSize: 12.5,
+-                    fontWeight: FontWeight.w600,
+-                    color: context.tokens.error)),
++          const SizedBox(height: Gap.sm),
++          Text(message.message, style: tt.bodyMedium),
++          if (reply != null) ...[
++            const SizedBox(height: Gap.md),
++            // JAVOB PUFAGI — brend tusida, odamning matnidan ajralib
++            // tursin.
++            Container(
++              width: double.infinity,
++              padding: const EdgeInsets.all(Gap.md),
++              decoration: BoxDecoration(
++                color: t.brand.withValues(alpha: t.isDark ? .10 : .08),
++                borderRadius: R.tile,
++                border: Border.all(color: t.brand.withValues(alpha: .35)),
++              ),
++              child: Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                children: [
++                  Row(
++                    children: [
++                      const BrandSeal(size: 22, elevated: false),
++                      const SizedBox(width: Gap.sm),
++                      Expanded(
++                        child: Text(l.supportReplyLabel,
++                            maxLines: 1,
++                            overflow: TextOverflow.ellipsis,
++                            style: tt.titleSmall),
++                      ),
++                      if (message.repliedAt != null)
++                        Text(timeAgo(message.repliedAt!, l),
++                            style: tt.bodySmall),
++                    ],
++                  ),
++                  const SizedBox(height: Gap.sm),
++                  Text(reply, style: tt.bodyMedium),
++                ],
++              ),
++            ),
+           ],
+-          const SizedBox(height: Gap.xxl),
+-          NovaButton(label: l.actionConfirm, busy: _busy, onPressed: _send),
+         ],
+       ),
+     );
++    if (!highlighted) return card;
++    return Container(
++      foregroundDecoration: BoxDecoration(
++        borderRadius: R.soft,
++        border: Border.all(color: t.accent2, width: 1.5),
++      ),
++      child: card,
++    );
+   }
+ }
+ 
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 6a82805..728df2e 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1084,5 +1084,13 @@
+   "reelsTabAll": "Reels",
+   "reelsTabFriends": "Friends",
+   "reelsFriendsEmpty": "No reels from friends yet",
+-  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here."
++  "reelsFriendsEmptyHint": "Follow people and businesses — their new reels will show up here.",
++  "supportMyMessages": "My requests",
++  "supportNoMessages": "No requests yet",
++  "supportStatusPending": "Pending",
++  "supportStatusReplied": "Replied",
++  "supportStatusResolved": "Resolved",
++  "supportStatusPlanned": "Planned",
++  "supportReplyLabel": "NFCSTORE reply",
++  "activitySupportReply": "NFCSTORE Support replied to your request"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index df2e4a7..fc822c2 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1084,5 +1084,13 @@
+   "reelsTabAll": "Reels",
+   "reelsTabFriends": "Друзья",
+   "reelsFriendsEmpty": "У друзей пока нет Reels",
+-  "reelsFriendsEmptyHint": "Подпишитесь на людей и бизнесы — их новые Reels появятся здесь."
++  "reelsFriendsEmptyHint": "Подпишитесь на людей и бизнесы — их новые Reels появятся здесь.",
++  "supportMyMessages": "Мои обращения",
++  "supportNoMessages": "Обращений пока нет",
++  "supportStatusPending": "Ожидает ответа",
++  "supportStatusReplied": "Есть ответ",
++  "supportStatusResolved": "Решено",
++  "supportStatusPlanned": "В планах",
++  "supportReplyLabel": "Ответ NFCSTORE",
++  "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 1add25a..3c8de65 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1232,5 +1232,14 @@
+   "reelsTabFriends": "Do‘stlar",
+   "reelsFriendsEmpty": "Do‘stlaringizda hali reels yo‘q",
+   "reelsFriendsEmptyHint": "Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.",
+-  "@reelsTabFriends": {"description": "Reels tepasidagi tab: faqat obuna bo‘lingan odam va bizneslarning reels’i (server scope=following)."}
++  "@reelsTabFriends": {"description": "Reels tepasidagi tab: faqat obuna bo‘lingan odam va bizneslarning reels’i (server scope=following)."},
++  "supportMyMessages": "Mening murojaatlarim",
++  "supportNoMessages": "Hali murojaat yo‘q",
++  "supportStatusPending": "Kutilmoqda",
++  "supportStatusReplied": "Javob berildi",
++  "supportStatusResolved": "Hal qilindi",
++  "supportStatusPlanned": "Rejada",
++  "supportReplyLabel": "NFCSTORE javobi",
++  "activitySupportReply": "NFCSTORE Yordam murojaatingizga javob berdi",
++  "@activitySupportReply": {"description": "Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index a7df1c1..3b67230 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5702,6 +5702,54 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.'**
+   String get reelsFriendsEmptyHint;
++
++  /// No description provided for @supportMyMessages.
++  ///
++  /// In uz, this message translates to:
++  /// **'Mening murojaatlarim'**
++  String get supportMyMessages;
++
++  /// No description provided for @supportNoMessages.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hali murojaat yo‘q'**
++  String get supportNoMessages;
++
++  /// No description provided for @supportStatusPending.
++  ///
++  /// In uz, this message translates to:
++  /// **'Kutilmoqda'**
++  String get supportStatusPending;
++
++  /// No description provided for @supportStatusReplied.
++  ///
++  /// In uz, this message translates to:
++  /// **'Javob berildi'**
++  String get supportStatusReplied;
++
++  /// No description provided for @supportStatusResolved.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hal qilindi'**
++  String get supportStatusResolved;
++
++  /// No description provided for @supportStatusPlanned.
++  ///
++  /// In uz, this message translates to:
++  /// **'Rejada'**
++  String get supportStatusPlanned;
++
++  /// No description provided for @supportReplyLabel.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFCSTORE javobi'**
++  String get supportReplyLabel;
++
++  /// Bildirishnoma (type support_reply): qo‘llab-quvvatlash xizmati odamning murojaatiga javob yozdi. Bosilganda Yordam ekrani ochiladi.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFCSTORE Yordam murojaatingizga javob berdi'**
++  String get activitySupportReply;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index f780c16..833e459 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3060,4 +3060,28 @@ class LEn extends L {
+   @override
+   String get reelsFriendsEmptyHint =>
+       'Follow people and businesses — their new reels will show up here.';
++
++  @override
++  String get supportMyMessages => 'My requests';
++
++  @override
++  String get supportNoMessages => 'No requests yet';
++
++  @override
++  String get supportStatusPending => 'Pending';
++
++  @override
++  String get supportStatusReplied => 'Replied';
++
++  @override
++  String get supportStatusResolved => 'Resolved';
++
++  @override
++  String get supportStatusPlanned => 'Planned';
++
++  @override
++  String get supportReplyLabel => 'NFCSTORE reply';
++
++  @override
++  String get activitySupportReply => 'NFCSTORE Support replied to your request';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 4d867d5..b67045b 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3066,4 +3066,29 @@ class LRu extends L {
+   @override
+   String get reelsFriendsEmptyHint =>
+       'Подпишитесь на людей и бизнесы — их новые Reels появятся здесь.';
++
++  @override
++  String get supportMyMessages => 'Мои обращения';
++
++  @override
++  String get supportNoMessages => 'Обращений пока нет';
++
++  @override
++  String get supportStatusPending => 'Ожидает ответа';
++
++  @override
++  String get supportStatusReplied => 'Есть ответ';
++
++  @override
++  String get supportStatusResolved => 'Решено';
++
++  @override
++  String get supportStatusPlanned => 'В планах';
++
++  @override
++  String get supportReplyLabel => 'Ответ NFCSTORE';
++
++  @override
++  String get activitySupportReply =>
++      'Поддержка NFCSTORE ответила на ваше обращение';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 55a899d..c0a8679 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3039,4 +3039,29 @@ class LUz extends L {
+   @override
+   String get reelsFriendsEmptyHint =>
+       'Odamlar va bizneslarga obuna bo‘ling — ularning yangi reels’lari shu yerda chiqadi.';
++
++  @override
++  String get supportMyMessages => 'Mening murojaatlarim';
++
++  @override
++  String get supportNoMessages => 'Hali murojaat yo‘q';
++
++  @override
++  String get supportStatusPending => 'Kutilmoqda';
++
++  @override
++  String get supportStatusReplied => 'Javob berildi';
++
++  @override
++  String get supportStatusResolved => 'Hal qilindi';
++
++  @override
++  String get supportStatusPlanned => 'Rejada';
++
++  @override
++  String get supportReplyLabel => 'NFCSTORE javobi';
++
++  @override
++  String get activitySupportReply =>
++      'NFCSTORE Yordam murojaatingizga javob berdi';
+ }
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index cace0e6..1f660e5 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -526,7 +526,12 @@ final routerProvider = Provider<GoRouter>((ref) {
+               path: 'premium',
+               redirect: _closedOnIos(Routes.settings),
+               builder: (_, __) => const PremiumScreen()),
+-          GoRoute(path: 'support', builder: (_, __) => const SupportScreen()),
++          // `?id=` — bildirishnomadan kelgan javob ajratib ko'rsatiladi.
++          GoRoute(
++              path: 'support',
++              builder: (_, s) => SupportScreen(
++                  highlightId:
++                      int.tryParse(s.uri.queryParameters['id'] ?? ''))),
+           GoRoute(path: 'about', builder: (_, __) => const AboutScreen()),
+           // iPhone'da yangiliklar YO'Q (`showNewsEntry`) — `nfcstore://`
+           // havolasi bilan ochilsa ham "Ilova haqida" ga buriladi.
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index e60fd48..ee1afb1 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -174,6 +174,10 @@ abstract final class Routes {
+   static const settingsReferral = '/settings/referral';
+   static const settingsPremium = '/settings/premium';
+   static const settingsSupport = '/settings/support';
++
++  /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —
++  /// `support_reply` bildirishnomasidan.
++  static String supportMessage(int id) => '$settingsSupport?id=$id';
+   static const settingsAbout = '/settings/about';
+   static const settingsNews = '/settings/news';
+   static const paymentHistory = '/settings/payment/history';
+diff --git a/mobile_nova/test/client_header_test.dart b/mobile_nova/test/client_header_test.dart
+new file mode 100644
+index 0000000..2ff46b6
+--- /dev/null
++++ b/mobile_nova/test/client_header_test.dart
+@@ -0,0 +1,40 @@
++import 'package:dio/dio.dart';
++import 'package:flutter/foundation.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++
++/// `X-Client` PLATFORMAGA MOS.
++///
++/// Ilgari iPhone ham `android` yuborardi va admin panelda iPhone
++/// foydalanuvchilari Android bo'lib ko'rinardi. Server `ios` ni
++/// taniydi (token bilan kirish, ro'yxatdan o'tish manbai, statistika).
++void main() {
++  tearDown(() => debugDefaultTargetPlatformOverride = null);
++
++  String header() {
++    final dio = Dio();
++    ApiClient(dio: dio);
++    return '${dio.options.headers['x-client']}';
++  }
++
++  test('iPhone — ios', () {
++    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
++    expect(header(), 'ios');
++  });
++
++  test('Android — android', () {
++    debugDefaultTargetPlatformOverride = TargetPlatform.android;
++    expect(header(), 'android');
++  });
++
++  test('boshqa platforma — eski qiymat android', () {
++    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
++    expect(header(), 'android');
++  });
++
++  test('x-app o‘zgarmadi', () {
++    final dio = Dio();
++    ApiClient(dio: dio);
++    expect(dio.options.headers['x-app'], 'nova');
++  });
++}
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index 5f9694b..91f2941 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -97,6 +97,8 @@ void main() {
+     // NFC ID xaridi: kod bo'yicha ekran va buyurtma holati.
+     Routes.nfcIdBuy('VIP001'),
+     Routes.nfcIdOrder(42),
++    // Yordam — `support_reply` bildirishnomasidan, murojaat ID bilan.
++    Routes.supportMessage(7),
+   ];
+ 
+   test('har bir statik marshrut routerda mavjud', () {
+diff --git a/mobile_nova/test/support/rich_fakes.dart b/mobile_nova/test/support/rich_fakes.dart
+index 816e39a..5906750 100644
+--- a/mobile_nova/test/support/rich_fakes.dart
++++ b/mobile_nova/test/support/rich_fakes.dart
+@@ -208,6 +208,11 @@ class RichProfile extends ProfileRepository {
+   @override
+   Future<Result<FollowStats>> followStats(String code) async => const Ok(
+       (followers: 9, following: 11, isFollowing: false));
++
++  /// Yordam tarixi — tarmoqqa chiqmaydi.
++  @override
++  Future<Result<List<SupportMessage>>> supportMessages() async =>
++      const Ok([]);
+ }
+ 
+ /// UMUMIY KATALOG namunasi: NFC — bitta sotuvchi/kategoriya, xolos;
+diff --git a/mobile_nova/test/support_replies_test.dart b/mobile_nova/test/support_replies_test.dart
+new file mode 100644
+index 0000000..f7a6669
+--- /dev/null
++++ b/mobile_nova/test/support_replies_test.dart
+@@ -0,0 +1,330 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/activity_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/brand_logo.dart';
++import 'package:nfcstore_nova/features/activity/activity_screen.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/settings/settings_subscreens.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// YORDAM JAVOBLARI ILOVADA.
++///
++/// Ilgari Yordam ekrani faqat yuborardi: admin saytda javob yozsa ham
++/// odam uni hech qayerda ko'rmasdi.
++
++/// Murojaatlar xotirada; yuborilgani ro'yxat tepasiga tushadi.
++class _SupportRepo extends ProfileRepository {
++  _SupportRepo(this.items) : super(ApiClient());
++
++  List<SupportMessage> items;
++  final sent = <String>[];
++  var fetches = 0;
++
++  @override
++  Future<Result<void>> support(String message) async {
++    sent.add(message);
++    items = [
++      SupportMessage(id: 900, message: message, createdAt: DateTime.now()),
++      ...items,
++    ];
++    return const Ok(null);
++  }
++
++  @override
++  Future<Result<List<SupportMessage>>> supportMessages() async {
++    fetches++;
++    return Ok(items);
++  }
++}
++
++class _SupportActivityRepo extends ActivityRepository {
++  _SupportActivityRepo() : super(ApiClient());
++
++  @override
++  Future<Result<NotificationPage>> list({int cursor = 0}) async =>
++      Ok(NotificationPage(
++        unreadCount: 1,
++        items: [
++          // Server yuborgan shakl: tizim xabari — ism ham avatar ham yo'q.
++          ActivityEvent.fromJson(const {
++            'id': 77,
++            'type': 'support_reply',
++            'title': '',
++            'avatarUrl': '',
++            'targetType': 'support',
++            'targetId': '42',
++            'read': false,
++          }),
++        ],
++      ));
++
++  @override
++  Future<Result<int>> markRead(int id) async => const Ok(0);
++}
++
++final _now = DateTime.now();
++
++List<SupportMessage> _sample() => [
++      SupportMessage(
++        id: 4,
++        message: 'Rejadagi taklif',
++        status: SupportStatus.planned,
++        createdAt: _now.subtract(const Duration(hours: 1)),
++      ),
++      SupportMessage(
++        id: 3,
++        message: 'Hal bo‘lgan savol',
++        status: SupportStatus.resolved,
++        createdAt: _now.subtract(const Duration(hours: 2)),
++      ),
++      SupportMessage(
++        id: 2,
++        message: 'Profil rasmi yuklanmayapti',
++        reply: 'Ilovani yangilang, tuzatildi.',
++        status: SupportStatus.replied,
++        createdAt: _now.subtract(const Duration(hours: 3)),
++        repliedAt: _now.subtract(const Duration(minutes: 30)),
++      ),
++      SupportMessage(
++        id: 1,
++        message: 'Javobsiz murojaat',
++        createdAt: _now.subtract(const Duration(days: 2)),
++      ),
++    ];
++
++/// Oxirgi ochilgan manzil.
++String? _opened;
++
++Widget _app(GoRouter router) => MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.pearl),
++      locale: const Locale('uz'),
++      supportedLocales: L.supportedLocales,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    );
++
++void main() {
++  setUp(() => _opened = null);
++
++  group('SupportMessage.fromJson', () {
++    test('to‘liq javob', () {
++      final m = SupportMessage.fromJson(const {
++        'id': 5,
++        'message': 'Salom',
++        'reply': 'Va alaykum',
++        'status': 'replied',
++        'createdAt': '2026-10-06 05:11:00',
++        'repliedAt': '2026-10-06T06:00:00Z',
++      });
++      expect(m.id, 5);
++      expect(m.message, 'Salom');
++      expect(m.reply, 'Va alaykum');
++      expect(m.hasReply, isTrue);
++      expect(m.status, SupportStatus.replied);
++      // Zonasiz SQLite vaqti — UTC deb o'qiladi.
++      expect(m.createdAt, DateTime.utc(2026, 10, 6, 5, 11));
++      expect(m.repliedAt, DateTime.utc(2026, 10, 6, 6));
++    });
++
++    test('noma’lum holat — pending, yo‘q maydonlar yiqitmaydi', () {
++      final m = SupportMessage.fromJson(const {
++        'id': '7',
++        'status': 'escalated',
++        'reply': null,
++      });
++      expect(m.id, 7);
++      expect(m.status, SupportStatus.pending);
++      expect(m.reply, isNull);
++      expect(m.message, '');
++      expect(m.createdAt, isNull);
++      expect(m.repliedAt, isNull);
++    });
++
++    test('holatlar va bo‘sh javob', () {
++      SupportStatus st(String s) =>
++          SupportMessage.fromJson({'id': 1, 'status': s}).status;
++      expect(st('pending'), SupportStatus.pending);
++      expect(st('resolved'), SupportStatus.resolved);
++      expect(st('planned'), SupportStatus.planned);
++      expect(st('REPLIED'), SupportStatus.replied);
++      expect(
++          SupportMessage.fromJson(const {'id': 1, 'reply': '  '}).reply,
++          isNull);
++    });
++
++    test('bildirishnoma support_reply — o‘z turi, filtrlanmaydi', () {
++      final e = ActivityEvent.fromJson(const {
++        'id': 3,
++        'type': 'support_reply',
++        'title': '',
++        'targetType': 'support',
++        'targetId': '42',
++      });
++      expect(e.kind, ActivityKind.support);
++      expect(e.targetId, '42');
++      final page = NotificationPage.fromJson(const {
++        'items': [
++          {'id': 3, 'type': 'support_reply', 'title': '', 'actorCode': ''},
++        ],
++      });
++      expect(page.items, hasLength(1));
++    });
++  });
++
++  group('Yordam ekrani', () {
++    Future<_SupportRepo> pump(WidgetTester tester,
++        {String location = Routes.settingsSupport}) async {
++      // Ro'yxat to'liq ko'rinsin: `ListView` faqat ko'rinadiganini quradi.
++      tester.view.physicalSize = const Size(900, 3200);
++      tester.view.devicePixelRatio = 1;
++      addTearDown(tester.view.reset);
++
++      final repo = _SupportRepo(_sample());
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          profileRepositoryProvider.overrideWithValue(repo),
++        ],
++        child: _app(GoRouter(
++          initialLocation: location,
++          routes: [
++            GoRoute(
++              path: '/settings/support',
++              builder: (_, s) => SupportScreen(
++                  highlightId:
++                      int.tryParse(s.uri.queryParameters['id'] ?? '')),
++            ),
++          ],
++        )),
++      ));
++      await settle(tester, frames: 20);
++      return repo;
++    }
++
++    testWidgets('murojaatlar, holatlar va NFCSTORE javobi ko‘rinadi',
++        (tester) async {
++      await pump(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++
++      expect(find.text(l.supportMyMessages), findsOneWidget);
++      expect(find.text('Profil rasmi yuklanmayapti'), findsOneWidget);
++      expect(find.text('Javobsiz murojaat'), findsOneWidget);
++
++      expect(find.text(l.supportStatusPending), findsOneWidget);
++      expect(find.text(l.supportStatusReplied), findsOneWidget);
++      expect(find.text(l.supportStatusResolved), findsOneWidget);
++      expect(find.text(l.supportStatusPlanned), findsOneWidget);
++
++      // Javob pufagi faqat javobli murojaatda.
++      expect(find.text(l.supportReplyLabel), findsOneWidget);
++      expect(find.text('Ilovani yangilang, tuzatildi.'), findsOneWidget);
++      expect(find.byType(BrandSeal), findsOneWidget);
++
++      // Eng yangisi tepada.
++      final top = tester.getTopLeft(find.text('Rejadagi taklif')).dy;
++      final bottom = tester.getTopLeft(find.text('Javobsiz murojaat')).dy;
++      expect(top, lessThan(bottom));
++    });
++
++    testWidgets('yuborilgach ro‘yxat yangilanadi, ekran yopilmaydi',
++        (tester) async {
++      final repo = await pump(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++      final before = repo.fetches;
++
++      await tester.enterText(find.byType(TextField), 'Yangi savol');
++      await tester.tap(find.text(l.actionConfirm));
++      await settle(tester, frames: 20);
++
++      expect(repo.sent, ['Yangi savol']);
++      expect(repo.fetches, greaterThan(before),
++          reason: 'yuborilgandan keyin ro‘yxat qayta so‘ralmadi');
++      expect(find.text('Yangi savol'), findsOneWidget);
++      expect(find.byType(SupportScreen), findsOneWidget);
++
++      final fresh = tester.getTopLeft(find.text('Yangi savol')).dy;
++      final older = tester.getTopLeft(find.text('Rejadagi taklif')).dy;
++      expect(fresh, lessThan(older), reason: 'yangi murojaat tepada emas');
++    });
++
++    testWidgets('bo‘sh matn yuborilmaydi', (tester) async {
++      final repo = await pump(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++      await tester.tap(find.text(l.actionConfirm));
++      await settle(tester);
++      expect(repo.sent, isEmpty);
++      expect(find.text(l.errRequired), findsOneWidget);
++    });
++
++    testWidgets('?id= bilan ochilsa — murojaat ajratiladi', (tester) async {
++      await pump(tester, location: Routes.supportMessage(2));
++      final screen = tester.widget<SupportScreen>(find.byType(SupportScreen));
++      expect(screen.highlightId, 2);
++      expect(find.text('Ilovani yangilang, tuzatildi.'), findsOneWidget);
++    });
++  });
++
++  group('bildirishnoma support_reply', () {
++    Future<void> pump(WidgetTester tester) async {
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          activityRepositoryProvider.overrideWithValue(_SupportActivityRepo()),
++        ],
++        child: _app(GoRouter(
++          initialLocation: '/activity',
++          routes: [
++            GoRoute(
++              path: '/',
++              builder: (_, __) => const SizedBox.shrink(),
++              routes: [
++                GoRoute(
++                    path: 'activity',
++                    builder: (_, __) => const ActivityScreen()),
++                GoRoute(
++                    path: 'settings/support',
++                    builder: (_, s) {
++                      _opened = s.uri.toString();
++                      return const SizedBox.shrink();
++                    }),
++              ],
++            ),
++          ],
++        )),
++      ));
++      await settle(tester, frames: 20);
++    }
++
++    testWidgets('brend muhri va matn bilan chiziladi', (tester) async {
++      await pump(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++      expect(find.text(l.activitySupportReply), findsOneWidget);
++      expect(find.byType(BrandSeal), findsOneWidget);
++    });
++
++    testWidgets('bosilsa Yordam ekrani o‘sha murojaat bilan ochiladi',
++        (tester) async {
++      await pump(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++      await tester.tap(find.text(l.activitySupportReply));
++      await settle(tester, frames: 20);
++      expect(_opened, Routes.supportMessage(42));
++    });
++  });
++}
+-- 
+2.43.0
+
