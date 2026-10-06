@@ -11,7 +11,7 @@
 //
 //   node scripts/test-phone-parity.mjs
 import { readFileSync } from 'node:fs';
-import { normalizePhone } from '../src/lib/phone.js';
+import { normalizePhone, uzPhoneLengthBad } from '../src/lib/phone.js';
 import { makeChecker } from './lib/d1-harness.mjs';
 
 const { check, done } = makeChecker();
@@ -61,6 +61,26 @@ for (const [input, expected] of CASES) {
   const b = normalizePhone(input);
   check(`server: ${JSON.stringify(input)}`, a, expected);
   check(`paritet: ${JSON.stringify(input)}`, b, a);
+}
+
+// ── Profil/kompaniya telefoni: O'zbekiston raqami uzunligi (2026-10) ──
+// Rasmiy kompaniya yozuvida "+9985009088277" (998 + 10 xona) saqlangan
+// edi — "Qo'ng'iroq" tugmasi hech qayerga ulanmasdi.
+{
+  const from2 = src.indexOf('function uzPhoneLengthBadD1');
+  const body2 = src.slice(from2, src.indexOf('\n}', from2) + 2);
+  // eslint-disable-next-line no-eval
+  const uzPhoneLengthBadD1 = eval(`(${body2.replace('function uzPhoneLengthBadD1', 'function')})`);
+  for (const [input, bad] of [
+    ['+9985009088277', true], ['tel:+9985009088277', true], ['9989012345678', true], ['+99890111223', true],
+    ['wa.me/+9985009088277', true],
+    ['+998500908277', false], ['+998 50 090 82 77', false], ['998901234567', false], ['00998901234567', false],
+    ['90 123 45 67', false], ['99 812 34 56', false], ['998123456', false],
+    ['+7 916 111 22 33', false], ['', false], ['https://wa.me/998901234567', false],
+  ]) {
+    check(`uz uzunlik server: ${JSON.stringify(input)}`, uzPhoneLengthBadD1(input), bad);
+    check(`uz uzunlik paritet: ${JSON.stringify(input)}`, uzPhoneLengthBad(input), bad);
+  }
 }
 
 done();

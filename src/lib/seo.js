@@ -2,8 +2,11 @@
 // teglarini SPA ichida yangilaydi. Teg bo'lmasa yaratadi. Sarlavha namunasi:
 // "<Sahifa> — NFCSTORE.UZ". App.jsx dagi useEffect([route, lang]) chaqiradi.
 
-export const SITE_NAME = 'NFCSTORE.UZ';
-export const SITE_ORIGIN = 'https://nfcstore.uz';
+// Sahifalar ro'yxati (SEO_ROUTES) va seoForRoute Worker bilan UMUMIY —
+// hosting/api/seo-routes.js (robotlar uchun Worker ham shu matnni yozadi).
+import { SITE_NAME, SITE_ORIGIN, fullPageTitle } from '../../hosting/api/seo-routes.js';
+
+export { SITE_NAME, SITE_ORIGIN, SEO_ROUTES, seoForRoute, fullPageTitle } from '../../hosting/api/seo-routes.js';
 // Ulashish rasmi — 1200x630 keng banner (index.html izohiga qarang).
 // Profil sahifalarida u foydalanuvchining avatariga almashadi.
 export const DEFAULT_IMAGE = `${SITE_ORIGIN}/og-cover.png`;
@@ -38,9 +41,28 @@ function normalizePath(path) {
   return withSlash.length > 1 ? withSlash.replace(/\/+$/, '') : '/';
 }
 
-export function applySeo({ title, description, path = '/', lang = 'uz', image, noindex = false } = {}) {
+// SERVER AYTGAN `robots`. Worker shaxsiy profil (/VIP001), namuna biznes
+// va mavjud bo'lmagan sahifaga `noindex` yozadi. Ilgari brauzer birinchi
+// renderdayoq uni `index,follow` ga almashtirib yuborardi — JavaScript
+// ishlatadigan Google esa aynan shu holatni ko'rardi. Endi sahifa birinchi
+// ochilgan manzil uchun server bergan `noindex` saqlanadi (sayt ichida
+// boshqa sahifaga o'tilganda o'sha sahifaning o'z qiymati qo'yiladi).
+const SERVER_ROBOTS = (() => {
+  if (typeof document === 'undefined' || typeof location === 'undefined') return null;
+  try {
+    const content = document.head.querySelector('meta[name="robots"]')?.getAttribute('content') || '';
+    return { path: normalizePath(location.pathname).toLowerCase(), content };
+  } catch { return null; }
+})();
+
+function serverRobotsFor(path) {
+  if (!SERVER_ROBOTS || !/noindex/i.test(SERVER_ROBOTS.content)) return null;
+  return normalizePath(path).toLowerCase() === SERVER_ROBOTS.path ? SERVER_ROBOTS.content : null;
+}
+
+export function applySeo({ title, description, path = '/', lang = 'uz', image, noindex = false, robots, type = 'website', canonical = true } = {}) {
   if (typeof document === 'undefined') return;
-  const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_NAME;
+  const fullTitle = fullPageTitle(title);
   const url = SITE_ORIGIN + normalizePath(path);
   const img = image || DEFAULT_IMAGE;
 
@@ -48,13 +70,15 @@ export function applySeo({ title, description, path = '/', lang = 'uz', image, n
   try { document.documentElement.lang = lang || 'uz'; } catch { /* jim */ }
 
   setMeta('name', 'description', description);
-  ensureLink('canonical').setAttribute('href', url);
+  // Kompaniyaning o'z domenida canonical nfcstore.uz ga qaratilmaydi.
+  if (canonical) ensureLink('canonical').setAttribute('href', url);
+  else document.head.querySelector('link[rel="canonical"]')?.remove();
 
   setMeta('property', 'og:title', fullTitle);
   setMeta('property', 'og:description', description);
   setMeta('property', 'og:image', img);
-  setMeta('property', 'og:url', url);
-  setMeta('property', 'og:type', 'website');
+  if (canonical) setMeta('property', 'og:url', url);
+  setMeta('property', 'og:type', type);
   setMeta('property', 'og:site_name', SITE_NAME);
   setMeta('property', 'og:locale', ({ uz: 'uz_UZ', ru: 'ru_RU', en: 'en_US' })[lang] || 'uz_UZ');
 
@@ -63,171 +87,7 @@ export function applySeo({ title, description, path = '/', lang = 'uz', image, n
   setMeta('name', 'twitter:description', description);
   setMeta('name', 'twitter:image', img);
 
-  setMeta('name', 'robots', noindex ? 'noindex,nofollow' : 'index,follow');
-}
-
-// Statik sahifalar uchun uz/ru/en sarlavha + tavsif. Kalit = App.jsx marshruti.
-export const SEO_ROUTES = {
-  home: {
-    path: '/',
-    uz: { title: 'Raqamli profil va NFC karta', description: "Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma'lumotlaringizni bitta raqamli profilda jamlang va NFC karta orqali ulashing." },
-    ru: { title: 'Цифровой профиль и NFC-карта', description: 'Соберите телефон, соцсети, сайт и другие контакты в одном цифровом профиле и делитесь им через NFC-карту.' },
-    en: { title: 'Digital profile and NFC card', description: 'Gather your phone, social links, website and key contacts in one digital profile and share it with an NFC card.' },
-  },
-  kompaniyalar: {
-    path: '/kompaniyalar',
-    uz: { title: 'Kompaniyalar', description: "NFCSTORE'dagi biznes profillar — menyu, mahsulotlar, xizmatlar va kontaktlar bitta NFC kartada." },
-    ru: { title: 'Компании', description: 'Бизнес-профили на NFCSTORE — меню, товары, услуги и контакты на одной NFC-карте.' },
-    en: { title: 'Companies', description: 'Business profiles on NFCSTORE — menu, products, services and contacts on a single NFC card.' },
-  },
-  narxlar: {
-    path: '/narxlar',
-    uz: { title: 'Narxlar', description: "NFC karta va raqamli profil narxlari. ID tanlang, band qiling va Payme orqali to'lang." },
-    ru: { title: 'Цены', description: 'Цены на NFC-карту и цифровой профиль. Выберите ID, забронируйте и оплатите через Payme.' },
-    en: { title: 'Pricing', description: 'NFC card and digital profile pricing. Pick an ID, reserve it and pay via Payme.' },
-  },
-  business: {
-    path: '/business',
-    uz: { title: 'Biznes kabinet', description: 'Kompaniyangiz uchun alohida kabinet: Company ID, kompaniya NFC profili, katalog va jamoa.' },
-    ru: { title: 'Бизнес-кабинет', description: 'Отдельный кабинет для компании: Company ID, NFC-профиль компании, каталог и команда.' },
-    en: { title: 'Business account', description: 'A separate workspace for your company: Company ID, company NFC profile, catalogue and team.' },
-  },
-  yangiliklar: {
-    path: '/yangiliklar',
-    uz: { title: 'Yangiliklar', description: "Ishga tushirish sanasi, yangi ID'lar, aksiyalar va platforma yangiliklari." },
-    ru: { title: 'Новости', description: 'Дата запуска, новые ID, акции и новости платформы.' },
-    en: { title: 'News', description: 'Launch date, new IDs, promos and platform news.' },
-  },
-  "sovg'alar": {
-    path: '/gifts',
-    uz: { title: "Sovg'alar", description: "NFC kartani sovg'a qiling — do'stlar, hamkorlar va jamoa uchun raqamli tashrif qog'ozi." },
-    ru: { title: 'Подарки', description: 'Подарите NFC-карту — цифровая визитка для друзей, партнёров и команды.' },
-    en: { title: 'Gifts', description: 'Gift an NFC card — a digital business card for friends, partners and your team.' },
-  },
-  katalog: {
-    path: '/katalog',
-    uz: { title: 'Katalog', description: "Band qilingan NFC ID'lar va ochiq profillar katalogi." },
-    ru: { title: 'Каталог', description: 'Каталог занятых NFC ID и открытых профилей.' },
-    en: { title: 'Catalog', description: 'Catalog of reserved NFC IDs and public profiles.' },
-  },
-  kirish: {
-    path: '/login',
-    uz: { title: 'Kirish', description: "NFCSTORE hisobingizga kiring va profilingizni boshqaring." },
-    ru: { title: 'Вход', description: 'Войдите в аккаунт NFCSTORE и управляйте профилем.' },
-    en: { title: 'Sign in', description: 'Sign in to your NFCSTORE account and manage your profile.' },
-    noindex: true,
-  },
-  hisob: {
-    path: '/account',
-    uz: { title: 'Hisob', description: 'Shaxsiy kabinet — profil, kartalar va sozlamalar.' },
-    ru: { title: 'Аккаунт', description: 'Личный кабинет — профиль, карты и настройки.' },
-    en: { title: 'Account', description: 'Personal account — profile, cards and settings.' },
-    noindex: true,
-  },
-  admin: {
-    path: '/admin',
-    uz: { title: 'Admin', description: 'Boshqaruv paneli.' },
-    ru: { title: 'Админ', description: 'Панель управления.' },
-    en: { title: 'Admin', description: 'Control panel.' },
-    noindex: true,
-  },
-  savollar: {
-    path: '/savollar',
-    uz: { title: 'Savollar', description: "Profil, NFC karta, narx, kontakt saqlash va xavfsizlik bo'yicha ko'p so'raladigan savollar." },
-    ru: { title: 'Вопросы', description: 'Частые вопросы о профиле, NFC-карте, ценах, сохранении контактов и безопасности.' },
-    en: { title: 'FAQ', description: 'Frequently asked questions about profiles, NFC cards, pricing, saving contacts and security.' },
-  },
-  'qanday-ishlaydi': {
-    path: '/qanday-ishlaydi',
-    uz: { title: 'Qanday ishlaydi', description: 'NFC karta va raqamli profil qanday ishlaydi — 3 oddiy qadam.' },
-    ru: { title: 'Как это работает', description: 'Как работают NFC-карта и цифровой профиль — 3 простых шага.' },
-    en: { title: 'How it works', description: 'How the NFC card and digital profile work — 3 simple steps.' },
-  },
-  reyting: {
-    path: '/reyting',
-    uz: { title: 'Reyting', description: "Eng ko'p ko'rilgan va yoqtirilgan profillar reytingi." },
-    ru: { title: 'Рейтинг', description: 'Рейтинг самых просматриваемых и популярных профилей.' },
-    en: { title: 'Ranking', description: 'Ranking of the most viewed and liked profiles.' },
-  },
-  aloqa: {
-    path: '/aloqa',
-    uz: { title: 'Aloqa', description: "NFCSTORE bilan bog'lanish — qo'llab-quvvatlash va hamkorlik." },
-    ru: { title: 'Контакты', description: 'Связаться с NFCSTORE — поддержка и сотрудничество.' },
-    en: { title: 'Contact', description: 'Contact NFCSTORE — support and partnership.' },
-  },
-  support: {
-    path: '/support',
-    uz: { title: "Qo'llab-quvvatlash", description: "NFCSTORE ilovasi va sayti bo'yicha yordam: Telegram, telefon va ilova ichidagi murojaat." },
-    ru: { title: 'Поддержка', description: 'Помощь по приложению и сайту NFCSTORE: Telegram, телефон и обращение в приложении.' },
-    en: { title: 'Support', description: 'Help with the NFCSTORE app and website: Telegram, phone and the in-app support form.' },
-  },
-  'ilova-yuklash': {
-    path: '/ilova-yuklash',
-    uz: { title: 'NFCSTORE ilovasi — Android, App Store tez kunda', description: "NFCSTORE ilovasi: raqamli vizitka, istalgan NFC karta va stikerni bog'lash, shaxsiy va biznes profil, katalog, Reels, Ivory/Noir mavzulari. Android uchun yuklab oling." },
-    ru: { title: 'Приложение NFCSTORE — Android, App Store скоро', description: 'Приложение NFCSTORE: цифровая визитка, привязка любой NFC-карты и наклейки, личный и бизнес-профиль, каталог, Reels, темы Ivory/Noir. Скачайте для Android.' },
-    en: { title: 'NFCSTORE app — Android, App Store soon', description: 'The NFCSTORE app: digital business card, link any NFC card or sticker, personal and business profiles, catalog, Reels, Ivory/Noir themes. Download for Android.' },
-  },
-  'nfc-stiker': {
-    path: '/nfc-stiker',
-    uz: { title: 'NFC stiker qanday ishlaydi', description: "Telefonni stikerga tekkizing — sahifa o'zi ochiladi. iPhone va Android ko'rsatmasi, stikerni profilga ulash, avto stiker va NFCSTORE ilovasi." },
-    ru: { title: 'Как работает NFC-наклейка', description: 'Приложите телефон к наклейке — страница откроется сама. Инструкция для iPhone и Android, подключение наклейки, автонаклейка и приложение NFCSTORE.' },
-    en: { title: 'How the NFC sticker works', description: 'Tap your phone on the sticker and the page opens. iPhone and Android guide, linking a sticker, the car sticker and the NFCSTORE app.' },
-  },
-  stikerlar: {
-    path: '/stikerlar',
-    uz: { title: 'NFC stikerlar — do‘kon, mashina va kafe uchun', description: "Eshik, vitrina yoki mashina oynasiga NFC stiker: telefon tekkizilsa narxlar, katalog, ish vaqti va Telegram ochiladi. Yopiq paytda ham savdo." },
-    ru: { title: 'NFC-наклейки — для магазина, машины и кафе', description: 'NFC-наклейка на дверь, витрину или стекло машины: приложил телефон — открылись цены, каталог, часы работы и Telegram. Продажи даже когда закрыто.' },
-    en: { title: 'NFC stickers — for shops, cars and cafés', description: 'An NFC sticker on the door, window or car glass: tap a phone and prices, catalog, hours and Telegram open. Sell even when you are closed.' },
-  },
-  shartlar: {
-    path: '/shartlar',
-    uz: { title: 'Foydalanish shartlari', description: 'NFCSTORE.UZ ommaviy oferta va foydalanish shartlari.' },
-    ru: { title: 'Условия использования', description: 'Публичная оферта и условия использования NFCSTORE.UZ.' },
-    en: { title: 'Terms of use', description: 'NFCSTORE.UZ public offer and terms of use.' },
-  },
-  maxfiylik: {
-    path: '/maxfiylik',
-    uz: { title: 'Maxfiylik siyosati', description: "Shaxsiy ma'lumotlar qanday saqlanadi va himoyalanadi." },
-    ru: { title: 'Политика конфиденциальности', description: 'Как хранятся и защищаются персональные данные.' },
-    en: { title: 'Privacy policy', description: 'How personal data is stored and protected.' },
-  },
-};
-
-// App.jsx marshruti (cleanRoute) → SEO_ROUTES kaliti.
-const ROUTE_ALIASES = {
-  '': 'home',
-  gifts: "sovg'alar",
-  login: 'kirish',
-  register: 'kirish',
-  account: 'hisob',
-  sozlamalar: 'hisob',
-  tolovlar: 'hisob',
-  bildirishnomalar: 'hisob',
-  xabarlar: 'hisob',
-  contact: 'support',
-  help: 'support',
-  yordam: 'support',
-  terms: 'shartlar',
-  eula: 'shartlar',
-};
-
-// Marshrut uchun SEO ma'lumotini qaytaradi; noma'lum marshrut → home tavsifi,
-// lekin canonical joriy yo'l bo'ladi.
-export function seoForRoute(cleanRoute, lang = 'uz') {
-  const route = String(cleanRoute || '');
-  const base = route.split('/')[0];
-  const key = ROUTE_ALIASES[base] ?? (SEO_ROUTES[base] ? base : null);
-  const entry = key ? SEO_ROUTES[key] : null;
-  const L = (entry && (entry[lang] || entry.uz)) || SEO_ROUTES.home[lang] || SEO_ROUTES.home.uz;
-  // shaxsiy/ish sahifalari indekslanmaydi
-  const privatePrefix = /^(admin|account|sozlamalar|tolovlar|bildirishnomalar|xabarlar|workspace|business|company\/create|login|register)(\/|$)/.test(route);
-  return {
-    title: L.title,
-    description: L.description,
-    path: '/' + route,
-    lang,
-    noindex: Boolean((entry && entry.noindex) || privatePrefix),
-  };
+  setMeta('name', 'robots', serverRobotsFor(path) || robots || (noindex ? 'noindex,nofollow' : 'index,follow'));
 }
 
 // Ommaviy profil (karta) sahifasi uchun: sarlavha = karta nomi.
@@ -244,9 +104,37 @@ export function seoForProfile(record, lang = 'uz') {
   return {
     title: name || code || SITE_NAME,
     description: tagline || fallback[lang] || fallback.uz,
-    path: '/' + (code ? String(code).toLowerCase() : ''),
+    // Katta harf — Worker'ning canonical/og:url (`/VIP001`) bilan bir xil.
+    path: '/' + (code ? String(code).toUpperCase() : ''),
     lang,
     image: r.avatarUrl || r.avatar || r.photo || r.logo || undefined,
-    noindex: false,
+    // Shaxsiy profil HECH QACHON indekslanmaydi (maxfiylik; Worker ham
+    // `noindex, follow` yozadi — hosting/worker.js personalShellResponse).
+    noindex: true,
+    robots: 'noindex, follow',
+  };
+}
+
+// Ochiq biznes sahifasi (/c/:id) — kompaniya yuklangandan keyin. Ilgari
+// SeoSync bu sahifada bosh sahifa sarlavhasini yozib qo'yardi.
+export function seoForCompany(company, lang = 'uz') {
+  const c = company || {};
+  const id = String(c.companyId || c.company_id || c.id || '').trim();
+  const name = String(c.displayName || c.display_name || c.name || id).trim();
+  const city = String(c.city || '').trim();
+  const about = String(c.description || c.tagline || '').replace(/\s+/g, ' ').trim();
+  const fallback = {
+    uz: `${name}${city ? ` — ${city}` : ''}. Aloqa, manzil, katalog va ish vaqti NFCSTORE sahifasida.`,
+    ru: `${name}${city ? ` — ${city}` : ''}. Контакты, адрес, каталог и часы работы на странице NFCSTORE.`,
+    en: `${name}${city ? ` — ${city}` : ''}. Contacts, address, catalog and opening hours on NFCSTORE.`,
+  };
+  return {
+    title: name || id || SITE_NAME,
+    description: (about.length > 200 ? about.slice(0, 199).trimEnd() + '…' : about) || fallback[lang] || fallback.uz,
+    path: '/c/' + encodeURIComponent(id),
+    lang,
+    image: c.coverUrl || c.cover_url || c.logoUrl || c.logo_url || undefined,
+    // Namuna (demo) biznes — Worker kabi `noindex`.
+    noindex: Boolean(c.demo),
   };
 }

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { PhoneShot } from '../components/PhoneShot.jsx';
 import { navigate } from '../lib/router.js';
-import { APP_APK_URL, APP_PAGE_PATH, APP_STORE_URL, PLAY_STORE_LIVE, PLAY_STORE_URL, isIos } from '../lib/appDownload.js';
+import { APP_APK_URL, APP_PAGE_PATH, APP_STORE_URL, APP_STORE_LIVE, PLAY_STORE_LIVE, PLAY_STORE_URL, appStoreBadge, isIos } from '../lib/appDownload.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // NFC STIKER — "QANDAY ISHLAYDI?" (nfcstore.uz/nfc-stiker, egasi 2026-09-26)
@@ -54,7 +54,7 @@ const CONTENT = {
     android_btn: 'Android uchun yuklab olish',
     androidPlay: 'Google Play’dan yuklab olish',
     appStore: 'App Store',
-    soon: 'Tez kunda',
+    soon: appStoreBadge('uz'),
     more: 'Ilova haqida batafsil',
     bizT: 'O‘z biznesingizga ham shunday stiker kerakmi?',
     bizP: 'Do‘kon yopiq bo‘lsa ham mijoz narxlaringizni ko‘radi va sizga yozadi.',
@@ -130,7 +130,7 @@ const CONTENT = {
     android_btn: 'Скачать для Android',
     androidPlay: 'Скачать в Google Play',
     appStore: 'App Store',
-    soon: 'Скоро',
+    soon: appStoreBadge('ru'),
     more: 'Подробнее о приложении',
     bizT: 'Нужна такая же наклейка для вашего бизнеса?',
     bizP: 'Даже когда вы закрыты, клиент видит ваши цены и пишет вам.',
@@ -206,7 +206,7 @@ const CONTENT = {
     android_btn: 'Download for Android',
     androidPlay: 'Get it on Google Play',
     appStore: 'App Store',
-    soon: 'Coming soon',
+    soon: appStoreBadge('en'),
     more: 'More about the app',
     bizT: 'Want a sticker like this for your business?',
     bizP: 'Even when you are closed, customers see your prices and message you.',
@@ -303,7 +303,7 @@ function AppButtons({ c, ios, compact = false }) {
           {PLAY_STORE_LIVE ? c.androidPlay : c.android_btn}
         </a>
       )}
-      {APP_STORE_URL ? (
+      {APP_STORE_LIVE ? (
         <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className={`btn btn-outline ${h} rounded-full px-5 no-underline`}>{c.appStore}</a>
       ) : (
         <span className={`inline-flex ${h} items-center gap-2 rounded-full border border-[color:var(--vz-line)] px-4 text-[14px] font-semibold text-[color:var(--vz-ink-2)]`} aria-disabled="true">

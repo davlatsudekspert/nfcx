@@ -1,5 +1,5 @@
 import { NEWS_ENABLED } from '../lib/features.js';
-import { navigate } from '../lib/router.js';
+import { linkClick } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
 import logo from '../assets/logo-128.png';
 
@@ -33,12 +33,13 @@ export default function Footer() {
               <ul className="flex flex-col gap-0.5">
                 {col.links.map(([label, href]) => (
                   <li key={href}>
-                    <button
-                      onClick={() => navigate(href)}
-                      className="flex min-h-11 cursor-pointer items-center text-left text-[15px] text-[color:var(--vz-ink-2)] transition-colors hover:text-[color:var(--vz-ink)]"
+                    <a
+                      href={href}
+                      onClick={linkClick(href)}
+                      className="flex min-h-11 cursor-pointer items-center text-left text-[15px] text-[color:var(--vz-ink-2)] no-underline transition-colors hover:text-[color:var(--vz-ink)]"
                     >
                       {t(label)}
-                    </button>
+                    </a>
                   </li>
                 ))}
               </ul>

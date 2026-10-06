@@ -6,6 +6,7 @@ import { navigate } from '../lib/router.js';
 import { IconArrowLeft } from '../components/Icons.jsx';
 import ShareButton from '../components/ShareButton.jsx';
 import Linkify from '../components/Linkify.jsx';
+import { applySeo } from '../lib/seo.js';
 
 // Tanlangan tildagi matnni oladi — tarjima bo'sh bo'lsa o'zbekchaga qaytadi.
 function pick(item, base, lang) {
@@ -113,8 +114,22 @@ export default function NewsPage({ newsId = null }) {
   // sahifada (masalan Kompaniyalar) qolib ketishiga sabab bo'lardi. Endi
   // ketishda hech narsa qo'lda tiklanmaydi — keyingi sahifaning o'zi SeoSync
   // orqali to'g'ri sarlavha qo'yadi.
+  // 2026-10: SeoSync /yangiliklar/:id ga umuman tegmaydi (Worker bergan
+  // maqola meta'si ustidan umumiy "Yangiliklar" tavsifini yozardi) — to'liq
+  // meta (sarlavha, tavsif, rasm, canonical) shu yerda qo'yiladi.
   useEffect(() => {
-    if (newsId && detail) document.title = `${pick(detail, 'title', lang)} — NFCSTORE`;
+    if (!newsId || !detail) return;
+    const image = detail.imageUrl
+      ? (/^https?:\/\//i.test(detail.imageUrl) ? detail.imageUrl : `https://nfcstore.uz${detail.imageUrl.startsWith('/') ? '' : '/'}${detail.imageUrl}`)
+      : undefined;
+    applySeo({
+      title: pick(detail, 'title', lang),
+      description: shareExcerpt(pick(detail, 'body', lang), 200) || undefined,
+      path: `/yangiliklar/${detail.id}`,
+      lang,
+      image,
+      type: 'article',
+    });
   }, [newsId, detail, lang]);
 
   const toggleLike = async (item) => {
@@ -204,7 +219,7 @@ export default function NewsPage({ newsId = null }) {
           {detail && (
             <article className="vz-card overflow-hidden">
               {detail.imageUrl && (
-                <img src={detail.imageUrl} alt="" className="max-h-[420px] w-full object-cover" />
+                <img src={detail.imageUrl} alt="" width="1200" height="630" decoding="async" fetchpriority="high" className="max-h-[420px] w-full object-cover" />
               )}
               <div className="p-5 sm:p-8">
                 <span className="vz-kicker">{t('Yangiliklar')}</span>
@@ -318,7 +333,7 @@ export default function NewsPage({ newsId = null }) {
                 >
                   <a href={href} onClick={(e) => go(e, href)} className="block aspect-[16/9] w-full overflow-hidden" aria-label={pick(item, 'title', lang)}>
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <img src={item.imageUrl} alt="" width="600" height="315" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       // Rasm yo'q bo'lsa ham kartalar bir xil balandlikda qolsin
                       <span

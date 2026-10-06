@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../lib/i18n.jsx';
 import { navigate } from '../lib/router.js';
-import { APP_PAGE_PATH } from '../lib/appDownload.js';
+import { APP_PAGE_PATH, appStoreText } from '../lib/appDownload.js';
 import { NEWS_ENABLED } from '../lib/features.js';
 import { PhoneShot } from './PhoneShot.jsx';
 
@@ -23,7 +23,7 @@ const CONTENT = {
     appT: 'NFCSTORE endi telefoningizda',
     appP: 'Istalgan NFC karta va stikerni bir tegishda bog‘lang, shaxsiy va biznes profilni boshqaring.',
     appGo: 'Ilovani ko‘rish',
-    appSoon: 'App Store — tez kunda',
+    appSoon: appStoreText('uz'),
     stTag: 'Yangi · NFC stikerlar',
     stT: 'Do‘koningiz yopiq bo‘lsa ham ochiq',
     stP: 'Eshik, vitrina yoki mashina oynasiga bitta stiker — narxlar, katalog va Telegram bir tegishda.',
@@ -38,7 +38,7 @@ const CONTENT = {
     appT: 'NFCSTORE теперь в вашем телефоне',
     appP: 'Привязывайте любые NFC-карты и наклейки в одно касание, управляйте личным и бизнес-профилем.',
     appGo: 'О приложении',
-    appSoon: 'App Store — скоро',
+    appSoon: appStoreText('ru'),
     stTag: 'Новинка · NFC-наклейки',
     stT: 'Ваш магазин открыт, даже когда закрыт',
     stP: 'Одна наклейка на дверь, витрину или стекло машины — цены, каталог и Telegram в одно касание.',
@@ -53,7 +53,7 @@ const CONTENT = {
     appT: 'NFCSTORE is now on your phone',
     appP: 'Link any NFC card or sticker in one tap and manage your personal and business profiles.',
     appGo: 'See the app',
-    appSoon: 'App Store — coming soon',
+    appSoon: appStoreText('en'),
     stTag: 'New · NFC stickers',
     stT: 'Your shop is open, even when it’s closed',
     stP: 'One sticker on the door, window or car glass — prices, catalog and Telegram in one tap.',
@@ -168,7 +168,7 @@ export default function HomeWhatsNew() {
                       onClick={go(`/yangiliklar/${n.id}`)}
                       className="group flex items-center gap-4 py-3 no-underline"
                     >
-                      {n.imageUrl && <img src={n.imageUrl} alt="" loading="lazy" className="h-12 w-[72px] shrink-0 rounded-lg object-cover" />}
+                      {n.imageUrl && <img src={n.imageUrl} alt="" width="72" height="48" loading="lazy" decoding="async" className="h-12 w-[72px] shrink-0 rounded-lg object-cover" />}
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2 text-[15px] font-semibold leading-snug text-[color:var(--vz-ink)] group-hover:text-[color:var(--accent-text)]">{pick(n, 'title', lang)}</span>
                         <span className="mt-0.5 block text-[12px] text-[color:var(--vz-ink-2)]">{fmtDate(n.createdAt, lang)}</span>

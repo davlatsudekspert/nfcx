@@ -165,7 +165,8 @@ export default function ReserveModal({ code, price, onClose, onDone }) {
       const text = code2 === 'reserved_pending_payment'
         ? t("Bu raqamli tashrif qog'ozi hozir boshqa birov tomonidan band qilingan (to'lov kutilmoqda). Agar u 24 soat ichida to'lamasa, avtomatik bo'shaydi \u2014 birozdan keyin qayta urinib ko'ring.")
         : code2 === 'exclusive_auction_only'
-          ? t("\u{1F48E} Bu NFC ID EKSLYUZIV daraja — to'g'ridan-to'g'ri sotib olib bo'lmaydi, faqat saytdagi Auksion bo'limi orqali qo'lga kiritiladi.")
+          // AUKSION BEKOR QILINDI (2026-09) — "Auksion bo'limi" endi yo'q.
+          ? '\u{1F48E} ' + t('Bu NFC ID Ekslyuziv darajada — uni onlayn band qilib bo‘lmaydi. Sotib olish uchun «Aloqa» sahifasi orqali biz bilan bog‘laning.')
           : String(err.message).startsWith('bad_credentials')
             ? t('Bu email boshqa akkauntga tegishli va parol mos kelmadi.')
             : String(err.message) === 'phone_not_verified'

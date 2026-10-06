@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
 import { backdropProps } from '../lib/backdrop.js';
 import {
-  APP_APK_URL, APP_STORE_URL, PLAY_STORE_LIVE,
+  APP_APK_URL, APP_STORE_URL, APP_STORE_LIVE, PLAY_STORE_LIVE, appStoreBadge,
   clearAppWelcome, hasAppWelcome,
 } from '../lib/appDownload.js';
 import CloseButton from './CloseButton.jsx';
@@ -45,7 +45,7 @@ function AppleGlyph() {
 
 export default function AppWelcomeModal() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState(() => (typeof window === 'undefined' ? '/' : window.location.pathname));
 
@@ -105,7 +105,7 @@ export default function AppWelcomeModal() {
             </span>
           </button>
 
-          {APP_STORE_URL ? (
+          {APP_STORE_LIVE ? (
             <a href={APP_STORE_URL} target="_blank" rel="noreferrer" onClick={close}
               className={`${storeBtn} border-[color:var(--vz-line)] text-[color:var(--vz-ink)] no-underline`}>
               <AppleGlyph />
@@ -123,7 +123,7 @@ export default function AppWelcomeModal() {
                 <b className="block text-[17px] leading-tight">App Store</b>
               </span>
               <span className="shrink-0 rounded-full border border-[color:var(--accent-primary)] px-2.5 py-1 text-[11px] font-bold text-[color:var(--accent-text)]">
-                {t('Tez kunda')}
+                {appStoreBadge(lang)}
               </span>
             </div>
           )}

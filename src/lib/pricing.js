@@ -384,7 +384,7 @@ export function digitPattern(d) {
   if (isZeroSuperDigit(d)) return { hot: true, label: 'Kuchli nol raqam (001/007/077)' };
   if (isExtraSuperDigit(d)) return { hot: true, label: 'Nodir raqam (711/712/771/772)' };
   if (isX0X(d)) return { hot: true, label: 'O‘ta nodir raqam (X0X)' };
-  if (isMirrorDigit(d)) return { hot: true, label: 'Zerkalniy (ko‘zgu) raqam' };
+  if (isMirrorDigit(d)) return { hot: true, label: 'Ko‘zgu raqam' };
   if (hasAdjacentPair(d)) return { hot: true, label: 'Ikkita raqam yonma-yon bir xil' };
   return { hot: false, label: '' };
 }

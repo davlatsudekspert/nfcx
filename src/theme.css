@@ -1313,6 +1313,16 @@ body.pricing-bg footer{background:var(--color-page-bg);}
 .vz-tabrow::-webkit-scrollbar{display:none}
 
 /* ── Company ID narx tekshirgichi (Kompaniyalar sahifasi) ──────────── */
+/* 390px da gorizontal surilish bor edi (sayt auditi, 2026-10): grid
+   ustuni `1fr` (= minmax(auto, 1fr)) kartaning eng kichik kengligidan
+   torayolmasdi va .co-price-card / .co-showcase-card ekrandan chiqib
+   ketardi. Ustunlar `minmax(0, 1fr)`, kartalar esa ustunga sig'adi. */
+.co-showcase-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1180px) { .co-showcase-grid { grid-template-columns: minmax(0, 1fr); } }
+.co-showcase-grid > * { min-width: 0; }
+.co-showcase-card,
+.co-price-card { width: 100%; max-width: 100%; box-sizing: border-box; min-width: 0; }
+.co-price-head h2, .co-price-head p { overflow-wrap: anywhere; }
 .co-price-card {
   display: flex; flex-direction: column; gap: 16px;
   padding: clamp(22px, 3vw, 34px);

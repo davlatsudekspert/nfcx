@@ -11,11 +11,14 @@
   <meta name="description" content="Telefon, ijtimoiy tarmoqlar, sayt va boshqa muhim ma’lumotlaringizni bitta raqamli profilda jamlang va NFC karta orqali ulashing." />
   <meta name="theme-color" content="#050403" />
   <meta name="robots" content="index,follow" />
-  <link rel="canonical" href="https://nfcstore.uz/" />
+  <!-- canonical va og:url bu yerda YO'Q (2026-10): qobiq har bir manzil
+       uchun bir xil, qattiq yozilgan `https://nfcstore.uz/` esa /narxlar,
+       /stikerlar va boshqa sahifalarni bosh sahifaning nusxasi qilib
+       ko'rsatardi. Ularni Worker sahifaga qarab yozadi
+       (hosting/api/seo-routes.js), brauzerda esa src/lib/seo.js. -->
   <meta property="og:title" content="NFCSTORE — raqamli profil va NFC karta" />
   <meta property="og:description" content="Barcha kontaktlaringiz — bitta profilda. NFCSTORE bilan ularni qulay ulashing." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://nfcstore.uz/" />
   <!-- Ulashish rasmi 1200x630 KENG banner (og-cover.png), kvadrat logo
        emas. Kvadrat rasm Telegram/Facebook da kichkina kvadratcha
        bo'lib chiqadi; keng format esa katta karta bo'lib ochiladi.

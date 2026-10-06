@@ -87,6 +87,8 @@ jobs:
       # NFC ID hech qachon sitemap'da emas va har doim noindex (maxfiylik).
       - name: SEO — biznes sitemap va profil kartochkalari
         run: node scripts/test-seo-profiles.mjs
+      - name: SEO — sayt sahifalari meta'si, haqiqiy 404 va sitemap
+        run: node scripts/test-spa-routes-seo.mjs
       # O'zbekiston serveri (547-son Qonun, 27-1-modda): env.DB/UPLOADS
       # adapterlari (hosting/uz-store.js) D1/R2 kabi ishlaydimi va asosiy
       # oqimlar adapter orqali ham o'zgarishsiz o'tadimi.

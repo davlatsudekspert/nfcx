@@ -1,5 +1,6 @@
 import { useAuth } from '../lib/auth.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { accentText } from '../lib/accentText.jsx';
 import { navigate } from '../lib/router.js';
 import { fmt } from '../lib/format.js';
 import { PHYSICAL_CARD_FEE, TIER_LABEL, PHYSICAL_CARD_MIN_TIER } from '../lib/pricing.js';
@@ -61,7 +62,7 @@ export default function PhysicalCardCta() {
       <div className="min-w-0">
         <span className="vz-kicker">{t('O‘zingiz xohlagan uslubda')}</span>
         <h2 className="vz-h2 mt-3 text-[color:var(--vz-ink)]">
-          {t('NFC ID kartangizni o‘zingizga mos')} <span className="text-[color:var(--accent-text)]">{t('dizaynda tayyorlang')}</span>
+          {accentText(t('NFC ID kartangizni o‘zingizga mos [[dizaynda tayyorlang]]'), 'text-[color:var(--accent-text)]')}
         </h2>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[color:var(--vz-ink-2)]">
           {t('Rang, dizayn va uslubni o‘zingiz tanlaysiz — keyin buyurtma berasiz. Tayyor karta pochta orqali qo‘lingizga yetib boradi.')}

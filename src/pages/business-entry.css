@@ -14,6 +14,15 @@
      bo'sh joy qolardi. `84px` — sarlavha balandligi. */
   min-height: calc(100vh - 84px);
   align-content: center;
+  /* Bitta ustun ham `minmax(0, 1fr)`: aks holda grid ustuni ichidagi eng
+     keng elementga (karta, to'lqinlar) cho'zilib, 390px ekranda sahifa
+     gorizontal surilardi (sayt auditi, 2026-10). */
+  grid-template-columns: minmax(0, 1fr);
+  /* NFC to'lqinlari (scale 3.2) va oltin nur ekran chetidan chiqadi —
+     ular kesiladi, sahifa esa surilmaydi. `clip` scroll konteyner
+     yaratmaydi (vertikal o'lchamga ta'sir qilmaydi). */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 @media (min-width: 1024px) {
   .be-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
@@ -86,6 +95,12 @@
    kengayadi va so'nadi; kechikish bilan ketma-ket ketadi, shuning
    uchun uzluksiz "signal" tuyg'usi hosil bo'ladi. */
 .be-waves { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+/* Tor ekranda to'lqinlar o'z qutisidan chiqmaydi (gorizontal surilish
+   bo'lmasin); katta ekranda keng tarqaladi — .be-hero ularni kesadi. */
+@media (max-width: 1023px) {
+  .be-waves { overflow: hidden; }
+  .be-visual::before { inset: -18% 0; }
+}
 .be-wave {
   position: absolute;
   top: 50%;

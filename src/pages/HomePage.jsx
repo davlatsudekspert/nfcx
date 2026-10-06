@@ -13,6 +13,7 @@ import NeonOrbitCard from '../components/NeonOrbitCard.jsx';
 import NfcCard from '../components/NfcCard.jsx';
 import { IconSearch, IconCheck, IconUser, IconBag, IconShield, IconBolt, IconGlobe } from '../components/Icons.jsx';
 import { useLanguage } from '../lib/i18n.jsx';
+import { accentText } from '../lib/accentText.jsx';
 import { usePaymentsEnabled } from '../lib/paymentsEnabled.jsx';
 import { TIER_PRICE, TIER_LABEL, PROFILE_PREMIUM_FEE } from '../lib/pricing.js';
 import { FAQ } from '../lib/faq.js';
@@ -144,9 +145,7 @@ export default function HomePage({ catalog, refreshCatalog }) {
 
           <Reveal delay="[transition-delay:80ms]">
             <h1 className="vz-h1 mt-5 max-w-[18ch] text-[color:var(--vz-ink)]">
-              {lang === 'uz' ? (
-                <>Siz va biznesingiz — <span className="text-[color:var(--accent-text)]">bitta profilda.</span></>
-              ) : t('Siz va biznesingiz — bitta profilda.')}
+              {accentText(t('Siz va biznesingiz — [[bitta profilda.]]'), 'text-[color:var(--accent-text)]')}
             </h1>
           </Reveal>
 

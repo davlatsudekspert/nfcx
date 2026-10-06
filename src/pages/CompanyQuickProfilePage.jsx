@@ -17,6 +17,8 @@ import { socialUrl } from '../lib/socialLinks.js';
 import { companyCta, companyEvent, companyTier, getCompany } from '../lib/company.js';
 import { navigate } from '../lib/router.js';
 import { useLanguage } from '../lib/i18n.jsx';
+import { subcategoryLabel } from '../lib/demoCategories.js';
+import { applySeo, seoForCompany } from '../lib/seo.js';
 import { fmt } from '../lib/format.js';
 import { TIER_COLOR, TIER_LABEL } from '../lib/pricing.js';
 import ProfileManifest from '../components/ProfileManifest.jsx';
@@ -46,7 +48,7 @@ function isNetworkError(err) {
 }
 
 export default function CompanyQuickProfilePage({ companyId }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [company, setCompany] = useState(undefined);
   const [error, setError] = useState(null);
@@ -136,6 +138,12 @@ export default function CompanyQuickProfilePage({ companyId }) {
   }, [companyId]);
 
   useEffect(() => load(), [load]);
+
+  // SEO: sarlavha, tavsif va rasm — shu kompaniyaniki (App.jsx dagi
+  // SeoSync bu sahifaga tegmaydi).
+  useEffect(() => {
+    if (company) applySeo(seoForCompany(company, lang));
+  }, [company, lang]);
 
   // Istorya — dumaloq logo atrofidagi halqa. Alohida so'rov: asosiy
   // ma'lumot bilan birga kelmaydi, chunki u 24 soatda o'zgaradi va
@@ -392,7 +400,7 @@ export default function CompanyQuickProfilePage({ companyId }) {
           {/* QISQA tanishtiruv (soha). Uzun tavsif ATAYLAB bu yerda
               emas: u to'rt qatorga cho'zilib, pastdagi kontent oynasini
               yeb qo'yardi. To'liq tavsif "Ma'lumot" bo'limida. */}
-          <p className="qp-sub break-words">{company.subcategory || company.categoryLabel || t('Kompaniya')}</p>
+          <p className="qp-sub break-words">{subcategoryLabel(company.subcategory, lang) || company.categoryLabel || t('Kompaniya')}</p>
           {/* NAMUNA biznes: to'qima profil — tashrifchi aldanmasin va
               o'z biznesini ochishga taklif qilinsin. */}
           {company.demo && (

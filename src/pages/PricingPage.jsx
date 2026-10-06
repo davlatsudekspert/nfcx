@@ -33,14 +33,14 @@ const TIER_HINT = {
     free: 'Boshlash uchun yetarli',
   },
   ru: {
-    exclusive: 'Аукцион для редких ID',
+    exclusive: 'Самые редкие ID — по фиксированной цене',
     premium: 'Самые редкие и особые комбинации',
     gold: 'Красивые и узнаваемые комбинации',
     silver: 'Запоминающиеся номера',
     free: 'Достаточно, чтобы начать',
   },
   en: {
-    exclusive: 'Auction for rare IDs',
+    exclusive: 'The rarest IDs — at a fixed price',
     premium: 'The rarest, most special combinations',
     gold: 'Beautiful, recognizable combinations',
     silver: 'Memorable numbers',
@@ -49,13 +49,13 @@ const TIER_HINT = {
 };
 const TIER_PRICE_TEXT = {
   uz: { exclusive: '490 000 dan', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
-  ru: { exclusive: 'На аукционе', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
-  en: { exclusive: 'At auction', premium: '199,000', gold: '149,000', silver: '99,000', free: '49,000' },
+  ru: { exclusive: 'от 490 000', premium: '199 000', gold: '149 000', silver: '99 000', free: '49 000' },
+  en: { exclusive: 'from 490,000', premium: '199,000', gold: '149,000', silver: '99,000', free: '49,000' },
 };
 const EXAMPLES = {
   uz: [
-    { code: 'MXK413', note: 'Naqshsiz — TEKIN' },
-    { code: 'LOL101', note: 'Zerkalniy (ko’zgu) raqam — Silver' },
+    { code: 'MXK413', note: 'Naqshsiz — Bronza' },
+    { code: 'LOL101', note: 'Ko‘zgu raqam — Silver' },
     { code: 'ABB770', note: 'Ham harfda, ham raqamda juftlik — Silver' },
     { code: 'XYZ007', note: 'Kuchli nol raqam (007) — Gold' },
     { code: 'IIB412', note: 'Davlat xizmati so’zi — Gold' },
@@ -64,7 +64,7 @@ const EXAMPLES = {
     { code: 'VIP001', note: 'Ekslyuziv so’z — Ekslyuziv' },
   ],
   ru: [
-    { code: 'MXK413', note: 'Без узора — БЕСПЛАТНО' },
+    { code: 'MXK413', note: 'Без узора — Бронза' },
     { code: 'LOL101', note: 'Зеркальная цифра — Silver' },
     { code: 'ABB770', note: 'Пара и в буквах, и в цифрах — Silver' },
     { code: 'XYZ007', note: 'Сильный ноль (007) — Gold' },
@@ -74,7 +74,7 @@ const EXAMPLES = {
     { code: 'VIP001', note: 'Эксклюзивное слово — Эксклюзив' },
   ],
   en: [
-    { code: 'MXK413', note: 'No pattern — FREE' },
+    { code: 'MXK413', note: 'No pattern — Bronze' },
     { code: 'LOL101', note: 'Mirror number — Silver' },
     { code: 'ABB770', note: 'Pair in both letters and digits — Silver' },
     { code: 'XYZ007', note: 'Strong zero (007) — Gold' },
@@ -167,7 +167,7 @@ export default function PricingPage({ catalog, refreshCatalog }) {
                       {priceText[tier]}{tier !== 'exclusive' ? ' ' + t("so'm") : ''}
                     </span>
                   </div>
-                  <div className="mt-0.5 truncate text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{hint[tier]}</div>
+                  <div className="mt-0.5 line-clamp-2 text-xs leading-snug" style={{ color: 'rgba(255,255,255,0.6)' }}>{hint[tier]}</div>
                 </div>
               </button>
               );

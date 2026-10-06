@@ -17,11 +17,19 @@ function isApple() {
     || (/Macintosh/i.test(ua) && typeof document !== 'undefined' && 'ontouchend' in document);
 }
 
-// Koordinata bormi? `0` ham HAQIQIY qiymat bo'lishi mumkin, shuning
-// uchun `!lat` emas, aniq tekshiruv (null/undefined/NaN rad etiladi).
+// Koordinata bormi? Bitta o'q bo'yicha `0` HAQIQIY qiymat bo'lishi mumkin
+// (ekvator/Grinvich), shuning uchun `!lat` emas, aniq tekshiruv:
+// null/undefined/bo'sh satr/NaN va chegaradan tashqari qiymat rad etiladi.
+// `0,0` JUFTLIGI esa "koordinata yo'q" degani (Atlantika okeanidagi nuqta —
+// bo'sh forma yoki xato saqlangan qiymat): ilgari bunday kompaniyada
+// "Yo'nalish" tugmasi xaritani okean o'rtasida ochardi (sayt auditi, 2026-10).
 export function hasCoords(lat, lng) {
-  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
-    && lat != null && lng != null;
+  if (lat == null || lng == null || String(lat).trim() === '' || String(lng).trim() === '') return false;
+  const a = Number(lat);
+  const b = Number(lng);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  if (Math.abs(a) > 90 || Math.abs(b) > 180) return false;
+  return !(a === 0 && b === 0);
 }
 
 // Asosiy tugma — qurilmaning o'z xaritasida yo'nalish.
