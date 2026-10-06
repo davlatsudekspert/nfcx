@@ -49,7 +49,7 @@
 
 import {
   ensureSchema as ensureFeaturedSchema, checkPromoTarget, stopSlot, salesGate,
-  PROMO_KINDS, DAY_MS, slotOut,
+  PROMO_KINDS, DAY_MS, slotOut, MAX_ACTIVE_TOTAL,
 } from './featured.js';
 
 export const BOOST_PRODUCTS = [
@@ -63,12 +63,22 @@ export const boostDaysOf = (productId) => DAYS_BY_PRODUCT.get(productId) || 0;
 
 export const HOLD_MS = 20 * 60_000;
 const CLAIM_STALE_MS = 60_000;
-const INTENT_RATE_LIMIT = 30;
-const INTENT_RATE_WINDOW_MS = 10 * 60_000;
+// Yangi ushlab turish yaratish: soatiga ko'pi bilan 6 ta (ko'rik F2 —
+// joylarni ushlab turib boshqalarga xalal berishga qarshi). Mavjudini
+// qayta so'rash sanalmaydi.
+const INTENT_RATE_LIMIT = 6;
+const INTENT_RATE_WINDOW_MS = 60 * 60_000;
 
 // featured_slots sanalari H.nowTs() shaklida ('YYYY-MM-DD HH:MM:SS.mmm+00').
 const dbTs = (ms) => new Date(ms).toISOString().replace('T', ' ').replace('Z', '+00');
 const changed = (res) => Number(res?.meta?.changes || 0) > 0;
+// 'YYYY-MM-DD HH:MM:SS.mmm+00' / ISO → ms (hammasi UTC).
+const tsMs = (v) => {
+  if (!v) return NaN;
+  let x = String(v).trim().replace(' ', 'T');
+  if (/\+00$/.test(x)) x = x.replace(/\+00$/, 'Z'); else if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(x)) x += 'Z';
+  return Date.parse(x);
+};
 
 const ready = {};
 export function ensureBoostSchema(env) {
@@ -80,6 +90,9 @@ export function ensureBoostSchema(env) {
     await env.DB.prepare(`ALTER TABLE featured_slots ADD COLUMN apple_transaction_id TEXT`).run().catch(() => {});
     await env.DB.batch([
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_featured_apple_tx ON featured_slots(apple_transaction_id)`),
+      // Bitta Apple tranzaksiyasi — ko'pi bilan bitta slot (ko'rik F5).
+      env.DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_featured_apple_tx_unique
+        ON featured_slots(apple_transaction_id) WHERE apple_transaction_id IS NOT NULL`),
       env.DB.prepare(`CREATE TABLE IF NOT EXISTS iap_apple_boost_transactions (
         transaction_id TEXT PRIMARY KEY NOT NULL,
         user_id INTEGER NOT NULL,
@@ -139,9 +152,6 @@ async function insertActiveSlot(env, H, { userId, kind, targetId, code, days, tx
 export async function handleIntent(env, H, user, body) {
   if (user.bannedUntil) return [{ error: 'banned' }, 403];
   if (!H.paymentsEnabledD1(env)) return [{ error: 'payments_disabled' }, 503];
-  if (await H.rateLimitD1(env, `iap_apple_intent:${user.id}`, INTENT_RATE_LIMIT, INTENT_RATE_WINDOW_MS)) {
-    return [{ error: 'too_many_requests' }, 429];
-  }
   const t = parseTarget(body);
   if (t.error) return t.error;
   // Faqat iOS mahsulotlari bor kunlar (1/3/6) — admin narx jadvalida
@@ -156,19 +166,27 @@ export async function handleIntent(env, H, user, body) {
 
   const now = Date.now();
   const holdUntil = now + HOLD_MS;
-  // O'sha odam o'sha kontent uchun amal qilayotgan ushlab turishi bo'lsa
-  // (Apple oynasini yopib, qayta bosdi) — o'shani yangilaymiz, aks holda
-  // u 20 daqiqa `already_featured` olardi.
+  // BIR ODAM — BITTA AMAL QILAYOTGAN USHLAB TURISH (ko'rik F2).
+  //   * o'sha post + o'sha kunlar (Apple oynasini yopib, qayta bosdi) —
+  //     o'sha intent QAYTADI, muddati UZAYTIRILMAYDI (created_at + 20 daqiqa);
+  //   * boshqa post yoki boshqa kunlar — eskisi bekor, yangisi yaratiladi
+  //     (`days` hech qachon o'zgartirilmaydi — ko'rik F1).
   const own = await env.DB.prepare(
-    `SELECT id FROM featured_slots WHERE user_id = ? AND target_kind = ? AND target_id = ?
-       AND status = 'pending' AND source = 'apple' AND ends_at > ?`
-  ).bind(user.id, t.kind, t.targetId, H.nowTs()).first();
-  if (own) {
-    await env.DB.prepare(`UPDATE featured_slots SET days = ?, ends_at = ? WHERE id = ? AND status = 'pending'`)
-      .bind(days, dbTs(holdUntil), Number(own.id)).run();
-    return [{ intentId: Number(own.id), productId, days, holdUntil }, 201];
+    `SELECT id, target_kind, target_id, days, ends_at FROM featured_slots
+      WHERE user_id = ? AND status = 'pending' AND source = 'apple' AND ends_at > ?`
+  ).bind(user.id, H.nowTs()).all();
+  const live = own?.results || [];
+  const same = live.find((r) => String(r.target_kind) === t.kind && Number(r.target_id) === t.targetId && Number(r.days) === days);
+  if (same) {
+    return [{ intentId: Number(same.id), productId, days, holdUntil: tsMs(same.ends_at) || holdUntil }, 201];
   }
-  const checked = await checkPromoTarget(env, H, user.id, t.kind, t.targetId);
+  if (await H.rateLimitD1(env, `iap_apple_intent:${user.id}`, INTENT_RATE_LIMIT, INTENT_RATE_WINDOW_MS)) {
+    return [{ error: 'too_many_requests' }, 429];
+  }
+  for (const r of live) {
+    await env.DB.prepare(`UPDATE featured_slots SET status = 'cancelled' WHERE id = ? AND status = 'pending'`).bind(Number(r.id)).run();
+  }
+  const checked = await checkPromoTarget(env, H, user.id, t.kind, t.targetId, { apple: true });
   if (checked.error) return checked.error;
   const row = await env.DB.prepare(
     `INSERT INTO featured_slots
@@ -200,7 +218,8 @@ async function respondFromLedger(env, H, row) {
   if (row.revoked_at) return [{ boost: 'revoked' }, 200];
   if (row.slot_id) {
     const slot = await env.DB.prepare(`SELECT * FROM featured_slots WHERE id = ?`).bind(Number(row.slot_id)).first();
-    if (slot) return [{ boost: 'active', slot: slotBrief(slot, H) }, 200];
+    // Slotning HOZIRGI holati ham (active | expired | stopped) — ko'rik F6.
+    if (slot) return [{ boost: 'active', slot: { ...slotBrief(slot, H), status: String(slot.status || '') } }, 200];
   }
   if (row.credit_id) {
     const c = await env.DB.prepare(`SELECT id, days FROM iap_apple_boost_credits WHERE id = ?`).bind(Number(row.credit_id)).first();
@@ -209,32 +228,63 @@ async function respondFromLedger(env, H, row) {
   return [{ error: 'in_progress' }, 409];
 }
 
-// Slot yoki kredit — DA'VO QILGAN so'rovgina chaqiradi.
+const isUnique = (e) => /UNIQUE|constraint/i.test(String(e?.message || e));
+
+// Slot yoki kredit — DA'VO QILGAN so'rovgina chaqiradi. Natija DOIM slot
+// yoki kredit (ko'rik F1): pul olingan tranzaksiya hech qachon rad etilmaydi.
 async function fulfil(env, H, user, tx, intent) {
   const done = await outcomeByTx(env, tx.transactionId);
   if (done) return done;
   const nowTs = H.nowTs();
   if (intent) {
-    // a) Amal qilayotgan ushlab turish — joy allaqachon egallangan: yoqamiz.
-    const startMs = Date.now();
-    const res = await env.DB.prepare(
-      `UPDATE featured_slots SET status = 'active', starts_at = ?, ends_at = ?, apple_transaction_id = ?
-        WHERE id = ? AND user_id = ? AND status = 'pending' AND source = 'apple' AND ends_at > ?`
-    ).bind(dbTs(startMs), dbTs(startMs + tx.days * DAY_MS), tx.transactionId, Number(intent.id), user.id, nowTs).run();
-    if (changed(res)) return { slotId: Number(intent.id) };
-    // b) Ushlab turish tugagan/bekor — joy bo'lsa, o'sha kontent uchun yangidan.
-    await env.DB.prepare(`UPDATE featured_slots SET status = 'cancelled' WHERE id = ? AND status = 'pending' AND source = 'apple'`)
-      .bind(Number(intent.id)).run();
-    const checked = await checkPromoTarget(env, H, user.id, String(intent.target_kind), Number(intent.target_id));
-    if (!checked.error) {
-      const row = await insertActiveSlot(env, H, {
-        userId: user.id, kind: String(intent.target_kind), targetId: Number(intent.target_id),
-        code: checked.target.ownerCode, days: tx.days, txid: tx.transactionId,
-      });
-      if (row?.id) return { slotId: Number(row.id) };
+    // a) Amal qilayotgan ushlab turish. Sayt (Payme/Click) joylarni
+    // ushlab turishni sanamaydi — shuning uchun yoqishdan oldin umumiy
+    // sig'im va shu postning boshqa faol sloti tekshiriladi; joy bo'lmasa — kredit.
+    const [cap, other] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS n FROM featured_slots WHERE status = 'active' AND ends_at > ?`).bind(nowTs).first(),
+      env.DB.prepare(`SELECT id FROM featured_slots WHERE target_kind = ? AND target_id = ? AND status = 'active' AND id != ?`)
+        .bind(String(intent.target_kind), Number(intent.target_id), Number(intent.id)).first(),
+    ]);
+    const room = (Number(cap?.n) || 0) < MAX_ACTIVE_TOTAL && !other;
+    if (room) {
+      const startMs = Date.now();
+      try {
+        // Kunlar — TO'LANGAN mahsulotdan (tx.days), intentdagi emas.
+        const res = await env.DB.prepare(
+          `UPDATE featured_slots SET status = 'active', days = ?, starts_at = ?, ends_at = ?, apple_transaction_id = ?
+            WHERE id = ? AND user_id = ? AND status = 'pending' AND source = 'apple' AND ends_at > ?`
+        ).bind(tx.days, dbTs(startMs), dbTs(startMs + tx.days * DAY_MS), tx.transactionId, Number(intent.id), user.id, nowTs).run();
+        if (changed(res)) return { slotId: Number(intent.id) };
+      } catch (e) {
+        if (isUnique(e)) { const o = await outcomeByTx(env, tx.transactionId); if (o) return o; }
+        throw e;
+      }
+      // b) Ushlab turish tugagan/bekor — joy bo'lsa, o'sha kontent uchun yangidan.
+      await env.DB.prepare(`UPDATE featured_slots SET status = 'cancelled' WHERE id = ? AND status = 'pending' AND source = 'apple'`)
+        .bind(Number(intent.id)).run();
+      const checked = await checkPromoTarget(env, H, user.id, String(intent.target_kind), Number(intent.target_id), { apple: true });
+      if (!checked.error) {
+        try {
+          const row = await insertActiveSlot(env, H, {
+            userId: user.id, kind: String(intent.target_kind), targetId: Number(intent.target_id),
+            code: checked.target.ownerCode, days: tx.days, txid: tx.transactionId,
+          });
+          if (row?.id) return { slotId: Number(row.id) };
+        } catch (e) {
+          if (isUnique(e)) { const o = await outcomeByTx(env, tx.transactionId); if (o) return o; }
+          throw e;
+        }
+      }
+    } else {
+      // Joy yo'q — ushlab turish bo'shatiladi, xarid kreditga.
+      await env.DB.prepare(`UPDATE featured_slots SET status = 'cancelled' WHERE id = ? AND status = 'pending' AND source = 'apple'`)
+        .bind(Number(intent.id)).run();
     }
   }
-  // c) KREDIT — to'langan tranzaksiya hech qachon yo'qolmaydi.
+  // c) KREDIT — to'langan tranzaksiya hech qachon yo'qolmaydi. Yozishdan
+  // oldin yana bir bor: shu tranzaksiyaga slot paydo bo'lmaganmi (ko'rik F5).
+  const again = await outcomeByTx(env, tx.transactionId);
+  if (again) return again;
   await env.DB.prepare(`INSERT OR IGNORE INTO iap_apple_boost_credits
       (user_id, days, product_id, environment, transaction_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(user.id, tx.days, tx.productId, tx.environment, tx.transactionId, new Date().toISOString()).run();
@@ -290,16 +340,20 @@ export async function verifyBoost(env, H, user, tx, body) {
   let row = await ledgerRow(env, tx.transactionId);
   if (row) { const r = await settled(row); if (r) return r; }
 
-  // Intent: boshqa odamniki — 403, kunlar mos emas — 422 (tranzaksiya
-  // ISHLATILMAYDI: ilova to'g'ri intent bilan yoki intentsiz qayta yuboradi).
+  // INTENT — hech qachon xato EMAS (ko'rik F1): pul olingan. Begona yoki
+  // yaroqsiz intent e'tiborsiz qoldiriladi; o'rniga odamning O'Z amal
+  // qilayotgan ushlab turishi (bo'lsa) olinadi; kunlar mos kelmasa ham
+  // to'langan kunlar (tx.days) bilan yoqiladi; aks holda — kredit.
   let intent = null;
   if (intentId !== null) {
     const s = await env.DB.prepare(`SELECT * FROM featured_slots WHERE id = ?`).bind(intentId).first();
-    if (s && s.source === 'apple') {
-      if (Number(s.user_id) !== Number(user.id)) return [{ error: 'intent_forbidden' }, 403];
-      if (Number(s.days) !== tx.days) return [{ error: 'days_mismatch' }, 422];
-      intent = s;
-    }
+    if (s && s.source === 'apple' && Number(s.user_id) === Number(user.id)) intent = s;
+  }
+  if (!intent) {
+    intent = await env.DB.prepare(
+      `SELECT * FROM featured_slots WHERE user_id = ? AND status = 'pending' AND source = 'apple' AND ends_at > ?
+        ORDER BY id DESC LIMIT 1`
+    ).bind(user.id, H.nowTs()).first() || null;
   }
 
   // DA'VO: daftar qatorini qo'shgan so'rovgina slot/kredit beradi.
@@ -345,6 +399,41 @@ export async function verifyBoost(env, H, user, tx, body) {
   return respondFromLedger(env, H, row);
 }
 
+// ═══ REFUND_REVERSED — TIKLASH (ko'rik F6) ═══
+// Pul qaytarish bekor qilindi: refund paytida to'xtatilgan slot qolgan
+// muddati bilan qayta yonadi (hozir + qolgan vaqt); bekor qilingan
+// ishlatilmagan kredit qaytadi; daftardan `revoked_at` olinadi (noma'lum
+// tranzaksiyaning `revoked` qatori o'chiriladi — keyin verify ishlaydi).
+export async function restoreBoost(env, tx) {
+  await ensureBoostSchema(env);
+  const row = await ledgerRow(env, tx.transactionId);
+  if (!row?.revoked_at) return 'nothing';
+  const refundMs = Date.parse(row.revoked_at);
+  let outcome = 'nothing';
+  const slots = await env.DB.prepare(
+    `SELECT * FROM featured_slots WHERE apple_transaction_id = ? AND status = 'stopped' AND stopped_reason = 'apple_refund'`
+  ).bind(tx.transactionId).all();
+  for (const sl of slots?.results || []) {
+    const endMs = tsMs(sl.ends_at);
+    const remaining = Number.isFinite(endMs) && Number.isFinite(refundMs) ? endMs - refundMs : 0;
+    if (remaining > 0) {
+      await env.DB.prepare(`UPDATE featured_slots SET status = 'active', ends_at = ?, stopped_reason = NULL WHERE id = ? AND status = 'stopped'`)
+        .bind(dbTs(Date.now() + remaining), Number(sl.id)).run();
+      outcome = 'slot_restored';
+    }
+  }
+  const cr = await env.DB.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = NULL
+      WHERE transaction_id = ? AND used_at IS NULL AND revoked_at IS NOT NULL`).bind(tx.transactionId).run();
+  if (changed(cr) && outcome === 'nothing') outcome = 'credit_restored';
+  if (row.state === 'revoked') {
+    await env.DB.prepare(`DELETE FROM iap_apple_boost_transactions WHERE transaction_id = ? AND state = 'revoked'`).bind(tx.transactionId).run();
+  } else {
+    await env.DB.prepare(`UPDATE iap_apple_boost_transactions SET revoked_at = NULL, updated_at = ? WHERE transaction_id = ?`)
+      .bind(new Date().toISOString(), tx.transactionId).run();
+  }
+  return outcome;
+}
+
 // ═══ 3. KREDITLAR ═══
 export async function listCredits(env, user) {
   await ensureBoostSchema(env);
@@ -368,7 +457,7 @@ export async function redeemCredit(env, H, user, body) {
   if (!credit) return [{ error: 'credit_not_found' }, 404];
   if (credit.revoked_at) return [{ error: 'credit_revoked' }, 409];
   if (credit.used_at) return [{ error: 'credit_used' }, 409];
-  const checked = await checkPromoTarget(env, H, user.id, t.kind, t.targetId);
+  const checked = await checkPromoTarget(env, H, user.id, t.kind, t.targetId, { apple: true });
   if (checked.error) return checked.error;
   // Kreditni da'vo qilamiz — ikki parallel so'rovdan faqat bittasi.
   const nowIso = new Date().toISOString();
@@ -387,5 +476,11 @@ export async function redeemCredit(env, H, user, body) {
     throw e;
   }
   await env.DB.prepare(`UPDATE iap_apple_boost_credits SET used_slot_id = ? WHERE id = ?`).bind(Number(row.id), creditId).run();
+  // Shu orada REFUND kelgan bo'lsa — slot darhol to'xtatiladi (ko'rik F4).
+  const after = await env.DB.prepare(`SELECT revoked_at FROM iap_apple_boost_credits WHERE id = ?`).bind(creditId).first();
+  if (after?.revoked_at) {
+    await stopSlot(env, Number(row.id), 'apple_refund');
+    return [{ error: 'credit_revoked' }, 409];
+  }
   return [{ boost: 'active', slot: slotBrief(row, H) }, 200];
 }

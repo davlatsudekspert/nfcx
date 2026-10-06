@@ -47,7 +47,12 @@ const withOtid = (t) => ({ ...t, originalTransactionId: t.originalTransactionId 
 const verify = (t, intentId, who = cookie.user) => call('/api/iap/apple/verify', {
   method: 'POST', cookie: who, json: { signedTransaction: signJws(withOtid(t), chain), ...(intentId !== undefined ? { intentId } : {}) },
 });
-const intent = (json, who = cookie.user) => call('/api/iap/apple/boost-intent', { method: 'POST', cookie: who, json });
+// Yangi ushlab turish soatiga 6 ta (rate limit) — chegara alohida (10-bo'lim)
+// tekshiriladi, qolgan joylarda har chaqiruvdan oldin hisoblagich tozalanadi.
+const intent = (json, who = cookie.user, { keepLimits = false } = {}) => {
+  if (!keepLimits) resetLimits();
+  return call('/api/iap/apple/boost-intent', { method: 'POST', cookie: who, json });
+};
 let nseq = 0;
 const notify = (type, t) => call('/api/iap/apple/notifications', { method: 'POST', json: { signedPayload: signJws({
   notificationType: type, notificationUUID: `bn-${++nseq}`, signedDate: NOW,
@@ -71,6 +76,7 @@ const clearUser1 = () => sqlite.prepare(`UPDATE featured_slots SET status = 'sto
   check('1) bayroq o‘chiq — boostEnabled:false', [c0.enabled, c0.boostEnabled], [false, false]);
   check('1) boostProducts', c0.boostProducts, [{ productId: P1, days: 1 }, { productId: P3, days: 3 }, { productId: P6, days: 6 }]);
   check('1) eski maydonlar o‘zgarmadi', c0.products, ['uz.nfcstore.nova.premium.monthly', 'uz.nfcstore.nova.premium.yearly']);
+  check('1) boostSalesOpen + son + chegara', [c0.boostSalesOpen, typeof c0.usersCount, c0.openAt], [true, 'number', 1000]);
   env.IAP_APPLE_ENABLED = '1';
   check('1) bayroq + to‘lovlar — boostEnabled:true', (await call('/api/iap/apple/config')).body.boostEnabled, true);
   env.PAYMENTS_ENABLED = 'false';
@@ -99,21 +105,31 @@ let I1;
   checkTrue('2) holdUntil ≈ hozir + 20 daqiqa', Math.abs(r.body.holdUntil - (Date.now() + 20 * 60_000)) < 5000);
   const s = slot(I1);
   check('2) slot: pending, apple, narx 0', [s.status, s.source, s.price, s.order_id, s.starts_at], ['pending', 'apple', 0, 0, null]);
-  check('2) ushlab turish joy egallaydi', (await capacity()).active, 1);
-  const again = await intent({ targetKind: 'post', targetId: 101, days: 3 });
-  check('2) qayta bosish — o‘sha intent, kun yangilandi', [again.status, again.body.intentId, again.body.productId, slot(I1).days], [201, I1, P3, 3]);
-  // Sayt (Payme) orqali o'sha post — ushlab turish to'sadi.
-  check('2) sayt orqali o‘sha post — already_featured', (await call('/api/featured', { method: 'POST', cookie: cookie.user, json: { targetKind: 'post', targetId: 101, days: 1 } })).body?.error, 'already_featured');
-  await intent({ targetKind: 'post', targetId: 101, days: 1 });
+  // Ko'rik F2: ushlab turish SAYT sig'imiga ta'sir qilmaydi.
+  check('2) sayt sig‘imi ushlab turishni sanamaydi', (await capacity()).active, 0);
+  const same = await intent({ targetKind: 'post', targetId: 101, days: 1 });
+  check('2) qayta bosish (o‘sha post, o‘sha kun) — o‘sha intent, muddat uzaymaydi', [same.body.intentId, same.body.holdUntil], [I1, r.body.holdUntil]);
+  // Ko'rik F1: kunlar o'zgarsa — eski bekor, yangi intent (days hech qachon o'zgartirilmaydi).
+  const other = await intent({ targetKind: 'post', targetId: 101, days: 3 });
+  check('2) boshqa kun — yangi intent, eskisi bekor', [other.status, other.body.intentId !== I1, other.body.productId, slot(I1).status, slot(I1).days], [201, true, P3, 'cancelled', 1]);
+  // Sayt (Payme) orqali o'sha post — Apple ushlab turishi TO'SMAYDI (ko'rik F2).
+  const web = await call('/api/featured', { method: 'POST', cookie: cookie.user, json: { targetKind: 'post', targetId: 101, days: 1 } });
+  check('2) sayt orqali o‘sha post — to‘silmaydi (201)', web.status, 201);
+  await call(`/api/featured/${web.body.slot.id}/cancel`, { method: 'POST', cookie: cookie.user });
+  const fresh = await intent({ targetKind: 'post', targetId: 101, days: 1 });
+  I1 = fresh.body.intentId;
+  keepId = I1;
+  check('2) yana 1 kun — yangi intent, oldingisi bekor', [slot(other.body.intentId).status, slot(I1).status], ['cancelled', 'pending']);
 }
 
 // ═══ 3. Xarid → faol slot; idempotent ═══
 const T1 = tx({ productId: P1 });
 let active1;
 {
-  check('3) begona intent — 403', (await verify(T1, I1, cookie.other)).body, { error: 'intent_forbidden' });
-  check('3) kunlar mos emas — 422', (await verify(tx({ productId: P6 }), I1)).body, { error: 'days_mismatch' });
-  checkTrue('3) xatolar daftarga yozilmadi', !sqlite.prepare(`SELECT 1 FROM iap_apple_boost_transactions WHERE user_id = 2`).get());
+  // Ko'rik F1: begona intent — xato EMAS, e'tiborsiz: user#2 da ushlab turish yo'q → kredit.
+  const fr = await verify(tx({ productId: P1 }), I1, cookie.other);
+  check('3) begona intent — kredit (pul yo‘qolmaydi)', [fr.status, fr.body.boost, fr.body.days], [200, 'credited', 1]);
+  check('3) begona intent — user#1 ushlab turishi joyida', slot(I1).status, 'pending');
   const t0 = Date.now();
   const r = await verify(T1, I1);
   active1 = r.body;
@@ -259,6 +275,105 @@ let creditId;
   // Admin to'xtatish yo'li o'zgarmagan.
   check('9) admin stop', (await call(`/api/admin/featured/${adm.body.slot.id}/stop`, { method: 'POST', cookie: cookie.admin, json: { reason: 'test' } })).body, { ok: true });
   check('9) admin stop — sabab', slot(adm.body.slot.id).stopped_reason, 'admin#1: test');
+}
+
+// ═══ 10. Ko'rik tuzatishlari (F1, F2, F4, F5, F6) ═══
+{
+  env.IAP_APPLE_ENABLED = '1';
+  clearUser1();
+  sqlite.prepare(`UPDATE featured_slots SET status = 'stopped' WHERE id = ?`).run(I1);
+  // F1: kunlar mos emas — to'langan kunlar bilan yoqiladi.
+  const h1 = (await intent({ targetKind: 'post', targetId: 105, days: 1 })).body.intentId;
+  const m = await verify(tx({ productId: P3 }), h1);
+  check('10) F1 kunlar mos emas — to‘langan 3 kun bilan faol', [m.body.boost, m.body.slot.id, slot(h1).days, m.body.slot.endsAt - m.body.slot.startsAt], ['active', h1, 3, 3 * DAY]);
+  // F1: intentsiz, lekin O'Z amal qilayotgan ushlab turishi bor — o'sha yonadi.
+  const h2 = (await intent({ targetKind: 'post', targetId: 106, days: 1 })).body.intentId;
+  const n = await verify(tx({ productId: P1 }));
+  check('10) F1 intentsiz — o‘z ushlab turishi yonadi', [n.body.boost, n.body.slot?.id], ['active', h2]);
+  // F2: bir odam — bitta amal qilayotgan ushlab turish.
+  clearUser1();
+  const a = (await intent({ targetKind: 'post', targetId: 107, days: 1 })).body.intentId;
+  const b = (await intent({ targetKind: 'post', targetId: 108, days: 1 })).body.intentId;
+  check('10) F2 ikkinchi intent — birinchisi bekor', [slot(a).status, slot(b).status], ['cancelled', 'pending']);
+  check('10) F2 amal qilayotgan ushlab turish bitta', sqlite.prepare(`SELECT COUNT(*) AS n FROM featured_slots WHERE user_id = 1 AND status = 'pending' AND source = 'apple' AND ends_at > ?`).get(dbTs(Date.now())).n, 1);
+  // F2: yangi ushlab turish soatiga 6 ta.
+  resetLimits();
+  const codes = [];
+  for (let i = 0; i < 7; i++) codes.push((await intent({ targetKind: 'post', targetId: 101 + (i % 2), days: i % 2 ? 3 : 1 }, cookie.user, { keepLimits: true })).status);
+  check('10) F2 7-chi yangi intent — 429', codes, [201, 201, 201, 201, 201, 201, 429]);
+  // F2: ushlab turish sayt sig'imini to'smaydi; to'liq bo'lsa Apple — kredit.
+  clearUser1();
+  resetLimits();
+  const act = () => sqlite.prepare(`SELECT COUNT(*) AS n FROM featured_slots WHERE status = 'active' AND ends_at > ?`).get(dbTs(Date.now())).n;
+  fill(7 - act());
+  const hold = (await intent({ targetKind: 'post', targetId: 109, days: 1 })).body.intentId;
+  check('10) F2 Apple uchun to‘la (7 faol + ushlab turish)', (await intent({ targetKind: 'post', targetId: 201, days: 1 }, cookie.other)).body.error, 'sold_out');
+  const webOther = await call('/api/featured', { method: 'POST', cookie: cookie.other, json: { targetKind: 'post', targetId: 201, days: 1 } });
+  check('10) F2 sayt — ushlab turish to‘smaydi (201)', webOther.status, 201);
+  fill(1);
+  const full = await verify(tx({ productId: P1 }), hold);
+  check('10) F2 to‘langan, joy yo‘q — kredit, ushlab turish bekor', [full.body.boost, slot(hold).status], ['credited', 'cancelled']);
+  unfill();
+  // F4: redeem paytida REFUND kelsa — slot darhol to'xtatiladi.
+  clearUser1();
+  const cTx = tx({ productId: P1 });
+  const cr = (await verify(cTx)).body;
+  check('10) F4 tayyorlov — kredit', cr.boost, 'credited');
+  const realDB = env.DB;
+  env.DB = new Proxy(realDB, { get(t, k) {
+    if (k === 'prepare') return (sql) => {
+      const wrap = (st) => new Proxy(st, { get(o, mm) {
+        if (mm === 'bind') return (...args) => wrap(o.bind(...args));
+        if (mm === 'first' && /INSERT INTO featured_slots/.test(sql)) return async (...args) => {
+          const out = await o.first(...args);
+          sqlite.prepare(`UPDATE iap_apple_boost_credits SET revoked_at = ? WHERE id = ?`).run(new Date().toISOString(), cr.creditId);
+          return out;
+        };
+        const v = o[mm]; return typeof v === 'function' ? v.bind(o) : v;
+      } });
+      return wrap(t.prepare(sql));
+    };
+    const v = t[k]; return typeof v === 'function' ? v.bind(t) : v;
+  } });
+  const rd = await call('/api/iap/apple/boost-redeem', { method: 'POST', cookie: cookie.user, json: { creditId: cr.creditId, targetKind: 'post', targetId: 110 } });
+  env.DB = realDB;
+  const rs = sqlite.prepare(`SELECT status, stopped_reason FROM featured_slots WHERE apple_transaction_id = ?`).get(cTx.transactionId);
+  check('10) F4 redeem + parallel REFUND — 409, slot to‘xtatildi', [rd.status, rd.body.error, rs.status, rs.stopped_reason], [409, 'credit_revoked', 'stopped', 'apple_refund']);
+  // F5: bitta tranzaksiya — bitta slot (UNIQUE indeks).
+  checkTrue('10) F5 UNIQUE indeks bor', !!sqlite.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'idx_featured_apple_tx_unique'`).get());
+  let dupErr = '';
+  try { sqlite.prepare(`INSERT INTO featured_slots (user_id, target_kind, target_id, code, days, price, status, apple_transaction_id, created_at) VALUES (1, 'post', 1, '', 1, 0, 'stopped', ?, ?)`).run(cTx.transactionId, dbTs(Date.now())); }
+  catch (e) { dupErr = String(e.message); }
+  checkTrue('10) F5 takror apple_transaction_id — rad', /UNIQUE/.test(dupErr));
+  // F6: REFUND_REVERSED — slot qolgan muddati bilan qayta yonadi.
+  clearUser1();
+  const hr = (await intent({ targetKind: 'post', targetId: 107, days: 6 })).body.intentId;
+  const rTx = tx({ productId: P6 });
+  check('10) F6 tayyorlov — faol', (await verify(rTx, hr)).body.boost, 'active');
+  env.IAP_APPLE_ENABLED = '0';
+  check('10) F6 REFUND — to‘xtatildi', (await notify('REFUND', { ...rTx, revocationDate: NOW })).body.result, 'slot_stopped');
+  check('10) F6 REFUND_REVERSED — tiklandi', (await notify('REFUND_REVERSED', rTx)).body.result, 'slot_restored');
+  const rr = slot(hr);
+  checkTrue('10) F6 slot faol, ≈ 6 kun qoldi', rr.status === 'active' && rr.stopped_reason === null && Math.abs(Date.parse(rr.ends_at.replace(' ', 'T').replace('+00', 'Z')) - (Date.now() + 6 * DAY)) < 10_000);
+  env.IAP_APPLE_ENABLED = '1';
+  const vr = await verify(rTx, hr);
+  check('10) F6 verify — holat bilan', [vr.body.boost, vr.body.slot.status], ['active', 'active']);
+  // Kredit: REFUND → bekor, REFUND_REVERSED → qaytdi.
+  const kTx = tx({ productId: P3 });
+  const kc = (await verify(kTx)).body;
+  check('10) F6 tayyorlov — kredit', kc.boost, 'credited');
+  check('10) F6 kredit REFUND', (await notify('REFUND', { ...kTx, revocationDate: NOW })).body.result, 'credit_revoked');
+  check('10) F6 kredit REFUND_REVERSED', (await notify('REFUND_REVERSED', kTx)).body.result, 'credit_restored');
+  checkTrue('10) F6 kredit ro‘yxatda', (await call('/api/iap/apple/boost-credits', { cookie: cookie.user })).body.credits.some((c) => c.creditId === kc.creditId));
+  // Noma'lum tranzaksiya REFUND → REVERSED → verify ishlaydi.
+  const uTx = tx({ productId: P1 });
+  await notify('REFUND', { ...uTx, revocationDate: NOW });
+  await notify('REFUND_REVERSED', uTx);
+  check('10) F6 noma’lum REFUND bekor qilingach — verify kredit', (await verify(uTx)).body.boost, 'credited');
+  // Holat: muddati o'tgan slot — slot.status 'expired'.
+  sqlite.prepare(`UPDATE featured_slots SET ends_at = ? WHERE id = ?`).run(dbTs(Date.now() - 1000), hr);
+  await call('/api/featured');
+  check('10) F6 tugagan slot — status expired', (await verify(rTx, hr)).body.slot.status, 'expired');
 }
 
 __setTrustedRootForTests(null);

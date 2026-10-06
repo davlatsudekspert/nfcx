@@ -243,11 +243,17 @@ Jadvallar: `iap_apple_account_tokens`, `iap_apple_subscriptions`, `iap_apple_tra
 → 201 `{intentId, productId, days, holdUntil}` (ms); xatolar POST /api/featured bilan bir xil
 (`banned`, `payments_disabled`, `bad_kind`, `bad_target`, `bad_package`, `not_found`, `forbidden`,
 `post_scheduled`, `already_featured`+`slotId`, `too_many_active`+`max`, `sold_out`+sig'im), 429, 413.
-Ushlab turish: slot `pending`, `source='apple'`, `ends_at` = +20 daqiqa — joy egallaydi, tugasa bo'shaydi;
-o'sha post uchun qayta bosish o'sha intentni yangilaydi.
-`POST /api/iap/apple/verify {signedTransaction, intentId?}` (consumable) → `{boost:'active', slot:{id, startsAt, endsAt}}`
-| `{boost:'credited', creditId, days}` (intent yo'q/tugagan va joy yo'q) | `{boost:'revoked'}`;
-403 `intent_forbidden`, 422 `days_mismatch`, 409 `already_linked` | `in_progress`, qolganlari premium verify bilan bir xil.
+Ushlab turish: slot `pending`, `source='apple'`, `ends_at` = created_at + 20 daqiqa (uzaytirilmaydi). Bir odamda
+bitta amal qilayotgan ushlab turish: o'sha post + o'sha kun — o'sha intent; boshqasi — eskisi bekor, yangi intent
+(`days` o'zgartirilmaydi). Yangi ushlab turish soatiga ≤ 6 (429). Ushlab turish faqat boshqa APPLE intentlari
+uchun joy egallaydi — sayt (Payme/Click) sig'imi, chegarasi va takror tekshiruvi avvalgidek.
+`POST /api/iap/apple/verify {signedTransaction, intentId?}` (consumable) → `{boost:'active', slot:{id, startsAt, endsAt, status}}`
+(`status` — slotning HOZIRGI holati: active|expired|stopped) | `{boost:'credited', creditId, days}` | `{boost:'revoked'}`.
+To'langan consumable DOIM slot yoki kredit bo'ladi: begona/yaroqsiz intent e'tiborsiz (o'rniga odamning o'z amal
+qilayotgan ushlab turishi yoki kredit); kunlar mos kelmasa — to'langan kunlar bilan; joy yo'q — kredit.
+Xatolar: 409 `already_linked` | `in_progress`, qolganlari premium verify bilan bir xil. `featured_slots.apple_transaction_id`
+— UNIQUE (NULL bo'lmasa). REFUND_REVERSED: to'xtatilgan slot qolgan muddati bilan qayta yonadi (`slot_restored`),
+bekor qilingan kredit qaytadi (`credit_restored`). Config'da `boostSalesOpen`, `usersCount`, `openAt`.
 `POST /api/iap/apple/boost-redeem {creditId, targetKind, targetId}` → `{boost:'active', slot}`;
 404 `credit_not_found`, 409 `credit_used` | `credit_revoked` + intent xatolari.
 `GET /api/iap/apple/boost-credits` → `{credits:[{creditId, days, productId, createdAt}]}`.
@@ -259,7 +265,7 @@ va `appleTransactionId`. Jadvallar: `iap_apple_boost_transactions`, `iap_apple_b
 KO'TARISH SOTUVI 1000 FOYDALANUVCHIDA (`featured.js`, 2026-10-06): rejim `admin_settings.featured_sales_open`
 = `auto` (standart; o'chirilmagan foydalanuvchilar ≥ `FEATURED_OPEN_AT_USERS` = 1000, son 5 daqiqa keshlanadi)
 | `open` | `closed`. Birinchi ochilish `featured_sales_opened_at` ga yoziladi — `auto` da qayta yopilmaydi.
-Ochilgandan 48 soat — faqat navbatdagilar. `GET /api/featured/packages` qo'shimcha
+Ochilgandan 48 soat — faqat ochilishgacha navbatga yozilganlar (`packages.priority`). `GET /api/featured/packages` qo'shimcha
 `{salesOpen, usersCount, openAt, priorityUntil, waitlisted}`. Yopiq paytda `POST /api/featured` va
 `POST /api/iap/apple/boost-intent` → 409 `{error:'sales_not_open', usersCount, openAt}`; ustuvor oynada
 navbatda bo'lmagan → 409 `{error:'priority_window', endsAt}` (tekshiruv xatolari — avvalgidek, shartdan oldin;
@@ -267,7 +273,7 @@ Apple verify/redeem — to'langan, shartga bog'liq emas; admin qo'lda ko'tarish 
 `POST /api/featured/waitlist {targetKind?, targetId?}` (auth) → `{waitlisted:true, salesOpen}`, `DELETE` → `{waitlisted:false}`
 (`featured_waitlist`, hisob o'chirilganda o'chadi). Ochilganda navbatdagilarga bitta `featured_open` bildirishnomasi
 (aktyorsiz; kunlik cron ham — `featuredSalesTick`); ilova so'rovlarida (`x-app: nova` / `X-Client`) bu tur ko'rsatilmaydi.
-Admin: `GET /api/admin/featured/waitlist` → `{sales, counts:{total, notified}, items}`;
+Admin: `GET /api/admin/featured/waitlist` (manager+) → `{sales, counts:{total, notified}, items}`;
 `POST /api/admin/featured/sales {mode}` (super_admin, `featured_sales_mode` jurnalda). Test: `scripts/test-featured-sales.mjs`.
 
 `referrals` — PROMOKOD MUKOFOTI (2026-10-06): mavjud 10% chegirmadan (auth.js `applyReferral`) TASHQARI

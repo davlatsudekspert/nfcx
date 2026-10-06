@@ -10,6 +10,7 @@
 // rejimi (open/closed/auto, faqat super_admin, jurnalda); admin navbat ro'yxati.
 // Production'ga HECH QACHON tegmaydi.
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
+import { sha256Hex } from './lib/d1-harness.mjs';
 import { __resetFeaturedSalesCache, featuredSalesTick, FEATURED_OPEN_AT_USERS } from '../hosting/api/featured.js';
 
 const { check, checkTrue, done } = makeChecker();
@@ -114,7 +115,14 @@ let openedAt;
   await call('/api/featured/waitlist', { method: 'POST', cookie: cookie.other, json: {} });
   checkTrue('4) keyin yozilgan — notified_at darhol', !!sqlite.prepare(`SELECT notified_at FROM featured_waitlist WHERE user_id = 2`).get().notified_at);
   check('4) keyin yozilgan — bildirishnoma yo‘q', notifs(2), 0);
-  check('4) endi navbatda — sotib oladi', (await buy(201, cookie.other)).status, 201);
+  // Ko'rik F3: ochilgandan KEYIN yozilgan — ustuvorlik YO'Q (faqat ochilishgacha yozilganlar).
+  const late = await buy(201, cookie.other);
+  check('4) keyin yozilgan — baribir priority_window', [late.status, late.body?.error], [409, 'priority_window']);
+  check('4) packages.priority: ochilishgacha yozilgan — true, keyin — false', [(await pk()).priority, (await pk(cookie.other)).priority], [true, false]);
+  // Kontent roli navbat ro'yxatini ko'rmaydi (ko'rik F7).
+  sqlite.prepare(`INSERT INTO admin_sessions (token, admin_id, role, abs_exp, last_activity) VALUES (?, 3, 'content_manager', '2999-01-01T00:00:00.000Z', ?)`)
+    .run(sha256Hex('content-token'), new Date().toISOString());
+  check('4) content_manager — navbat ro‘yxati 403', (await call('/api/admin/featured/waitlist', { cookie: 'nfc_admin_session=content-token' })).status, 403);
   sqlite.prepare(`DELETE FROM featured_waitlist WHERE user_id = 2`).run();
   // Oyna tugadi.
   sqlite.prepare(`UPDATE admin_settings SET value = ? WHERE key = 'featured_sales_opened_at'`).run(new Date(Date.now() - 49 * 3600_000).toISOString());

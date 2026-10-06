@@ -85,6 +85,7 @@
 import { verifyAppleJws } from './apple-jws.js';
 // "Ko'tarish" (FEATURED) consumable'lari — alohida modul, tekshiruvlar shu yerda umumiy.
 import * as boost from './iap-apple-boost.js';
+import { salesState } from './featured.js';
 
 export const BUNDLE_ID = 'uz.nfcstore.nova';
 export const PRODUCTS = ['uz.nfcstore.nova.premium.monthly', 'uz.nfcstore.nova.premium.yearly'];
@@ -623,6 +624,7 @@ async function processNotification(env, p) {
     // (Apple'ga iste'mol ma'lumoti YUBORILMAYDI).
     if (type === 'CONSUMPTION_REQUEST') return { ...base, result: 'consumption_ack' };
     if (isRevoke) return { ...base, result: await boost.revokeBoost(env, tx, 0) };
+    if (type === 'REFUND_REVERSED') return { ...base, result: await boost.restoreBoost(env, tx) };
     return { ...base, result: 'ignored' };
   }
 
@@ -717,11 +719,14 @@ export async function handle(request, env, url, H) {
   const m = request.method;
   if (p === '/api/iap/apple/config') {
     if (m !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    const sales = await salesState(env, H);
     return H.json({
       enabled: iapAppleEnabled(env), products: PRODUCTS,
       // Ko'tarish: Apple bayrog'i VA FEATURED sotuvi (to'lovlar) yoqiq bo'lsa.
       boostEnabled: iapAppleEnabled(env) && !!H.paymentsEnabledD1(env),
       boostProducts: boost.BOOST_PRODUCTS.map((x) => ({ productId: x.productId, days: x.days })),
+      // Ko'tarish sotuvi 1000 foydalanuvchida ochiladi (api/featured.js).
+      boostSalesOpen: sales.open, usersCount: sales.usersCount, openAt: sales.openAt,
     });
   }
   if (p === '/api/iap/apple/boost-intent' || p === '/api/iap/apple/boost-redeem' || p === '/api/iap/apple/boost-credits') {

@@ -710,6 +710,15 @@ function SalesControl({ adminApi, apiErrText }) {
   useEffect(() => { load(); }, [load]);
 
   const setMode = async (mode) => {
+    // OGOHLANTIRISH (ko'rik F7): birinchi ochilish QAYTARIB BO'LMAYDI —
+    // 48 soatlik navbat ustuvorligi boshlanadi va navbatdagilarga bir
+    // martalik xabar ketadi. Ochilgandan keyin 'auto' = ochiq.
+    const warn = mode === 'open'
+      ? t('Sotuvni ochish: navbatdagilar uchun 48 soatlik ustuvorlik boshlanadi va ularga bir martalik xabar yuboriladi. Bu bir marta sodir bo‘ladi — keyin «Avtomatik» ham ochiq bo‘lib qoladi. Davom etasizmi?')
+      : mode === 'closed'
+        ? t('Sotuv yopiladi: hech kim sotib ololmaydi (qo‘lda ko‘tarish ishlaydi). Davom etasizmi?')
+        : t('Avtomatik: 1000 foydalanuvchida ochiladi; sotuv avval ochilgan bo‘lsa — darhol ochiq. Davom etasizmi?');
+    if (!window.confirm(warn)) return;
     setMsg('');
     try {
       await adminApi('/featured/sales', { method: 'POST', body: JSON.stringify({ mode }) });
@@ -741,6 +750,11 @@ function SalesControl({ adminApi, apiErrText }) {
         {t('Foydalanuvchilar')}: {Number(sales.usersCount).toLocaleString('uz-UZ')} / {Number(sales.openAt).toLocaleString('uz-UZ')}
         {' · '}{t('Navbatda')}: {counts.total} ({t('xabar olgan')}: {counts.notified})
       </p>
+      {sales.openedAt && (
+        <p className="mt-1 text-[color:var(--vz-ink-faint)]">
+          {t('Birinchi ochilgan')}: {new Date(sales.openedAt).toLocaleString('ru-RU')} — {t('«Avtomatik» rejimda endi doim ochiq.')}
+        </p>
+      )}
       {sales.priorityUntil && (
         <p className="mt-1">{t('Navbatdagilar uchun ustuvor muddat')}: {new Date(sales.priorityUntil).toLocaleString('ru-RU')}</p>
       )}

@@ -26,7 +26,7 @@ import { listMyCompanies } from '../lib/company.js';
 import { dbListNfcDevices, dbUpdateNfcDevice } from '../lib/db.js';
 import { autoCropToContent, centerObject, removeBackground, whitenBackground, enhance } from '../lib/imageAI.js';
 import { tierForCode, TIER_COLOR, TIER_EMOJI, PROFILE_PREMIUM_FEE, PHYSICAL_CARD_FEE, PHYSICAL_CARD_FREE_DELIVERY_QTY, PHYSICAL_CARD_MAX_QTY, TIER_LABEL, tierLabelFor } from '../lib/pricing.js';
-import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft } from '../lib/access.js';
+import { effectiveAccess, featureAllowed, menuEligible, productEligible, serviceEligible, businessModule, FEATURE_MIN, hasAccess, trialDaysLeft, trialActive } from '../lib/access.js';
 import { rememberFollowAs } from '../lib/followIdentity.js';
 import { useContentRulesGate, CONTENT_RULES_TEXT, CONTENT_RULES_ACCEPT } from '../components/ContentRulesGate.jsx';
 import ShareButton from '../components/ShareButton.jsx';
@@ -2375,7 +2375,9 @@ export function EditCardForm({ card, onSaved, workspaceOnly = false, myCards = [
   // Premium 10. Backend AYNAN shu qoidani qo'llaydi (hosting/worker.js
   // musicLimitD1(user.isPremium)) — ikkalasi bir manbadan
   // (src/lib/musicLimits.js) hisoblanadi.
-  const isPremiumUser = !!user?.isPremium;
+  // Faol bepul sinov ham Premium limiti — server bilan bir xil qoida
+  // (worker.js: `isPremium || trialActiveD1(user)`).
+  const isPremiumUser = !!user?.isPremium || trialActive(user);
   const musicMax = musicLimit(isPremiumUser);
   const [locked, setLocked] = useState(null); // yopiq funksiya nomi (modal uchun)
   // "Joriy joylashuvimni olish" tugmasining holati.

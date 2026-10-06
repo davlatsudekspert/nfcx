@@ -259,6 +259,7 @@ export default function PromotePage() {
         openAt: Number(pk.openAt) || 1000,
         priorityUntil: pk.priorityUntil || null,
         waitlisted: !!pk.waitlisted,
+        priority: !!pk.priority,
       });
     });
     return () => { alive = false; };
@@ -399,7 +400,7 @@ export default function PromotePage() {
       {sales && sales.open && sales.priorityUntil && (
         <p className="mt-6 rounded-xl border border-[color:var(--vz-gold)] p-3 text-[14px]" data-testid="promote-priority">
           {s.priority(new Date(sales.priorityUntil).toLocaleString(lang === 'en' ? 'en-GB' : 'ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}
-          {' '}{sales.waitlisted ? s.priorityYou : s.priorityOther}
+          {' '}{sales.priority ? s.priorityYou : s.priorityOther}
         </p>
       )}
 

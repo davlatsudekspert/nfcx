@@ -45,9 +45,9 @@
 // to'xtatishni (`stopSlot`) QAYTA ISHLATADI — ikkinchi nusxa yo'q.
 // Apple "ushlab turish"i: `status = 'pending'`, `source = 'apple'`,
 // `ends_at` = ushlab turish tugashi (20 daqiqa). Sayt (Payme/Click)
-// kutilayotgan slotida `ends_at` BO'SH — shuning uchun quyidagi
-// shartlar sayt yo'li uchun avvalgidek ishlaydi, Apple ushlab
-// turishi esa amal qilguncha joy egallaydi.
+// kutilayotgan slotida `ends_at` BO'SH. Ushlab turish faqat boshqa
+// APPLE intentlariga joy egallaydi; sayt uchun sig'im, chegara va takror
+// tekshiruvi avvalgidek (`checkPromoTarget(..., { apple })`, ko'rik F2).
 
 import { targetOwner } from './comments.js';
 import { ensureSchema as ensureNotifications } from './notifications.js';
@@ -157,9 +157,13 @@ export async function salesState(env, H, { now = Date.now() } = {}) {
   return { open, mode, usersCount, openAt: FEATURED_OPEN_AT_USERS, openedAt, priorityUntil };
 }
 
-async function onWaitlist(env, userId) {
+// `beforeIso` berilsa — faqat shu paytgacha (ochilishgacha) yozilganlar.
+// Ochilish paytida yoki keyin yozilgan odam ustuvorlik OLMAYDI (ko'rik F3).
+async function onWaitlist(env, userId, beforeIso = null) {
   if (!userId) return false;
-  const row = await env.DB.prepare(`SELECT 1 AS x FROM featured_waitlist WHERE user_id = ?`).bind(userId).first().catch(() => null);
+  const row = await env.DB.prepare(
+    `SELECT 1 AS x FROM featured_waitlist WHERE user_id = ?${beforeIso ? ' AND created_at <= ?' : ''}`
+  ).bind(...(beforeIso ? [userId, beforeIso] : [userId])).first().catch(() => null);
   return !!row;
 }
 
@@ -170,7 +174,7 @@ export async function salesGate(env, H, userId) {
   if (!st.open) return [{ error: 'sales_not_open', usersCount: st.usersCount, openAt: st.openAt }, 409];
   if (st.priorityUntil) {
     await ensureWaitlistSchema(env);
-    if (!(await onWaitlist(env, userId))) return [{ error: 'priority_window', endsAt: st.priorityUntil }, 409];
+    if (!(await onWaitlist(env, userId, st.openedAt))) return [{ error: 'priority_window', endsAt: st.priorityUntil }, 409];
   }
   return null;
 }
@@ -223,14 +227,15 @@ export const PROMO_KINDS = ['post', 'company_post'];
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-/// JOY EGALLAYDIGAN SLOT: faol, yoki muddati o'tmagan Apple ushlab
-/// turishi (`pending` + `ends_at`). Sayt kutilayotgan sloti (`ends_at`
-/// bo'sh) joy egallamaydi — avvalgidek.
+/// APPLE USHLAB TURISHI FAQAT BOSHQA APPLE INTENTLARIGA TA'SIR QILADI
+/// (ko'rik F2): sayt (Payme/Click) uchun sig'im, foydalanuvchi chegarasi
+/// va takror tekshiruvi AYNAN avvalgidek — faqat faol slotlar va sayt
+/// kutilayotgan slotlari (`ends_at` bo'sh). Apple intenti esa amal
+/// qilayotgan ushlab turishlarni (`pending` + `ends_at > hozir`) ham sanaydi.
+/// To'langan Apple xaridi uchun joy qolmagan bo'lsa — KREDIT.
 const HOLDS_SEAT_SQL = `(status = 'active' OR (status = 'pending' AND ends_at > ?))`;
-/// TAKROR TEKSHIRUVI: faol, sayt kutilayotgani (`ends_at` bo'sh) yoki
-/// amal qilayotgan Apple ushlab turishi. Muddati o'tgan ushlab turish
-/// kontentni to'smaydi.
 const BLOCKS_TARGET_SQL = `(status = 'active' OR (status = 'pending' AND (ends_at IS NULL OR ends_at > ?)))`;
+const WEB_BLOCKS_TARGET_SQL = `(status = 'active' OR (status = 'pending' AND ends_at IS NULL))`;
 
 let schemaReady = null;
 
@@ -309,12 +314,12 @@ export const slotOut = (r, H) => {
 
 /// BO'SH JOYLAR: { max, active, nextFreeAt } — nextFreeAt eng yaqin
 /// tugaydigan faol reklama vaqti (ms), joy bo'sh bo'lsa null.
-/// Apple ushlab turishi (`pending` + `ends_at`) ham joy egallaydi — u
-/// tugaganda joy o'zi bo'shaydi (`nextFreeAt` ga ham kiradi).
-export async function capacityOf(env, H) {
+/// `includeHolds` — faqat Apple intenti uchun: amal qilayotgan ushlab
+/// turishlar ham sanaladi. Sayt uchun (standart) — avvalgidek, faqat faol.
+export async function capacityOf(env, H, { includeHolds = false } = {}) {
   const row = await env.DB.prepare(
     `SELECT COUNT(*) AS n, MIN(ends_at) AS next FROM featured_slots
-      WHERE status IN ('active', 'pending') AND ends_at > ?`
+      WHERE ${includeHolds ? `status IN ('active', 'pending')` : `status = 'active'`} AND ends_at > ?`
   ).bind(H.nowTs()).first().catch(() => null);
   const active = Number(row?.n) || 0;
   const d = row?.next ? H.parseDbDate(row.next) : null;
@@ -386,7 +391,7 @@ export async function sweepExpired(env, H) {
 /// not_found → forbidden → post_scheduled → already_featured →
 /// too_many_active → sold_out. Qaytaradi: `{ target }` yoki
 /// `{ error: [body, status] }`.
-export async function checkPromoTarget(env, H, userId, kind, targetId) {
+export async function checkPromoTarget(env, H, userId, kind, targetId, { apple = false } = {}) {
   // EGALIK — SERVERDA. Aks holda istalgan odam begona postni
   // ko'tarib, uni bosh sahifaga chiqarardi.
   const target = await targetOwner(env, kind, targetId);
@@ -404,17 +409,17 @@ export async function checkPromoTarget(env, H, userId, kind, targetId) {
   const now = H.nowTs();
   const dup = await env.DB.prepare(
     `SELECT id FROM featured_slots
-      WHERE target_kind = ? AND target_id = ? AND ${BLOCKS_TARGET_SQL}`
-  ).bind(kind, targetId, now).first().catch(() => null);
+      WHERE target_kind = ? AND target_id = ? AND ${apple ? BLOCKS_TARGET_SQL : WEB_BLOCKS_TARGET_SQL}`
+  ).bind(...(apple ? [kind, targetId, now] : [kind, targetId])).first().catch(() => null);
   if (dup) return { error: [{ error: 'already_featured', slotId: Number(dup.id) }, 409] };
 
   const activeRow = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM featured_slots WHERE user_id = ? AND ${HOLDS_SEAT_SQL}`
-  ).bind(userId, now).first().catch(() => null);
+    `SELECT COUNT(*) AS n FROM featured_slots WHERE user_id = ? AND ${apple ? HOLDS_SEAT_SQL : `status = 'active'`}`
+  ).bind(...(apple ? [userId, now] : [userId])).first().catch(() => null);
   if ((Number(activeRow?.n) || 0) >= MAX_ACTIVE_PER_USER) {
     return { error: [{ error: 'too_many_active', max: MAX_ACTIVE_PER_USER }, 409] };
   }
-  const cap = await capacityOf(env, H);
+  const cap = await capacityOf(env, H, { includeHolds: apple });
   if (cap.active >= cap.max) return { error: [{ error: 'sold_out', ...cap }, 409] };
   return { target };
 }
@@ -494,7 +499,13 @@ export async function handle(request, env, url, H) {
     const user = await H.getCurrentUser(request, env).catch(() => null);
     const [packages, capacity, sales] = await Promise.all([packagesOf(env), capacityOf(env, H), salesState(env, H)]);
     let waitlisted = false;
-    if (user) { await ensureWaitlistSchema(env); waitlisted = await onWaitlist(env, user.id); }
+    let priority = false;
+    if (user) {
+      await ensureWaitlistSchema(env);
+      waitlisted = await onWaitlist(env, user.id);
+      // Ustuvor oynada sotib olishi mumkinmi (ochilishgacha yozilgan).
+      priority = !!sales.priorityUntil && await onWaitlist(env, user.id, sales.openedAt);
+    }
     return H.json({
       packages,
       capacity,
@@ -507,6 +518,7 @@ export async function handle(request, env, url, H) {
       openAt: sales.openAt,
       priorityUntil: sales.priorityUntil,
       waitlisted,
+      priority,
     });
   }
 
@@ -740,8 +752,8 @@ export async function handle(request, env, url, H) {
       if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
       const dup = await env.DB.prepare(
         `SELECT id FROM featured_slots
-          WHERE target_kind = ? AND target_id = ? AND ${BLOCKS_TARGET_SQL}`
-      ).bind(kind, targetId, H.nowTs()).first().catch(() => null);
+          WHERE target_kind = ? AND target_id = ? AND ${WEB_BLOCKS_TARGET_SQL}`
+      ).bind(kind, targetId).first().catch(() => null);
       if (dup) return H.json({ error: 'already_featured', slotId: Number(dup.id) }, 409);
       // Qo'lda berilgan ham joy egallaydi — pul to'lagan biznesning
       // ulushi kamaymasin.
@@ -765,6 +777,8 @@ export async function handle(request, env, url, H) {
 
     // NAVBAT VA SOTUV REJIMI.
     if (path === '/api/admin/featured/waitlist' && method === 'GET') {
+      // Faqat manager+ (kontent rollari emas) — ko'rik F7.
+      if (!H.roleAtLeast(admin, 'manager')) return H.json({ error: 'forbidden' }, 403);
       await ensureWaitlistSchema(env);
       const [sales, list, counts] = await Promise.all([
         salesState(env, H),

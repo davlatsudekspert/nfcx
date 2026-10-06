@@ -57,6 +57,13 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   await env.DB.prepare(`UPDATE users SET trial_expires_at = NULL WHERE id = 1`).run();
 }
 
+// Sayt kabineti ham shu qoidani ishlatadi (ko'rik F8): isPremium || faol sinov.
+{
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/pages/AccountPage.jsx', import.meta.url), 'utf8');
+  checkTrue('website: musicLimit(isPremium || trialActive(user))', /const isPremiumUser = !!user\?\.isPremium \|\| trialActive\(user\);\s*\n\s*const musicMax = musicLimit\(isPremiumUser\)/.test(src));
+}
+
 // ═══ 4. Frontend va backend limiti BIR XIL ═══
 {
   await env.DB.prepare(`UPDATE cards SET music_url = '[]' WHERE code = 'VIP001'`).run();
