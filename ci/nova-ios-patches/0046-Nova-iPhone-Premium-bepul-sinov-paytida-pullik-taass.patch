@@ -1,0 +1,714 @@
+From 7749d67a4c023ea455524989721d33aa47355e4d Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 07:18:44 +0000
+Subject: [PATCH 46/53] Nova (iPhone) Premium: bepul sinov paytida "pullik"
+ taassurot yo'q
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Premium ekrani: hisob sinovi faol bo'lsa tepada tinch karta ("Bepul
+  sinov faol — N kun qoldi. Hozir hamma Premium imkoniyatlar sizda..."),
+  rejalar "Sinov tugagach obuna bo'lish" tugmasi ortida yig'ilgan, obuna
+  tugmasi ikkinchi darajali. To'langan Premium — avvalgidek.
+- Biznes katalogi kartasi: sinov paytida "Premium olish" upsell yo'q.
+- Sozlamalar → Premium qatori: sinovda izoh "Bepul sinov: N kun qoldi"
+  (SettingsItem.subtitle).
+- Imkoniyatlar ro'yxati: faqat ilovada haqiqatan borlari (katalog 25,
+  10 qo'shiq); saytdagi boshqa Premium imkoniyatlar Nova'da yo'q.
+- Sinovlar: sinov faol / tugagan / to'langan, kunlar hisobi, Sozlamalar,
+  katalog kartasi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/business/business_forms.dart |   6 +-
+ .../lib/features/premium/iap_controller.dart  |  19 +++
+ .../features/premium/premium_iap_screen.dart  |  91 +++++++++--
+ .../features/settings/settings_screen.dart    |  42 ++++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   8 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   8 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   8 +-
+ .../lib/l10n/gen/app_localizations.dart       |  24 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  29 ++++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  34 ++++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  29 ++++
+ mobile_nova/test/iap_premium_test.dart        | 146 +++++++++++++++++-
+ 12 files changed, 416 insertions(+), 28 deletions(-)
+
+diff --git a/mobile_nova/lib/features/business/business_forms.dart b/mobile_nova/lib/features/business/business_forms.dart
+index 8216be1..989f304 100644
+--- a/mobile_nova/lib/features/business/business_forms.dart
++++ b/mobile_nova/lib/features/business/business_forms.dart
+@@ -31,6 +31,7 @@ import 'business_providers.dart';
+ import 'business_screens.dart';
+ import 'store_catalog.dart';
+ import '../shop/store_policy.dart';
++import '../auth/session.dart' show currentUserProvider;
+ import '../premium/iap_controller.dart' show iapEnabledProvider;
+ 
+ /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
+@@ -892,7 +893,10 @@ class BusinessPlanCard extends ConsumerWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+     // iPhone + Apple IAP kaliti yoqilgan (Android'da doim `false`).
+-    final iap = ref.watch(iapEnabledProvider);
++    // Hisobning BEPUL SINOVI davomida upsell yo'q — hamma narsa ochiq,
++    // "pullik" taassurot bermaslik kerak (launch promo).
++    final iap = ref.watch(iapEnabledProvider) &&
++        !(ref.watch(currentUserProvider)?.trialActive ?? false);
+ 
+     // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
+     // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+index 4743dd0..30328f6 100644
+--- a/mobile_nova/lib/features/premium/iap_controller.dart
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../core/errors/app_error.dart';
+ import '../../core/utils/result.dart';
++import '../../data/models/models.dart';
+ import '../../data/repositories/iap_repository.dart';
+ import '../auth/session.dart';
+ import '../shop/store_policy.dart' show isAppStoreBuild;
+@@ -30,6 +31,24 @@ import 'iap_store.dart';
+ 
+ final iapStoreProvider = Provider<IapStore>((_) => StoreKitIapStore());
+ 
++/// TO'LANGAN Premium — server `isPremium` (eski muddatsiz yoki
++/// `premiumExpiresAt` kelajakda). Bepul sinov bu yerga KIRMAYDI.
++bool iapPaidPremium(User u, {DateTime? now}) =>
++    u.premium || (u.premiumUntil?.isAfter(now ?? DateTime.now()) ?? false);
++
++/// BEPUL SINOV necha kun qoldi (yuqoriga yaxlitlanadi, sayt
++/// `trialDaysLeft` bilan bir xil). Sinov yo'q / tugagan / to'langan
++/// Premium bo'lsa — `null`.
++int? iapTrialDaysLeft(User? u, {DateTime? now}) {
++  if (u == null) return null;
++  final at = now ?? DateTime.now();
++  if (iapPaidPremium(u, now: at)) return null;
++  final until = u.trialUntil;
++  if (until == null || !until.isAfter(at)) return null;
++  return (until.difference(at).inMilliseconds / Duration.millisecondsPerDay)
++      .ceil();
++}
++
+ /// Server kaliti. iPhone bo'lmasa — tarmoqsiz o'chiq.
+ final iapConfigProvider = FutureProvider<IapConfig>((ref) async {
+   if (!isAppStoreBuild) return IapConfig.disabled;
+diff --git a/mobile_nova/lib/features/premium/premium_iap_screen.dart b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+index 3cf8a84..9ff68ea 100644
+--- a/mobile_nova/lib/features/premium/premium_iap_screen.dart
++++ b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+@@ -36,6 +36,15 @@ const kAppleManageSubscriptionsUrl =
+ /// qo'shiqlari, `musicLimitD1(user.isPremium)`). Post, istoriya,
+ /// video va izoh ro'yxatda YO'Q — ular hammaga bepul (egasining
+ /// qarori, 2026-10-04). Yangi imkoniyat o'ylab topilmaydi.
++///
++/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
++/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
++/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
++/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
++/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
++/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
++/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
++/// paydo bo'lganda shu yerga qo'shiladi.
+ const kCatalogFreeLimit = 5;
+ const kCatalogPremiumLimit = 25;
+ const kMusicFreeLimit = 5;
+@@ -57,6 +66,9 @@ class PremiumIapScreen extends ConsumerStatefulWidget {
+ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+   String? _selected;
+ 
++  /// Sinov paytida rejalar yig'ilgan — odam o'zi ochadi.
++  bool _showPlans = false;
++
+   @override
+   void initState() {
+     super.initState();
+@@ -73,7 +85,12 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+     final enabled = ref.watch(iapEnabledProvider);
+     final s = ref.watch(iapControllerProvider);
+     final user = ref.watch(currentUserProvider);
+-    final paid = user != null && _paidPremium(user);
++    final paid = user != null && iapPaidPremium(user);
++    // BEPUL SINOV (launch promo, 90 kun): hamma Premium imkoniyatlar
++    // allaqachon ochiq. Ekran "pullik" taassurot bermasin — tepada
++    // tinch karta, rejalar esa ikkinchi darajali tugma ortida.
++    final trialDays = iapTrialDaysLeft(user);
++    final trial = trialDays != null;
+     final c = ref.read(iapControllerProvider.notifier);
+ 
+     final products = s.products;
+@@ -110,17 +127,31 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+                 const SizedBox(height: Gap.xl),
+                 Text(paid ? l.premiumActive : l.premiumTitle,
+                     textAlign: TextAlign.center, style: text.displayMedium),
+-                const SizedBox(height: Gap.sm),
+-                Text(
+-                  paid ? _validity(l, user) : l.premiumTagline,
+-                  key: const ValueKey('iap-status'),
+-                  textAlign: TextAlign.center,
+-                  style: text.bodyMedium,
+-                ),
++                if (!trial) ...[
++                  const SizedBox(height: Gap.sm),
++                  Text(
++                    paid ? _validity(l, user) : l.premiumTagline,
++                    key: const ValueKey('iap-status'),
++                    textAlign: TextAlign.center,
++                    style: text.bodyMedium,
++                  ),
++                ],
++                if (trial) ...[
++                  const SizedBox(height: Gap.xl),
++                  _TrialCard(days: trialDays),
++                ],
+                 const SizedBox(height: Gap.section),
+                 const _Perks(),
+                 const SizedBox(height: Gap.section),
+-                if (paid) ...[
++                if (trial && !_showPlans) ...[
++                  NovaButton(
++                    key: const ValueKey('iap-trial-expand'),
++                    label: l.iapTrialSubscribeLater,
++                    tone: ButtonTone.quiet,
++                    icon: Icons.expand_more_rounded,
++                    onPressed: () => setState(() => _showPlans = true),
++                  ),
++                ] else if (paid) ...[
+                   NovaButton(
+                     key: const ValueKey('iap-manage'),
+                     label: l.iapManage,
+@@ -160,6 +191,8 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+                   NovaButton(
+                     key: const ValueKey('iap-subscribe'),
+                     label: l.iapSubscribe,
++                    // Sinov paytida — asosiy (oltin) tugma emas.
++                    tone: trial ? ButtonTone.outline : ButtonTone.accent,
+                     busy: s.buyingId != null || s.verifying,
+                     onPressed: s.busy || selected == null
+                         ? null
+@@ -223,11 +256,6 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+     );
+   }
+ 
+-  /// To'langan Premium (sinov muddati emas). Sinovdagi odam obuna
+-  /// bo'la oladi — unga rejalar ko'rsatiladi.
+-  static bool _paidPremium(User u) =>
+-      u.premium || (u.premiumUntil?.isAfter(DateTime.now()) ?? false);
+-
+   static String _validity(L l, User u) {
+     final until = u.premiumUntil;
+     if (until == null) return l.premiumForever;
+@@ -274,6 +302,41 @@ String iapPlanName(L l, IapProduct p) => switch ((p.periodUnit, p.periodValue))
+       _ => p.title.isNotEmpty ? p.title : l.premiumTitle,
+     };
+ 
++/// "Bepul sinov faol — N kun qoldi". Tinch karta: sotuv emas, xabar.
++class _TrialCard extends StatelessWidget {
++  const _TrialCard({required this.days});
++
++  final int days;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    return FloatingSurface(
++      key: const ValueKey('iap-trial'),
++      solid: true,
++      child: Row(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Icon(Icons.check_circle_outline_rounded, size: 22, color: t.accent2),
++          const SizedBox(width: Gap.md),
++          Expanded(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Text(l.iapTrialTitle(days), style: text.titleMedium),
++                const SizedBox(height: Gap.xs),
++                Text(l.iapTrialBody, style: text.bodyMedium),
++              ],
++            ),
++          ),
++        ],
++      ),
++    );
++  }
++}
++
+ class _PlanCard extends StatelessWidget {
+   const _PlanCard({
+     required this.product,
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 9e3d0c8..088220c 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -16,7 +16,8 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/avatar.dart';
+-import '../premium/iap_controller.dart' show iapEnabledProvider;
++import '../premium/iap_controller.dart'
++    show iapEnabledProvider, iapTrialDaysLeft;
+ import '../shop/store_policy.dart';
+ import '../social/content_rules.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -145,6 +146,11 @@ class SettingsScreen extends ConsumerWidget {
+               SettingsItem(
+                 icon: Icons.workspace_premium_rounded,
+                 label: l.settingsPremium,
++                // Bepul sinov paytida — sotuv emas, qolgan kunlar.
++                subtitle: switch (iapTrialDaysLeft(user)) {
++                  final int d => l.iapTrialSettings(d),
++                  null => null,
++                },
+                 onTap: () => context.push(Routes.premium),
+               ),
+           ]),
+@@ -317,6 +323,7 @@ class SettingsItem {
+     required this.icon,
+     required this.label,
+     this.value,
++    this.subtitle,
+     this.onTap,
+     this.danger = false,
+     this.trailing,
+@@ -327,6 +334,9 @@ class SettingsItem {
+ 
+   /// O'ng tomondagi joriy qiymat (masalan tanlangan mavzu nomi).
+   final String? value;
++
++  /// Nom ostidagi kichik izoh (masalan "Bepul sinov: 30 kun qoldi").
++  final String? subtitle;
+   final VoidCallback? onTap;
+   final bool danger;
+   final Widget? trailing;
+@@ -369,6 +379,12 @@ class _Row extends StatelessWidget {
+   Widget build(BuildContext context) {
+     final t = context.tokens;
+     final color = item.danger ? t.error : t.text1;
++    final label = Text(
++      item.label,
++      maxLines: 2,
++      overflow: TextOverflow.ellipsis,
++      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: color),
++    );
+ 
+     return PressableScale(
+       onTap: item.onTap,
+@@ -379,13 +395,23 @@ class _Row extends StatelessWidget {
+             BrandAwareIcon(item.icon, size: 19, color: color),
+             const SizedBox(width: Gap.lg),
+             Expanded(
+-              child: Text(
+-                item.label,
+-                maxLines: 2,
+-                overflow: TextOverflow.ellipsis,
+-                style:
+-                    Theme.of(context).textTheme.bodyLarge?.copyWith(color: color),
+-              ),
++              child: item.subtitle == null
++                  ? label
++                  : Column(
++                      crossAxisAlignment: CrossAxisAlignment.start,
++                      children: [
++                        label,
++                        Text(
++                          item.subtitle!,
++                          maxLines: 2,
++                          overflow: TextOverflow.ellipsis,
++                          style: Theme.of(context)
++                              .textTheme
++                              .bodySmall
++                              ?.copyWith(color: t.text2),
++                        ),
++                      ],
++                    ),
+             ),
+             if (item.value != null)
+               Padding(
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index cb74f98..74585c5 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1131,5 +1131,11 @@
+   "iapErrSandbox": "Test purchases are not available for this account.",
+   "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
+   "iapErrRejected": "The purchase could not be verified. Please contact support.",
+-  "iapErrRateLimited": "Too many requests. Please try again later."
++  "iapErrRateLimited": "Too many requests. Please try again later.",
++  "iapTrialTitle": "{days, plural, =1{Free trial active — 1 day left} other{Free trial active — {days} days left}}",
++  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialBody": "You have every Premium feature right now — there is nothing to pay.",
++  "iapTrialSubscribeLater": "Subscribe after the trial",
++  "iapTrialSettings": "{days, plural, =1{Free trial: 1 day left} other{Free trial: {days} days left}}",
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 87e74a0..577b1f5 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1131,5 +1131,11 @@
+   "iapErrSandbox": "Тестовая покупка недоступна для этого аккаунта.",
+   "iapErrFamilyShared": "Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.",
+   "iapErrRejected": "Не удалось подтвердить покупку. Обратитесь в поддержку.",
+-  "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже."
++  "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже.",
++  "iapTrialTitle": "{days, plural, one{Бесплатный период активен — остался {days} день} few{Бесплатный период активен — осталось {days} дня} many{Бесплатный период активен — осталось {days} дней} other{Бесплатный период активен — осталось {days} дня}}",
++  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialBody": "Сейчас вам доступны все возможности Premium — ничего платить не нужно.",
++  "iapTrialSubscribeLater": "Оформить подписку после пробного периода",
++  "iapTrialSettings": "{days, plural, one{Пробный период — остался {days} день} few{Пробный период — осталось {days} дня} many{Пробный период — осталось {days} дней} other{Пробный период — осталось {days} дня}}",
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 249ed71..394f10a 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1282,5 +1282,11 @@
+   "iapErrSandbox": "Bu hisob uchun test xaridi mavjud emas.",
+   "iapErrFamilyShared": "Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.",
+   "iapErrRejected": "Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.",
+-  "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring."
++  "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.",
++  "iapTrialTitle": "{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}",
++  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
++  "iapTrialBody": "Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.",
++  "iapTrialSubscribeLater": "Sinov tugagach obuna bo‘lish",
++  "iapTrialSettings": "{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}",
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 7302cee..a761f13 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5936,6 +5936,30 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
+   String get iapErrRateLimited;
++
++  /// No description provided for @iapTrialTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}'**
++  String iapTrialTitle(int days);
++
++  /// No description provided for @iapTrialBody.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.'**
++  String get iapTrialBody;
++
++  /// No description provided for @iapTrialSubscribeLater.
++  ///
++  /// In uz, this message translates to:
++  /// **'Sinov tugagach obuna bo‘lish'**
++  String get iapTrialSubscribeLater;
++
++  /// No description provided for @iapTrialSettings.
++  ///
++  /// In uz, this message translates to:
++  /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
++  String iapTrialSettings(int days);
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 00bc196..b3cf31b 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3228,4 +3228,33 @@ class LEn extends L {
+ 
+   @override
+   String get iapErrRateLimited => 'Too many requests. Please try again later.';
++
++  @override
++  String iapTrialTitle(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Free trial active — $days days left',
++      one: 'Free trial active — 1 day left',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapTrialBody =>
++      'You have every Premium feature right now — there is nothing to pay.';
++
++  @override
++  String get iapTrialSubscribeLater => 'Subscribe after the trial';
++
++  @override
++  String iapTrialSettings(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Free trial: $days days left',
++      one: 'Free trial: 1 day left',
++    );
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index fdffdd3..3f27e96 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3242,4 +3242,38 @@ class LRu extends L {
+   @override
+   String get iapErrRateLimited =>
+       'Слишком много запросов. Попробуйте чуть позже.';
++
++  @override
++  String iapTrialTitle(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Бесплатный период активен — осталось $days дня',
++      many: 'Бесплатный период активен — осталось $days дней',
++      few: 'Бесплатный период активен — осталось $days дня',
++      one: 'Бесплатный период активен — остался $days день',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapTrialBody =>
++      'Сейчас вам доступны все возможности Premium — ничего платить не нужно.';
++
++  @override
++  String get iapTrialSubscribeLater =>
++      'Оформить подписку после пробного периода';
++
++  @override
++  String iapTrialSettings(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Пробный период — осталось $days дня',
++      many: 'Пробный период — осталось $days дней',
++      few: 'Пробный период — осталось $days дня',
++      one: 'Пробный период — остался $days день',
++    );
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 7078dfa..0c8c07d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3207,4 +3207,33 @@ class LUz extends L {
+   @override
+   String get iapErrRateLimited =>
+       'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
++
++  @override
++  String iapTrialTitle(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Bepul sinov faol — $days kun qoldi',
++      one: 'Bepul sinov faol — 1 kun qoldi',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapTrialBody =>
++      'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.';
++
++  @override
++  String get iapTrialSubscribeLater => 'Sinov tugagach obuna bo‘lish';
++
++  @override
++  String iapTrialSettings(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Bepul sinov: $days kun qoldi',
++      one: 'Bepul sinov: 1 kun qoldi',
++    );
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+index 70387bd..513e856 100644
+--- a/mobile_nova/test/iap_premium_test.dart
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -144,6 +144,15 @@ const _premiumUser = User(
+   premium: true,
+ );
+ 
++/// Bepul sinovdagi (to'lanmagan) foydalanuvchi — [days] kun qoldi.
++User _trialUser(int days) => User(
++      id: 1,
++      email: 'test@nfcstore.uz',
++      name: 'Test Foydalanuvchi',
++      trialUntil:
++          DateTime.now().add(Duration(days: days, minutes: -5)),
++    );
++
+ Future<L> _uz() => L.delegate.load(const Locale('uz'));
+ 
+ void _tall(WidgetTester tester) {
+@@ -587,9 +596,12 @@ void main() {
+   group('biznes katalogi kartasi', () {
+     const plan = CompanyPlan(free: true, itemLimit: 5, premiumItemLimit: 25);
+ 
+-    Future<void> pumpCard(WidgetTester tester, IapConfig cfg) async {
++    Future<void> pumpCard(WidgetTester tester, IapConfig cfg,
++        {User user = testUser}) async {
+       _tall(tester);
+-      final e = await _env(cfg: cfg);
++      final e = await _env(cfg: cfg, user: user);
++      // Sessiya (foydalanuvchi) tiklansin.
++      await tester.pump(const Duration(milliseconds: 20));
+       await e.c.read(iapConfigProvider.future);
+       await tester.pumpWidget(UncontrolledProviderScope(
+         container: e.c,
+@@ -620,6 +632,136 @@ void main() {
+       await pumpCard(tester, _enabled);
+       expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
+     });
++
++    testWidgets('iPhone + kalit, lekin BEPUL SINOV: upsell yo‘q',
++        (tester) async {
++      await pumpCard(tester, _enabled, user: _trialUser(30));
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
++      expect(find.text(l.iapPlanUpsell(25)), findsNothing);
++      // Limit va hisoblagich joyida.
++      expect(find.byKey(const ValueKey('plan-usage')), findsOneWidget);
++    }, variant: _ios);
++  });
++
++  group('bepul sinov (launch promo)', () {
++    test('qolgan kunlar — yuqoriga yaxlitlanadi, sayt bilan bir xil', () {
++      final now = DateTime(2026, 10, 6, 12);
++      User u(DateTime? trial, {bool premium = false, DateTime? until}) =>
++          User(
++              id: 1,
++              email: 'a@b.uz',
++              trialUntil: trial,
++              premium: premium,
++              premiumUntil: until);
++      expect(iapTrialDaysLeft(u(now.add(const Duration(days: 90))), now: now),
++          90);
++      expect(
++          iapTrialDaysLeft(u(now.add(const Duration(days: 2, hours: 1))),
++              now: now),
++          3);
++      expect(iapTrialDaysLeft(u(now.add(const Duration(minutes: 5))), now: now),
++          1);
++      expect(iapTrialDaysLeft(u(now.subtract(const Duration(days: 1))), now: now),
++          isNull, reason: 'tugagan');
++      expect(iapTrialDaysLeft(u(null), now: now), isNull);
++      expect(
++          iapTrialDaysLeft(
++              u(now.add(const Duration(days: 30)),
++                  until: now.add(const Duration(days: 10))),
++              now: now),
++          isNull,
++          reason: 'to‘langan Premium ustun');
++      expect(iapTrialDaysLeft(null, now: now), isNull);
++    });
++
++    testWidgets('sinov faol: tinch karta, rejalar yig‘ilgan, CTA yo‘q',
++        (tester) async {
++      await _pumpPremium(tester, user: _trialUser(30));
++      final l = await _uz();
++      expect(tester.takeException(), isNull);
++      expect(find.byKey(const ValueKey('iap-trial')), findsOneWidget);
++      expect(find.text(l.iapTrialTitle(30)), findsOneWidget);
++      expect(find.text(l.iapTrialBody), findsOneWidget);
++      // Sotuv qatori va asosiy xarid tugmasi YO'Q.
++      expect(find.text(l.premiumTagline), findsNothing);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
++      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsNothing);
++      // Karta imkoniyatlar ro'yxatidan YUQORIDA.
++      expect(
++          tester.getTopLeft(find.byKey(const ValueKey('iap-trial'))).dy,
++          lessThan(tester.getTopLeft(find.text(l.premiumPerksTitle)).dy));
++
++      // Ikkinchi darajali tugma — ochilganda rejalar paydo bo'ladi.
++      await tester.tap(find.byKey(const ValueKey('iap-trial-expand')));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('iap-trial-expand')), findsNothing);
++      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-plan-$_yearly')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-disclosure')), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('sinov tugagan: oddiy ekran, rejalar darhol', (tester) async {
++      await _pumpPremium(tester,
++          user: User(
++              id: 1,
++              email: 'a@b.uz',
++              trialUntil: DateTime.now().subtract(const Duration(days: 2))));
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('iap-trial')), findsNothing);
++      expect(find.byKey(const ValueKey('iap-trial-expand')), findsNothing);
++      expect(find.text(l.premiumTagline), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-plan-$_monthly')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('to‘langan Premium (sinov ham bor): avvalgidek', (tester) async {
++      await _pumpPremium(tester,
++          user: User(
++              id: 1,
++              email: 'a@b.uz',
++              premiumUntil: DateTime(2030, 1, 2, 12),
++              trialUntil: DateTime.now().add(const Duration(days: 30))));
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('iap-trial')), findsNothing);
++      expect(find.text(l.premiumActive), findsOneWidget);
++      expect(find.text(l.premiumUntil('02.01.2030')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-manage')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
++    }, variant: _ios);
++
++    Future<void> pumpSettings(WidgetTester tester, User user) async {
++      _tall(tester);
++      final e = await _env(user: user);
++      await e.c.read(iapConfigProvider.future);
++      await tester.pumpWidget(_app(e.c, _router(e.c)));
++      await settle(tester, frames: 8);
++    }
++
++    testWidgets('Sozlamalar: sinovda "Bepul sinov: N kun qoldi"',
++        (tester) async {
++      await pumpSettings(tester, _trialUser(30));
++      final l = await _uz();
++      expect(find.text(l.settingsPremium), findsOneWidget);
++      expect(find.text(l.iapTrialSettings(30)), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('Sozlamalar: sinovsiz — qo‘shimcha yozuv yo‘q', (tester) async {
++      await pumpSettings(tester, testUser);
++      final l = await _uz();
++      expect(find.text(l.settingsPremium), findsOneWidget);
++      expect(find.textContaining('kun qoldi'), findsNothing);
++    }, variant: _ios);
++
++    test('uch tilda kun soni va "to‘lash shart emas" ma’nosi', () async {
++      for (final code in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(code));
++        expect(l.iapTrialTitle(5), contains('5'), reason: code);
++        expect(l.iapTrialSettings(21), contains('21'), reason: code);
++        expect(l.iapTrialBody, isNotEmpty);
++      }
++    });
+   });
+ }
+ 
+-- 
+2.43.0
+

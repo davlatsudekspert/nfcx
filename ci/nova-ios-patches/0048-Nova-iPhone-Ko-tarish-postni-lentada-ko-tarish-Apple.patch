@@ -1,0 +1,3078 @@
+From b39cf3dd0f80ab40dd6e7cac6bd68b090ef7a700 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 07:53:03 +0000
+Subject: [PATCH 48/53] =?UTF-8?q?Nova=20(iPhone):=20"Ko'tarish"=20?=
+ =?UTF-8?q?=E2=80=94=20postni=20lentada=20ko'tarish=20Apple=20consumable?=
+ =?UTF-8?q?=20orqali?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- IapStore.buyConsumable; IapConfig.boostEnabled/boostProducts;
+  IapRepository: boost-intent, verify(intentId), boost-redeem,
+  boost-credits; AppError.data (sold_out nextFreeAt, slotId, max...).
+- BoostController: intent -> account token -> consumable -> verify;
+  200 dan keyin (active / credited / revoked) consumable HAR DOIM
+  yopiladi; 400/422 (days_mismatch...) yakuniy — yopiladi; 403
+  intent_forbidden, 409, 429, 503, tarmoq — ochiq qoladi. Ilova
+  ochilganda ochiq tranzaksiya intentId siz -> kredit. Premium oqimi
+  ko'tarish mahsulotlariga tegmaydi.
+- UI (faqat iPhone + boostEnabled): o'z post/Reels'ida "Ko'tarish"
+  (post ekrani tugmasi, Reels "•••" menyusi), varaq: 1/3/6 kun,
+  App Store narxi, band / tez orada / allaqachon ko'tarilgan qatori,
+  natija (faol + tugash vaqti / kredit). "Ko'tarish kreditlari" ekrani
+  (Sozlamalar → Hisob, kredit bo'lsa) -> o'z postini tanlash -> redeem.
+- Sinovlar: test/iap_boost_test.dart (54 ta).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/app/app.dart                  |   3 +
+ mobile_nova/lib/core/errors/app_error.dart    |   6 +-
+ mobile_nova/lib/core/network/api_client.dart  |   6 +-
+ .../lib/data/repositories/iap_repository.dart | 193 ++++-
+ .../features/premium/boost_controller.dart    | 476 ++++++++++
+ .../lib/features/premium/boost_sheet.dart     | 498 +++++++++++
+ .../lib/features/premium/iap_controller.dart  |  11 +
+ .../lib/features/premium/iap_store.dart       |  17 +
+ .../features/settings/settings_screen.dart    |  10 +
+ .../lib/features/social/post_screens.dart     |  16 +
+ .../lib/features/social/reels_screen.dart     |  17 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |  37 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  37 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  37 +-
+ .../lib/l10n/gen/app_localizations.dart       | 168 ++++
+ .../lib/l10n/gen/app_localizations_en.dart    | 114 +++
+ .../lib/l10n/gen/app_localizations_ru.dart    | 119 +++
+ .../lib/l10n/gen/app_localizations_uz.dart    | 115 +++
+ mobile_nova/lib/routing/router.dart           |   8 +
+ mobile_nova/lib/routing/routes.dart           |   4 +
+ mobile_nova/test/iap_boost_test.dart          | 817 ++++++++++++++++++
+ mobile_nova/test/iap_premium_test.dart        |   4 +
+ mobile_nova/test/routes_test.dart             |   1 +
+ 23 files changed, 2708 insertions(+), 6 deletions(-)
+ create mode 100644 mobile_nova/lib/features/premium/boost_controller.dart
+ create mode 100644 mobile_nova/lib/features/premium/boost_sheet.dart
+ create mode 100644 mobile_nova/test/iap_boost_test.dart
+
+diff --git a/mobile_nova/lib/app/app.dart b/mobile_nova/lib/app/app.dart
+index 936bc29..a3f9def 100644
+--- a/mobile_nova/lib/app/app.dart
++++ b/mobile_nova/lib/app/app.dart
+@@ -10,6 +10,7 @@ import 'providers.dart';
+ import '../features/settings/app_lock.dart';
+ import '../features/auth/session.dart';
+ import '../features/premium/iap_controller.dart' show iapWatcherProvider;
++import '../features/premium/boost_controller.dart' show boostWatcherProvider;
+ import 'ui_scale.dart';
+ 
+ class NovaApp extends ConsumerWidget {
+@@ -26,6 +27,8 @@ class NovaApp extends ConsumerWidget {
+     // tranzaksiyalari ilova ochilishidanoq tinglanadi
+     // (`features/premium/iap_controller.dart`). Android'da hech narsa.
+     ref.watch(iapWatcherProvider);
++    // "Ko'tarish" (consumable) — ochiq tranzaksiyalar kredit bo'ladi.
++    ref.watch(boostWatcherProvider);
+ 
+     final tokens = ref.watch(themeProvider);
+     final locale = ref.watch(localeProvider);
+diff --git a/mobile_nova/lib/core/errors/app_error.dart b/mobile_nova/lib/core/errors/app_error.dart
+index cbea9b1..70389c6 100644
+--- a/mobile_nova/lib/core/errors/app_error.dart
++++ b/mobile_nova/lib/core/errors/app_error.dart
+@@ -22,7 +22,7 @@ enum AppErrorKind {
+ }
+ 
+ class AppError implements Exception {
+-  const AppError(this.kind, {this.code, this.detail, this.status});
++  const AppError(this.kind, {this.code, this.detail, this.status, this.data});
+ 
+   /// Server qaytargan kalit: `bad_credentials`, `email_taken`, ...
+   final String? code;
+@@ -33,6 +33,10 @@ class AppError implements Exception {
+   final int? status;
+   final AppErrorKind kind;
+ 
++  /// Xato javobining qolgan maydonlari (masalan `sold_out` da
++  /// `nextFreeAt`, `already_featured` da `slotId`). Bo'lmasa `null`.
++  final Map<String, dynamic>? data;
++
+   bool get isAuth => kind == AppErrorKind.unauthorized;
+   bool get isOffline => kind == AppErrorKind.offline;
+ 
+diff --git a/mobile_nova/lib/core/network/api_client.dart b/mobile_nova/lib/core/network/api_client.dart
+index 9bb8e15..f3787a5 100644
+--- a/mobile_nova/lib/core/network/api_client.dart
++++ b/mobile_nova/lib/core/network/api_client.dart
+@@ -435,7 +435,11 @@ class ApiClient {
+     };
+ 
+     if (kind == AppErrorKind.unauthorized) _onUnauthorized(path);
+-    return AppError(kind, code: code, detail: detail, status: status);
++    return AppError(kind,
++        code: code,
++        detail: detail,
++        status: status,
++        data: map.isEmpty ? null : map);
+   }
+ 
+   /// SESSIYA TUGAGANINI BOSHQA QATLAM ANIQLAGANDA.
+diff --git a/mobile_nova/lib/data/repositories/iap_repository.dart b/mobile_nova/lib/data/repositories/iap_repository.dart
+index 7a0bbea..fa45fc8 100644
+--- a/mobile_nova/lib/data/repositories/iap_repository.dart
++++ b/mobile_nova/lib/data/repositories/iap_repository.dart
+@@ -52,11 +52,185 @@ class IapRepository {
+     );
+     return res.map(IapVerifyResult.fromJson);
+   }
++
++  // ── KO'TARISH (post promotion) — Apple consumable ──────────────────
++
++  /// `POST /api/iap/apple/boost-intent` → 201 `{intentId, productId,
++  /// days, holdUntil}`. Joy 20 daqiqaga ushlab turiladi; o'sha post
++  /// qayta bosilsa o'sha `intentId` qaytadi.
++  Future<Result<BoostIntent>> boostIntent({
++    required String targetKind,
++    required int targetId,
++    required int days,
++  }) async {
++    final res = await _api.post<Map<String, dynamic>>(
++      '/api/iap/apple/boost-intent',
++      {'targetKind': targetKind, 'targetId': targetId, 'days': days},
++    );
++    return res.map(BoostIntent.fromJson);
++  }
++
++  /// Consumable tranzaksiyasi — `intentId` bilan (xarid shu ekrandan
++  /// bo'lsa) yoki usiz (ilova qayta ochilganda kelgan ochiq
++  /// tranzaksiya: server uni KREDIT qiladi).
++  Future<Result<BoostResult>> verifyBoost(String signedTransaction,
++      {int? intentId}) async {
++    final res = await _api.post<Map<String, dynamic>>(
++      '/api/iap/apple/verify',
++      {
++        'signedTransaction': signedTransaction,
++        if (intentId != null) 'intentId': intentId,
++      },
++    );
++    return res.map(BoostResult.fromJson);
++  }
++
++  /// Kreditni postga ishlatish → 200 `{boost: 'active', slot}`.
++  Future<Result<BoostResult>> boostRedeem({
++    required int creditId,
++    required String targetKind,
++    required int targetId,
++  }) async {
++    final res = await _api.post<Map<String, dynamic>>(
++      '/api/iap/apple/boost-redeem',
++      {'creditId': creditId, 'targetKind': targetKind, 'targetId': targetId},
++    );
++    return res.map(BoostResult.fromJson);
++  }
++
++  /// Ishlatilmagan kreditlar.
++  Future<Result<List<BoostCredit>>> boostCredits() async {
++    final res =
++        await _api.get<Map<String, dynamic>>('/api/iap/apple/boost-credits');
++    return res.map((j) {
++      final raw = j['credits'];
++      return raw is List
++          ? raw
++              .whereType<Map>()
++              .map((e) => BoostCredit.fromJson(e.cast<String, dynamic>()))
++              .where((c) => c.creditId > 0)
++              .toList()
++          : const <BoostCredit>[];
++    });
++  }
++}
++
++/// Server vaqti — ms (son) yoki ISO satr.
++DateTime? iapTime(Object? v) {
++  if (v is num && v > 0) {
++    return DateTime.fromMillisecondsSinceEpoch(v.toInt(), isUtc: true);
++  }
++  if (v is String && v.isNotEmpty) {
++    final n = int.tryParse(v);
++    if (n != null && n > 0) {
++      return DateTime.fromMillisecondsSinceEpoch(n, isUtc: true);
++    }
++    return DateTime.tryParse(v);
++  }
++  return null;
++}
++
++int _int(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
++
++/// Ko'tarish paketi — App Store mahsuloti va kun soni.
++class BoostPackage {
++  const BoostPackage({required this.productId, required this.days});
++  final String productId;
++  final int days;
++}
++
++/// `boost-intent` javobi.
++class BoostIntent {
++  const BoostIntent({
++    required this.intentId,
++    required this.productId,
++    required this.days,
++    this.holdUntil,
++  });
++
++  final int intentId;
++  final String productId;
++  final int days;
++  final DateTime? holdUntil;
++
++  factory BoostIntent.fromJson(Map<String, dynamic> j) => BoostIntent(
++        intentId: _int(j['intentId']),
++        productId: '${j['productId'] ?? ''}',
++        days: _int(j['days']),
++        holdUntil: iapTime(j['holdUntil']),
++      );
++}
++
++enum BoostStatus { active, credited, revoked, unknown }
++
++/// `verify` (consumable) va `boost-redeem` natijasi.
++class BoostResult {
++  const BoostResult({
++    required this.status,
++    this.slotId = 0,
++    this.startsAt,
++    this.endsAt,
++    this.creditId = 0,
++    this.days = 0,
++  });
++
++  final BoostStatus status;
++  final int slotId;
++  final DateTime? startsAt;
++  final DateTime? endsAt;
++  final int creditId;
++  final int days;
++
++  factory BoostResult.fromJson(Map<String, dynamic> j) {
++    final slot = j['slot'] is Map
++        ? (j['slot'] as Map).cast<String, dynamic>()
++        : const <String, dynamic>{};
++    return BoostResult(
++      status: switch ('${j['boost'] ?? ''}') {
++        'active' => BoostStatus.active,
++        'credited' => BoostStatus.credited,
++        'revoked' => BoostStatus.revoked,
++        _ => BoostStatus.unknown,
++      },
++      slotId: _int(slot['id']),
++      startsAt: iapTime(slot['startsAt']),
++      endsAt: iapTime(slot['endsAt']),
++      creditId: _int(j['creditId']),
++      days: _int(j['days']),
++    );
++  }
++}
++
++/// Ishlatilmagan ko'tarish krediti (to'langan, joy band bo'lgan).
++class BoostCredit {
++  const BoostCredit({
++    required this.creditId,
++    required this.days,
++    this.productId = '',
++    this.createdAt,
++  });
++
++  final int creditId;
++  final int days;
++  final String productId;
++  final DateTime? createdAt;
++
++  factory BoostCredit.fromJson(Map<String, dynamic> j) => BoostCredit(
++        creditId: _int(j['creditId']),
++        days: _int(j['days']),
++        productId: '${j['productId'] ?? ''}',
++        createdAt: iapTime(j['createdAt']),
++      );
+ }
+ 
+ /// Server kaliti va sotuvdagi mahsulotlar.
+ class IapConfig {
+-  const IapConfig({this.enabled = false, this.products = const []});
++  const IapConfig({
++    this.enabled = false,
++    this.products = const [],
++    this.boostEnabled = false,
++    this.boostProducts = const [],
++  });
+ 
+   /// O'chiq — hech qanday xarid UI yo'q.
+   static const disabled = IapConfig();
+@@ -66,15 +240,32 @@ class IapConfig {
+   /// App Store mahsulot identifikatorlari — tartibi ekrandagi tartib.
+   final List<String> products;
+ 
++  /// KO'TARISH (Apple consumable) kaliti — Premium kalitidan ALOHIDA.
++  final bool boostEnabled;
++
++  /// 1 / 3 / 6 kunlik paketlar (server tartibida).
++  final List<BoostPackage> boostProducts;
++
+   factory IapConfig.fromJson(Map<String, dynamic> j) {
+     final raw = j['products'];
+     final products = raw is List
+         ? raw.map((e) => '$e').where((e) => e.isNotEmpty).toList()
+         : const <String>[];
++    final rawBoost = j['boostProducts'];
++    final boost = rawBoost is List
++        ? rawBoost
++            .whereType<Map>()
++            .map((e) => BoostPackage(
++                productId: '${e['productId'] ?? ''}', days: _int(e['days'])))
++            .where((b) => b.productId.isNotEmpty && b.days > 0)
++            .toList()
++        : const <BoostPackage>[];
+     return IapConfig(
+       // Mahsulotsiz yoqilgan kalit — sotadigan narsa yo'q, ya'ni o'chiq.
+       enabled: j['enabled'] == true && products.isNotEmpty,
+       products: products,
++      boostEnabled: j['boostEnabled'] == true && boost.isNotEmpty,
++      boostProducts: boost,
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/features/premium/boost_controller.dart b/mobile_nova/lib/features/premium/boost_controller.dart
+new file mode 100644
+index 0000000..c5585e8
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/boost_controller.dart
+@@ -0,0 +1,476 @@
++import 'dart:async';
++
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../core/errors/app_error.dart';
++import '../../core/utils/result.dart';
++import '../../data/models/models.dart';
++import '../../data/repositories/featured_repository.dart';
++import '../../data/repositories/iap_repository.dart';
++import '../auth/session.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild;
++import 'iap_controller.dart';
++import 'iap_store.dart';
++
++// ═══════════════════════════════════════════════════════════════════
++// "KO'TARISH" — POSTNI LENTADA KO'TARISH, APPLE CONSUMABLE (iPHONE)
++//
++// Oqim:
++//   1. `boost-intent` — joy 20 daqiqaga ushlab turiladi (`intentId`).
++//      Band / ochilmagan / allaqachon ko'tarilgan — xarid oynasi
++//      OCHILMAYDI, sabab ko'rsatiladi.
++//   2. `account-token` -> StoreKit consumable xaridi (`appAccountToken`).
++//   3. JWS + `intentId` -> `verify`: `active` (slot yondi), `credited`
++//      (to'lov KREDIT bo'lib saqlandi) yoki `revoked`.
++//   4. 200 dan keyin `completePurchase` HAR DOIM (consumable yopilmasa
++//      StoreKit uni abadiy qayta beradi). 400 / 422 — yakuniy, ham
++//      yopiladi. 403 / 409 / 429 / 503 / tarmoq — OCHIQ qoladi.
++//   5. Ilova ochilganda kelgan ochiq tranzaksiya — `intentId` siz
++//      tekshiriladi, server uni kredit qiladi (yo'qolmaydi).
++//
++// Faqat iPhone va server kaliti `boostEnabled`. Android va kalit
++// o'chiq — UI umuman yo'q (Android'da eski sayt oqimi o'zgarmaydi).
++// ═══════════════════════════════════════════════════════════════════
++
++/// Ko'tarish UI ko'rsatilsinmi — iPhone VA `config.boostEnabled`.
++final iapBoostEnabledProvider = Provider<bool>((ref) {
++  if (!isAppStoreBuild) return false;
++  return ref.watch(iapConfigProvider).valueOrNull?.boostEnabled ?? false;
++});
++
++/// Ko'tariladigan kontent.
++class BoostTarget {
++  const BoostTarget({
++    required this.kind,
++    required this.id,
++    this.mediaUrl = '',
++    this.isVideo = false,
++  });
++
++  /// `post` yoki `company_post`.
++  final String kind;
++  final int id;
++  final String mediaUrl;
++  final bool isVideo;
++
++  factory BoostTarget.of(Post p) => BoostTarget(
++        kind: p.isCompany ? 'company_post' : 'post',
++        id: p.id,
++        mediaUrl: p.mediaUrls.isEmpty ? '' : p.mediaUrls.first,
++        isVideo: p.isVideo,
++      );
++
++  @override
++  bool operator ==(Object other) =>
++      other is BoostTarget && other.kind == kind && other.id == id;
++
++  @override
++  int get hashCode => Object.hash(kind, id);
++}
++
++/// Nima uchun hozir ko'tarib bo'lmaydi (tugmalar o'chiq).
++enum BoostBlockKind {
++  soldOut,
++  notOpen,
++  priorityWindow,
++  alreadyFeatured,
++  tooManyActive,
++  scheduled,
++}
++
++class BoostBlock {
++  const BoostBlock(this.kind, {this.at, this.max});
++  final BoostBlockKind kind;
++
++  /// `sold_out` — `nextFreeAt`; `priority_window` — `endsAt`;
++  /// `already_featured` — slot tugashi; `sales_not_open` — `openAt`.
++  final DateTime? at;
++  final int? max;
++}
++
++enum BoostFailure {
++  network,
++  server,
++  store,
++  disabled,
++  rateLimited,
++  forbidden,
++  notFound,
++  alreadyLinked,
++  inProgress,
++  intentForbidden,
++  rejected,
++  creditUsed,
++  creditRevoked,
++  creditNotFound,
++  unavailable,
++}
++
++/// Paket + App Store narxi (`null` — do'kon bermadi).
++typedef BoostOption = ({BoostPackage pkg, IapProduct? product});
++
++class BoostState {
++  const BoostState({
++    this.target,
++    this.loading = false,
++    this.options = const [],
++    this.buyingDays,
++    this.verifying = false,
++    this.block,
++    this.result,
++    this.failure,
++  });
++
++  final BoostTarget? target;
++  final bool loading;
++  final List<BoostOption> options;
++  final int? buyingDays;
++  final bool verifying;
++  final BoostBlock? block;
++  final BoostResult? result;
++  final BoostFailure? failure;
++
++  bool get busy => buyingDays != null || verifying;
++
++  BoostState copyWith({
++    bool? loading,
++    List<BoostOption>? options,
++    int? Function()? buyingDays,
++    bool? verifying,
++    BoostBlock? Function()? block,
++    BoostResult? Function()? result,
++    BoostFailure? Function()? failure,
++  }) =>
++      BoostState(
++        target: target,
++        loading: loading ?? this.loading,
++        options: options ?? this.options,
++        buyingDays: buyingDays == null ? this.buyingDays : buyingDays(),
++        verifying: verifying ?? this.verifying,
++        block: block == null ? this.block : block(),
++        result: result == null ? this.result : result(),
++        failure: failure == null ? this.failure : failure(),
++      );
++}
++
++/// Ishlatilmagan kreditlar. Kalit o'chiq / iPhone emas — bo'sh.
++final boostCreditsProvider =
++    FutureProvider.autoDispose<List<BoostCredit>>((ref) async {
++  if (!ref.watch(iapBoostEnabledProvider)) return const [];
++  final res = await ref.watch(iapRepositoryProvider).boostCredits();
++  return res.valueOrNull ?? const [];
++});
++
++class BoostController extends StateNotifier<BoostState> {
++  BoostController(this._ref) : super(const BoostState());
++
++  final Ref _ref;
++  StreamSubscription<List<IapPurchase>>? _sub;
++  final Map<String, IapProduct> _products = {};
++
++  /// Shu ekrandan boshlangan xaridlar: mahsulot -> `intentId`.
++  final Map<String, int> _intents = {};
++  final Map<String, Future<void>> _inFlight = {};
++
++  IapStore get _store => _ref.read(iapStoreProvider);
++  IapRepository get _repo => _ref.read(iapRepositoryProvider);
++
++  void attach() {
++    _sub ??= _store.purchases.listen(_onPurchases, onError: (_) {});
++  }
++
++  void detach() {
++    _sub?.cancel();
++    _sub = null;
++  }
++
++  @override
++  void dispose() {
++    detach();
++    super.dispose();
++  }
++
++  /// Varaq ochildi — paketlar, narxlar va post holati.
++  Future<void> open(BoostTarget target) async {
++    if (state.busy && state.target == target) return;
++    state = BoostState(target: target, loading: true);
++    final cfg = await _ref.read(iapConfigProvider.future);
++    if (!mounted || state.target != target) return;
++    if (!cfg.boostEnabled) {
++      state = state.copyWith(
++          loading: false, failure: () => BoostFailure.disabled);
++      return;
++    }
++    attach();
++
++    final missing = cfg.boostProducts
++        .map((b) => b.productId)
++        .where((id) => !_products.containsKey(id))
++        .toSet();
++    if (missing.isNotEmpty) {
++      try {
++        if (await _store.isAvailable()) {
++          for (final p in await _store.products(missing)) {
++            _products[p.id] = p;
++          }
++        }
++      } catch (_) {/* narxsiz paket o'chiq ko'rinadi */}
++    }
++
++    // Bu post hozir ko'tarilganmi — xarid oynasini ochishdan OLDIN.
++    final active = await _activeSlotEnd(target);
++    if (!mounted || state.target != target) return;
++
++    final options = [
++      for (final b in cfg.boostProducts) (pkg: b, product: _products[b.productId]),
++    ];
++    state = state.copyWith(
++      loading: false,
++      options: options,
++      block: () => active == null
++          ? null
++          : BoostBlock(BoostBlockKind.alreadyFeatured, at: active),
++      failure: () => options.every((o) => o.product == null)
++          ? BoostFailure.unavailable
++          : null,
++    );
++  }
++
++  /// Paket tanlandi: intent -> token -> StoreKit.
++  Future<void> buy(BoostPackage pkg) async {
++    final target = state.target;
++    if (target == null || state.busy || state.block != null) return;
++    state = state.copyWith(
++      buyingDays: () => pkg.days,
++      result: () => null,
++      failure: () => null,
++    );
++
++    final intent = await _repo.boostIntent(
++        targetKind: target.kind, targetId: target.id, days: pkg.days);
++    if (!mounted) return;
++    final BoostIntent it;
++    switch (intent) {
++      case Ok(:final value):
++        it = value;
++      case Err(:final error):
++        await _applyError(error, target);
++        return;
++    }
++
++    final token = await _repo.accountToken();
++    if (!mounted) return;
++    final tok = token.valueOrNull ?? '';
++    if (tok.isEmpty) {
++      state = state.copyWith(
++        buyingDays: () => null,
++        failure: () => token.errorOrNull == null
++            ? BoostFailure.server
++            : _failureOf(token.errorOrNull!),
++      );
++      return;
++    }
++
++    final productId = it.productId.isNotEmpty ? it.productId : pkg.productId;
++    _intents[productId] = it.intentId;
++    attach();
++    try {
++      await _store.buyConsumable(productId, accountToken: tok);
++    } catch (_) {
++      _intents.remove(productId);
++      if (!mounted) return;
++      state = state.copyWith(
++          buyingDays: () => null, failure: () => BoostFailure.store);
++      return;
++    }
++    if (mounted && state.buyingDays == pkg.days && !state.verifying) {
++      state = state.copyWith(buyingDays: () => null);
++    }
++  }
++
++  /// Kreditni postga ishlatish. Muvaffaqiyatda natija, aks holda `null`
++  /// (sabab — [state] da).
++  Future<BoostResult?> redeem(BoostCredit credit, BoostTarget target) async {
++    state = BoostState(target: target, verifying: true);
++    final res = await _repo.boostRedeem(
++        creditId: credit.creditId,
++        targetKind: target.kind,
++        targetId: target.id);
++    if (!mounted) return null;
++    _ref.invalidate(boostCreditsProvider);
++    switch (res) {
++      case Ok(:final value):
++        state = state.copyWith(verifying: false, result: () => value);
++        return value;
++      case Err(:final error):
++        state = state.copyWith(verifying: false);
++        await _applyError(error, target);
++        return null;
++    }
++  }
++
++  Future<void> _onPurchases(List<IapPurchase> list) async {
++    final cfg = _ref.read(iapConfigProvider).valueOrNull;
++    for (final p in list) {
++      if (!mounted) return;
++      if (!isBoostProductId(p.productId, cfg)) continue;
++      switch (p.status) {
++        case IapPurchaseStatus.pending:
++          state = state.copyWith(buyingDays: () => null);
++        case IapPurchaseStatus.canceled:
++          _intents.remove(p.productId);
++          state = state.copyWith(buyingDays: () => null);
++        case IapPurchaseStatus.error:
++          _intents.remove(p.productId);
++          state = state.copyWith(
++              buyingDays: () => null, failure: () => BoostFailure.store);
++        case IapPurchaseStatus.purchased:
++        case IapPurchaseStatus.restored:
++          await _deliver(p);
++      }
++    }
++  }
++
++  Future<void> _deliver(IapPurchase p) {
++    final key = p.purchaseId ?? p.signedTransaction;
++    final running = _inFlight[key];
++    if (running != null) return running;
++    final f = _verify(p).whenComplete(() => _inFlight.remove(key));
++    _inFlight[key] = f;
++    return f;
++  }
++
++  Future<void> _verify(IapPurchase p) async {
++    if (p.signedTransaction.isEmpty) {
++      state = state.copyWith(
++          buyingDays: () => null, failure: () => BoostFailure.store);
++      return;
++    }
++    final intentId = _intents[p.productId];
++    state = state.copyWith(buyingDays: () => null, verifying: true);
++    final res = await _repo.verifyBoost(p.signedTransaction, intentId: intentId);
++    if (!mounted) return;
++
++    switch (res) {
++      case Ok(:final value):
++        // CONSUMABLE — 200 dan keyin HAR DOIM yopiladi.
++        _intents.remove(p.productId);
++        await _complete(p);
++        if (value.status == BoostStatus.credited) {
++          _ref.invalidate(boostCreditsProvider);
++        }
++        if (!mounted) return;
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          result: () => value,
++          failure: () => null,
++        );
++      case Err(:final error) when _isTerminal(error):
++        // 400 / 422 (`days_mismatch`, `bad_transaction`...) — server bu
++        // tranzaksiyani hech qachon qabul qilmaydi: yopiladi.
++        _intents.remove(p.productId);
++        await _complete(p);
++        if (!mounted) return;
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          failure: () => BoostFailure.rejected,
++        );
++      case Err(:final error):
++        // 403 `intent_forbidden`, 409 `already_linked` / `in_progress`,
++        // 429, 503, tarmoq — OCHIQ qoladi, StoreKit qayta beradi.
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          failure: () => _failureOf(error),
++        );
++    }
++  }
++
++  Future<void> _complete(IapPurchase p) async {
++    try {
++      await _store.complete(p);
++    } catch (_) {/* keyingi ochilishda qayta keladi */}
++  }
++
++  /// Intent / redeem xatosi: sabab qatori (tugmalar o'chadi) yoki xato.
++  Future<void> _applyError(AppError e, BoostTarget target) async {
++    final data = e.data ?? const <String, dynamic>{};
++    int? asInt(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
++    BoostBlock? block = switch (e.code) {
++      'sold_out' =>
++        BoostBlock(BoostBlockKind.soldOut, at: iapTime(data['nextFreeAt'])),
++      'sales_not_open' =>
++        BoostBlock(BoostBlockKind.notOpen, at: iapTime(data['openAt'])),
++      'priority_window' => BoostBlock(BoostBlockKind.priorityWindow,
++          at: iapTime(data['endsAt'])),
++      'too_many_active' =>
++        BoostBlock(BoostBlockKind.tooManyActive, max: asInt(data['max'])),
++      'post_scheduled' => const BoostBlock(BoostBlockKind.scheduled),
++      _ => null,
++    };
++    if (e.code == 'already_featured') {
++      final end = await _activeSlotEnd(target, slotId: asInt(data['slotId']));
++      block = BoostBlock(BoostBlockKind.alreadyFeatured, at: end);
++    }
++    if (!mounted) return;
++    state = state.copyWith(
++      buyingDays: () => null,
++      block: block == null ? null : () => block,
++      failure: () => block == null ? _failureOf(e) : null,
++    );
++  }
++
++  /// Faol slot tugash vaqti (`/api/featured/mine`) — bo'lmasa `null`.
++  Future<DateTime?> _activeSlotEnd(BoostTarget t, {int? slotId}) async {
++    final res = await _ref.read(featuredRepositoryProvider).mine();
++    final now = DateTime.now();
++    for (final s in res.valueOrNull ?? const <FeaturedSlot>[]) {
++      final match = slotId != null
++          ? s.id == slotId
++          : s.targetKind == t.kind && s.targetId == t.id;
++      final end = s.endsAt;
++      if (match && s.isActive && end != null && end.isAfter(now)) return end;
++    }
++    return null;
++  }
++
++  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
++
++  static BoostFailure _failureOf(AppError e) => switch (e.code) {
++        'iap_disabled' || 'payments_disabled' => BoostFailure.disabled,
++        'forbidden' || 'banned' || 'not_owner' => BoostFailure.forbidden,
++        'not_found' => BoostFailure.notFound,
++        'already_linked' => BoostFailure.alreadyLinked,
++        'in_progress' => BoostFailure.inProgress,
++        'intent_forbidden' => BoostFailure.intentForbidden,
++        'credit_used' => BoostFailure.creditUsed,
++        'credit_revoked' => BoostFailure.creditRevoked,
++        'credit_not_found' => BoostFailure.creditNotFound,
++        _ when e.status == 400 || e.status == 422 || e.status == 413 =>
++          BoostFailure.rejected,
++        _ => switch (e.kind) {
++            AppErrorKind.offline ||
++            AppErrorKind.timeout =>
++              BoostFailure.network,
++            AppErrorKind.rateLimited => BoostFailure.rateLimited,
++            AppErrorKind.notFound => BoostFailure.notFound,
++            _ => BoostFailure.server,
++          },
++      };
++}
++
++final boostControllerProvider =
++    StateNotifierProvider<BoostController, BoostState>(
++        (ref) => BoostController(ref));
++
++/// Ochiq ko'tarish tranzaksiyalari ilova ochilishidan tinglanadi
++/// (iPhone + kirgan + `boostEnabled`): `intentId` siz tekshiriladi va
++/// server ularni kredit qiladi.
++final boostWatcherProvider = Provider<void>((ref) {
++  if (!isAppStoreBuild) return;
++  final signedIn =
++      ref.watch(sessionProvider.select((s) => s is SessionActive));
++  if (!signedIn || !ref.watch(iapBoostEnabledProvider)) return;
++  final c = ref.read(boostControllerProvider.notifier);
++  c.attach();
++  ref.onDispose(c.detach);
++});
+diff --git a/mobile_nova/lib/features/premium/boost_sheet.dart b/mobile_nova/lib/features/premium/boost_sheet.dart
+new file mode 100644
+index 0000000..78ccc9d
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/boost_sheet.dart
+@@ -0,0 +1,498 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:go_router/go_router.dart';
++
++import '../../app/profile_context.dart';
++import '../../data/models/models.dart';
++import '../../data/repositories/iap_repository.dart';
++import '../../design/motion/motion.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/buttons.dart';
++import '../../design/widgets/nova_scaffold.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../../routing/routes.dart';
++import '../business/business_providers.dart';
++import '../profile/profile_screen.dart'
++    show companyPostsProvider, profilePostsProvider;
++import '../social/media_frame.dart' show mediaImage;
++import 'boost_controller.dart';
++
++/// Ko'tarish vaqtini ko'rsatish — mahalliy, `kk.oo.yyyy ss:dd`.
++String boostTime(DateTime d) {
++  final x = d.toLocal();
++  String two(int n) => n.toString().padLeft(2, '0');
++  return '${two(x.day)}.${two(x.month)}.${x.year} ${two(x.hour)}:${two(x.minute)}';
++}
++
++/// "Ko'tarish" varag'ini ochadi (faqat iPhone + `boostEnabled`;
++/// chaqiruvchi tekshiradi).
++Future<void> showBoostSheet(BuildContext context, WidgetRef ref, Post post) {
++  final target = BoostTarget.of(post);
++  ref.read(boostControllerProvider.notifier).open(target);
++  return showModalBottomSheet<void>(
++    context: context,
++    useRootNavigator: true,
++    isScrollControlled: true,
++    showDragHandle: true,
++    backgroundColor: context.tokens.surfaceSolid,
++    shape: const RoundedRectangleBorder(
++      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
++    ),
++    builder: (_) => BoostSheet(target: target),
++  );
++}
++
++class BoostSheet extends ConsumerWidget {
++  const BoostSheet({super.key, required this.target});
++  final BoostTarget target;
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final all = ref.watch(boostControllerProvider);
++    // Boshqa post uchun holat — bu varaqqa tegishli emas.
++    final s = all.target == target ? all : const BoostState(loading: true);
++    final c = ref.read(boostControllerProvider.notifier);
++    final result = s.result;
++
++    return SafeArea(
++      top: false,
++      child: SingleChildScrollView(
++        padding: const EdgeInsets.fromLTRB(
++            Gap.screenX, 0, Gap.screenX, Gap.xl),
++        child: Column(
++          key: const ValueKey('boost-sheet'),
++          crossAxisAlignment: CrossAxisAlignment.stretch,
++          children: [
++            Row(
++              children: [
++                _Thumb(target: target),
++                const SizedBox(width: Gap.md),
++                Expanded(
++                  child: Column(
++                    crossAxisAlignment: CrossAxisAlignment.start,
++                    children: [
++                      Text(l.boostTitle, style: text.titleMedium),
++                      const SizedBox(height: Gap.xs),
++                      Text(l.boostExplain,
++                          style: text.bodySmall?.copyWith(color: t.text2)),
++                    ],
++                  ),
++                ),
++              ],
++            ),
++            const SizedBox(height: Gap.xl),
++            if (result != null)
++              _ResultView(result: result)
++            else if (s.loading)
++              const Center(
++                key: ValueKey('boost-loading'),
++                child: Padding(
++                  padding: EdgeInsets.all(Gap.xl),
++                  child: CircularProgressIndicator(strokeWidth: 2),
++                ),
++              )
++            else ...[
++              if (s.block != null) ...[
++                Text(
++                  boostBlockText(l, s.block!),
++                  key: const ValueKey('boost-block'),
++                  textAlign: TextAlign.center,
++                  style: text.bodyMedium?.copyWith(
++                      color: t.text1, fontWeight: FontWeight.w600),
++                ),
++                const SizedBox(height: Gap.lg),
++              ],
++              for (final o in s.options) ...[
++                _Option(
++                  option: o,
++                  busy: s.buyingDays == o.pkg.days,
++                  onTap: s.busy || s.block != null || o.product == null
++                      ? null
++                      : () => c.buy(o.pkg),
++                ),
++                const SizedBox(height: Gap.md),
++              ],
++              if (s.verifying)
++                const Padding(
++                  padding: EdgeInsets.only(top: Gap.sm),
++                  child: Center(
++                      child: SizedBox(
++                          width: 20,
++                          height: 20,
++                          child: CircularProgressIndicator(strokeWidth: 2))),
++                ),
++              const SizedBox(height: Gap.sm),
++              Text(l.boostPaymentNote,
++                  textAlign: TextAlign.center,
++                  style: text.bodySmall?.copyWith(color: t.text3)),
++            ],
++            if (s.failure != null) ...[
++              const SizedBox(height: Gap.lg),
++              Text(
++                boostFailureText(l, s.failure!),
++                key: const ValueKey('boost-error'),
++                textAlign: TextAlign.center,
++                style: text.bodyMedium?.copyWith(color: t.error),
++              ),
++            ],
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++/// Sabab qatori — tugmalar o'chiq.
++String boostBlockText(L l, BoostBlock b) => switch (b.kind) {
++      BoostBlockKind.soldOut => b.at == null
++          ? l.boostSoldOutLater
++          : l.boostSoldOut(boostTime(b.at!)),
++      BoostBlockKind.notOpen => l.boostNotOpen,
++      BoostBlockKind.priorityWindow => b.at == null
++          ? l.boostNotOpen
++          : l.boostPriority(boostTime(b.at!)),
++      BoostBlockKind.alreadyFeatured => b.at == null
++          ? l.featuredAlready
++          : l.boostAlready(boostTime(b.at!)),
++      BoostBlockKind.tooManyActive => l.boostTooMany(b.max ?? 3),
++      BoostBlockKind.scheduled => l.boostScheduled,
++    };
++
++String boostFailureText(L l, BoostFailure f) => switch (f) {
++      BoostFailure.network => l.iapErrNetwork,
++      BoostFailure.server => l.iapErrServer,
++      BoostFailure.store => l.iapErrStore,
++      BoostFailure.disabled => l.iapErrDisabled,
++      BoostFailure.rateLimited => l.iapErrRateLimited,
++      BoostFailure.forbidden => l.featuredNotYours,
++      BoostFailure.notFound => l.boostErrNotFound,
++      BoostFailure.alreadyLinked => l.iapErrAlreadyLinked,
++      BoostFailure.inProgress => l.boostErrInProgress,
++      BoostFailure.intentForbidden => l.boostErrIntentForbidden,
++      BoostFailure.rejected => l.iapErrRejected,
++      BoostFailure.creditUsed => l.boostErrCreditUsed,
++      BoostFailure.creditRevoked => l.boostErrCreditRevoked,
++      BoostFailure.creditNotFound => l.boostErrCreditNotFound,
++      BoostFailure.unavailable => l.iapUnavailable,
++    };
++
++class _ResultView extends StatelessWidget {
++  const _ResultView({required this.result});
++  final BoostResult result;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final (icon, title, sub) = switch (result.status) {
++      BoostStatus.active => (
++          Icons.trending_up_rounded,
++          l.boostActiveDone(_days(result)),
++          result.endsAt == null ? null : l.boostEndsAt(boostTime(result.endsAt!)),
++        ),
++      BoostStatus.credited => (
++          Icons.savings_outlined,
++          l.boostCredited,
++          null,
++        ),
++      _ => (Icons.block_rounded, l.boostRevoked, null),
++    };
++    return Column(
++      key: ValueKey('boost-result-${result.status.name}'),
++      crossAxisAlignment: CrossAxisAlignment.stretch,
++      children: [
++        Icon(icon, size: 40, color: t.accent2),
++        const SizedBox(height: Gap.md),
++        Text(title, textAlign: TextAlign.center, style: text.titleMedium),
++        if (sub != null) ...[
++          const SizedBox(height: Gap.xs),
++          Text(sub,
++              textAlign: TextAlign.center,
++              style: text.bodyMedium?.copyWith(color: t.text2)),
++        ],
++        if (result.status == BoostStatus.credited) ...[
++          const SizedBox(height: Gap.lg),
++          NovaButton(
++            key: const ValueKey('boost-open-credits'),
++            label: l.boostCreditsOpen,
++            tone: ButtonTone.quiet,
++            onPressed: () {
++              Navigator.of(context).pop();
++              GoRouter.of(context).push(Routes.boostCredits);
++            },
++          ),
++        ],
++      ],
++    );
++  }
++
++  static int _days(BoostResult r) {
++    if (r.days > 0) return r.days;
++    final s = r.startsAt, e = r.endsAt;
++    if (s == null || e == null) return 1;
++    return (e.difference(s).inHours / 24).round().clamp(1, 365);
++  }
++}
++
++class _Option extends StatelessWidget {
++  const _Option({required this.option, required this.busy, this.onTap});
++  final BoostOption option;
++  final bool busy;
++  final VoidCallback? onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final disabled = onTap == null && !busy;
++    return Semantics(
++      button: true,
++      enabled: onTap != null,
++      child: PressableScale(
++        onTap: onTap,
++        child: AnimatedOpacity(
++          duration: Motion.fast,
++          opacity: disabled ? .45 : 1,
++          child: Container(
++            key: ValueKey('boost-option-${option.pkg.days}'),
++            padding: const EdgeInsets.all(Gap.lg),
++            decoration: BoxDecoration(
++              color: t.surfaceSolid,
++              borderRadius: R.gentle,
++              border: Border.all(color: t.border1),
++              boxShadow: t.shadowTiny,
++            ),
++            child: Row(
++              children: [
++                Icon(Icons.trending_up_rounded, size: 20, color: t.accent2),
++                const SizedBox(width: Gap.md),
++                Expanded(
++                  child: Text(l.boostDays(option.pkg.days),
++                      style: Theme.of(context).textTheme.titleMedium),
++                ),
++                if (busy)
++                  const SizedBox(
++                      width: 18,
++                      height: 18,
++                      child: CircularProgressIndicator(strokeWidth: 2))
++                else if (option.product != null)
++                  // App Store'ning lokallashtirilgan narxi — o'zgarmasdan.
++                  Text(option.product!.price,
++                      style: TextStyle(
++                        fontFamily: AppType.sans,
++                        fontSize: 16,
++                        fontWeight: FontWeight.w700,
++                        color: t.text1,
++                      )),
++              ],
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _Thumb extends StatelessWidget {
++  const _Thumb({required this.target, this.size = 56});
++  final BoostTarget target;
++  final double size;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final url = target.mediaUrl;
++    return ClipRRect(
++      borderRadius: R.tile,
++      child: SizedBox(
++        width: size,
++        height: size,
++        child: url.isEmpty || target.isVideo
++            ? ColoredBox(
++                color: t.surface2,
++                child: Icon(
++                    target.isVideo
++                        ? Icons.play_arrow_rounded
++                        : Icons.article_outlined,
++                    color: t.text2),
++              )
++            : mediaImage(context, url, fit: BoxFit.cover),
++      ),
++    );
++  }
++}
++
++// ─────────────────────────────────────────── kreditlar ekrani
++
++/// "Ko'tarish kreditlari" — to'langan, lekin joy band bo'lgani uchun
++/// saqlangan ko'tarishlar. Faqat iPhone + `boostEnabled`.
++class BoostCreditsScreen extends ConsumerWidget {
++  const BoostCreditsScreen({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final credits = ref.watch(boostCreditsProvider);
++    final s = ref.watch(boostControllerProvider);
++    return NovaScaffold(
++      title: l.boostCredits,
++      showBack: true,
++      body: credits.when(
++        loading: () => const Center(child: CircularProgressIndicator()),
++        error: (_, __) => Center(child: Text(l.iapErrServer)),
++        data: (list) => NovaScroll(
++          children: [
++            if (list.isEmpty)
++              Padding(
++                padding: const EdgeInsets.all(Gap.xl),
++                child: Text(l.boostCreditsEmpty,
++                    key: const ValueKey('boost-credits-empty'),
++                    textAlign: TextAlign.center,
++                    style: text.bodyMedium),
++              ),
++            for (final c in list) ...[
++              FloatingSurface(
++                key: ValueKey('boost-credit-${c.creditId}'),
++                solid: true,
++                child: Row(
++                  children: [
++                    Icon(Icons.trending_up_rounded, color: t.accent2),
++                    const SizedBox(width: Gap.md),
++                    Expanded(
++                      child: Column(
++                        crossAxisAlignment: CrossAxisAlignment.start,
++                        children: [
++                          Text(l.boostDays(c.days), style: text.titleMedium),
++                          if (c.createdAt != null)
++                            Text(boostTime(c.createdAt!),
++                                style:
++                                    text.bodySmall?.copyWith(color: t.text2)),
++                        ],
++                      ),
++                    ),
++                    NovaButton(
++                      key: ValueKey('boost-use-${c.creditId}'),
++                      label: l.boostUse,
++                      expand: false,
++                      tone: ButtonTone.outline,
++                      busy: s.verifying,
++                      onPressed:
++                          s.verifying ? null : () => _use(context, ref, c),
++                    ),
++                  ],
++                ),
++              ),
++              const SizedBox(height: Gap.md),
++            ],
++            if (s.result == null && s.failure != null) ...[
++              const SizedBox(height: Gap.md),
++              Text(boostFailureText(l, s.failure!),
++                  key: const ValueKey('boost-error'),
++                  textAlign: TextAlign.center,
++                  style: text.bodyMedium?.copyWith(color: t.error)),
++            ],
++            if (s.result == null && s.block != null) ...[
++              const SizedBox(height: Gap.md),
++              Text(boostBlockText(l, s.block!),
++                  key: const ValueKey('boost-block'),
++                  textAlign: TextAlign.center,
++                  style: text.bodyMedium),
++            ],
++          ],
++        ),
++      ),
++    );
++  }
++
++  Future<void> _use(BuildContext context, WidgetRef ref, BoostCredit c) async {
++    final l = L.of(context);
++    final post = await pickOwnPost(context);
++    if (post == null || !context.mounted) return;
++    final r = await ref
++        .read(boostControllerProvider.notifier)
++        .redeem(c, BoostTarget.of(post));
++    if (r == null || !context.mounted) return;
++    ScaffoldMessenger.of(context)
++      ..hideCurrentSnackBar()
++      ..showSnackBar(SnackBar(
++          content: Text(r.endsAt == null
++              ? l.boostActiveDone(c.days)
++              : '${l.boostActiveDone(c.days)}. ${l.boostEndsAt(boostTime(r.endsAt!))}')));
++  }
++}
++
++/// O'z postlarimdan birini tanlash (shaxsiy va kompaniya).
++Future<Post?> pickOwnPost(BuildContext context) =>
++    showModalBottomSheet<Post>(
++      context: context,
++      useRootNavigator: true,
++      isScrollControlled: true,
++      showDragHandle: true,
++      backgroundColor: context.tokens.surfaceSolid,
++      builder: (_) => const _OwnPostPicker(),
++    );
++
++class _OwnPostPicker extends ConsumerWidget {
++  const _OwnPostPicker();
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final text = Theme.of(context).textTheme;
++    final codes = ref.watch(personalIdsProvider).map((e) => e.code).toList();
++    final companies = ref.watch(myBusinessesProvider).valueOrNull ?? const [];
++    final posts = <Post>[
++      for (final c in codes)
++        ...?ref.watch(profilePostsProvider(c)).valueOrNull,
++      for (final b in companies)
++        ...?ref.watch(companyPostsProvider(b.companyId)).valueOrNull,
++    ].where((p) => !p.isStory && p.id > 0).toList();
++
++    return SafeArea(
++      top: false,
++      child: SizedBox(
++        height: MediaQuery.sizeOf(context).height * .6,
++        child: Column(
++          crossAxisAlignment: CrossAxisAlignment.stretch,
++          children: [
++            Padding(
++              padding: const EdgeInsets.symmetric(horizontal: Gap.screenX),
++              child: Text(l.boostPickPost, style: text.titleMedium),
++            ),
++            const SizedBox(height: Gap.md),
++            Expanded(
++              child: posts.isEmpty
++                  ? Center(child: Text(l.boostPickEmpty, style: text.bodyMedium))
++                  : GridView.count(
++                      crossAxisCount: 3,
++                      mainAxisSpacing: Gap.sm,
++                      crossAxisSpacing: Gap.sm,
++                      padding: const EdgeInsets.symmetric(
++                          horizontal: Gap.screenX),
++                      children: [
++                        for (final p in posts)
++                          PressableScale(
++                            key: ValueKey(
++                                'boost-pick-${p.isCompany ? 'c' : 'p'}-${p.id}'),
++                            onTap: () => Navigator.of(context).pop(p),
++                            child: _Thumb(
++                                target: BoostTarget.of(p), size: double.infinity),
++                          ),
++                      ],
++                    ),
++            ),
++          ],
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+index b94cf60..2899813 100644
+--- a/mobile_nova/lib/features/premium/iap_controller.dart
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -48,6 +48,14 @@ final iapEnabledProvider = Provider<bool>((ref) {
+   return ref.watch(iapConfigProvider).valueOrNull?.enabled ?? false;
+ });
+ 
++/// "Ko'tarish" (consumable) mahsulotimi — ular `BoostController` da
++/// (`boost_controller.dart`), Premium oqimi ularga tegmaydi.
++const kBoostProductPrefix = 'uz.nfcstore.nova.boost.';
++
++bool isBoostProductId(String id, [IapConfig? cfg]) =>
++    id.startsWith(kBoostProductPrefix) ||
++    (cfg?.boostProducts.any((b) => b.productId == id) ?? false);
++
+ /// Ekranda ko'rsatiladigan natija.
+ enum IapNotice {
+   /// Server tasdiqladi — Premium faol.
+@@ -265,8 +273,11 @@ class IapController extends StateNotifier<IapState> {
+   }
+ 
+   Future<void> _onPurchases(List<IapPurchase> list) async {
++    final cfg = _ref.read(iapConfigProvider).valueOrNull;
+     for (final p in list) {
+       if (!mounted) return;
++      // Ko'tarish xaridlari — boshqa oqim (`BoostController`).
++      if (isBoostProductId(p.productId, cfg)) continue;
+       switch (p.status) {
+         case IapPurchaseStatus.pending:
+           state = state.copyWith(
+diff --git a/mobile_nova/lib/features/premium/iap_store.dart b/mobile_nova/lib/features/premium/iap_store.dart
+index 47566d4..2b6c279 100644
+--- a/mobile_nova/lib/features/premium/iap_store.dart
++++ b/mobile_nova/lib/features/premium/iap_store.dart
+@@ -91,6 +91,11 @@ abstract class IapStore {
+   /// [accountToken] — server bergan UUID (StoreKit 2 `appAccountToken`).
+   Future<void> buy(String productId, {String? accountToken});
+ 
++  /// Bir martalik (consumable) xarid — "Ko'tarish" paketlari. Natija
++  /// [purchases] oqimiga keladi; server javobidan keyin [complete]
++  /// SHART (aks holda StoreKit uni qayta-qayta beradi).
++  Future<void> buyConsumable(String productId, {String? accountToken});
++
+   /// Faol obunalarni qayta yuboradi ([IapPurchaseStatus.restored]).
+   Future<void> restore();
+ 
+@@ -175,6 +180,18 @@ class StoreKitIapStore implements IapStore {
+     );
+   }
+ 
++  @override
++  Future<void> buyConsumable(String productId, {String? accountToken}) async {
++    final d = _details[productId];
++    if (d == null) {
++      throw PlatformException(code: 'product_not_loaded', message: productId);
++    }
++    await _platform.buyConsumable(
++      purchaseParam:
++          PurchaseParam(productDetails: d, applicationUserName: accountToken),
++    );
++  }
++
+   @override
+   Future<void> restore() => _platform.restorePurchases();
+ 
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 088220c..8fd4b01 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/avatar.dart';
++import '../premium/boost_controller.dart' show boostCreditsProvider;
+ import '../premium/iap_controller.dart'
+     show iapEnabledProvider, iapTrialDaysLeft;
+ import '../shop/store_policy.dart';
+@@ -153,6 +154,15 @@ class SettingsScreen extends ConsumerWidget {
+                 },
+                 onTap: () => context.push(Routes.premium),
+               ),
++            // KO'TARISH KREDITLARI — iPhone + kalit va kredit BOR bo'lsa.
++            if (ref.watch(boostCreditsProvider).valueOrNull?.isNotEmpty ??
++                false)
++              SettingsItem(
++                icon: Icons.trending_up_rounded,
++                label: l.boostCredits,
++                value: '${ref.watch(boostCreditsProvider).value!.length}',
++                onTap: () => context.push(Routes.boostCredits),
++              ),
+           ]),
+           SectionHeader(color: t.text2, title: l.settingsAppearance),
+           SettingsGroup(items: [
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 4c948a5..7af4ba4 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -41,6 +41,8 @@ import '../shop/store_policy.dart';
+ import 'music_picker.dart';
+ import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
++import '../premium/boost_controller.dart' show iapBoostEnabledProvider;
++import '../premium/boost_sheet.dart' show showBoostSheet;
+ 
+ /// Post tafsiloti uchun so'rov: yozuv kodi + post id.
+ typedef PostRef = ({String code, int id, bool company});
+@@ -278,6 +280,20 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     // xaridi, narx va sayt yozuvisiz u bo'sh qoladi
+                     // (`store_policy.dart`). Ko'tarilgan postlar
+                     // lentada iPhone'da ham ko'rinadi.
++                    //
++                    // iPhone'da — Apple consumable orqali "Ko'tarish"
++                    // varag'i, faqat server kaliti (`boostEnabled`)
++                    // yoqilganda. Kalit o'chiq — hech narsa.
++                    if (isAppStoreBuild &&
++                        ref.watch(iapBoostEnabledProvider) &&
++                        !p.isStory)
++                      NovaIconButton(
++                        key: const ValueKey('post-boost'),
++                        icon: Icons.trending_up_rounded,
++                        tooltip: l.boostAction,
++                        size: 38,
++                        onPressed: () => showBoostSheet(context, ref, p),
++                      ),
+                     if (!isAppStoreBuild)
+                       NovaIconButton(
+                         icon: Icons.trending_up_rounded,
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index c04757d..2c857a9 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -37,6 +37,8 @@ import '../home/widgets/avatar.dart';
+ import '../home/widgets/identity_card.dart';
+ import '../profile/music_player.dart';
+ import '../../design/icons/nova_icons.dart';
++import '../premium/boost_controller.dart' show iapBoostEnabledProvider;
++import '../premium/boost_sheet.dart' show showBoostSheet;
+ 
+ /// Ovoz o'chirilganmi — BUTUN lenta uchun bitta holat.
+ ///
+@@ -1934,6 +1936,21 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+                 );
+               },
+             ),
++            // KO'TARISH — faqat O'Z reelim, iPhone va `boostEnabled`
++            // (Apple consumable). Android va kalit o'chiq — yo'q.
++            if (ref.read(isMineProvider(p.code)) &&
++                !p.isStory &&
++                p.id > 0 &&
++                ref.read(iapBoostEnabledProvider))
++              ListTile(
++                key: const ValueKey('reel-boost'),
++                leading: const Icon(Icons.trending_up_rounded),
++                title: Text(l.boostAction),
++                onTap: () {
++                  Navigator.of(sheet).pop();
++                  showBoostSheet(context, ref, p);
++                },
++              ),
+             // QIZIQ EMAS — reel shu ro'yxatdan darhol olinadi (Instagram
+             // kabi) va serverga aytiladi (`/api/reels/hide`). Javob
+             // kutilmaydi, xatosi ko'rsatilmaydi: eski serverda bu manzil
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 74585c5..34e48f1 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1137,5 +1137,40 @@
+   "iapTrialBody": "You have every Premium feature right now — there is nothing to pay.",
+   "iapTrialSubscribeLater": "Subscribe after the trial",
+   "iapTrialSettings": "{days, plural, =1{Free trial: 1 day left} other{Free trial: {days} days left}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "boostAction": "Boost",
++  "boostTitle": "Boost post",
++  "boostExplain": "Your post is shown to more people in the feed as «Recommended».",
++  "boostDays": "{days, plural, =1{1 day} other{{days} days}}",
++  "@boostDays": {"placeholders": {"days": {"type": "int"}}},
++  "boostSoldOut": "All slots are taken — one frees up at {time}",
++  "@boostSoldOut": {"placeholders": {"time": {"type": "String"}}},
++  "boostSoldOutLater": "All slots are taken — please try later",
++  "boostNotOpen": "Opening soon",
++  "boostPriority": "The queue is busy — try again after {time}",
++  "@boostPriority": {"placeholders": {"time": {"type": "String"}}},
++  "boostAlready": "This post is already boosted, ends: {time}",
++  "@boostAlready": {"placeholders": {"time": {"type": "String"}}},
++  "boostTooMany": "You can boost at most {max} posts at a time.",
++  "@boostTooMany": {"placeholders": {"max": {"type": "int"}}},
++  "boostScheduled": "A scheduled post can’t be boosted yet.",
++  "boostActiveDone": "{days, plural, =1{Your post is boosted for 1 day} other{Your post is boosted for {days} days}}",
++  "@boostActiveDone": {"placeholders": {"days": {"type": "int"}}},
++  "boostEndsAt": "Ends: {time}",
++  "@boostEndsAt": {"placeholders": {"time": {"type": "String"}}},
++  "boostCredited": "Payment saved — use it when a slot frees up",
++  "boostRevoked": "This payment was cancelled.",
++  "boostCredits": "Boost credits",
++  "boostCreditsOpen": "Go to credits",
++  "boostUse": "Use",
++  "boostCreditsEmpty": "No unused credits.",
++  "boostPickPost": "Choose a post",
++  "boostPickEmpty": "No posts to boost.",
++  "boostPaymentNote": "Payment is charged to your Apple ID. This is a one-time purchase and does not renew.",
++  "boostErrInProgress": "The purchase is still being checked. Please reopen in a moment.",
++  "boostErrIntentForbidden": "The purchase could not be linked to this post. The app will save it as a credit next time it opens.",
++  "boostErrNotFound": "Post not found.",
++  "boostErrCreditUsed": "This credit has already been used.",
++  "boostErrCreditRevoked": "This credit was cancelled.",
++  "boostErrCreditNotFound": "Credit not found."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 577b1f5..ea0c591 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1137,5 +1137,40 @@
+   "iapTrialBody": "Сейчас вам доступны все возможности Premium — ничего платить не нужно.",
+   "iapTrialSubscribeLater": "Оформить подписку после пробного периода",
+   "iapTrialSettings": "{days, plural, one{Пробный период — остался {days} день} few{Пробный период — осталось {days} дня} many{Пробный период — осталось {days} дней} other{Пробный период — осталось {days} дня}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "boostAction": "Продвинуть",
++  "boostTitle": "Продвижение поста",
++  "boostExplain": "Ваш пост увидит больше людей в ленте в разделе «Рекомендуемое».",
++  "boostDays": "{days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
++  "@boostDays": {"placeholders": {"days": {"type": "int"}}},
++  "boostSoldOut": "Мест нет — освободится {time}",
++  "@boostSoldOut": {"placeholders": {"time": {"type": "String"}}},
++  "boostSoldOutLater": "Мест нет — попробуйте позже",
++  "boostNotOpen": "Скоро откроется",
++  "boostPriority": "Сейчас очередь занята — попробуйте после {time}",
++  "@boostPriority": {"placeholders": {"time": {"type": "String"}}},
++  "boostAlready": "Этот пост уже продвигается, до: {time}",
++  "@boostAlready": {"placeholders": {"time": {"type": "String"}}},
++  "boostTooMany": "Одновременно можно продвигать не более {max} постов.",
++  "@boostTooMany": {"placeholders": {"max": {"type": "int"}}},
++  "boostScheduled": "Запланированный пост пока нельзя продвигать.",
++  "boostActiveDone": "{days, plural, one{Пост продвигается {days} день} few{Пост продвигается {days} дня} many{Пост продвигается {days} дней} other{Пост продвигается {days} дня}}",
++  "@boostActiveDone": {"placeholders": {"days": {"type": "int"}}},
++  "boostEndsAt": "До: {time}",
++  "@boostEndsAt": {"placeholders": {"time": {"type": "String"}}},
++  "boostCredited": "Оплата сохранена — используйте, когда освободится место",
++  "boostRevoked": "Этот платёж отменён.",
++  "boostCredits": "Кредиты продвижения",
++  "boostCreditsOpen": "К кредитам",
++  "boostUse": "Использовать",
++  "boostCreditsEmpty": "Неиспользованных кредитов нет.",
++  "boostPickPost": "Выберите пост",
++  "boostPickEmpty": "Нет постов для продвижения.",
++  "boostPaymentNote": "Оплата спишется с вашего Apple ID. Это разовая покупка без автопродления.",
++  "boostErrInProgress": "Покупка ещё проверяется. Откройте снова чуть позже.",
++  "boostErrIntentForbidden": "Не удалось привязать покупку к этому посту. При следующем запуске приложение сохранит её как кредит.",
++  "boostErrNotFound": "Пост не найден.",
++  "boostErrCreditUsed": "Этот кредит уже использован.",
++  "boostErrCreditRevoked": "Этот кредит отменён.",
++  "boostErrCreditNotFound": "Кредит не найден."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 394f10a..ce78ad6 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1288,5 +1288,40 @@
+   "iapTrialBody": "Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.",
+   "iapTrialSubscribeLater": "Sinov tugagach obuna bo‘lish",
+   "iapTrialSettings": "{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}",
+-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}}
++  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
++  "boostAction": "Ko‘tarish",
++  "boostTitle": "Postni ko‘tarish",
++  "boostExplain": "Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.",
++  "boostDays": "{days, plural, =1{1 kun} other{{days} kun}}",
++  "@boostDays": {"placeholders": {"days": {"type": "int"}}},
++  "boostSoldOut": "Joylar band — {time} da bo‘shaydi",
++  "@boostSoldOut": {"placeholders": {"time": {"type": "String"}}},
++  "boostSoldOutLater": "Joylar band — keyinroq urinib ko‘ring",
++  "boostNotOpen": "Tez orada ochiladi",
++  "boostPriority": "Hozircha navbat band — {time} dan keyin urinib ko‘ring",
++  "@boostPriority": {"placeholders": {"time": {"type": "String"}}},
++  "boostAlready": "Bu post hozir ko‘tarilgan, tugashi: {time}",
++  "@boostAlready": {"placeholders": {"time": {"type": "String"}}},
++  "boostTooMany": "Bir vaqtda ko‘pi bilan {max} ta post ko‘tarilishi mumkin.",
++  "@boostTooMany": {"placeholders": {"max": {"type": "int"}}},
++  "boostScheduled": "Rejalashtirilgan postni hali ko‘tarib bo‘lmaydi.",
++  "boostActiveDone": "{days, plural, =1{Postingiz 1 kun davomida ko‘tarildi} other{Postingiz {days} kun davomida ko‘tarildi}}",
++  "@boostActiveDone": {"placeholders": {"days": {"type": "int"}}},
++  "boostEndsAt": "Tugashi: {time}",
++  "@boostEndsAt": {"placeholders": {"time": {"type": "String"}}},
++  "boostCredited": "To‘lov saqlandi — joy bo‘shaganda ishlating",
++  "boostRevoked": "Bu to‘lov bekor qilingan.",
++  "boostCredits": "Ko‘tarish kreditlari",
++  "boostCreditsOpen": "Kreditlarga o‘tish",
++  "boostUse": "Ishlatish",
++  "boostCreditsEmpty": "Ishlatilmagan kredit yo‘q.",
++  "boostPickPost": "Postni tanlang",
++  "boostPickEmpty": "Ko‘tariladigan post yo‘q.",
++  "boostPaymentNote": "To‘lov Apple ID hisobingizdan yechiladi. Bu bir martalik xarid, avtomatik yangilanmaydi.",
++  "boostErrInProgress": "Xarid hali tekshirilmoqda. Birozdan keyin qayta oching.",
++  "boostErrIntentForbidden": "Xaridni bu postga bog‘lab bo‘lmadi. Ilova keyingi ochilishda uni kredit sifatida saqlaydi.",
++  "boostErrNotFound": "Post topilmadi.",
++  "boostErrCreditUsed": "Bu kredit allaqachon ishlatilgan.",
++  "boostErrCreditRevoked": "Bu kredit bekor qilingan.",
++  "boostErrCreditNotFound": "Kredit topilmadi."
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index a761f13..309470c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5960,6 +5960,174 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
+   String iapTrialSettings(int days);
++
++  /// No description provided for @boostAction.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ko‘tarish'**
++  String get boostAction;
++
++  /// No description provided for @boostTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Postni ko‘tarish'**
++  String get boostTitle;
++
++  /// No description provided for @boostExplain.
++  ///
++  /// In uz, this message translates to:
++  /// **'Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.'**
++  String get boostExplain;
++
++  /// No description provided for @boostDays.
++  ///
++  /// In uz, this message translates to:
++  /// **'{days, plural, =1{1 kun} other{{days} kun}}'**
++  String boostDays(int days);
++
++  /// No description provided for @boostSoldOut.
++  ///
++  /// In uz, this message translates to:
++  /// **'Joylar band — {time} da bo‘shaydi'**
++  String boostSoldOut(String time);
++
++  /// No description provided for @boostSoldOutLater.
++  ///
++  /// In uz, this message translates to:
++  /// **'Joylar band — keyinroq urinib ko‘ring'**
++  String get boostSoldOutLater;
++
++  /// No description provided for @boostNotOpen.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tez orada ochiladi'**
++  String get boostNotOpen;
++
++  /// No description provided for @boostPriority.
++  ///
++  /// In uz, this message translates to:
++  /// **'Hozircha navbat band — {time} dan keyin urinib ko‘ring'**
++  String boostPriority(String time);
++
++  /// No description provided for @boostAlready.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu post hozir ko‘tarilgan, tugashi: {time}'**
++  String boostAlready(String time);
++
++  /// No description provided for @boostTooMany.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bir vaqtda ko‘pi bilan {max} ta post ko‘tarilishi mumkin.'**
++  String boostTooMany(int max);
++
++  /// No description provided for @boostScheduled.
++  ///
++  /// In uz, this message translates to:
++  /// **'Rejalashtirilgan postni hali ko‘tarib bo‘lmaydi.'**
++  String get boostScheduled;
++
++  /// No description provided for @boostActiveDone.
++  ///
++  /// In uz, this message translates to:
++  /// **'{days, plural, =1{Postingiz 1 kun davomida ko‘tarildi} other{Postingiz {days} kun davomida ko‘tarildi}}'**
++  String boostActiveDone(int days);
++
++  /// No description provided for @boostEndsAt.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tugashi: {time}'**
++  String boostEndsAt(String time);
++
++  /// No description provided for @boostCredited.
++  ///
++  /// In uz, this message translates to:
++  /// **'To‘lov saqlandi — joy bo‘shaganda ishlating'**
++  String get boostCredited;
++
++  /// No description provided for @boostRevoked.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu to‘lov bekor qilingan.'**
++  String get boostRevoked;
++
++  /// No description provided for @boostCredits.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ko‘tarish kreditlari'**
++  String get boostCredits;
++
++  /// No description provided for @boostCreditsOpen.
++  ///
++  /// In uz, this message translates to:
++  /// **'Kreditlarga o‘tish'**
++  String get boostCreditsOpen;
++
++  /// No description provided for @boostUse.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ishlatish'**
++  String get boostUse;
++
++  /// No description provided for @boostCreditsEmpty.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ishlatilmagan kredit yo‘q.'**
++  String get boostCreditsEmpty;
++
++  /// No description provided for @boostPickPost.
++  ///
++  /// In uz, this message translates to:
++  /// **'Postni tanlang'**
++  String get boostPickPost;
++
++  /// No description provided for @boostPickEmpty.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ko‘tariladigan post yo‘q.'**
++  String get boostPickEmpty;
++
++  /// No description provided for @boostPaymentNote.
++  ///
++  /// In uz, this message translates to:
++  /// **'To‘lov Apple ID hisobingizdan yechiladi. Bu bir martalik xarid, avtomatik yangilanmaydi.'**
++  String get boostPaymentNote;
++
++  /// No description provided for @boostErrInProgress.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xarid hali tekshirilmoqda. Birozdan keyin qayta oching.'**
++  String get boostErrInProgress;
++
++  /// No description provided for @boostErrIntentForbidden.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xaridni bu postga bog‘lab bo‘lmadi. Ilova keyingi ochilishda uni kredit sifatida saqlaydi.'**
++  String get boostErrIntentForbidden;
++
++  /// No description provided for @boostErrNotFound.
++  ///
++  /// In uz, this message translates to:
++  /// **'Post topilmadi.'**
++  String get boostErrNotFound;
++
++  /// No description provided for @boostErrCreditUsed.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu kredit allaqachon ishlatilgan.'**
++  String get boostErrCreditUsed;
++
++  /// No description provided for @boostErrCreditRevoked.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu kredit bekor qilingan.'**
++  String get boostErrCreditRevoked;
++
++  /// No description provided for @boostErrCreditNotFound.
++  ///
++  /// In uz, this message translates to:
++  /// **'Kredit topilmadi.'**
++  String get boostErrCreditNotFound;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index b3cf31b..bef68fa 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3257,4 +3257,118 @@ class LEn extends L {
+     );
+     return '$_temp0';
+   }
++
++  @override
++  String get boostAction => 'Boost';
++
++  @override
++  String get boostTitle => 'Boost post';
++
++  @override
++  String get boostExplain =>
++      'Your post is shown to more people in the feed as «Recommended».';
++
++  @override
++  String boostDays(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: '$days days',
++      one: '1 day',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostSoldOut(String time) {
++    return 'All slots are taken — one frees up at $time';
++  }
++
++  @override
++  String get boostSoldOutLater => 'All slots are taken — please try later';
++
++  @override
++  String get boostNotOpen => 'Opening soon';
++
++  @override
++  String boostPriority(String time) {
++    return 'The queue is busy — try again after $time';
++  }
++
++  @override
++  String boostAlready(String time) {
++    return 'This post is already boosted, ends: $time';
++  }
++
++  @override
++  String boostTooMany(int max) {
++    return 'You can boost at most $max posts at a time.';
++  }
++
++  @override
++  String get boostScheduled => 'A scheduled post can’t be boosted yet.';
++
++  @override
++  String boostActiveDone(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Your post is boosted for $days days',
++      one: 'Your post is boosted for 1 day',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostEndsAt(String time) {
++    return 'Ends: $time';
++  }
++
++  @override
++  String get boostCredited => 'Payment saved — use it when a slot frees up';
++
++  @override
++  String get boostRevoked => 'This payment was cancelled.';
++
++  @override
++  String get boostCredits => 'Boost credits';
++
++  @override
++  String get boostCreditsOpen => 'Go to credits';
++
++  @override
++  String get boostUse => 'Use';
++
++  @override
++  String get boostCreditsEmpty => 'No unused credits.';
++
++  @override
++  String get boostPickPost => 'Choose a post';
++
++  @override
++  String get boostPickEmpty => 'No posts to boost.';
++
++  @override
++  String get boostPaymentNote =>
++      'Payment is charged to your Apple ID. This is a one-time purchase and does not renew.';
++
++  @override
++  String get boostErrInProgress =>
++      'The purchase is still being checked. Please reopen in a moment.';
++
++  @override
++  String get boostErrIntentForbidden =>
++      'The purchase could not be linked to this post. The app will save it as a credit next time it opens.';
++
++  @override
++  String get boostErrNotFound => 'Post not found.';
++
++  @override
++  String get boostErrCreditUsed => 'This credit has already been used.';
++
++  @override
++  String get boostErrCreditRevoked => 'This credit was cancelled.';
++
++  @override
++  String get boostErrCreditNotFound => 'Credit not found.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 3f27e96..1ec6840 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3276,4 +3276,123 @@ class LRu extends L {
+     );
+     return '$_temp0';
+   }
++
++  @override
++  String get boostAction => 'Продвинуть';
++
++  @override
++  String get boostTitle => 'Продвижение поста';
++
++  @override
++  String get boostExplain =>
++      'Ваш пост увидит больше людей в ленте в разделе «Рекомендуемое».';
++
++  @override
++  String boostDays(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: '$days дня',
++      many: '$days дней',
++      few: '$days дня',
++      one: '$days день',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostSoldOut(String time) {
++    return 'Мест нет — освободится $time';
++  }
++
++  @override
++  String get boostSoldOutLater => 'Мест нет — попробуйте позже';
++
++  @override
++  String get boostNotOpen => 'Скоро откроется';
++
++  @override
++  String boostPriority(String time) {
++    return 'Сейчас очередь занята — попробуйте после $time';
++  }
++
++  @override
++  String boostAlready(String time) {
++    return 'Этот пост уже продвигается, до: $time';
++  }
++
++  @override
++  String boostTooMany(int max) {
++    return 'Одновременно можно продвигать не более $max постов.';
++  }
++
++  @override
++  String get boostScheduled => 'Запланированный пост пока нельзя продвигать.';
++
++  @override
++  String boostActiveDone(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Пост продвигается $days дня',
++      many: 'Пост продвигается $days дней',
++      few: 'Пост продвигается $days дня',
++      one: 'Пост продвигается $days день',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostEndsAt(String time) {
++    return 'До: $time';
++  }
++
++  @override
++  String get boostCredited =>
++      'Оплата сохранена — используйте, когда освободится место';
++
++  @override
++  String get boostRevoked => 'Этот платёж отменён.';
++
++  @override
++  String get boostCredits => 'Кредиты продвижения';
++
++  @override
++  String get boostCreditsOpen => 'К кредитам';
++
++  @override
++  String get boostUse => 'Использовать';
++
++  @override
++  String get boostCreditsEmpty => 'Неиспользованных кредитов нет.';
++
++  @override
++  String get boostPickPost => 'Выберите пост';
++
++  @override
++  String get boostPickEmpty => 'Нет постов для продвижения.';
++
++  @override
++  String get boostPaymentNote =>
++      'Оплата спишется с вашего Apple ID. Это разовая покупка без автопродления.';
++
++  @override
++  String get boostErrInProgress =>
++      'Покупка ещё проверяется. Откройте снова чуть позже.';
++
++  @override
++  String get boostErrIntentForbidden =>
++      'Не удалось привязать покупку к этому посту. При следующем запуске приложение сохранит её как кредит.';
++
++  @override
++  String get boostErrNotFound => 'Пост не найден.';
++
++  @override
++  String get boostErrCreditUsed => 'Этот кредит уже использован.';
++
++  @override
++  String get boostErrCreditRevoked => 'Этот кредит отменён.';
++
++  @override
++  String get boostErrCreditNotFound => 'Кредит не найден.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 0c8c07d..263e8c1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3236,4 +3236,119 @@ class LUz extends L {
+     );
+     return '$_temp0';
+   }
++
++  @override
++  String get boostAction => 'Ko‘tarish';
++
++  @override
++  String get boostTitle => 'Postni ko‘tarish';
++
++  @override
++  String get boostExplain =>
++      'Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.';
++
++  @override
++  String boostDays(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: '$days kun',
++      one: '1 kun',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostSoldOut(String time) {
++    return 'Joylar band — $time da bo‘shaydi';
++  }
++
++  @override
++  String get boostSoldOutLater => 'Joylar band — keyinroq urinib ko‘ring';
++
++  @override
++  String get boostNotOpen => 'Tez orada ochiladi';
++
++  @override
++  String boostPriority(String time) {
++    return 'Hozircha navbat band — $time dan keyin urinib ko‘ring';
++  }
++
++  @override
++  String boostAlready(String time) {
++    return 'Bu post hozir ko‘tarilgan, tugashi: $time';
++  }
++
++  @override
++  String boostTooMany(int max) {
++    return 'Bir vaqtda ko‘pi bilan $max ta post ko‘tarilishi mumkin.';
++  }
++
++  @override
++  String get boostScheduled =>
++      'Rejalashtirilgan postni hali ko‘tarib bo‘lmaydi.';
++
++  @override
++  String boostActiveDone(int days) {
++    String _temp0 = intl.Intl.pluralLogic(
++      days,
++      locale: localeName,
++      other: 'Postingiz $days kun davomida ko‘tarildi',
++      one: 'Postingiz 1 kun davomida ko‘tarildi',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String boostEndsAt(String time) {
++    return 'Tugashi: $time';
++  }
++
++  @override
++  String get boostCredited => 'To‘lov saqlandi — joy bo‘shaganda ishlating';
++
++  @override
++  String get boostRevoked => 'Bu to‘lov bekor qilingan.';
++
++  @override
++  String get boostCredits => 'Ko‘tarish kreditlari';
++
++  @override
++  String get boostCreditsOpen => 'Kreditlarga o‘tish';
++
++  @override
++  String get boostUse => 'Ishlatish';
++
++  @override
++  String get boostCreditsEmpty => 'Ishlatilmagan kredit yo‘q.';
++
++  @override
++  String get boostPickPost => 'Postni tanlang';
++
++  @override
++  String get boostPickEmpty => 'Ko‘tariladigan post yo‘q.';
++
++  @override
++  String get boostPaymentNote =>
++      'To‘lov Apple ID hisobingizdan yechiladi. Bu bir martalik xarid, avtomatik yangilanmaydi.';
++
++  @override
++  String get boostErrInProgress =>
++      'Xarid hali tekshirilmoqda. Birozdan keyin qayta oching.';
++
++  @override
++  String get boostErrIntentForbidden =>
++      'Xaridni bu postga bog‘lab bo‘lmadi. Ilova keyingi ochilishda uni kredit sifatida saqlaydi.';
++
++  @override
++  String get boostErrNotFound => 'Post topilmadi.';
++
++  @override
++  String get boostErrCreditUsed => 'Bu kredit allaqachon ishlatilgan.';
++
++  @override
++  String get boostErrCreditRevoked => 'Bu kredit bekor qilingan.';
++
++  @override
++  String get boostErrCreditNotFound => 'Kredit topilmadi.';
+ }
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index a8b3e6e..d5f4169 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -39,6 +39,8 @@ import '../features/settings/analytics_screen.dart';
+ import '../features/settings/settings_subscreens.dart';
+ import '../features/premium/iap_controller.dart' show iapEnabledProvider;
+ import '../features/premium/premium_iap_screen.dart';
++import '../features/premium/boost_controller.dart' show iapBoostEnabledProvider;
++import '../features/premium/boost_sheet.dart' show BoostCreditsScreen;
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+ import '../features/shop/store_policy.dart'
+@@ -490,6 +492,12 @@ final routerProvider = Provider<GoRouter>((ref) {
+           redirect: (_, __) =>
+               ref.read(iapEnabledProvider) ? null : Routes.settings,
+           builder: (_, __) => const PremiumIapScreen()),
++      // KO'TARISH KREDITLARI — faqat iPhone + `boostEnabled`.
++      GoRoute(
++          path: Routes.boostCredits,
++          redirect: (_, __) =>
++              ref.read(iapBoostEnabledProvider) ? null : Routes.settings,
++          builder: (_, __) => const BoostCreditsScreen()),
+ 
+       // Bildirishnomalar va sozlamalar
+       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index 997adeb..352624f 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -178,6 +178,10 @@ abstract final class Routes {
+   /// kaliti yoqilganda (`features/premium/`); aks holda Sozlamalarga
+   /// buriladi.
+   static const premium = '/premium';
++
++  /// "Ko'tarish kreditlari" — Apple consumable bilan to'langan, lekin
++  /// hali ishlatilmagan ko'tarishlar. Faqat iPhone + `boostEnabled`.
++  static const boostCredits = '/boost/credits';
+   static const settingsSupport = '/settings/support';
+ 
+   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —
+diff --git a/mobile_nova/test/iap_boost_test.dart b/mobile_nova/test/iap_boost_test.dart
+new file mode 100644
+index 0000000..f2d56cf
+--- /dev/null
++++ b/mobile_nova/test/iap_boost_test.dart
+@@ -0,0 +1,817 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/featured_repository.dart';
++import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/premium/boost_controller.dart';
++import 'package:nfcstore_nova/features/premium/boost_sheet.dart';
++import 'package:nfcstore_nova/features/premium/iap_controller.dart';
++import 'package:nfcstore_nova/features/premium/iap_store.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// "KO'TARISH" — postni lentada ko'tarish, Apple consumable (iPhone).
++
++const _p1 = 'uz.nfcstore.nova.boost.1d';
++const _p3 = 'uz.nfcstore.nova.boost.3d';
++const _p6 = 'uz.nfcstore.nova.boost.6d';
++const _pkgs = [
++  BoostPackage(productId: _p1, days: 1),
++  BoostPackage(productId: _p3, days: 3),
++  BoostPackage(productId: _p6, days: 6),
++];
++const _on = IapConfig(boostEnabled: true, boostProducts: _pkgs);
++const _tok = '6f1c2a7e-0d3b-4e4f-9a51-2b8c7d6e5f40';
++const _me = '48210377';
++
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++final _log = <String>[];
++
++final _ends = DateTime.utc(2026, 10, 9, 14, 30);
++
++class _Store implements IapStore {
++  final _ctrl = StreamController<List<IapPurchase>>.broadcast();
++  bool listened = false;
++  IapPurchase Function(String id)? onBuy;
++
++  void emit(List<IapPurchase> l) => _ctrl.add(l);
++
++  @override
++  Future<bool> isAvailable() async => true;
++
++  @override
++  Future<List<IapProduct>> products(Set<String> ids) async => [
++        for (final (id, price) in [
++          (_p1, '15 000 soʻm'),
++          (_p3, '39 000 soʻm'),
++          (_p6, '69 000 soʻm'),
++        ])
++          if (ids.contains(id)) IapProduct(id: id, title: id, price: price),
++      ];
++
++  @override
++  Future<void> buy(String productId, {String? accountToken}) async =>
++      _log.add('buy-sub:$productId');
++
++  @override
++  Future<void> buyConsumable(String productId, {String? accountToken}) async {
++    _log.add('buy:$productId:$accountToken');
++    final r = onBuy?.call(productId);
++    if (r != null) emit([r]);
++  }
++
++  @override
++  Future<void> restore() async => _log.add('restore');
++
++  @override
++  Future<void> complete(IapPurchase purchase) async =>
++      _log.add('complete:${purchase.purchaseId}');
++
++  @override
++  Stream<List<IapPurchase>> get purchases {
++    listened = true;
++    return _ctrl.stream;
++  }
++}
++
++class _Iap extends FakeIapRepository {
++  _Iap({super.cfg = _on});
++
++  Result<BoostIntent> intent =
++      const Ok(BoostIntent(intentId: 42, productId: _p3, days: 3));
++  Result<BoostResult> verified = Ok(BoostResult(
++      status: BoostStatus.active,
++      slotId: 42,
++      startsAt: DateTime.utc(2026, 10, 6, 14, 30),
++      endsAt: _ends));
++  Result<BoostResult> redeemed =
++      Ok(BoostResult(status: BoostStatus.active, slotId: 50, endsAt: _ends));
++  List<BoostCredit> credits = const [];
++
++  @override
++  Future<Result<String>> accountToken() async {
++    _log.add('token');
++    return const Ok(_tok);
++  }
++
++  @override
++  Future<Result<IapVerifyResult>> verify(String signedTransaction) async {
++    _log.add('premium-verify:$signedTransaction');
++    return const Ok(IapVerifyResult(premium: true));
++  }
++
++  @override
++  Future<Result<BoostIntent>> boostIntent(
++      {required String targetKind,
++      required int targetId,
++      required int days}) async {
++    _log.add('intent:$targetKind:$targetId:$days');
++    return intent;
++  }
++
++  @override
++  Future<Result<BoostResult>> verifyBoost(String signedTransaction,
++      {int? intentId}) async {
++    _log.add('verify:$signedTransaction:$intentId');
++    return verified;
++  }
++
++  @override
++  Future<Result<BoostResult>> boostRedeem(
++      {required int creditId,
++      required String targetKind,
++      required int targetId}) async {
++    _log.add('redeem:$creditId:$targetKind:$targetId');
++    return redeemed;
++  }
++
++  @override
++  Future<Result<List<BoostCredit>>> boostCredits() async => Ok(credits);
++}
++
++class _Featured extends FeaturedRepository {
++  _Featured([this.slots = const []]) : super(ApiClient());
++  final List<FeaturedSlot> slots;
++  @override
++  Future<Result<List<FeaturedSlot>>> mine() async => Ok(slots);
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++class _Social extends FakeSocialRepository {
++  _Social([this.post = const Post(id: 5, code: _me)]);
++  final Post post;
++
++  @override
++  Future<Result<Post>> postIn(String code, int id,
++          {bool company = false}) async =>
++      Ok(post);
++
++  @override
++  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
++      Ok(code == _me ? [post] : const []);
++
++  @override
++  Future<Result<({List<Comment> items, bool hasMore, int total})>> comments(
++          String kind, int id, {int page = 1}) async =>
++      const Ok((items: <Comment>[], hasMore: false, total: 0));
++}
++
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++  @override
++  Future<Result<FollowStats>> followStats(String code) async =>
++      const Ok((followers: 0, following: 0, isFollowing: false));
++  @override
++  Future<Result<List<NfcId>>> followList(String code,
++          {String dir = 'followers'}) async =>
++      const Ok([]);
++}
++
++IapPurchase _tx(String id, {String jws = 'JWS-B', String txId = '3000000777'}) =>
++    IapPurchase(
++      productId: id,
++      status: IapPurchaseStatus.purchased,
++      purchaseId: txId,
++      signedTransaction: jws,
++      needsCompletion: true,
++    );
++
++const _target = BoostTarget(kind: 'post', id: 5);
++
++class _Env {
++  _Env(this.c, this.store, this.iap);
++  final ProviderContainer c;
++  final _Store store;
++  final _Iap iap;
++  BoostController get ctl => c.read(boostControllerProvider.notifier);
++  BoostState get s => c.read(boostControllerProvider);
++}
++
++Future<List<Override>> _overrides(_Store store, _Iap iap,
++    {List<FeaturedSlot> slots = const [], Post? post}) async {
++  final base = await testOverrides();
++  return [
++    ...base.where((o) => !identical(o, base[2]) && !identical(o, base.last)),
++    socialRepositoryProvider.overrideWithValue(_Social(post ?? const Post(id: 5, code: _me))),
++    businessRepositoryProvider.overrideWithValue(_Biz()),
++    profileRepositoryProvider.overrideWithValue(_Profile()),
++    iapRepositoryProvider.overrideWithValue(iap),
++    iapStoreProvider.overrideWithValue(store),
++    featuredRepositoryProvider.overrideWithValue(_Featured(slots)),
++  ];
++}
++
++Future<_Env> _env(
++    {IapConfig cfg = _on, List<FeaturedSlot> slots = const []}) async {
++  _log.clear();
++  final store = _Store();
++  final iap = _Iap(cfg: cfg);
++  final c = ProviderContainer(
++      overrides: await _overrides(store, iap, slots: slots));
++  addTearDown(c.dispose);
++  await c.read(iapConfigProvider.future);
++  return _Env(c, store, iap);
++}
++
++/// Oqim hodisalari va asinxron zanjir tugashi.
++Future<void> _drain(WidgetTester tester) async {
++  for (var i = 0; i < 6; i++) {
++    await tester.pump(const Duration(milliseconds: 10));
++  }
++}
++
++Future<void> _openAndBuy(WidgetTester tester, _Env e, {int days = 3}) async {
++  await e.ctl.open(_target);
++  e.store.onBuy = (id) => _tx(id);
++  await e.ctl.buy(_pkgs.firstWhere((p) => p.days == days));
++  await _drain(tester);
++}
++
++Widget _app(ProviderContainer c, GoRouter router) => UncontrolledProviderScope(
++      container: c,
++      child: MaterialApp.router(
++        routerConfig: router,
++        theme: buildTheme(NfcTokens.ivory),
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    );
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void main() {
++  group('config', () {
++    test('boostEnabled + boostProducts o‘qiladi; Premium kalitidan alohida', () {
++      final c = IapConfig.fromJson(const {
++        'enabled': false,
++        'products': [],
++        'boostEnabled': true,
++        'boostProducts': [
++          {'productId': _p1, 'days': 1},
++          {'productId': _p3, 'days': 3},
++          {'productId': _p6, 'days': 6},
++        ],
++      });
++      expect(c.enabled, isFalse);
++      expect(c.boostEnabled, isTrue);
++      expect(c.boostProducts.map((b) => b.days), [1, 3, 6]);
++      expect(
++          IapConfig.fromJson(const {'boostEnabled': true, 'boostProducts': []})
++              .boostEnabled,
++          isFalse,
++          reason: 'paketsiz kalit — o‘chiq');
++    });
++
++    testWidgets('Android: o‘chiq', (tester) async {
++      final e = await _env();
++      expect(e.c.read(iapBoostEnabledProvider), isFalse);
++      e.c.read(boostWatcherProvider);
++      expect(e.store.listened, isFalse);
++    });
++
++    testWidgets('iPhone + kalit: yoqilgan', (tester) async {
++      final e = await _env();
++      expect(e.c.read(iapBoostEnabledProvider), isTrue);
++    }, variant: _ios);
++  });
++
++  group('xarid oqimi', () {
++    testWidgets('muvaffaqiyat: intent -> token -> consumable -> verify(intentId) '
++        '-> complete', (tester) async {
++      final e = await _env();
++      await e.ctl.open(_target);
++      expect(e.s.options.map((o) => o.product?.price),
++          ['15 000 soʻm', '39 000 soʻm', '69 000 soʻm'],
++          reason: 'narx App Store’dan');
++      e.store.onBuy = (id) => _tx(id);
++      await e.ctl.buy(_pkgs[1]);
++      await _drain(tester);
++      expect(_log, [
++        'intent:post:5:3',
++        'token',
++        'buy:$_p3:$_tok',
++        'verify:JWS-B:42',
++        'complete:3000000777',
++      ]);
++      expect(e.s.result?.status, BoostStatus.active);
++      expect(e.s.result?.endsAt, _ends);
++      expect(e.s.busy, isFalse);
++    }, variant: _ios);
++
++    testWidgets('kredit: to‘lov saqlandi, tranzaksiya yopildi', (tester) async {
++      final e = await _env();
++      e.iap.verified =
++          const Ok(BoostResult(status: BoostStatus.credited, creditId: 7, days: 3));
++      await _openAndBuy(tester, e);
++      expect(_log, contains('complete:3000000777'));
++      expect(e.s.result?.status, BoostStatus.credited);
++      expect(e.s.result?.creditId, 7);
++    }, variant: _ios);
++
++    for (final r in [
++      const BoostResult(status: BoostStatus.active),
++      const BoostResult(status: BoostStatus.credited, creditId: 1, days: 1),
++      const BoostResult(status: BoostStatus.revoked),
++    ]) {
++      testWidgets('200 ${r.status.name}: consumable HAR DOIM bir marta yopiladi',
++          (tester) async {
++        final e = await _env();
++        e.iap.verified = Ok(r);
++        await _openAndBuy(tester, e);
++        expect(_log.where((s) => s.startsWith('complete')).length, 1);
++      }, variant: _ios);
++    }
++
++    final verifyCases = <(String, AppError, bool)>[
++      ('422 days_mismatch',
++          const AppError(AppErrorKind.validation,
++              code: 'days_mismatch', status: 422),
++          true),
++      ('400 bad_request',
++          const AppError(AppErrorKind.unknown, code: 'bad_request', status: 400),
++          true),
++      ('403 intent_forbidden',
++          const AppError(AppErrorKind.forbidden,
++              code: 'intent_forbidden', status: 403),
++          false),
++      ('409 already_linked',
++          const AppError(AppErrorKind.conflict,
++              code: 'already_linked', status: 409),
++          false),
++      ('409 in_progress',
++          const AppError(AppErrorKind.conflict, code: 'in_progress', status: 409),
++          false),
++      ('429',
++          const AppError(AppErrorKind.rateLimited,
++              code: 'too_many_requests', status: 429),
++          false),
++      ('503 iap_disabled',
++          const AppError(AppErrorKind.server, code: 'iap_disabled', status: 503),
++          false),
++      ('tarmoq', const AppError(AppErrorKind.offline), false),
++    ];
++    for (final (name, err, terminal) in verifyCases) {
++      testWidgets(
++          'verify $name: ${terminal ? 'yakuniy — yopiladi' : 'ochiq qoladi'}',
++          (tester) async {
++        final e = await _env();
++        e.iap.verified = Err(err);
++        await _openAndBuy(tester, e);
++        expect(_log, contains('verify:JWS-B:42'));
++        expect(_log.where((s) => s.startsWith('complete')).length,
++            terminal ? 1 : 0);
++        expect(e.s.failure, isNotNull);
++        expect(e.s.busy, isFalse);
++      }, variant: _ios);
++    }
++
++    final intentCases = <(String, AppError, Object)>[
++      ('sold_out',
++          AppError(AppErrorKind.conflict, code: 'sold_out', status: 409, data: {
++            'error': 'sold_out',
++            'max': 10,
++            'active': 10,
++            'nextFreeAt': _ends.millisecondsSinceEpoch,
++          }),
++          BoostBlockKind.soldOut),
++      ('sales_not_open',
++          const AppError(AppErrorKind.conflict,
++              code: 'sales_not_open', status: 409),
++          BoostBlockKind.notOpen),
++      ('priority_window',
++          AppError(AppErrorKind.conflict,
++              code: 'priority_window',
++              status: 409,
++              data: {'endsAt': _ends.millisecondsSinceEpoch}),
++          BoostBlockKind.priorityWindow),
++      ('already_featured',
++          const AppError(AppErrorKind.conflict,
++              code: 'already_featured', status: 409, data: {'slotId': 9}),
++          BoostBlockKind.alreadyFeatured),
++      ('too_many_active',
++          const AppError(AppErrorKind.conflict,
++              code: 'too_many_active', status: 409, data: {'max': 3}),
++          BoostBlockKind.tooManyActive),
++      ('post_scheduled',
++          const AppError(AppErrorKind.conflict,
++              code: 'post_scheduled', status: 409),
++          BoostBlockKind.scheduled),
++      ('iap_disabled',
++          const AppError(AppErrorKind.server, code: 'iap_disabled', status: 503),
++          BoostFailure.disabled),
++      ('payments_disabled',
++          const AppError(AppErrorKind.server,
++              code: 'payments_disabled', status: 503),
++          BoostFailure.disabled),
++      ('429',
++          const AppError(AppErrorKind.rateLimited, status: 429),
++          BoostFailure.rateLimited),
++      ('forbidden',
++          const AppError(AppErrorKind.forbidden, code: 'forbidden', status: 403),
++          BoostFailure.forbidden),
++      ('banned',
++          const AppError(AppErrorKind.forbidden, code: 'banned', status: 403),
++          BoostFailure.forbidden),
++      ('not_found',
++          const AppError(AppErrorKind.notFound, code: 'not_found', status: 404),
++          BoostFailure.notFound),
++      ('bad_package',
++          const AppError(AppErrorKind.validation,
++              code: 'bad_package', status: 422),
++          BoostFailure.rejected),
++      ('413',
++          const AppError(AppErrorKind.unknown, status: 413),
++          BoostFailure.rejected),
++      ('tarmoq', const AppError(AppErrorKind.offline), BoostFailure.network),
++    ];
++    for (final (code, err, want) in intentCases) {
++      testWidgets('intent $code: xarid oynasi ochilmaydi, sabab — $want',
++          (tester) async {
++        final e = await _env(slots: [
++          FeaturedSlot(id: 9, status: 'active', endsAt: _ends),
++        ]);
++        e.iap.intent = Err(err);
++        await e.ctl.open(_target);
++        await e.ctl.buy(_pkgs[0]);
++        expect(_log, ['intent:post:5:1']);
++        if (want is BoostBlockKind) {
++          expect(e.s.block?.kind, want);
++          expect(e.s.failure, isNull);
++        } else {
++          expect(e.s.failure, want);
++          expect(e.s.block, isNull);
++        }
++        expect(e.s.busy, isFalse);
++        if (code == 'sold_out' ||
++            code == 'already_featured' ||
++            code == 'priority_window') {
++          expect(e.s.block?.at, _ends);
++        }
++        if (code == 'too_many_active') expect(e.s.block?.max, 3);
++        // Sabab bor — keyingi bosish ham xarid boshlamaydi.
++        if (want is BoostBlockKind) {
++          await e.ctl.buy(_pkgs[0]);
++          expect(_log.length, 1);
++        }
++      }, variant: _ios);
++    }
++
++    testWidgets('post allaqachon ko‘tarilgan — varaq ochilishida ko‘rinadi',
++        (tester) async {
++      final e = await _env(slots: [
++        FeaturedSlot(
++            id: 3, targetKind: 'post', targetId: 5, status: 'active', endsAt: _ends),
++      ]);
++      await e.ctl.open(_target);
++      expect(e.s.block?.kind, BoostBlockKind.alreadyFeatured);
++      expect(e.s.block?.at, _ends);
++      await e.ctl.buy(_pkgs[0]);
++      expect(_log, isEmpty, reason: 'intent ham ketmaydi');
++    }, variant: _ios);
++
++    testWidgets('bekor qilindi — xato yo‘q, verify yo‘q', (tester) async {
++      final e = await _env();
++      await e.ctl.open(_target);
++      e.store.onBuy = (id) =>
++          IapPurchase(productId: id, status: IapPurchaseStatus.canceled);
++      await e.ctl.buy(_pkgs[0]);
++      await _drain(tester);
++      expect(_log.where((s) => s.startsWith('verify')), isEmpty);
++      expect(e.s.failure, isNull);
++      expect(e.s.busy, isFalse);
++    }, variant: _ios);
++  });
++
++  group('ilova ochilishida ochiq consumable', () {
++    testWidgets('intentId siz tekshiriladi -> kredit, yopiladi', (tester) async {
++      final e = await _env();
++      e.iap.verified =
++          const Ok(BoostResult(status: BoostStatus.credited, creditId: 11, days: 6));
++      e.c.listen(boostWatcherProvider, (_, __) {});
++      await tester.pump(const Duration(milliseconds: 30));
++      expect(e.store.listened, isTrue);
++      e.store.emit([_tx(_p6, jws: 'JWS-OLD', txId: '99')]);
++      await _drain(tester);
++      expect(_log, ['verify:JWS-OLD:null', 'complete:99']);
++      expect(e.s.result?.status, BoostStatus.credited);
++    }, variant: _ios);
++
++    testWidgets('Premium oqimi ko‘tarish xaridiga tegmaydi', (tester) async {
++      final e = await _env(
++          cfg: const IapConfig(
++              enabled: true,
++              products: ['uz.nfcstore.nova.premium.monthly'],
++              boostEnabled: true,
++              boostProducts: _pkgs));
++      e.c.listen(iapWatcherProvider, (_, __) {});
++      e.c.listen(boostWatcherProvider, (_, __) {});
++      await tester.pump(const Duration(milliseconds: 30));
++      e.store.emit([_tx(_p1)]);
++      await _drain(tester);
++      expect(_log.where((s) => s.startsWith('premium-verify')), isEmpty);
++      expect(_log, contains('verify:JWS-B:null'));
++      expect(_log.where((s) => s.startsWith('complete')).length, 1,
++          reason: 'faqat bir marta — ikki oqim ikki marta yopmaydi');
++    }, variant: _ios);
++  });
++
++  group('kreditni ishlatish', () {
++    const credit = BoostCredit(creditId: 7, days: 3);
++
++    testWidgets('redeem -> faol slot', (tester) async {
++      final e = await _env();
++      final r = await e.ctl.redeem(credit, _target);
++      await _drain(tester);
++      expect(_log, ['redeem:7:post:5']);
++      expect(r?.status, BoostStatus.active);
++      expect(r?.endsAt, _ends);
++    }, variant: _ios);
++
++    for (final (code, want) in [
++      ('credit_used', BoostFailure.creditUsed),
++      ('credit_revoked', BoostFailure.creditRevoked),
++      ('credit_not_found', BoostFailure.creditNotFound),
++    ]) {
++      testWidgets('redeem $code', (tester) async {
++        final e = await _env();
++        e.iap.redeemed = Err(AppError(
++            code == 'credit_not_found'
++                ? AppErrorKind.notFound
++                : AppErrorKind.conflict,
++            code: code,
++            status: code == 'credit_not_found' ? 404 : 409));
++        final r = await e.ctl.redeem(credit, _target);
++        await _drain(tester);
++        expect(r, isNull);
++        expect(e.s.failure, want);
++      }, variant: _ios);
++    }
++
++    testWidgets('redeem sold_out — sabab qatori', (tester) async {
++      final e = await _env();
++      e.iap.redeemed = const Err(
++          AppError(AppErrorKind.conflict, code: 'sold_out', status: 409));
++      expect(await e.ctl.redeem(credit, _target), isNull);
++      await _drain(tester);
++      expect(e.s.block?.kind, BoostBlockKind.soldOut);
++    }, variant: _ios);
++  });
++
++  // ─────────────────────────────── UI: kirish yo'li va varaq
++  group('post ekrani: kirish yo‘li', () {
++    Future<_Env> pumpPost(WidgetTester tester,
++        {IapConfig cfg = _on, Post post = const Post(id: 5, code: _me)}) async {
++      tester.view.physicalSize = const Size(390 * 3, 1400 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      _log.clear();
++      final store = _Store();
++      final iap = _Iap(cfg: cfg);
++      final c = ProviderContainer(
++          overrides: await _overrides(store, iap, post: post));
++      addTearDown(c.dispose);
++      await c.read(iapConfigProvider.future);
++      final router = GoRouter(routes: [
++        GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('BOSH'))),
++        GoRoute(
++            path: '/p',
++            builder: (_, __) => PostScreen(id: post.id, code: post.code)),
++        GoRoute(
++            path: Routes.boostCredits,
++            builder: (_, __) => const BoostCreditsScreen()),
++      ]);
++      await tester.pumpWidget(_app(c, router));
++      router.push('/p');
++      await settle(tester, frames: 8);
++      return _Env(c, store, iap);
++    }
++
++    testWidgets('o‘z postim + iPhone + kalit: «Ko‘tarish» bor -> varaq',
++        (tester) async {
++      final e = await pumpPost(tester);
++      final l = await _uz();
++      final btn = find.byKey(const ValueKey('post-boost'));
++      expect(btn, findsOneWidget);
++      await tester.tap(btn);
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('boost-sheet')), findsOneWidget);
++      expect(find.text(l.boostExplain), findsOneWidget);
++      expect(find.text(l.boostDays(1)), findsOneWidget);
++      expect(find.text(l.boostDays(3)), findsOneWidget);
++      expect(find.text(l.boostDays(6)), findsOneWidget);
++      expect(find.text('39 000 soʻm'), findsOneWidget);
++      // Saytga yo'l / sayt narxi yo'q.
++      expect(find.textContaining('nfcstore.uz'), findsNothing);
++      expect(find.textContaining('Payme'), findsNothing);
++
++      e.store.onBuy = (id) => _tx(id);
++      await tester.tap(find.byKey(const ValueKey('boost-option-3')));
++      await settle(tester, frames: 10);
++      expect(_log, contains('complete:3000000777'));
++      expect(find.byKey(const ValueKey('boost-result-active')), findsOneWidget);
++      expect(find.text(l.boostActiveDone(3)), findsOneWidget);
++      expect(find.text(l.boostEndsAt(boostTime(_ends))), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('kredit natijasi -> «Kreditlarga o‘tish»', (tester) async {
++      final e = await pumpPost(tester);
++      final l = await _uz();
++      e.iap.verified =
++          const Ok(BoostResult(status: BoostStatus.credited, creditId: 7, days: 3));
++      e.iap.credits = const [BoostCredit(creditId: 7, days: 3)];
++      await tester.tap(find.byKey(const ValueKey('post-boost')));
++      await settle(tester, frames: 10);
++      e.store.onBuy = (id) => _tx(id);
++      await tester.tap(find.byKey(const ValueKey('boost-option-3')));
++      await settle(tester, frames: 10);
++      expect(find.text(l.boostCredited), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('boost-open-credits')));
++      await settle(tester, frames: 10);
++      expect(find.byType(BoostCreditsScreen), findsOneWidget);
++      expect(find.byKey(const ValueKey('boost-credit-7')), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('joylar band: sabab qatori, tugmalar o‘chadi', (tester) async {
++      final e = await pumpPost(tester);
++      final l = await _uz();
++      e.iap.intent = Err(AppError(AppErrorKind.conflict,
++          code: 'sold_out',
++          status: 409,
++          data: {'nextFreeAt': _ends.millisecondsSinceEpoch}));
++      await tester.tap(find.byKey(const ValueKey('post-boost')));
++      await settle(tester, frames: 10);
++      await tester.tap(find.byKey(const ValueKey('boost-option-1')));
++      await settle(tester, frames: 8);
++      expect(find.text(l.boostSoldOut(boostTime(_ends))), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('boost-option-6')));
++      await settle(tester, frames: 4);
++      expect(_log.where((s) => s.startsWith('intent')).length, 1);
++      expect(_log.where((s) => s.startsWith('buy')), isEmpty);
++    }, variant: _ios);
++
++    testWidgets('begona post: «Ko‘tarish» yo‘q', (tester) async {
++      await pumpPost(tester, post: const Post(id: 5, code: 'BOSHQA1'));
++      expect(find.byKey(const ValueKey('post-boost')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('iPhone, kalit o‘chiq: yo‘q', (tester) async {
++      await pumpPost(tester, cfg: IapConfig.disabled);
++      expect(find.byKey(const ValueKey('post-boost')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android: yo‘q (eski sayt oqimi o‘zgarmaydi)', (tester) async {
++      await pumpPost(tester);
++      expect(find.byKey(const ValueKey('post-boost')), findsNothing);
++    });
++  });
++
++  group('Reels «•••» menyusi', () {
++    Future<void> pumpReels(WidgetTester tester, String code,
++        {IapConfig cfg = _on}) async {
++      VideoPlayerPlatform.instance = FakeVideoPlatform();
++      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      _log.clear();
++      final reel = Post(
++        id: 70,
++        code: code,
++        authorName: 'Men',
++        mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
++        isVideo: true,
++      );
++      final c = ProviderContainer(overrides: [
++        ...await _overrides(_Store(), _Iap(cfg: cfg)),
++        reelsProvider.overrideWith((ref) async => [reel]),
++        activeTabProvider.overrideWith((ref) => 3),
++      ]);
++      addTearDown(c.dispose);
++      await c.read(iapConfigProvider.future);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: wrapScreen(const ReelsScreen()),
++      ));
++      await settle(tester, frames: 10);
++      await tester.tap(find.byKey(const ValueKey('reel-more')).first);
++      await settle(tester, frames: 10);
++    }
++
++    testWidgets('o‘z reelim + iPhone + kalit: «Ko‘tarish» bor', (tester) async {
++      await pumpReels(tester, _me);
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('reel-boost')), findsOneWidget);
++      expect(find.text(l.boostAction), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('reel-boost')));
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('boost-sheet')), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('begona reel: yo‘q', (tester) async {
++      await pumpReels(tester, 'PPP777');
++      expect(find.byKey(const ValueKey('reel-boost')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('kalit o‘chiq: yo‘q', (tester) async {
++      await pumpReels(tester, _me, cfg: IapConfig.disabled);
++      expect(find.byKey(const ValueKey('reel-boost')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android: yo‘q', (tester) async {
++      await pumpReels(tester, _me);
++      expect(find.byKey(const ValueKey('reel-boost')), findsNothing);
++    });
++  });
++
++  group('kreditlar ekrani va Sozlamalar', () {
++    Future<_Env> pumpSettings(WidgetTester tester, List<BoostCredit> credits,
++        {IapConfig cfg = _on}) async {
++      tester.view.physicalSize = const Size(393 * 3, 2000 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      _log.clear();
++      final store = _Store();
++      final iap = _Iap(cfg: cfg)..credits = credits;
++      final c = ProviderContainer(overrides: await _overrides(store, iap));
++      addTearDown(c.dispose);
++      await c.read(iapConfigProvider.future);
++      final router = GoRouter(routes: [
++        GoRoute(path: '/', builder: (_, __) => const SettingsScreen()),
++        GoRoute(
++            path: Routes.boostCredits,
++            builder: (_, __) => const BoostCreditsScreen()),
++      ]);
++      await tester.pumpWidget(_app(c, router));
++      await settle(tester, frames: 10);
++      return _Env(c, store, iap);
++    }
++
++    testWidgets('kredit bor: Sozlamalarda qator -> ishlatish -> post tanlash '
++        '-> redeem', (tester) async {
++      await pumpSettings(tester, const [BoostCredit(creditId: 7, days: 3)]);
++      final l = await _uz();
++      expect(find.text(l.boostCredits), findsOneWidget);
++      await tester.tap(find.text(l.boostCredits));
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('boost-credit-7')), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('boost-use-7')));
++      await settle(tester, frames: 10);
++      expect(find.text(l.boostPickPost), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('boost-pick-p-5')));
++      await settle(tester, frames: 10);
++      expect(_log, ['redeem:7:post:5']);
++      expect(find.textContaining(l.boostActiveDone(3)), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('kredit yo‘q: Sozlamalarda qator yo‘q', (tester) async {
++      await pumpSettings(tester, const []);
++      final l = await _uz();
++      expect(find.text(l.boostCredits), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('kalit o‘chiq: kredit bo‘lsa ham qator yo‘q', (tester) async {
++      await pumpSettings(tester, const [BoostCredit(creditId: 7, days: 3)],
++          cfg: IapConfig.disabled);
++      final l = await _uz();
++      expect(find.text(l.boostCredits), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android: qator yo‘q', (tester) async {
++      await pumpSettings(tester, const [BoostCredit(creditId: 7, days: 3)]);
++      final l = await _uz();
++      expect(find.text(l.boostCredits), findsNothing);
++    });
++  });
++}
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+index 513e856..78d34f2 100644
+--- a/mobile_nova/test/iap_premium_test.dart
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -76,6 +76,10 @@ class _Store implements IapStore {
+     if (r != null) emit([r]);
+   }
+ 
++  @override
++  Future<void> buyConsumable(String productId, {String? accountToken}) =>
++      buy(productId, accountToken: accountToken);
++
+   @override
+   Future<void> restore() async {
+     _log.add('restore');
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index 65e4cf7..434eccc 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -69,6 +69,7 @@ void main() {
+     Routes.settingsReferral,
+     Routes.settingsPremium,
+     Routes.premium,
++    Routes.boostCredits,
+     Routes.settingsSupport,
+     Routes.settingsAbout,
+     Routes.settingsNews,
+-- 
+2.43.0
+

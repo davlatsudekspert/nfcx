@@ -1,0 +1,951 @@
+From 2c216edb1c047ea4b8ce07d9afe0a3d27dbb4a28 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 08:24:05 +0000
+Subject: [PATCH 51/53] =?UTF-8?q?Nova=20audit:=20NFC=20=E2=80=94=20iPhone'?=
+ =?UTF-8?q?da=20bekor=20qilish=20darhol;=20begona=20yorliq=20begona=20prof?=
+ =?UTF-8?q?ilni=20ochmaydi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- NfcService: startSession ga onError — iOS "Bekor qilish" / vaqt
+  tugashi kutishni darhol tugatadi, _sessionOpen qaytariladi,
+  stopSession qayta chaqirilmaydi. TagError.cancelled, lastCancelled;
+  skaner, yozish va stiker ekranlari jim "Bekor qilindi" ko'rsatadi.
+  Sessiya funksiyasi sinov uchun almashtiriladi.
+- Skaner: faqat nfcstore.uz / www.nfcstore.uz (va nfcstore://) —
+  /t/ stiker, /u/ yoki /<KOD> profil, qolgani router yo'li (mavjud
+  bo'lsa). Boshqa har qanday teg: "Bu NFCSTORE yorlig'i emas",
+  mazmuni ko'rsatiladi, veb manzil bo'lsa "Brauzerda ochish".
+  Ilgari istalgan URL'ning oxirgi bo'lagi profil kodi deb olinardi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/nfc/nfc_scan_screen.dart     | 163 +++++++++-----
+ mobile_nova/lib/features/nfc/nfc_service.dart |  94 +++++++-
+ .../lib/features/nfc/nfc_write_screen.dart    |  20 ++
+ mobile_nova/lib/features/nfc/scan_target.dart |  82 +++++++
+ .../features/nfc/sticker_activate_screen.dart |  11 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |   5 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   5 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   5 +-
+ .../lib/l10n/gen/app_localizations.dart       |  18 ++
+ .../lib/l10n/gen/app_localizations_en.dart    |   9 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   9 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   9 +
+ mobile_nova/test/audit_1006_c_test.dart       | 203 ++++++++++++++++++
+ 13 files changed, 572 insertions(+), 61 deletions(-)
+ create mode 100644 mobile_nova/lib/features/nfc/scan_target.dart
+ create mode 100644 mobile_nova/test/audit_1006_c_test.dart
+
+diff --git a/mobile_nova/lib/features/nfc/nfc_scan_screen.dart b/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
+index af33b5a..3c3b239 100644
+--- a/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_scan_screen.dart
+@@ -16,6 +16,8 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import 'nfc_center_screen.dart' show NoNfcPanel;
+ import 'nfc_service.dart';
++import 'scan_target.dart';
++import '../../core/utils/external_link.dart';
+ 
+ /// Kartani o'qish.
+ ///
+@@ -34,6 +36,9 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+   String? _message;
+   String? _resolvedCode;
+ 
++  /// NFCSTORE yorlig'i bo'lmagan teg mazmuni.
++  ScanForeign? _foreign;
++
+   /// Xizmat oldindan ushlab olinadi.
+   ///
+   /// `dispose()` ichida `ref.read` Riverpod tomonidan TAQIQLANGAN va
+@@ -61,6 +66,7 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+       _state = OrbState.scanning;
+       _message = l.nfcScanning;
+       _resolvedCode = null;
++      _foreign = null;
+     });
+ 
+     // Xato bo'lsa ham ekran "Qidirilmoqda…" da QOLMAYDI.
+@@ -72,6 +78,15 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+     }
+     if (!mounted) return;
+ 
++    // iPhone: odam tizim oynasida "Bekor qilish" ni bosdi — xato emas.
++    if ((payload == null || payload.isEmpty) && _nfc.lastCancelled) {
++      setState(() {
++        _state = OrbState.idle;
++        _message = l.nfcCancelled;
++      });
++      return;
++    }
++
+     if (payload == null || payload.isEmpty) {
+       setState(() {
+         _state = OrbState.error;
+@@ -80,59 +95,75 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+       return;
+     }
+ 
+-    // Kartadagi havoladan NFC ID kodini ajratamiz. Chip tokeni bo'lsa
+-    // uni faqat SERVER kodga aylantira oladi.
+-    final uri = Uri.tryParse(payload);
+-    final segments = uri?.pathSegments.where((s) => s.isNotEmpty).toList() ?? const [];
+-
++    // FAQAT NFCSTORE manzillari ichkariga olib kiradi (`scan_target`).
++    final target = classifyScan(payload);
+     String? code;
+-    // Server `/t/<token>` yozadi (stikerlar); eski `/tap/` ham qabul.
+-    if (segments.length >= 2 &&
+-        (segments.first == 't' || segments.first == 'tap')) {
+-      final res = await ref.read(nfcRepositoryProvider).resolveChip(segments[1]);
+-      if (!mounted) return;
+-      final chip = res.valueOrNull;
+-      // Sotilgan, lekin ULANMAGAN stiker — faollashtirishga, token bilan
+-      // (shu stiker faollashtirishda bog'lanadi).
+-      if (chip != null && chip.unlinked) {
+-        setState(() => _state = OrbState.idle);
+-        context.push(Routes.nfcActivateSticker(segments[1]));
+-        return;
+-      }
+-      // Egasi o'chirib qo'ygan — profil ochilmaydi (sayt kabi).
+-      if (chip != null && chip.found && !chip.active) {
++    switch (target) {
++      case ScanForeign():
+         setState(() {
+           _state = OrbState.error;
+-          _message = '${l.stickerOffTitle}. ${l.stickerOffBody}';
++          _message = l.nfcNotNfcstore;
++          _foreign = target;
+         });
+         return;
+-      }
+-      if (chip != null && !chip.found) {
+-        setState(() {
+-          _state = OrbState.error;
+-          _message = l.stickerUnknownBody;
+-        });
+-        return;
+-      }
+-      if (chip != null && chip.company && chip.code.isNotEmpty) {
+-        context.push(Routes.storefront(chip.code));
+-        return;
+-      }
+-      code = chip?.code;
+-      if (code == null || code.isEmpty) {
+-        setState(() {
+-          _state = OrbState.error;
+-          // Token bor, lekin hali hech narsaga bog'lanmagan (Ok, bo'sh
+-          // kod) — ilgari bu yerda `errorOrNull!` null ustida qulardi.
+-          _message = describeError(
+-              l, res.errorOrNull ?? const AppError(AppErrorKind.notFound));
+-        });
++      case ScanRoute(:final location):
++        // Ilovada bunday sahifa bo'lmasa — begona yorliq kabi.
++        final match =
++            GoRouter.of(context).configuration.findMatch(Uri.parse(location));
++        if (match.routes.isEmpty || match.error != null) {
++          setState(() {
++            _state = OrbState.error;
++            _message = l.nfcNotNfcstore;
++            _foreign = ScanForeign(payload!.trim());
++          });
++          return;
++        }
++        setState(() => _state = OrbState.idle);
++        context.push(location);
+         return;
+-      }
+-    } else if (segments.isNotEmpty) {
+-      code = segments.last;
+-    } else {
+-      code = payload.trim();
++      case ScanProfile(code: final c):
++        code = c;
++      case ScanChip(:final token):
++        final res = await ref.read(nfcRepositoryProvider).resolveChip(token);
++        if (!mounted) return;
++        final chip = res.valueOrNull;
++        // Sotilgan, lekin ULANMAGAN stiker — faollashtirishga, token bilan
++        // (shu stiker faollashtirishda bog'lanadi).
++        if (chip != null && chip.unlinked) {
++          setState(() => _state = OrbState.idle);
++          context.push(Routes.nfcActivateSticker(token));
++          return;
++        }
++        // Egasi o'chirib qo'ygan — profil ochilmaydi (sayt kabi).
++        if (chip != null && chip.found && !chip.active) {
++          setState(() {
++            _state = OrbState.error;
++            _message = '${l.stickerOffTitle}. ${l.stickerOffBody}';
++          });
++          return;
++        }
++        if (chip != null && !chip.found) {
++          setState(() {
++            _state = OrbState.error;
++            _message = l.stickerUnknownBody;
++          });
++          return;
++        }
++        if (chip != null && chip.company && chip.code.isNotEmpty) {
++          context.push(Routes.storefront(chip.code));
++          return;
++        }
++        code = chip?.code;
++        if (code == null || code.isEmpty) {
++          setState(() {
++            _state = OrbState.error;
++            // Token bor, lekin hali hech narsaga bog'lanmagan (Ok, bo'sh
++            // kod) — ilgari bu yerda `errorOrNull!` null ustida qulardi.
++            _message = describeError(
++                l, res.errorOrNull ?? const AppError(AppErrorKind.notFound));
++          });
++          return;
++        }
+     }
+ 
+     setState(() {
+@@ -177,6 +208,7 @@ class _NfcScanScreenState extends ConsumerState<NfcScanScreen> {
+               state: _state,
+               message: _message,
+               resolvedCode: _resolvedCode,
++              foreign: _foreign,
+               onScan: _scan,
+             ),
+         },
+@@ -192,12 +224,14 @@ class _ScanBody extends StatelessWidget {
+     required this.message,
+     required this.resolvedCode,
+     required this.onScan,
++    this.foreign,
+   });
+ 
+   final double orb;
+   final OrbState state;
+   final String? message;
+   final String? resolvedCode;
++  final ScanForeign? foreign;
+   final VoidCallback onScan;
+ 
+   @override
+@@ -236,7 +270,40 @@ class _ScanBody extends StatelessWidget {
+           textAlign: TextAlign.center,
+           style: Theme.of(context).textTheme.titleMedium,
+         ),
+-        if (resolvedCode != null) ...[
++        if (foreign != null) ...[
++          // BEGONA YORLIQ — mazmuni ko'rinadi, ilova ichida ochilmaydi.
++          const SizedBox(height: Gap.md),
++          Container(
++            key: const ValueKey('nfc-foreign'),
++            padding: const EdgeInsets.all(Gap.lg),
++            decoration: BoxDecoration(
++              color: t.surface2,
++              borderRadius: R.gentle,
++              border: Border.all(color: t.border2),
++            ),
++            child: SelectableText(
++              foreign!.raw,
++              textAlign: TextAlign.center,
++              style: AppType.monoStyle(color: t.text1, size: 13),
++            ),
++          ),
++          if (foreign!.webUrl != null) ...[
++            const SizedBox(height: Gap.xl),
++            NovaButton(
++              key: const ValueKey('nfc-foreign-open'),
++              label: l.nfcOpenInBrowser,
++              icon: Icons.open_in_new_rounded,
++              tone: ButtonTone.outline,
++              onPressed: () => openLink(foreign!.webUrl.toString()),
++            ),
++          ],
++          const SizedBox(height: Gap.md),
++          NovaButton(
++            label: l.actionRetry,
++            tone: ButtonTone.quiet,
++            onPressed: onScan,
++          ),
++        ] else if (resolvedCode != null) ...[
+           const SizedBox(height: Gap.md),
+           Center(
+             child: Container(
+diff --git a/mobile_nova/lib/features/nfc/nfc_service.dart b/mobile_nova/lib/features/nfc/nfc_service.dart
+index 3b8691c..fb50b39 100644
+--- a/mobile_nova/lib/features/nfc/nfc_service.dart
++++ b/mobile_nova/lib/features/nfc/nfc_service.dart
+@@ -91,6 +91,10 @@ enum TagError {
+ 
+   /// Platforma xatosi (sessiya uzildi, teg maydondan chiqdi...).
+   io,
++
++  /// Foydalanuvchi tizim oynasida "Bekor qilish" ni bosdi (iPhone).
++  /// Xato emas — ekran jim qaytadi.
++  cancelled,
+ }
+ 
+ /// Yozish natijasi.
+@@ -111,10 +115,58 @@ class NfcWriteResult {
+ /// holatni ko'rsatadi. "Skanerlandi" degan yozuv faqat kartadan HAQIQIY
+ /// ma'lumot o'qilgandagina chiqadi. Xuddi shunday, "yozildi" yozuvi
+ /// faqat tegdan QAYTA O'QIB tasdiqlangandan keyin chiqadi.
++/// `NfcManager.startSession` imzosi — sinovda almashtiriladi.
++typedef NfcSessionStart = Future<void> Function({
++  required NfcTagCallback onDiscovered,
++  Set<NfcPollingOption>? pollingOptions,
++  NfcErrorCallback? onError,
++});
++
+ class NfcService {
++  NfcService({NfcSessionStart? startSession, Future<void> Function()? stopSession})
++      : _start = startSession ?? _nativeStart,
++        _stopNative = stopSession ?? _nativeStop;
++
++  static Future<void> _nativeStart({
++    required NfcTagCallback onDiscovered,
++    Set<NfcPollingOption>? pollingOptions,
++    NfcErrorCallback? onError,
++  }) =>
++      NfcManager.instance.startSession(
++          onDiscovered: onDiscovered,
++          pollingOptions: pollingOptions,
++          onError: onError);
++
++  static Future<void> _nativeStop() => NfcManager.instance.stopSession();
++
++  final NfcSessionStart _start;
++  final Future<void> Function() _stopNative;
++
+   StreamSubscription<void>? _sub;
+   bool _sessionOpen = false;
+ 
++  /// Oxirgi sessiyani foydalanuvchi BEKOR QILDIMI (iPhone tizim oynasi).
++  ///
++  /// iOS'da "Bekor qilish" bosilsa `onDiscovered` hech qachon
++  /// chaqirilmaydi — sessiya `onError(userCanceled)` bilan yopiladi.
++  /// Ilgari `onError` berilmasdi: ekran 30 soniya "Qidirilmoqda…"
++  /// holatida qolardi. Endi kutish darhol tugaydi va ekran buni xato
++  /// emas, jim "Bekor qilindi" deb ko'rsatadi.
++  bool lastCancelled = false;
++
++  /// iOS sessiyasi o'zi yopildi (bekor, vaqt tugadi, tizim band):
++  /// `stopSession` qayta chaqirilmaydi.
++  void _closedBySystem(NfcError e) {
++    _sessionOpen = false;
++    lastCancelled = e.type == NfcErrorType.userCanceled;
++  }
++
++  static TagError _errorOf(NfcError e) => switch (e.type) {
++        NfcErrorType.userCanceled => TagError.cancelled,
++        NfcErrorType.sessionTimeout => TagError.timeout,
++        _ => TagError.io,
++      };
++
+   Future<NfcAvailability> check() async {
+     try {
+       final available = await NfcManager.instance.isAvailable();
+@@ -147,8 +199,10 @@ class NfcService {
+     //    ilgari u skaner ekranigacha uchib borar va ekran "Qidirilmoqda…"
+     //    holatida abadiy qolardi.
+     await stop();
++    lastCancelled = false;
++    _sessionOpen = true;
+     try {
+-      await NfcManager.instance.startSession(
++      await _start(
+         pollingOptions: {
+           NfcPollingOption.iso14443,
+           NfcPollingOption.iso15693,
+@@ -164,12 +218,16 @@ class NfcService {
+           completer.complete(payload);
+           await stop();
+         },
++        onError: (e) async {
++          _closedBySystem(e);
++          if (!completer.isCompleted) completer.complete(null);
++        },
+       );
+-      _sessionOpen = true;
+     } catch (_) {
+-      await stop();
++      _sessionOpen = false;
+       return null;
+     }
++    if (completer.isCompleted) return completer.future;
+ 
+     // Cheksiz kutish qurilmaning NFC antennasini band qilib turadi.
+     return completer.future.timeout(timeout, onTimeout: () async {
+@@ -189,8 +247,10 @@ class NfcService {
+ 
+     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
+     await stop();
++    lastCancelled = false;
++    _sessionOpen = true;
+     try {
+-      await NfcManager.instance.startSession(
++      await _start(
+         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
+         onDiscovered: (tag) async {
+           if (completer.isCompleted) return;
+@@ -203,12 +263,18 @@ class NfcService {
+           completer.complete(r);
+           await stop();
+         },
++        onError: (e) async {
++          _closedBySystem(e);
++          if (!completer.isCompleted) {
++            completer.complete(TagInspection(found: false, error: _errorOf(e)));
++          }
++        },
+       );
+-      _sessionOpen = true;
+     } catch (_) {
+-      await stop();
++      _sessionOpen = false;
+       return const TagInspection(found: false, error: TagError.io);
+     }
++    if (completer.isCompleted) return completer.future;
+ 
+     return completer.future.timeout(timeout, onTimeout: () async {
+       await stop();
+@@ -278,8 +344,10 @@ class NfcService {
+ 
+     // Oldingi sessiya ochiq qolgan bo'lsa — avval yopiladi.
+     await stop();
++    lastCancelled = false;
++    _sessionOpen = true;
+     try {
+-      await NfcManager.instance.startSession(
++      await _start(
+         pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
+         onDiscovered: (tag) async {
+           if (completer.isCompleted) return;
+@@ -292,12 +360,18 @@ class NfcService {
+           if (!completer.isCompleted) completer.complete(r);
+           await stop();
+         },
++        onError: (e) async {
++          _closedBySystem(e);
++          if (!completer.isCompleted) {
++            completer.complete(NfcWriteResult(ok: false, error: _errorOf(e)));
++          }
++        },
+       );
+-      _sessionOpen = true;
+     } catch (_) {
+-      await stop();
++      _sessionOpen = false;
+       return const NfcWriteResult(ok: false, error: TagError.io);
+     }
++    if (completer.isCompleted) return completer.future;
+ 
+     return completer.future.timeout(timeout, onTimeout: () async {
+       await stop();
+@@ -399,7 +473,7 @@ class NfcService {
+     if (!_sessionOpen) return;
+     _sessionOpen = false;
+     try {
+-      await NfcManager.instance.stopSession();
++      await _stopNative();
+     } catch (_) {/* sessiya allaqachon yopilgan */}
+     await _sub?.cancel();
+     _sub = null;
+diff --git a/mobile_nova/lib/features/nfc/nfc_write_screen.dart b/mobile_nova/lib/features/nfc/nfc_write_screen.dart
+index 3b5e5b1..3c75597 100644
+--- a/mobile_nova/lib/features/nfc/nfc_write_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_write_screen.dart
+@@ -108,6 +108,13 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
+     final res = await ref.read(nfcServiceProvider).inspect();
+     if (!mounted) return;
+ 
++    // iPhone "Bekor qilish" — xato emas, jim qaytamiz.
++    if (res.error == TagError.cancelled) {
++      setState(() => _phase = _Phase.idle);
++      _quietCancelled();
++      return;
++    }
++
+     if (!res.found || res.error != TagError.none) {
+       setState(() {
+         _phase = _Phase.idle;
+@@ -181,6 +188,12 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
+         );
+     if (!mounted) return;
+ 
++    if (res.error == TagError.cancelled) {
++      setState(() => _phase = _Phase.checked);
++      _quietCancelled();
++      return;
++    }
++
+     setState(() {
+       _phase = res.ok ? _Phase.done : _Phase.checked;
+       _error = res.ok ? '' : _describe(res.error, payloadSize: _sizeOf(url));
+@@ -218,9 +231,16 @@ class _NfcWriteScreenState extends ConsumerState<NfcWriteScreen> {
+       TagError.differentTag => l.nfcWriteErrDifferentTag,
+       TagError.verifyFailed => l.nfcWriteErrVerify,
+       TagError.io => l.nfcWriteErrIo,
++      TagError.cancelled => l.nfcCancelled,
+     };
+   }
+ 
++  void _quietCancelled() {
++    ScaffoldMessenger.maybeOf(context)
++      ?..hideCurrentSnackBar()
++      ..showSnackBar(SnackBar(content: Text(L.of(context).nfcCancelled)));
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+diff --git a/mobile_nova/lib/features/nfc/scan_target.dart b/mobile_nova/lib/features/nfc/scan_target.dart
+new file mode 100644
+index 0000000..4802a2e
+--- /dev/null
++++ b/mobile_nova/lib/features/nfc/scan_target.dart
+@@ -0,0 +1,82 @@
++import '../../routing/routes.dart';
++
++/// NFC YORLIG'IDAN O'QILGAN MATN — QAYERGA OLIB BORADI.
++///
++/// Ilgari har qanday manzilning OXIRGI bo'lagi NFC ID kodi deb
++/// olinardi: `https://example.com/menu` tegini skanerlagan odam
++/// `MENU` degan BEGONA profilga tushardi. Endi faqat NFCSTORE
++/// manzillari ichkariga olib kiradi:
++///
++///   * `https://nfcstore.uz/...` va `www.nfcstore.uz` (hamda
++///     `nfcstore://...` sxemasi) — ilova marshrutlari bilan bir xil
++///     yo'l: `/t/<token>` stiker, `/u/<kod>` yoki `/<KOD>` profil,
++///     qolgani (`/c/...`, `/post/...`, `/story/...`) routerga;
++///   * boshqa har qanday matn yoki manzil — "Bu NFCSTORE yorlig'i
++///     emas": mazmuni ko'rsatiladi, veb manzil bo'lsa brauzerda
++///     ochish taklif qilinadi.
++sealed class ScanTarget {
++  const ScanTarget();
++}
++
++/// Stiker / chip tokeni (`/t/<token>`) — serverda kodga aylanadi.
++class ScanChip extends ScanTarget {
++  const ScanChip(this.token);
++  final String token;
++}
++
++/// Shaxsiy NFC ID profili.
++class ScanProfile extends ScanTarget {
++  const ScanProfile(this.code);
++  final String code;
++}
++
++/// Boshqa NFCSTORE sahifasi — router yo'li (`/c/KARTAUZ`, `/post/5`).
++class ScanRoute extends ScanTarget {
++  const ScanRoute(this.location);
++  final String location;
++}
++
++/// NFCSTORE yorlig'i emas.
++class ScanForeign extends ScanTarget {
++  const ScanForeign(this.raw, {this.webUrl});
++  final String raw;
++
++  /// `http(s)` manzil bo'lsa — brauzerda ochish uchun.
++  final Uri? webUrl;
++}
++
++const kNfcstoreHosts = {'nfcstore.uz', 'www.nfcstore.uz'};
++
++final _code = RegExp(r'^[A-Za-z0-9]{2,32}$');
++
++ScanTarget classifyScan(String payload) {
++  final raw = payload.trim();
++  final uri = Uri.tryParse(raw);
++  if (uri == null || !uri.hasScheme) return ScanForeign(raw);
++
++  final web = uri.scheme == 'http' || uri.scheme == 'https';
++  final List<String> seg;
++  if (web && kNfcstoreHosts.contains(uri.host.toLowerCase())) {
++    seg = uri.pathSegments.where((e) => e.isNotEmpty).toList();
++  } else if (uri.scheme == 'nfcstore') {
++    seg = [
++      if (uri.host.isNotEmpty) uri.host,
++      ...uri.pathSegments.where((e) => e.isNotEmpty),
++    ];
++  } else {
++    return ScanForeign(raw, webUrl: web && uri.host.isNotEmpty ? uri : null);
++  }
++
++  if (seg.isEmpty) return const ScanRoute(Routes.home);
++  if ((seg.first == 't' || seg.first == 'tap') && seg.length >= 2) {
++    return ScanChip(seg[1]);
++  }
++  if (seg.first == 'u' && seg.length >= 2 && _code.hasMatch(seg[1])) {
++    return ScanProfile(seg[1].toUpperCase());
++  }
++  if (seg.length == 1 && _code.hasMatch(seg[0])) {
++    return ScanProfile(seg[0].toUpperCase());
++  }
++  return ScanRoute(
++      '/${seg.join('/')}${uri.hasQuery ? '?${uri.query}' : ''}');
++}
+diff --git a/mobile_nova/lib/features/nfc/sticker_activate_screen.dart b/mobile_nova/lib/features/nfc/sticker_activate_screen.dart
+index 37404c8..970a3d1 100644
+--- a/mobile_nova/lib/features/nfc/sticker_activate_screen.dart
++++ b/mobile_nova/lib/features/nfc/sticker_activate_screen.dart
+@@ -207,6 +207,17 @@ class _StickerActivateScreenState extends ConsumerState<StickerActivateScreen> {
+       }
+       if (!mounted) return;
+     }
++    // iPhone "Bekor qilish" — xato emas.
++    if (widget.deviceToken.isEmpty && payload == null && (_nfc?.lastCancelled ?? false)) {
++      setState(() {
++        _busy = false;
++        _error = null;
++      });
++      ScaffoldMessenger.maybeOf(context)
++        ?..hideCurrentSnackBar()
++        ..showSnackBar(SnackBar(content: Text(l.nfcCancelled)));
++      return;
++    }
+     final token = widget.deviceToken.isNotEmpty
+         ? widget.deviceToken
+         : stickerTokenFromPayload(payload);
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index c633353..a3611ab 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1188,5 +1188,8 @@
+   "nfcHistoryActions": "Actions",
+   "nfcHistorySources": "Sources",
+   "nfcEventType": "{type, select, profile_view{Profile viewed} phone_click{Phone tapped} telegram_click{Telegram opened} whatsapp_click{WhatsApp opened} instagram_click{Instagram opened} website_click{Website opened} email_click{Email tapped} link_click{Link opened} contact_save{Contact saved} lead{Request submitted} menu_view{Menu viewed} products_view{Products viewed} services_view{Services viewed} other{Other action}}",
+-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
++  "nfcCancelled": "Cancelled",
++  "nfcNotNfcstore": "This is not an NFCSTORE tag",
++  "nfcOpenInBrowser": "Open in browser"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 4beb277..a5c2b4d 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1188,5 +1188,8 @@
+   "nfcHistoryActions": "Действия",
+   "nfcHistorySources": "Источники",
+   "nfcEventType": "{type, select, profile_view{Просмотр профиля} phone_click{Нажатие на телефон} telegram_click{Переход в Telegram} whatsapp_click{Переход в WhatsApp} instagram_click{Переход в Instagram} website_click{Переход на сайт} email_click{Нажатие на email} link_click{Переход по ссылке} contact_save{Контакт сохранён} lead{Оставлена заявка} menu_view{Просмотр меню} products_view{Просмотр товаров} services_view{Просмотр услуг} other{Другое действие}}",
+-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
++  "nfcCancelled": "Отменено",
++  "nfcNotNfcstore": "Это не метка NFCSTORE",
++  "nfcOpenInBrowser": "Открыть в браузере"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index eb43ca5..6315aa6 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1339,5 +1339,8 @@
+   "nfcHistoryActions": "Harakatlar",
+   "nfcHistorySources": "Manbalar",
+   "nfcEventType": "{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}",
+-  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
++  "nfcCancelled": "Bekor qilindi",
++  "nfcNotNfcstore": "Bu NFCSTORE yorlig‘i emas",
++  "nfcOpenInBrowser": "Brauzerda ochish"
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 2b64e5a..a024ce1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6200,6 +6200,24 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}'**
+   String nfcEventType(String type);
++
++  /// No description provided for @nfcCancelled.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bekor qilindi'**
++  String get nfcCancelled;
++
++  /// No description provided for @nfcNotNfcstore.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu NFCSTORE yorlig‘i emas'**
++  String get nfcNotNfcstore;
++
++  /// No description provided for @nfcOpenInBrowser.
++  ///
++  /// In uz, this message translates to:
++  /// **'Brauzerda ochish'**
++  String get nfcOpenInBrowser;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 1b6bfa9..01b6b88 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3432,4 +3432,13 @@ class LEn extends L {
+     });
+     return '$_temp0';
+   }
++
++  @override
++  String get nfcCancelled => 'Cancelled';
++
++  @override
++  String get nfcNotNfcstore => 'This is not an NFCSTORE tag';
++
++  @override
++  String get nfcOpenInBrowser => 'Open in browser';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 80ab8c2..72c6012 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3456,4 +3456,13 @@ class LRu extends L {
+     });
+     return '$_temp0';
+   }
++
++  @override
++  String get nfcCancelled => 'Отменено';
++
++  @override
++  String get nfcNotNfcstore => 'Это не метка NFCSTORE';
++
++  @override
++  String get nfcOpenInBrowser => 'Открыть в браузере';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 6fdbfde..e01d4a4 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3412,4 +3412,13 @@ class LUz extends L {
+     });
+     return '$_temp0';
+   }
++
++  @override
++  String get nfcCancelled => 'Bekor qilindi';
++
++  @override
++  String get nfcNotNfcstore => 'Bu NFCSTORE yorlig‘i emas';
++
++  @override
++  String get nfcOpenInBrowser => 'Brauzerda ochish';
+ }
+diff --git a/mobile_nova/test/audit_1006_c_test.dart b/mobile_nova/test/audit_1006_c_test.dart
+new file mode 100644
+index 0000000..d6f4d5a
+--- /dev/null
++++ b/mobile_nova/test/audit_1006_c_test.dart
+@@ -0,0 +1,203 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfc_manager/nfc_manager.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/utils/external_link.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_scan_screen.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_service.dart';
++import 'package:nfcstore_nova/features/nfc/scan_target.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// AUDIT 2026-10-06 (3-qism): iPhone'da NFC "Bekor qilish" ekranni 30 s
++/// qotirmaydi; begona yorliq begona profilni ochmaydi.
++
++/// Soxta `startSession`: darhol `onError` chaqiradi (iOS tizim oynasi
++/// yopilganidek).
++NfcService _closing(NfcErrorType type, List<String> log) => NfcService(
++      startSession: ({
++        required NfcTagCallback onDiscovered,
++        Set<NfcPollingOption>? pollingOptions,
++        NfcErrorCallback? onError,
++      }) async {
++        log.add('start');
++        await onError?.call(NfcError(type: type, message: type.name));
++      },
++      stopSession: () async => log.add('stop'),
++    );
++
++class _Nfc extends NfcService {
++  _Nfc(this.payload, {this.cancelled = false});
++  final String? payload;
++  final bool cancelled;
++
++  @override
++  Future<NfcAvailability> check() async => NfcAvailability.ready;
++
++  @override
++  Future<String?> readOnce({Duration timeout = const Duration(seconds: 30)}) async {
++    lastCancelled = cancelled;
++    return payload;
++  }
++}
++
++Future<GoRouter> _pump(WidgetTester tester, NfcService nfc) async {
++  tester.view.physicalSize = const Size(1170, 2532);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final router = GoRouter(routes: [
++    GoRoute(path: '/', builder: (_, __) => const NfcScanScreen()),
++    GoRoute(
++        path: '/c/:id',
++        builder: (_, s) => Scaffold(body: Text('STORE ${s.pathParameters['id']}'))),
++    GoRoute(
++        path: '/u/:code',
++        builder: (_, s) => Scaffold(body: Text('USER ${s.pathParameters['code']}'))),
++  ]);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      nfcServiceProvider.overrideWithValue(nfc),
++    ],
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.ivory),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  await settle(tester);
++  return router;
++}
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void main() {
++  group('5. iPhone NFC: bekor qilish darhol tugaydi', () {
++    test('readOnce — null, lastCancelled, stopSession chaqirilmaydi',
++        () async {
++      final log = <String>[];
++      final nfc = _closing(NfcErrorType.userCanceled, log);
++      final sw = Stopwatch()..start();
++      final r = await nfc.readOnce();
++      expect(r, isNull);
++      expect(nfc.lastCancelled, isTrue);
++      expect(sw.elapsed, lessThan(const Duration(seconds: 2)),
++          reason: '30 s kutilmadi');
++      expect(log, ['start'], reason: 'tizim yopgan sessiya qayta yopilmaydi');
++      // Keyingi o'qish yangi sessiya ochadi (`_sessionOpen` qaytarildi).
++      await nfc.readOnce();
++      expect(log, ['start', 'start']);
++    });
++
++    test('inspect / write — TagError.cancelled', () async {
++      final nfc = _closing(NfcErrorType.userCanceled, []);
++      expect((await nfc.inspect()).error, TagError.cancelled);
++      final w = await nfc.writeProfileUrl(url: 'https://nfcstore.uz/u/ABC123');
++      expect([w.ok, w.error], [false, TagError.cancelled]);
++    });
++
++    test('tizim vaqti tugadi — timeout, bekor emas', () async {
++      final nfc = _closing(NfcErrorType.sessionTimeout, []);
++      expect((await nfc.inspect()).error, TagError.timeout);
++      expect(nfc.lastCancelled, isFalse);
++    });
++
++    testWidgets('skaner ekrani: "Bekor qilindi", xato emas', (tester) async {
++      await _pump(tester, _Nfc(null, cancelled: true));
++      final l = await _uz();
++      await tester.tap(find.text(l.nfcTapToScan).last);
++      await settle(tester);
++      expect(find.text(l.nfcCancelled), findsOneWidget);
++      expect(find.text(l.nfcScanFailed), findsNothing);
++    });
++  });
++
++  group('7. faqat NFCSTORE yorliqlari ichkariga olib kiradi', () {
++    test('tasniflash', () {
++      expect(classifyScan('https://nfcstore.uz/t/TOK1'), isA<ScanChip>());
++      expect((classifyScan('https://www.nfcstore.uz/u/abc123') as ScanProfile).code,
++          'ABC123');
++      expect((classifyScan('https://nfcstore.uz/48210377') as ScanProfile).code,
++          '48210377');
++      expect((classifyScan('https://nfcstore.uz/c/KARTAUZ') as ScanRoute).location,
++          '/c/KARTAUZ');
++      expect((classifyScan('https://nfcstore.uz/post/5') as ScanRoute).location,
++          '/post/5');
++      expect((classifyScan('nfcstore://u/ABC123') as ScanProfile).code, 'ABC123');
++
++      final f = classifyScan('https://example.com/menu');
++      expect(f, isA<ScanForeign>());
++      expect((f as ScanForeign).webUrl.toString(), 'https://example.com/menu');
++      // Soxta xost (nfcstore.uz.evil.com) — begona.
++      expect(classifyScan('https://nfcstore.uz.evil.com/u/ABC'), isA<ScanForeign>());
++      final txt = classifyScan('Salom dunyo') as ScanForeign;
++      expect(txt.webUrl, isNull);
++      expect(classifyScan('MENU'), isA<ScanForeign>(),
++          reason: 'oddiy matn profil kodi deb olinmaydi');
++      expect(classifyScan('tel:+998901234567'), isA<ScanForeign>());
++    });
++
++    testWidgets('begona URL: profil OCHILMAYDI, mazmun va brauzer tugmasi',
++        (tester) async {
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      await _pump(tester, _Nfc('https://example.com/menu'));
++      final l = await _uz();
++      await tester.tap(find.text(l.nfcTapToScan).last);
++      await settle(tester);
++      expect(find.text(l.nfcNotNfcstore), findsOneWidget);
++      expect(find.text('https://example.com/menu'), findsOneWidget);
++      expect(find.textContaining('USER'), findsNothing);
++      expect(find.text('MENU'), findsNothing);
++      await tester.tap(find.byKey(const ValueKey('nfc-foreign-open')));
++      await settle(tester);
++      expect(opened.single.toString(), 'https://example.com/menu');
++    });
++
++    testWidgets('begona matn: brauzer tugmasi yo‘q', (tester) async {
++      await _pump(tester, _Nfc('Wi-Fi: parol 12345'));
++      final l = await _uz();
++      await tester.tap(find.text(l.nfcTapToScan).last);
++      await settle(tester);
++      expect(find.text(l.nfcNotNfcstore), findsOneWidget);
++      expect(find.byKey(const ValueKey('nfc-foreign-open')), findsNothing);
++    });
++
++    testWidgets('nfcstore.uz/c/... — do‘kon sahifasi (router yo‘li)',
++        (tester) async {
++      await _pump(tester, _Nfc('https://nfcstore.uz/c/KARTAUZ'));
++      final l = await _uz();
++      await tester.tap(find.text(l.nfcTapToScan).last);
++      await settle(tester);
++      expect(find.text('STORE KARTAUZ'), findsOneWidget);
++    });
++
++    testWidgets('nfcstore.uz/<KOD> — profil kodi chiqadi', (tester) async {
++      await _pump(tester, _Nfc('https://nfcstore.uz/48210377'));
++      final l = await _uz();
++      await tester.tap(find.text(l.nfcTapToScan).last);
++      await settle(tester);
++      expect(find.text('48210377'), findsOneWidget);
++      expect(find.text(l.nfcScanSuccess), findsOneWidget);
++      expect(Routes.user('48210377'), contains('48210377'));
++    });
++  });
++}
+-- 
+2.43.0
+

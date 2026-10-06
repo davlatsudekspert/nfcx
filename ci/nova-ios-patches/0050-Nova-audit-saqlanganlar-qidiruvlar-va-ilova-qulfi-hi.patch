@@ -1,0 +1,724 @@
+From 8409bbcf0c6c04916e7c9ea898dd36e5381b7df9 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 08:16:11 +0000
+Subject: [PATCH 50/53] Nova audit: saqlanganlar, qidiruvlar va ilova qulfi
+ hisobga bog'landi
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Saqlangan Reels va katalog sevimlilari keshi hisob bo'yicha
+  (`.u<id>`); hisob almashsa provayder qaytadan quriladi — boshqa
+  odamning ro'yxati ko'rinmaydi va uning serveriga yozilmaydi.
+- Eski (hisobsiz) yozuvlar serverga faqat BIR MARTA ko'chiriladi
+  (migratsiya belgisi) — boshqa qurilmada o'chirilganlar tirilmaydi.
+  Serverga yetmagan bosishlar `pending` da saqlanib keyin yuboriladi.
+- Oxirgi qidiruvlar hisob bo'yicha.
+- Chiqish va sessiya tugashida ilova qulfi va PIN o'chadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/app/app.dart                  |   2 +
+ .../lib/core/storage/secure_store.dart        |  68 +++++++++--
+ .../data/repositories/saves_repository.dart   | 104 ++++++++++++++---
+ .../lib/features/discover/catalog_view.dart   |   7 +-
+ .../features/discover/discover_screen.dart    |  11 +-
+ .../lib/features/settings/app_lock.dart       |  14 +++
+ .../lib/features/social/reels_screen.dart     |  22 ++--
+ mobile_nova/test/audit_1006_b_test.dart       | 102 +++++++++++++++++
+ mobile_nova/test/catalog_view_test.dart       |   4 +-
+ mobile_nova/test/saves_sync_test.dart         | 106 ++++++++++++++++--
+ 10 files changed, 386 insertions(+), 54 deletions(-)
+ create mode 100644 mobile_nova/test/audit_1006_b_test.dart
+
+diff --git a/mobile_nova/lib/app/app.dart b/mobile_nova/lib/app/app.dart
+index a3f9def..7f7d388 100644
+--- a/mobile_nova/lib/app/app.dart
++++ b/mobile_nova/lib/app/app.dart
+@@ -23,6 +23,8 @@ class NovaApp extends ConsumerWidget {
+     // eshitmasdi. `watch` shu yerda turishi kerak — kuzatuvchi
+     // ilovaning umri davomida tirik bo'lishi uchun.
+     ref.watch(sessionExpiryWatcherProvider);
++    // Chiqish / sessiya tugashi — ilova qulfi va PIN o'chadi.
++    ref.watch(appLockSessionGuardProvider);
+     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
+     // tranzaksiyalari ilova ochilishidanoq tinglanadi
+     // (`features/premium/iap_controller.dart`). Android'da hech narsa.
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index 0ab7482..62e147b 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -170,26 +170,76 @@ class Prefs {
+   Future<void> setNotif(String key, bool v) =>
+       _p.setBool('$_kNotif$key', v);
+ 
+-  List<String> get recentSearches => _p.getStringList(_kSearches) ?? const [];
++  // ── HISOBGA BOG'LANGAN KESH (audit 2026-10-06) ─────────────────
++  //
++  // Qidiruvlar, saqlangan Reels va katalog sevimlilari ilgari BITTA
++  // umumiy kalitda turardi: bir telefonda hisob almashtirilsa, oldingi
++  // odamning ro'yxati yangi hisobga "oqib" o'tardi (va keyingi sinxronda
++  // uning serveriga yozilardi). Endi har biri `.u<id>` kalitida.
++  //
++  // ESKI UMUMIY KALIT: yangilanishdan keyin uni BIRINCHI ochgan hisob
++  // oladi (u o'sha telefondagi hisob edi), kalit o'chiriladi.
++
++  String _u(String base, int uid) => '$base.u$uid';
++
++  List<String> _ofUser(String legacy, int uid) {
++    final key = _u(legacy, uid);
++    final mine = _p.getStringList(key);
++    if (mine != null) return mine;
++    final old = _p.getStringList(legacy);
++    if (old == null) return const [];
++    _p.setStringList(key, old);
++    _p.remove(legacy);
++    return old;
++  }
++
++  /// Joriy hisobning oxirgi qidiruvlari. Hisob yo'q — bo'sh.
++  List<String> recentSearchesOf(int? uid) =>
++      uid == null ? const [] : _ofUser(_kSearches, uid);
+ 
+   /// Oxirgi 8 ta qidiruv, eng yangisi boshida, takrorlarsiz.
+-  Future<void> pushSearch(String q) async {
++  Future<void> pushSearchFor(int? uid, String q) async {
+     final s = q.trim();
+-    if (s.isEmpty) return;
+-    final list = [s, ...recentSearches.where((e) => e != s)].take(8).toList();
+-    await _p.setStringList(_kSearches, list);
++    if (s.isEmpty || uid == null) return;
++    final list =
++        [s, ...recentSearchesOf(uid).where((e) => e != s)].take(8).toList();
++    await _p.setStringList(_u(_kSearches, uid), list);
+   }
+ 
+-  Future<void> clearSearches() => _p.remove(_kSearches);
++  Future<void> clearSearchesFor(int? uid) async {
++    if (uid == null) return;
++    await _p.setStringList(_u(_kSearches, uid), const []);
++  }
+ 
+-  /// Tanlov katalogidagi sevimli tovarlar (`kompaniya/tovar`).
+-  /// Faqat shu qurilmada — serverda saqlash API'si yo'q.
++  String _savesKey(String kind) =>
++      kind == 'reel' ? _kSavedReels : _kCatalogFav;
++
++  /// Saqlanganlar keshi (`reel` / `listing`) — hisob bo'yicha.
++  List<String> savesOf(String kind, int uid) => _ofUser(_savesKey(kind), uid);
++  Future<void> setSavesOf(String kind, int uid, List<String> keys) =>
++      _p.setStringList(_u(_savesKey(kind), uid), keys);
++
++  /// Eski (faqat telefondagi) yozuvlar serverga BIR MARTA ko'chirildimi.
++  bool savesMigrated(String kind, int uid) =>
++      _p.getBool(_u('${_savesKey(kind)}.migrated', uid)) ?? false;
++  Future<void> setSavesMigrated(String kind, int uid) =>
++      _p.setBool(_u('${_savesKey(kind)}.migrated', uid), true);
++
++  /// Serverga yetmagan bosishlar (`1:key` — saqlash, `0:key` — olib
++  /// tashlash) — keyingi sinxronda qayta yuboriladi.
++  List<String> savesPending(String kind, int uid) =>
++      _p.getStringList(_u('${_savesKey(kind)}.pending', uid)) ?? const [];
++  Future<void> setSavesPending(String kind, int uid, List<String> ops) =>
++      _p.setStringList(_u('${_savesKey(kind)}.pending', uid), ops);
++
++  /// ESKI umumiy kalit (hisobsiz) — faqat ko'chirish va sinov uchun.
++  /// Ishlatiladigani: [savesOf].
+   List<String> get catalogFavorites =>
+       _p.getStringList(_kCatalogFav) ?? const [];
+   Future<void> setCatalogFavorites(List<String> keys) =>
+       _p.setStringList(_kCatalogFav, keys);
+ 
+-  /// Saqlangan reel'lar (`p:12`, `c:7`). Faqat shu qurilmada.
++  /// ESKI umumiy kalit (hisobsiz) — faqat ko'chirish va sinov uchun.
+   List<String> get savedReels => _p.getStringList(_kSavedReels) ?? const [];
+   Future<void> setSavedReels(List<String> keys) =>
+       _p.setStringList(_kSavedReels, keys);
+diff --git a/mobile_nova/lib/data/repositories/saves_repository.dart b/mobile_nova/lib/data/repositories/saves_repository.dart
+index ef66b61..2c6b6cb 100644
+--- a/mobile_nova/lib/data/repositories/saves_repository.dart
++++ b/mobile_nova/lib/data/repositories/saves_repository.dart
+@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../app/providers.dart';
+ import '../../core/network/api_client.dart';
++import '../../core/storage/secure_store.dart';
+ import '../../core/utils/result.dart';
+ 
+ /// Saqlanganlar turi — server `kind` bilan bir xil.
+@@ -39,44 +40,108 @@ final savesRepositoryProvider = Provider<SavesRepository>(
+ /// Telefon keshi + server. UMUMIY qoida (Reels va katalog uchun):
+ ///
+ ///   * ochilishda darhol keshdan ko'rsatiladi (tarmoq kutilmaydi);
+-///   * keyin server ro'yxati olinadi; telefonda bor-u serverda yo'q
+-///     yozuvlar (eski versiyada saqlanganlar) serverga BIR MARTA
+-///     ko'chiriladi — hech narsa yo'qolmaydi;
+-///   * bosilganda darhol o'zgaradi va serverga yuboriladi. Internet
+-///     bo'lmasa keshda qoladi va keyingi sinxronda yuboriladi;
+-///   * server hali eski bo'lsa (endpoint yo'q) — avvalgidek faqat
+-///     telefonda ishlaydi, xato ko'rsatilmaydi.
++///   * keyin server ro'yxati olinadi va u ASOSIY manba: boshqa
++///     qurilmada o'chirilgan yozuv bu yerda ham yo'qoladi;
++///   * telefonda bor-u serverda yo'q ESKI yozuvlar (hisobsiz eski
++///     versiyada saqlanganlar) serverga faqat BIR MARTA ko'chiriladi
++///     (`savesMigrated`). Ilgari bu har sinxronda qilinardi va boshqa
++///     qurilmada o'chirilganlar "tirilib" qolardi;
++///   * bosilganda darhol o'zgaradi va serverga yuboriladi. Yetmasa
++///     (internet yo'q) — `pending` ga yoziladi va keyingi sinxronda
++///     qayta yuboriladi;
++///   * kesh HISOB bo'yicha (`Prefs.savesOf(kind, uid)`): bir telefonda
++///     hisob almashsa, ro'yxatlar aralashmaydi. Hisob yo'q — bo'sh,
++///     sinxron yo'q.
+ class SyncedSaves extends StateNotifier<Set<String>> {
+   SyncedSaves(this._repo, this.kind,
+       {required Iterable<String> initial,
+-      required Future<void> Function(List<String>) persist})
++      required Future<void> Function(List<String>) persist,
++      bool migrated = true,
++      Future<void> Function()? markMigrated,
++      Iterable<String> pending = const [],
++      Future<void> Function(List<String>)? persistPending,
++      this.enabled = true})
+       : _persist = persist,
++        _migrated = migrated,
++        _markMigrated = markMigrated,
++        _persistPending = persistPending,
++        _pending = {
++          for (final op in pending)
++            if (op.length > 2) op.substring(2): op.startsWith('1:'),
++        },
+         super(initial.toSet()) {
+-    Future.microtask(sync);
++    if (enabled) Future.microtask(sync);
++  }
++
++  /// Joriy hisob uchun — kesh, ko'chirish belgisi va kutilayotgan
++  /// bosishlar shu hisob kalitlarida. `uid == null` — bo'sh, o'chiq.
++  factory SyncedSaves.forUser(
++      SavesRepository repo, SaveKind kind, Prefs prefs, int? uid) {
++    if (uid == null) {
++      return SyncedSaves(repo, kind,
++          initial: const [], persist: (_) async {}, enabled: false);
++    }
++    return SyncedSaves(
++      repo,
++      kind,
++      initial: prefs.savesOf(kind.name, uid),
++      persist: (keys) => prefs.setSavesOf(kind.name, uid, keys),
++      migrated: prefs.savesMigrated(kind.name, uid),
++      markMigrated: () => prefs.setSavesMigrated(kind.name, uid),
++      pending: prefs.savesPending(kind.name, uid),
++      persistPending: (ops) => prefs.setSavesPending(kind.name, uid, ops),
++    );
+   }
+ 
+   final SavesRepository _repo;
+   final SaveKind kind;
++  final bool enabled;
+   final Future<void> Function(List<String>) _persist;
++  final Future<void> Function()? _markMigrated;
++  final Future<void> Function(List<String>)? _persistPending;
++  bool _migrated;
++
++  /// Serverga yetmagan bosishlar: kalit -> `true` saqlash / `false` olish.
++  final Map<String, bool> _pending;
+   bool _syncing = false;
+ 
+   bool contains(String key) => state.contains(key);
+ 
++  Future<void> _savePending() async => _persistPending?.call([
++        for (final e in _pending.entries) '${e.value ? 1 : 0}:${e.key}',
++      ]);
++
+   Future<void> sync() async {
+-    if (_syncing || !mounted) return;
++    if (!enabled || _syncing || !mounted) return;
+     _syncing = true;
+     try {
+       final res = await _repo.list(kind);
+       final server = res.valueOrNull;
+       if (server == null || !mounted) return;
+-      final serverSet = server.toSet();
+-      final localOnly = state.difference(serverSet);
+-      for (final k in localOnly) {
+-        await _repo.set(kind, k, true);
++      final next = server.toSet();
++
++      // 1) Eski, hisobsiz yozuvlar — BIR MARTA.
++      if (!_migrated) {
++        for (final k in state.difference(next)) {
++          if (_pending.containsKey(k)) continue;
++          if ((await _repo.set(kind, k, true)).isOk) next.add(k);
++        }
++        _migrated = true;
++        await _markMigrated?.call();
++      }
++
++      // 2) Yetmagan bosishlar — qayta yuboriladi; yetmasa ham ko'rinishda
++      //    qoladi (odamning so'nggi tanlovi).
++      for (final e in [..._pending.entries]) {
++        if ((await _repo.set(kind, e.key, e.value)).isOk) {
++          _pending.remove(e.key);
++        }
++        e.value ? next.add(e.key) : next.remove(e.key);
+       }
+       if (!mounted) return;
+-      state = {...serverSet, ...localOnly};
++      state = next;
+       await _persist(state.toList());
++      await _savePending();
+     } finally {
+       _syncing = false;
+     }
+@@ -89,7 +154,14 @@ class SyncedSaves extends StateNotifier<Set<String>> {
+     if (!added) next.remove(key);
+     state = next;
+     await _persist(next.toList());
+-    await _repo.set(kind, key, added);
++    if (!enabled) return added;
++    final res = await _repo.set(kind, key, added);
++    if (res.isOk) {
++      _pending.remove(key);
++    } else {
++      _pending[key] = added;
++    }
++    await _savePending();
+     return added;
+   }
+ }
+diff --git a/mobile_nova/lib/features/discover/catalog_view.dart b/mobile_nova/lib/features/discover/catalog_view.dart
+index 281d9d8..833775c 100644
+--- a/mobile_nova/lib/features/discover/catalog_view.dart
++++ b/mobile_nova/lib/features/discover/catalog_view.dart
+@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
+ 
+ import '../home/widgets/identity_card.dart' show formatCount;
+ import '../../app/providers.dart';
++import '../auth/session.dart' show currentUserProvider;
+ import '../../core/errors/app_error.dart';
+ import '../../data/models/models.dart';
+ import '../../data/repositories/business_repository.dart';
+@@ -191,9 +192,9 @@ final catalogFeedProvider = StateNotifierProvider.autoDispose
+ /// bo'lmasa ham bosish darhol ishlaydi). Batafsil: `SyncedSaves`.
+ final catalogFavoritesProvider =
+     StateNotifierProvider<SyncedSaves, Set<String>>((ref) {
+-  final prefs = ref.watch(prefsProvider);
+-  return SyncedSaves(ref.watch(savesRepositoryProvider), SaveKind.listing,
+-      initial: prefs.catalogFavorites, persist: prefs.setCatalogFavorites);
++  final uid = ref.watch(currentUserProvider.select((u) => u?.id));
++  return SyncedSaves.forUser(ref.watch(savesRepositoryProvider),
++      SaveKind.listing, ref.watch(prefsProvider), uid);
+ });
+ 
+ String _sortLabel(L l, CatalogSort s) => switch (s) {
+diff --git a/mobile_nova/lib/features/discover/discover_screen.dart b/mobile_nova/lib/features/discover/discover_screen.dart
+index aeff4d5..e353e8b 100644
+--- a/mobile_nova/lib/features/discover/discover_screen.dart
++++ b/mobile_nova/lib/features/discover/discover_screen.dart
+@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../app/providers.dart';
++import '../auth/session.dart' show currentUserProvider;
+ import '../../data/models/models.dart';
+ import '../../data/repositories/discover_repository.dart';
+ import '../../design/theme/typography.dart';
+@@ -162,6 +163,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
+     final results = ref.watch(discoverResultsProvider);
+     final query = ref.watch(searchQueryProvider);
+     final prefs = ref.watch(prefsProvider);
++    // Qidiruvlar tarixi HISOBGA bog'langan (audit 2026-10-06).
++    final uid = ref.watch(currentUserProvider.select((u) => u?.id));
+ 
+     return NovaScaffold(
+       // Asosiy tab: pastki bo'shliq `navSafeBottom` da (suzuvchi menyu).
+@@ -198,7 +201,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
+                       onChanged: ref.read(searchQueryProvider.notifier).update,
+                       onSubmitted: (v) {
+                         ref.read(searchQueryProvider.notifier).submit(v);
+-                        prefs.pushSearch(v);
++                        prefs.pushSearchFor(uid, v);
+                       },
+                       textInputAction: TextInputAction.search,
+                       style: TextStyle(
+@@ -275,15 +278,15 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
+           if (tab == DiscoverTab.catalog)
+             Expanded(child: CatalogView(query: query))
+           else ...[
+-          if (query.isEmpty && prefs.recentSearches.isNotEmpty)
++          if (query.isEmpty && prefs.recentSearchesOf(uid).isNotEmpty)
+             _RecentSearches(
+-              items: prefs.recentSearches,
++              items: prefs.recentSearchesOf(uid),
+               onPick: (v) {
+                 _controller.text = v;
+                 ref.read(searchQueryProvider.notifier).submit(v);
+               },
+               onClear: () async {
+-                await prefs.clearSearches();
++                await prefs.clearSearchesFor(uid);
+                 if (mounted) setState(() {});
+               },
+             ),
+diff --git a/mobile_nova/lib/features/settings/app_lock.dart b/mobile_nova/lib/features/settings/app_lock.dart
+index 705a1c3..01931f0 100644
+--- a/mobile_nova/lib/features/settings/app_lock.dart
++++ b/mobile_nova/lib/features/settings/app_lock.dart
+@@ -164,6 +164,20 @@ final appLockProvider = StateNotifierProvider<AppLock, AppLockState>(
+   (ref) => AppLock(ref.watch(prefsProvider), ref.watch(secureStoreProvider)),
+ );
+ 
++/// CHIQISH / SESSIYA TUGASHI — ILOVA QULFI O'CHADI (audit 2026-10-06).
++///
++/// PIN shu telefondagi HISOB uchun o'rnatilgan. Ilgari chiqishdan
++/// keyin u qolardi: keyingi (boshqa) odam ilovani ochganda oldingi
++/// odamning PIN'i so'ralardi. Faol sessiyadan anonimga o'tishda —
++/// qo'lda chiqish ham, 401 bilan tugash ham — qulf va PIN o'chadi.
++final appLockSessionGuardProvider = Provider<void>((ref) {
++  ref.listen<SessionState>(sessionProvider, (prev, next) {
++    if (prev is SessionActive && next is SessionAnonymous) {
++      ref.read(appLockProvider.notifier).disable();
++    }
++  });
++});
++
+ /// Qurilmada ISHLATSA BO'LADIGAN biometrika bormi.
+ ///
+ /// `isDeviceSupported()` yetarli emas: u faqat ekran kodi bo'lsa ham
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 2c857a9..a0c4213 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -8,7 +8,7 @@ import 'package:video_player/video_player.dart';
+ 
+ import '../../app/profile_context.dart';
+ import '../../app/providers.dart';
+-import '../../core/storage/secure_store.dart';
++import '../auth/session.dart' show currentUserProvider;
+ import 'comments.dart';
+ import 'engagement.dart';
+ import 'fullscreen_video.dart' show immersiveVideoFit;
+@@ -397,20 +397,22 @@ class ViewSession with WidgetsBindingObserver {
+   }
+ }
+ 
+-class SavedReels extends SyncedSaves {
+-  SavedReels(SavesRepository repo, Prefs prefs)
+-      : super(repo, SaveKind.reel,
+-            initial: prefs.savedReels, persist: prefs.setSavedReels);
+-
++/// Saqlangan Reels — `toggleReel` qulaylik uchun.
++extension SavedReelsX on SyncedSaves {
+   /// `true` — endi saqlangan.
+   Future<bool> toggleReel(Post p) => toggle(likeKey(p));
+ }
+ 
+ /// Saqlangan Reels — HISOBGA bog'langan (`/api/saves`), telefon xotirasi
+-/// faqat kesh. Batafsil: `SyncedSaves`.
+-final savedReelsProvider = StateNotifierProvider<SavedReels, Set<String>>(
+-    (ref) => SavedReels(
+-        ref.watch(savesRepositoryProvider), ref.watch(prefsProvider)));
++/// faqat kesh (hisob bo'yicha). Hisob almashsa provayder qaytadan
++/// quriladi — boshqa odamning ro'yxati ko'rinmaydi. Batafsil:
++/// `SyncedSaves`.
++final savedReelsProvider =
++    StateNotifierProvider<SyncedSaves, Set<String>>((ref) {
++  final uid = ref.watch(currentUserProvider.select((u) => u?.id));
++  return SyncedSaves.forUser(ref.watch(savesRepositoryProvider),
++      SaveKind.reel, ref.watch(prefsProvider), uid);
++});
+ 
+ /// Vertikal Reels lentasi.
+ ///
+diff --git a/mobile_nova/test/audit_1006_b_test.dart b/mobile_nova/test/audit_1006_b_test.dart
+new file mode 100644
+index 0000000..deebab6
+--- /dev/null
++++ b/mobile_nova/test/audit_1006_b_test.dart
+@@ -0,0 +1,102 @@
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_secure_storage/flutter_secure_storage.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/settings/app_lock.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'helpers.dart';
++
++/// AUDIT 2026-10-06 (2-qism): hisob almashganda shaxsiy ma'lumot
++/// (qidiruvlar, ilova qulfi PIN'i) keyingi odamga o'tmaydi.
++
++class _FakeSecure extends SecureStore {
++  _FakeSecure([this.pin]) : super(const FlutterSecureStorage());
++  String? pin;
++
++  @override
++  Future<String?> readPin() async => pin;
++  @override
++  Future<void> writePin(String p) async => pin = p;
++  @override
++  Future<void> deletePin() async => pin = null;
++}
++
++Future<void> _flush() => Future<void>.delayed(const Duration(milliseconds: 10));
++
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  group('12. oxirgi qidiruvlar — hisob bo‘yicha', () {
++    test('har hisobniki alohida; hisobsiz — bo‘sh', () async {
++      SharedPreferences.setMockInitialValues({});
++      final p = await Prefs.open();
++      await p.pushSearchFor(1, 'yoga');
++      await p.pushSearchFor(2, 'kafe');
++      expect(p.recentSearchesOf(1), ['yoga']);
++      expect(p.recentSearchesOf(2), ['kafe']);
++      expect(p.recentSearchesOf(null), isEmpty);
++      await p.clearSearchesFor(1);
++      expect(p.recentSearchesOf(1), isEmpty);
++      expect(p.recentSearchesOf(2), ['kafe']);
++    });
++
++    test('eski umumiy ro‘yxat — birinchi ochgan hisobga, bir marta', () async {
++      SharedPreferences.setMockInitialValues({
++        'nova.recentSearches': ['Tashkent'],
++      });
++      final p = await Prefs.open();
++      expect(p.recentSearchesOf(7), ['Tashkent']);
++      expect(p.recentSearchesOf(8), isEmpty,
++          reason: 'keyingi hisobga oqib o‘tmaydi');
++      expect(p.recentSearchesOf(7), ['Tashkent']);
++    });
++  });
++
++  group('12. ilova qulfi chiqishda o‘chadi', () {
++    Future<(ProviderContainer, _FakeSecure)> boot() async {
++      final base = await testOverrides();
++      final prefs = await Prefs.open();
++      await prefs.setAppLock(true);
++      final secure = _FakeSecure('1234');
++      final c = ProviderContainer(overrides: [
++        ...base,
++        secureStoreProvider.overrideWithValue(secure),
++      ]);
++      addTearDown(c.dispose);
++      c.listen(appLockSessionGuardProvider, (_, __) {});
++      c.read(sessionProvider);
++      await _flush();
++      expect(c.read(sessionProvider), isA<SessionActive>());
++      expect(c.read(appLockProvider).enabled, isTrue);
++      return (c, secure);
++    }
++
++    test('qo‘lda chiqish — PIN va qulf o‘chadi', () async {
++      final (c, secure) = await boot();
++      await c.read(sessionProvider.notifier).logout();
++      await _flush();
++      expect(c.read(appLockProvider).enabled, isFalse);
++      expect(c.read(prefsProvider).appLock, isFalse);
++      expect(secure.pin, isNull);
++    });
++
++    test('sessiya tugadi (401) — PIN va qulf o‘chadi', () async {
++      final (c, secure) = await boot();
++      c.read(sessionProvider.notifier).expire();
++      await _flush();
++      expect(c.read(appLockProvider).enabled, isFalse);
++      expect(secure.pin, isNull);
++    });
++
++    test('sessiya yangilanishi (refresh) qulfga tegmaydi', () async {
++      final (c, secure) = await boot();
++      await c.read(sessionProvider.notifier).refresh();
++      await _flush();
++      expect(c.read(appLockProvider).enabled, isTrue);
++      expect(secure.pin, '1234');
++    });
++  });
++}
+diff --git a/mobile_nova/test/catalog_view_test.dart b/mobile_nova/test/catalog_view_test.dart
+index 30902b2..dc0e178 100644
+--- a/mobile_nova/test/catalog_view_test.dart
++++ b/mobile_nova/test/catalog_view_test.dart
+@@ -207,7 +207,9 @@ void main() {
+     await tester.tap(find.bySemanticsLabel(l.catalogFavorite).first);
+     await settle(tester, frames: 4);
+     expect(c.read(catalogFavoritesProvider), contains('KARTAUZ/u0'));
+-    expect(c.read(prefsProvider).catalogFavorites, contains('KARTAUZ/u0'));
++    // Kesh HISOB kalitida (audit 2026-10-06).
++    expect(c.read(prefsProvider).savesOf('listing', testUser.id),
++        contains('KARTAUZ/u0'));
+   });
+ 
+   testWidgets('endpoint hali deploy qilinmagan — "tez orada", xato emas',
+diff --git a/mobile_nova/test/saves_sync_test.dart b/mobile_nova/test/saves_sync_test.dart
+index 9808d94..a46bb91 100644
+--- a/mobile_nova/test/saves_sync_test.dart
++++ b/mobile_nova/test/saves_sync_test.dart
+@@ -2,6 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:nfcstore_nova/app/providers.dart';
+ import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
+ import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
+ import 'package:nfcstore_nova/design/widgets/states.dart';
+ import 'package:nfcstore_nova/features/discover/catalog_view.dart';
+@@ -17,20 +21,41 @@ import 'helpers.dart';
+ /// turardi — telefon almashsa yo'qolardi. Endi server asosiy manba,
+ /// telefon — kesh. Eski versiyada saqlanganlar serverga BIR MARTA
+ /// ko'chiriladi; internet bo'lmasa bosish baribir ishlaydi.
+-Future<ProviderContainer> _container(FakeSavesRepository repo,
+-    {List<String> localReels = const [], List<String> localFav = const []}) async {
++class _Auth extends FakeAuthRepository {
++  _Auth();
++  User user = testUser;
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> restore() async =>
++      Ok((user: user, ids: ids));
++}
++
++Future<({ProviderContainer c, _Auth auth})> _boot(FakeSavesRepository repo,
++    {List<String> localReels = const [],
++    List<String> localFav = const []}) async {
+   final base = await testOverrides();
++  // Eski versiya: hisobsiz umumiy kalit.
++  final prefs = await Prefs.open();
++  await prefs.setSavedReels(localReels);
++  await prefs.setCatalogFavorites(localFav);
++  final auth = _Auth();
+   final c = ProviderContainer(overrides: [
+     ...base,
++    authRepositoryProvider.overrideWithValue(auth),
+     savesRepositoryProvider.overrideWithValue(repo),
+   ]);
+   addTearDown(c.dispose);
+-  final prefs = c.read(prefsProvider);
+-  await prefs.setSavedReels(localReels);
+-  await prefs.setCatalogFavorites(localFav);
+-  return c;
++  c.read(sessionProvider);
++  await _flush();
++  expect(c.read(sessionProvider), isA<SessionActive>());
++  return (c: c, auth: auth);
+ }
+ 
++Future<ProviderContainer> _container(FakeSavesRepository repo,
++        {List<String> localReels = const [],
++        List<String> localFav = const []}) async =>
++    (await _boot(repo, localReels: localReels, localFav: localFav)).c;
++
+ Future<void> _flush() => Future<void>.delayed(const Duration(milliseconds: 10));
+ 
+ void main() {
+@@ -45,17 +70,29 @@ void main() {
+     await _flush();
+     expect(c.read(savedReelsProvider), {'p:12', 'c:7'});
+     expect(c.read(catalogFavoritesProvider), {'NFCSTORE/p1'});
+-    expect(c.read(prefsProvider).savedReels.toSet(), {'p:12', 'c:7'},
+-        reason: 'kesh ham yangilandi');
++    expect(c.read(prefsProvider).savesOf('reel', testUser.id).toSet(),
++        {'p:12', 'c:7'},
++        reason: 'kesh ham yangilandi (hisob kalitida)');
+   });
+ 
+-  test('eski versiyada telefonda saqlanganlar serverga ko‘chadi', () async {
++  test('eski versiyada telefonda saqlanganlar serverga BIR MARTA ko‘chadi',
++      () async {
+     final repo = FakeSavesRepository(server: {SaveKind.reel: {'p:1'}});
+     final c = await _container(repo, localReels: ['p:2']);
+     c.read(savedReelsProvider);
+     await _flush();
+     expect(c.read(savedReelsProvider), {'p:1', 'p:2'});
+     expect(repo.server[SaveKind.reel], {'p:1', 'p:2'});
++    expect(c.read(prefsProvider).savedReels, isEmpty,
++        reason: 'eski umumiy kalit hisobga o‘tkazildi va o‘chirildi');
++
++    // Boshqa qurilmada o'chirildi — bu yerda TIRILMAYDI.
++    repo.server[SaveKind.reel]!.remove('p:2');
++    repo.calls.clear();
++    await c.read(savedReelsProvider.notifier).sync();
++    expect(c.read(savedReelsProvider), {'p:1'});
++    expect(repo.calls, isEmpty, reason: 'mahalliy yozuv qayta yuborilmadi');
++    expect(repo.server[SaveKind.reel], {'p:1'});
+   });
+ 
+   test('bosish serverga yoziladi va o‘chirish ham', () async {
+@@ -69,7 +106,8 @@ void main() {
+     expect(repo.server[SaveKind.listing], isEmpty);
+   });
+ 
+-  test('internet yo‘q / eski server: telefonda ishlayveradi', () async {
++  test('internet yo‘q / eski server: telefonda ishlayveradi, keyin yuboriladi',
++      () async {
+     final repo = FakeSavesRepository(offline: true);
+     final c = await _container(repo, localFav: ['A/1']);
+     final fav = c.read(catalogFavoritesProvider.notifier);
+@@ -77,11 +115,57 @@ void main() {
+     expect(c.read(catalogFavoritesProvider), {'A/1'}, reason: 'kesh o‘chmadi');
+     await fav.toggle('B/2');
+     expect(c.read(catalogFavoritesProvider), {'A/1', 'B/2'});
+-    expect(c.read(prefsProvider).catalogFavorites.toSet(), {'A/1', 'B/2'});
++    expect(c.read(prefsProvider).savesOf('listing', testUser.id).toSet(),
++        {'A/1', 'B/2'});
+     // Internet qaytdi — keyingi sinxronda serverga ko'chadi.
+     repo.offline = false;
+     await fav.sync();
+     expect(repo.server[SaveKind.listing], {'A/1', 'B/2'});
++    // Kutilayotgan bosish BIR MARTA — keyingi sinxron yana yubormaydi.
++    repo.calls.clear();
++    await fav.sync();
++    expect(repo.calls, isEmpty);
++  });
++
++  test('offline o‘chirish ham keyin yuboriladi', () async {
++    final repo = FakeSavesRepository(server: {SaveKind.reel: {'p:9'}});
++    final c = await _container(repo);
++    final n = c.read(savedReelsProvider.notifier);
++    await _flush();
++    expect(c.read(savedReelsProvider), {'p:9'});
++    repo.offline = true;
++    await n.toggle('p:9');
++    expect(c.read(savedReelsProvider), isEmpty);
++    repo.offline = false;
++    await n.sync();
++    expect(repo.server[SaveKind.reel], isEmpty);
++    expect(c.read(savedReelsProvider), isEmpty);
++  });
++
++  test('HISOB ALMASHDI: oldingi odamning ro‘yxati ko‘rinmaydi va unga '
++      'yozilmaydi', () async {
++    final repo = FakeSavesRepository(server: {SaveKind.reel: {'p:1'}});
++    final b = await _boot(repo);
++    final c = b.c;
++    c.listen(savedReelsProvider, (_, __) {});
++    await _flush();
++    expect(c.read(savedReelsProvider), {'p:1'});
++
++    // Chiqish — ro'yxat bo'sh, sinxron yo'q.
++    await c.read(sessionProvider.notifier).logout();
++    await _flush();
++    expect(c.read(savedReelsProvider), isEmpty);
++
++    // Boshqa hisob — serverda uniki bo'sh.
++    repo.server[SaveKind.reel] = <String>{};
++    b.auth.user = const User(id: 2, email: 'b@nfcstore.uz');
++    await c.read(sessionProvider.notifier).refresh();
++    await _flush();
++    expect(c.read(savedReelsProvider), isEmpty,
++        reason: '1-hisobning `p:1` i 2-hisobga oqib o‘tmadi');
++    expect(c.read(prefsProvider).savesOf('reel', 1), ['p:1'],
++        reason: '1-hisob keshi joyida');
++    expect(repo.calls, isEmpty);
+   });
+ 
+   test('rasm filtri rad etsa — sabab aniq aytiladi', () async {
+-- 
+2.43.0
+

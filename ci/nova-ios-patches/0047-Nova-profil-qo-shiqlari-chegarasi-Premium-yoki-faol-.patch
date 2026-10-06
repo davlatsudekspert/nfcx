@@ -1,0 +1,405 @@
+From d73dbe82bf2d193c09c43ccd388ebfca2cd28587 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 07:25:13 +0000
+Subject: [PATCH 47/53] =?UTF-8?q?Nova:=20profil=20qo'shiqlari=20chegarasi?=
+ =?UTF-8?q?=20=E2=80=94=20Premium=20yoki=20faol=20sinov=2010,=20ikkala=20p?=
+ =?UTF-8?q?latformada?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- premium_access.dart — yagona manba: iapPaidPremium, premiumTrialActive,
+  premiumAccessActive, iapTrialDaysLeft, profileMusicLimit va hajm
+  konstantalari (iap_controller.dart uni qayta eksport qiladi).
+- Profil tahriri: chegara = 10 (to'langan Premium — saytda yoki App
+  Store'da — yoki faol bepul sinov), aks holda 5; iPhone ham, Android ham
+  (server musicLimitD1 bilan bir xil).
+- Sinovlar: test/music_limit_premium_test.dart (iPhone/Android x
+  Premium/eski Premium/sinov/tugagan/oddiy + yordamchi birlik sinovlari).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/premium/iap_controller.dart  |  21 +--
+ .../lib/features/premium/premium_access.dart  |  58 +++++++
+ .../features/premium/premium_iap_screen.dart  |  32 ++--
+ .../features/profile/profile_edit_screen.dart |  23 +--
+ .../test/music_limit_premium_test.dart        | 160 ++++++++++++++++++
+ 5 files changed, 239 insertions(+), 55 deletions(-)
+ create mode 100644 mobile_nova/lib/features/premium/premium_access.dart
+ create mode 100644 mobile_nova/test/music_limit_premium_test.dart
+
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+index 30328f6..b94cf60 100644
+--- a/mobile_nova/lib/features/premium/iap_controller.dart
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../core/errors/app_error.dart';
+ import '../../core/utils/result.dart';
+-import '../../data/models/models.dart';
+ import '../../data/repositories/iap_repository.dart';
+ import '../auth/session.dart';
+ import '../shop/store_policy.dart' show isAppStoreBuild;
+ import 'iap_store.dart';
+ 
++export 'premium_access.dart';
++
+ // ═══════════════════════════════════════════════════════════════════
+ // PREMIUM — APPLE IN-APP PURCHASE (FAQAT iPHONE)
+ //
+@@ -31,24 +32,6 @@ import 'iap_store.dart';
+ 
+ final iapStoreProvider = Provider<IapStore>((_) => StoreKitIapStore());
+ 
+-/// TO'LANGAN Premium — server `isPremium` (eski muddatsiz yoki
+-/// `premiumExpiresAt` kelajakda). Bepul sinov bu yerga KIRMAYDI.
+-bool iapPaidPremium(User u, {DateTime? now}) =>
+-    u.premium || (u.premiumUntil?.isAfter(now ?? DateTime.now()) ?? false);
+-
+-/// BEPUL SINOV necha kun qoldi (yuqoriga yaxlitlanadi, sayt
+-/// `trialDaysLeft` bilan bir xil). Sinov yo'q / tugagan / to'langan
+-/// Premium bo'lsa — `null`.
+-int? iapTrialDaysLeft(User? u, {DateTime? now}) {
+-  if (u == null) return null;
+-  final at = now ?? DateTime.now();
+-  if (iapPaidPremium(u, now: at)) return null;
+-  final until = u.trialUntil;
+-  if (until == null || !until.isAfter(at)) return null;
+-  return (until.difference(at).inMilliseconds / Duration.millisecondsPerDay)
+-      .ceil();
+-}
+-
+ /// Server kaliti. iPhone bo'lmasa — tarmoqsiz o'chiq.
+ final iapConfigProvider = FutureProvider<IapConfig>((ref) async {
+   if (!isAppStoreBuild) return IapConfig.disabled;
+diff --git a/mobile_nova/lib/features/premium/premium_access.dart b/mobile_nova/lib/features/premium/premium_access.dart
+new file mode 100644
+index 0000000..5a45ec2
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/premium_access.dart
+@@ -0,0 +1,58 @@
++import '../../data/models/models.dart';
++
++// ═══════════════════════════════════════════════════════════════════
++// PREMIUM HUQUQI — YAGONA MANBA (iPhone ham, Android ham)
++//
++// Bu fayl to'lov haqida HECH NARSA bilmaydi: faqat sessiyadagi
++// foydalanuvchi maydonlaridan (`isPremium`, `premiumExpiresAt`,
++// `trialExpiresAt`) "nima ochiq" degan savolga javob beradi. Xarid
++// (Apple IAP) — `iap_controller.dart`, faqat iPhone.
++// ═══════════════════════════════════════════════════════════════════
++
++/// Premium bilan / Premiumsiz hajmlar — serverdagi qiymatlar bilan
++/// AYNAN bir xil.
++///
++/// `hosting/worker.js`: `COMPANY_FREE_ITEM_LIMIT = 5`,
++/// `COMPANY_PREMIUM_ITEM_LIMIT = 25` (biznes katalogi) va
++/// `MUSIC_LIMIT_FREE_D1 = 5` / `MUSIC_LIMIT_PREMIUM_D1 = 10` (profil
++/// qo'shiqlari, `musicLimitD1`). Post, istoriya, video va izoh bu
++/// yerda YO'Q — ular hammaga bepul (egasining qarori, 2026-10-04).
++const kCatalogFreeLimit = 5;
++const kCatalogPremiumLimit = 25;
++const kMusicFreeLimit = 5;
++const kMusicPremiumLimit = 10;
++
++/// TO'LANGAN Premium — server `isPremium` (eski muddatsiz yoki
++/// `premiumExpiresAt` kelajakda; saytda yoki App Store'da olingan —
++/// farqi yo'q). Bepul sinov bu yerga KIRMAYDI.
++bool iapPaidPremium(User u, {DateTime? now}) =>
++    u.premium || (u.premiumUntil?.isAfter(now ?? DateTime.now()) ?? false);
++
++/// Hisobning bepul sinovi hozir faolmi (`trialExpiresAt` kelajakda).
++bool premiumTrialActive(User u, {DateTime? now}) =>
++    u.trialUntil?.isAfter(now ?? DateTime.now()) ?? false;
++
++/// Premium darajasidagi imkoniyatlar ochiqmi: to'langan Premium YOKI
++/// faol bepul sinov (server ham sinovni Premium "poli" deb biladi).
++bool premiumAccessActive(User? u, {DateTime? now}) =>
++    u != null &&
++    (iapPaidPremium(u, now: now) || premiumTrialActive(u, now: now));
++
++/// BEPUL SINOV necha kun qoldi (yuqoriga yaxlitlanadi, sayt
++/// `trialDaysLeft` bilan bir xil). Sinov yo'q / tugagan / to'langan
++/// Premium bo'lsa — `null`.
++int? iapTrialDaysLeft(User? u, {DateTime? now}) {
++  if (u == null) return null;
++  final at = now ?? DateTime.now();
++  if (iapPaidPremium(u, now: at) || !premiumTrialActive(u, now: at)) {
++    return null;
++  }
++  return (u.trialUntil!.difference(at).inMilliseconds /
++          Duration.millisecondsPerDay)
++      .ceil();
++}
++
++/// PROFIL QO'SHIQLARI CHEGARASI — Premium yoki faol sinov: 10, aks
++/// holda 5 (server `musicLimitD1`). Ikkala platformada bir xil.
++int profileMusicLimit(User? u, {DateTime? now}) =>
++    premiumAccessActive(u, now: now) ? kMusicPremiumLimit : kMusicFreeLimit;
+diff --git a/mobile_nova/lib/features/premium/premium_iap_screen.dart b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+index 9ff68ea..c7cc0a7 100644
+--- a/mobile_nova/lib/features/premium/premium_iap_screen.dart
++++ b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+@@ -28,28 +28,6 @@ const kPrivacyUrl = 'https://nfcstore.uz/privacy';
+ const kAppleManageSubscriptionsUrl =
+     'https://apps.apple.com/account/subscriptions';
+ 
+-/// PREMIUM NIMA BERADI — serverdagi qiymatlar bilan AYNAN bir xil.
+-///
+-/// `hosting/worker.js`: `COMPANY_FREE_ITEM_LIMIT = 5`,
+-/// `COMPANY_PREMIUM_ITEM_LIMIT = 25` (biznes katalogi) va
+-/// `MUSIC_LIMIT_FREE_D1 = 5` / `MUSIC_LIMIT_PREMIUM_D1 = 10` (profil
+-/// qo'shiqlari, `musicLimitD1(user.isPremium)`). Post, istoriya,
+-/// video va izoh ro'yxatda YO'Q — ular hammaga bepul (egasining
+-/// qarori, 2026-10-04). Yangi imkoniyat o'ylab topilmaydi.
+-///
+-/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
+-/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
+-/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
+-/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
+-/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
+-/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
+-/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
+-/// paydo bo'lganda shu yerga qo'shiladi.
+-const kCatalogFreeLimit = 5;
+-const kCatalogPremiumLimit = 25;
+-const kMusicFreeLimit = 5;
+-const kMusicPremiumLimit = 10;
+-
+ /// PREMIUM OBUNASI — APPLE IN-APP PURCHASE (faqat iPhone).
+ ///
+ /// Marshrut (`/premium`) faqat `iapEnabledProvider` yoqilganda
+@@ -410,6 +388,16 @@ class _PlanCard extends StatelessWidget {
+   }
+ }
+ 
++/// Imkoniyatlar ro'yxati — hajmlar `premium_access.dart` dan.
++///
++/// SAYTDAGI BOSHQA PREMIUM IMKONIYATLAR (`src/lib/access.js`
++/// FEATURE_MIN: premium/animatsion mavzular, shisha kontent, havola
++/// uslublari, profil kartasi sozlamasi, kengaytirilgan analitika, lid
++/// formasi, lokatsiya, menyu/fayl katalogi) bu ro'yxatga KIRMAYDI:
++/// ularning hech biri Nova ilovasida yo'q (2026-10 tekshiruvi —
++/// `lib/` da na tahrirlash joyi, na ko'rinishi bor; Analitika ekrani
++/// esa darajaga bog'lanmagan `/api/my/analytics` ni o'qiydi). Ilovada
++/// paydo bo'lganda shu yerga qo'shiladi.
+ class _Perks extends StatelessWidget {
+   const _Perks();
+ 
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index 19077a7..bfc7d88 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -21,8 +21,7 @@ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/avatar.dart';
+ import '../shop/store_policy.dart' show isAppStoreBuild;
+-import '../premium/premium_iap_screen.dart'
+-    show kMusicFreeLimit, kMusicPremiumLimit;
++import '../premium/premium_access.dart' show profileMusicLimit;
+ import 'contact_editor.dart';
+ import 'music_player.dart' show musicTitleOf;
+ import 'music_source.dart';
+@@ -92,24 +91,20 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+   /// odam o'z profilining tepa qismini o'zgartira olmasdi.
+   String _coverUrl = '';
+ 
+-  /// PROFIL MUSIQASI — ko'pi bilan 5 ta.
++  /// PROFIL MUSIQASI — oddiy hisobda 5 ta, Premium / sinovda 10 ta.
+   ///
+-  /// Chegara serverdan: oddiy hisobda 5, Premiumda 10
+-  /// (`musicLimitD1`). Ilova eng qat'iysini qo'llaydi, shuning
+-  /// uchun serverga sig'maydigan ro'yxat yuborilmaydi.
++  /// Chegara serverdan (`musicLimitD1`) — [_musicMax]. Ilova uni
++  /// oldindan qo'llaydi, shuning uchun serverga sig'maydigan ro'yxat
++  /// yuborilmaydi (server ortig'ini jim kesib tashlardi).
+   List<String> _music = const [];
+ 
+   /// Aloqa va havolalar — `ContactEditor` har o'zgarishda yangilaydi.
+   ContactInfo? _contact;
+ 
+-  /// iPHONE'DA PREMIUM OBUNACHIGA 10 TA — server `musicLimitD1(true)`.
+-  /// Premium iPhone'da ilova ichida sotiladi (Apple IAP) va xarid
+-  /// ekrani "10 tagacha qo'shiq" deydi — va'da shu yerda ham ishlashi
+-  /// kerak. ANDROID O'ZGARMAYDI: har doim 5.
+-  int get _musicMax => isAppStoreBuild &&
+-          (ref.read(currentUserProvider)?.premium ?? false)
+-      ? kMusicPremiumLimit
+-      : kMusicFreeLimit;
++  /// Premium (to'langan — saytda yoki App Store'da) yoki faol bepul
++  /// sinov: 10 ta, aks holda 5 ta — server `musicLimitD1` bilan bir
++  /// xil, IKKALA platformada (`profileMusicLimit`).
++  int get _musicMax => profileMusicLimit(ref.read(currentUserProvider));
+   double _uploadProgress = 0;
+ 
+   @override
+diff --git a/mobile_nova/test/music_limit_premium_test.dart b/mobile_nova/test/music_limit_premium_test.dart
+new file mode 100644
+index 0000000..d59a385
+--- /dev/null
++++ b/mobile_nova/test/music_limit_premium_test.dart
+@@ -0,0 +1,160 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/premium/premium_access.dart';
++import 'package:nfcstore_nova/features/profile/profile_edit_screen.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++
++import 'helpers.dart';
++
++/// PROFIL QO'SHIQLARI CHEGARASI — yagona manba (`profileMusicLimit`).
++///
++/// Server (`musicLimitD1`): to'langan Premium (saytda yoki App
++/// Store'da) yoki faol bepul sinov — 10 ta, aks holda 5 ta. Ilova
++/// ikkala platformada bir xil chegarani qo'llaydi.
++
++User _paid() => User(
++    id: 1,
++    email: 'p@b.uz',
++    premiumUntil: DateTime.now().add(const Duration(days: 20)));
++User _legacy() => const User(id: 1, email: 'l@b.uz', premium: true);
++User _trial() => User(
++    id: 1,
++    email: 't@b.uz',
++    trialUntil: DateTime.now().add(const Duration(days: 60)));
++User _expired() => User(
++    id: 1,
++    email: 'e@b.uz',
++    trialUntil: DateTime.now().subtract(const Duration(days: 1)),
++    premiumUntil: DateTime.now().subtract(const Duration(days: 3)));
++User _free() => const User(id: 1, email: 'f@b.uz');
++
++class _Auth extends FakeAuthRepository {
++  _Auth(this.user)
++      : super(ids: const [
++          NfcId(code: '48210377', name: 'Test', primary: true),
++        ]);
++  final User user;
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> restore() async =>
++      Ok((user: user, ids: ids));
++}
++
++class _Repo extends ProfileRepository {
++  _Repo() : super(ApiClient());
++}
++
++Future<void> _pump(WidgetTester tester, User user) async {
++  tester.view.physicalSize = const Size(393 * 3, 2400 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      authRepositoryProvider.overrideWithValue(_Auth(user)),
++      profileRepositoryProvider.overrideWithValue(_Repo()),
++    ],
++    child: MaterialApp.router(
++      routerConfig: GoRouter(initialLocation: '/edit', routes: [
++        GoRoute(
++          path: '/',
++          builder: (_, __) => const SizedBox.shrink(),
++          routes: [
++            GoRoute(
++                path: 'edit', builder: (_, __) => const ProfileEditScreen()),
++          ],
++        ),
++      ]),
++      locale: const Locale('uz'),
++      supportedLocales: L.supportedLocales,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  await settle(tester, frames: 20);
++  final section = find.byKey(const ValueKey('edit-section-music'));
++  await tester.scrollUntilVisible(section, 300,
++      scrollable: find.byType(Scrollable).first);
++  await settle(tester, frames: 4);
++}
++
++void main() {
++  group('profileMusicLimit — yagona manba', () {
++    final now = DateTime(2026, 10, 6, 12);
++    test('to‘langan Premium (muddatli va eski muddatsiz) — 10', () {
++      expect(
++          profileMusicLimit(
++              User(
++                  id: 1,
++                  email: 'a',
++                  premiumUntil: now.add(const Duration(days: 1))),
++              now: now),
++          kMusicPremiumLimit);
++      expect(profileMusicLimit(_legacy(), now: now), 10);
++    });
++    test('faol bepul sinov — 10', () {
++      expect(
++          profileMusicLimit(
++              User(
++                  id: 1,
++                  email: 'a',
++                  trialUntil: now.add(const Duration(minutes: 1))),
++              now: now),
++          10);
++    });
++    test('oddiy / sinov va obuna tugagan / sessiyasiz — 5', () {
++      expect(profileMusicLimit(_free(), now: now), kMusicFreeLimit);
++      expect(
++          profileMusicLimit(
++              User(
++                  id: 1,
++                  email: 'a',
++                  trialUntil: now.subtract(const Duration(seconds: 1)),
++                  premiumUntil: now.subtract(const Duration(days: 1))),
++              now: now),
++          5);
++      expect(profileMusicLimit(null, now: now), 5);
++    });
++    test('premiumAccessActive va sinov kunlari bir mantiqdan', () {
++      final t = User(
++          id: 1, email: 'a', trialUntil: now.add(const Duration(days: 3)));
++      expect(premiumAccessActive(t, now: now), isTrue);
++      expect(iapTrialDaysLeft(t, now: now), 3);
++      expect(premiumAccessActive(_free(), now: now), isFalse);
++      expect(iapTrialDaysLeft(_free(), now: now), isNull);
++    });
++  });
++
++  // Tahrir ekranidagi hisoblagich — iPhone ham, Android ham.
++  for (final ios in [true, false]) {
++    final variant = TargetPlatformVariant.only(
++        ios ? TargetPlatform.iOS : TargetPlatform.android);
++    final p = ios ? 'iPhone' : 'Android';
++    for (final (name, user, max) in [
++      ('to‘langan Premium', _paid, 10),
++      ('eski muddatsiz Premium', _legacy, 10),
++      ('faol bepul sinov', _trial, 10),
++      ('sinov va obuna tugagan', _expired, 5),
++      ('oddiy hisob', _free, 5),
++    ]) {
++      testWidgets('$p, $name: profil qo‘shiqlari 0/$max', (tester) async {
++        await _pump(tester, user());
++        expect(tester.takeException(), isNull);
++        expect(find.text('0/$max'), findsOneWidget);
++        expect(find.text('0/${max == 10 ? 5 : 10}'), findsNothing);
++      }, variant: variant);
++    }
++  }
++}
+-- 
+2.43.0
+

@@ -1,0 +1,477 @@
+From f5c0982c38e8f5cb819d46ff5ecad4c89863b970 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 05:59:44 +0000
+Subject: [PATCH 45/53] =?UTF-8?q?Nova=20(iPhone)=20IAP:=20400/422=20?=
+ =?UTF-8?q?=E2=80=94=20yakuniy=20rad=20etish,=20tranzaksiya=20yopiladi;=20?=
+ =?UTF-8?q?429?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- verify 422 (sandbox_not_allowed, family_shared_not_supported,
+  wrong_bundle, unknown_product, wrong_type, bad_transaction) va 400
+  (invalid_signature, bad_request) — YAKUNIY: completePurchase chaqiriladi,
+  StoreKit abadiy qayta bermaydi; aniq xabar (test xaridi / Family
+  Sharing / umumiy "yordamga murojaat qiling").
+- 429 — ochiq qoladi, "keyinroq urinib ko'ring". 403/409/503/tarmoq —
+  avvalgidek ochiq; 409 matni: shu Apple ID obunasi boshqa hisobga ulangan.
+- Sinovlar: har bir tarmoq (yakuniy — bir marta yopiladi, vaqtincha — yo'q).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/data/repositories/iap_repository.dart | 11 ++-
+ .../lib/features/premium/iap_controller.dart  | 48 ++++++++--
+ .../features/premium/premium_iap_screen.dart  |  4 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |  8 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  8 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  8 +-
+ .../lib/l10n/gen/app_localizations.dart       | 26 +++++-
+ .../lib/l10n/gen/app_localizations_en.dart    | 17 +++-
+ .../lib/l10n/gen/app_localizations_ru.dart    | 17 +++-
+ .../lib/l10n/gen/app_localizations_uz.dart    | 17 +++-
+ mobile_nova/test/iap_premium_test.dart        | 89 +++++++++++++++----
+ 11 files changed, 219 insertions(+), 34 deletions(-)
+
+diff --git a/mobile_nova/lib/data/repositories/iap_repository.dart b/mobile_nova/lib/data/repositories/iap_repository.dart
+index f66c013..7a0bbea 100644
+--- a/mobile_nova/lib/data/repositories/iap_repository.dart
++++ b/mobile_nova/lib/data/repositories/iap_repository.dart
+@@ -37,9 +37,14 @@ class IapRepository {
+   /// `POST /api/iap/apple/verify` `{signedTransaction}`.
+   ///
+   /// 200 — `premium: true` (muddati bilan) yoki `premium: false`
+-  /// (`reason: expired | revoked`). Boshqasi — `Err`: 403
+-  /// `account_mismatch`, 409 `already_linked`, 503 `iap_disabled`,
+-  /// tarmoq xatosi.
++  /// (`reason: expired | revoked`). Boshqasi — `Err`:
++  ///   * YAKUNIY (tranzaksiya yopiladi): 422 `sandbox_not_allowed`,
++  ///     `family_shared_not_supported`, `wrong_bundle`,
++  ///     `unknown_product`, `wrong_type`, `bad_transaction`; 400
++  ///     `invalid_signature` / `bad_request`;
++  ///   * VAQTINCHA (ochiq qoladi): 403 `account_mismatch`, 409
++  ///     `already_linked`, 429 `too_many_requests`, 503 `iap_disabled`,
++  ///     tarmoq xatosi.
+   Future<Result<IapVerifyResult>> verify(String signedTransaction) async {
+     final res = await _api.post<Map<String, dynamic>>(
+       '/api/iap/apple/verify',
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+index a3285ec..4743dd0 100644
+--- a/mobile_nova/lib/features/premium/iap_controller.dart
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -17,9 +17,11 @@ import 'iap_store.dart';
+ //      ilovada xarid haqida hech narsa ko'rinmaydi.
+ //   2. Xarid: `account-token` (UUID) -> StoreKit 2 `appAccountToken`.
+ //   3. `purchaseStream` dan kelgan JWS -> `POST /api/iap/apple/verify`.
+-//   4. Server 200 qaytargandagina `completePurchase`. Tarmoq xatosida
+-//      tranzaksiya OCHIQ qoladi va StoreKit uni keyingi ishga
+-//      tushirishda qayta beradi (`Transaction.updates`).
++//   4. `completePurchase` — server QAROR berganda: 200 (faol yoki faol
++//      emas) yoki yakuniy rad etish (400 / 422: test xaridi ruxsat
++//      etilmagan, Family Sharing, noto'g'ri tranzaksiya...). Tarmoq,
++//      403, 409, 429, 503 da tranzaksiya OCHIQ qoladi va StoreKit uni
++//      keyingi ishga tushirishda qayta beradi (`Transaction.updates`).
+ //   5. Sessiya yangilanadi — Premium holati butun ilovada o'zgaradi.
+ //
+ // ANDROID: `iapConfigProvider` tarmoqqa chiqmay o'chiq qaytaradi,
+@@ -67,6 +69,19 @@ enum IapFailure {
+   server,
+   store,
+ 
++  /// 429 — vaqtincha; tranzaksiya ochiq qoladi.
++  rateLimited,
++
++  /// 422 `sandbox_not_allowed` — YAKUNIY (tranzaksiya yopiladi).
++  sandboxNotAllowed,
++
++  /// 422 `family_shared_not_supported` — YAKUNIY.
++  familyShared,
++
++  /// Boshqa 400 / 422 (`wrong_bundle`, `unknown_product`, `wrong_type`,
++  /// `bad_transaction`, `invalid_signature`, `bad_request`) — YAKUNIY.
++  rejected,
++
+   /// App Store narxlarni bermadi yoki qurilmada xarid taqiqlangan.
+   unavailable,
+ }
+@@ -304,10 +319,24 @@ class IapController extends StateNotifier<IapState> {
+           notice: () => activated ? IapNotice.activated : IapNotice.inactive,
+           failure: () => null,
+         );
++      case Err(:final error) when _isTerminal(error):
++        // YAKUNIY RAD ETISH (400 / 422): server bu tranzaksiyani hech
++        // qachon qabul qilmaydi. Ochiq qoldirilsa StoreKit uni har
++        // ochilishda abadiy qayta berardi — shuning uchun yopiladi.
++        if (p.needsCompletion) {
++          try {
++            await _store.complete(p);
++          } catch (_) {/* keyingi ishga tushirishda qayta keladi */}
++        }
++        if (!mounted) return;
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          failure: () => _failureOf(error),
++        );
+       case Err(:final error):
+-        // TRANZAKSIYA OCHIQ QOLADI — `completePurchase` YO'Q. Pul
+-        // olingan, lekin server hali yozmagan: StoreKit uni keyingi
+-        // ochilishda qayta beradi va tekshiruv takrorlanadi.
++        // TRANZAKSIYA OCHIQ QOLADI — `completePurchase` YO'Q (tarmoq,
++        // 403, 409, 429, 503). Server hali yozmagan: StoreKit uni
++        // keyingi ochilishda qayta beradi va tekshiruv takrorlanadi.
+         state = state.copyWith(
+           verifying: _inFlight.length > 1,
+           failure: () => _failureOf(error),
+@@ -315,12 +344,19 @@ class IapController extends StateNotifier<IapState> {
+     }
+   }
+ 
++  /// Server tranzaksiyani BUTUNLAY rad etdimi (400 / 422).
++  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
++
+   static IapFailure _failureOf(AppError e) => switch (e.code) {
+         'account_mismatch' => IapFailure.accountMismatch,
+         'already_linked' => IapFailure.alreadyLinked,
+         'iap_disabled' => IapFailure.disabled,
++        'sandbox_not_allowed' => IapFailure.sandboxNotAllowed,
++        'family_shared_not_supported' => IapFailure.familyShared,
++        _ when _isTerminal(e) => IapFailure.rejected,
+         _ => switch (e.kind) {
+             AppErrorKind.offline || AppErrorKind.timeout => IapFailure.network,
++            AppErrorKind.rateLimited => IapFailure.rateLimited,
+             _ => IapFailure.server,
+           },
+       };
+diff --git a/mobile_nova/lib/features/premium/premium_iap_screen.dart b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+index 0f624a7..3cf8a84 100644
+--- a/mobile_nova/lib/features/premium/premium_iap_screen.dart
++++ b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+@@ -251,6 +251,10 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
+         IapFailure.server => l.iapErrServer,
+         IapFailure.store => l.iapErrStore,
+         IapFailure.unavailable => l.iapUnavailable,
++        IapFailure.rateLimited => l.iapErrRateLimited,
++        IapFailure.sandboxNotAllowed => l.iapErrSandbox,
++        IapFailure.familyShared => l.iapErrFamilyShared,
++        IapFailure.rejected => l.iapErrRejected,
+       };
+ }
+ 
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index ca1a39c..cb74f98 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1122,10 +1122,14 @@
+   "iapUnavailable": "Subscriptions are not available right now. Please try again later.",
+   "iapErrNetwork": "No internet connection. If the purchase went through, the app will check it again the next time it opens.",
+   "iapErrAccountMismatch": "This purchase belongs to a different NFCSTORE account.",
+-  "iapErrAlreadyLinked": "This Apple subscription is already linked to another NFCSTORE account.",
++  "iapErrAlreadyLinked": "The subscription on this Apple ID is linked to another NFCSTORE account.",
+   "iapErrDisabled": "Purchases are temporarily unavailable.",
+   "iapErrServer": "Could not reach the server. Please try again later.",
+   "iapErrStore": "The App Store could not complete the purchase.",
+   "iapTermsOfUse": "Terms of Use (EULA)",
+-  "iapDisclosure": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings."
++  "iapDisclosure": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.",
++  "iapErrSandbox": "Test purchases are not available for this account.",
++  "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
++  "iapErrRejected": "The purchase could not be verified. Please contact support.",
++  "iapErrRateLimited": "Too many requests. Please try again later."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 5e24490..87e74a0 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1122,10 +1122,14 @@
+   "iapUnavailable": "Подписки сейчас недоступны. Попробуйте позже.",
+   "iapErrNetwork": "Нет подключения к интернету. Если покупка прошла, приложение проверит её при следующем запуске.",
+   "iapErrAccountMismatch": "Эта покупка относится к другому аккаунту NFCSTORE.",
+-  "iapErrAlreadyLinked": "Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.",
++  "iapErrAlreadyLinked": "Подписка этого Apple ID уже привязана к другому аккаунту NFCSTORE.",
+   "iapErrDisabled": "Покупки временно недоступны.",
+   "iapErrServer": "Не удалось связаться с сервером. Попробуйте позже.",
+   "iapErrStore": "App Store не смог завершить покупку.",
+   "iapTermsOfUse": "Условия использования (EULA)",
+-  "iapDisclosure": "Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store."
++  "iapDisclosure": "Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store.",
++  "iapErrSandbox": "Тестовая покупка недоступна для этого аккаунта.",
++  "iapErrFamilyShared": "Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.",
++  "iapErrRejected": "Не удалось подтвердить покупку. Обратитесь в поддержку.",
++  "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 7de74b3..249ed71 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1272,11 +1272,15 @@
+   "iapUnavailable": "Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.",
+   "iapErrNetwork": "Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.",
+   "iapErrAccountMismatch": "Bu xarid boshqa NFCSTORE hisobiga tegishli.",
+-  "iapErrAlreadyLinked": "Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.",
++  "iapErrAlreadyLinked": "Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.",
+   "iapErrDisabled": "Xaridlar vaqtincha mavjud emas.",
+   "iapErrServer": "Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.",
+   "iapErrStore": "App Store xaridni yakunlay olmadi.",
+   "iapTermsOfUse": "Foydalanish shartlari (EULA)",
+   "iapDisclosure": "To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.",
+-  "@iapDisclosure": {"description": "Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone)."}
++  "@iapDisclosure": {"description": "Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone)."},
++  "iapErrSandbox": "Bu hisob uchun test xaridi mavjud emas.",
++  "iapErrFamilyShared": "Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.",
++  "iapErrRejected": "Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.",
++  "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring."
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 7955056..7302cee 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5880,7 +5880,7 @@ abstract class L {
+   /// No description provided for @iapErrAlreadyLinked.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.'**
++  /// **'Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.'**
+   String get iapErrAlreadyLinked;
+ 
+   /// No description provided for @iapErrDisabled.
+@@ -5912,6 +5912,30 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.'**
+   String get iapDisclosure;
++
++  /// No description provided for @iapErrSandbox.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu hisob uchun test xaridi mavjud emas.'**
++  String get iapErrSandbox;
++
++  /// No description provided for @iapErrFamilyShared.
++  ///
++  /// In uz, this message translates to:
++  /// **'Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.'**
++  String get iapErrFamilyShared;
++
++  /// No description provided for @iapErrRejected.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.'**
++  String get iapErrRejected;
++
++  /// No description provided for @iapErrRateLimited.
++  ///
++  /// In uz, this message translates to:
++  /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
++  String get iapErrRateLimited;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index ddab780..00bc196 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3195,7 +3195,7 @@ class LEn extends L {
+ 
+   @override
+   String get iapErrAlreadyLinked =>
+-      'This Apple subscription is already linked to another NFCSTORE account.';
++      'The subscription on this Apple ID is linked to another NFCSTORE account.';
+ 
+   @override
+   String get iapErrDisabled => 'Purchases are temporarily unavailable.';
+@@ -3213,4 +3213,19 @@ class LEn extends L {
+   @override
+   String get iapDisclosure =>
+       'Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.';
++
++  @override
++  String get iapErrSandbox =>
++      'Test purchases are not available for this account.';
++
++  @override
++  String get iapErrFamilyShared =>
++      'Family Sharing purchases are not supported. Please subscribe with your own Apple ID.';
++
++  @override
++  String get iapErrRejected =>
++      'The purchase could not be verified. Please contact support.';
++
++  @override
++  String get iapErrRateLimited => 'Too many requests. Please try again later.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 09e5373..fdffdd3 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3209,7 +3209,7 @@ class LRu extends L {
+ 
+   @override
+   String get iapErrAlreadyLinked =>
+-      'Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.';
++      'Подписка этого Apple ID уже привязана к другому аккаунту NFCSTORE.';
+ 
+   @override
+   String get iapErrDisabled => 'Покупки временно недоступны.';
+@@ -3227,4 +3227,19 @@ class LRu extends L {
+   @override
+   String get iapDisclosure =>
+       'Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store.';
++
++  @override
++  String get iapErrSandbox => 'Тестовая покупка недоступна для этого аккаунта.';
++
++  @override
++  String get iapErrFamilyShared =>
++      'Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.';
++
++  @override
++  String get iapErrRejected =>
++      'Не удалось подтвердить покупку. Обратитесь в поддержку.';
++
++  @override
++  String get iapErrRateLimited =>
++      'Слишком много запросов. Попробуйте чуть позже.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 130accf..7078dfa 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3174,7 +3174,7 @@ class LUz extends L {
+ 
+   @override
+   String get iapErrAlreadyLinked =>
+-      'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.';
++      'Bu Apple ID’dagi obuna boshqa NFCSTORE hisobiga ulangan.';
+ 
+   @override
+   String get iapErrDisabled => 'Xaridlar vaqtincha mavjud emas.';
+@@ -3192,4 +3192,19 @@ class LUz extends L {
+   @override
+   String get iapDisclosure =>
+       'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.';
++
++  @override
++  String get iapErrSandbox => 'Bu hisob uchun test xaridi mavjud emas.';
++
++  @override
++  String get iapErrFamilyShared =>
++      'Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.';
++
++  @override
++  String get iapErrRejected =>
++      'Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.';
++
++  @override
++  String get iapErrRateLimited =>
++      'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
+ }
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+index c5f5776..70387bd 100644
+--- a/mobile_nova/test/iap_premium_test.dart
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -392,29 +392,88 @@ void main() {
+       expect(find.text(l.iapErrNetwork), findsOneWidget);
+     }, variant: _ios);
+ 
+-    for (final (code, kind, text) in [
+-      ('account_mismatch', AppErrorKind.forbidden, 'mismatch'),
+-      ('already_linked', AppErrorKind.conflict, 'linked'),
+-      ('iap_disabled', AppErrorKind.server, 'disabled'),
+-    ]) {
+-      testWidgets('server $code: yopilmaydi, sabab ko‘rsatiladi',
++    // Server javoblari — ApiClient qanday quradi, shunday (`status` bilan).
++    // `terminal` — server qarori yakuniy: tranzaksiya BIR MARTA yopiladi.
++    // Qolganlari — ochiq qoladi, StoreKit keyingi ochilishda qayta beradi.
++    final cases = <(String, AppError, bool, String Function(L))>[
++      // ── YAKUNIY (422 / 400) ──
++      ('422 sandbox_not_allowed',
++          const AppError(AppErrorKind.validation,
++              code: 'sandbox_not_allowed', status: 422),
++          true, (l) => l.iapErrSandbox),
++      ('422 family_shared_not_supported',
++          const AppError(AppErrorKind.validation,
++              code: 'family_shared_not_supported', status: 422),
++          true, (l) => l.iapErrFamilyShared),
++      for (final code in const [
++        'wrong_bundle',
++        'unknown_product',
++        'wrong_type',
++        'bad_transaction',
++      ])
++        ('422 $code',
++            AppError(AppErrorKind.validation, code: code, status: 422),
++            true, (l) => l.iapErrRejected),
++      for (final code in const ['invalid_signature', 'bad_request'])
++        ('400 $code',
++            AppError(AppErrorKind.unknown, code: code, status: 400),
++            true, (l) => l.iapErrRejected),
++      // ── VAQTINCHA (ochiq qoladi) ──
++      ('429 too_many_requests',
++          const AppError(AppErrorKind.rateLimited,
++              code: 'too_many_requests', status: 429),
++          false, (l) => l.iapErrRateLimited),
++      ('403 account_mismatch',
++          const AppError(AppErrorKind.forbidden,
++              code: 'account_mismatch', status: 403),
++          false, (l) => l.iapErrAccountMismatch),
++      ('409 already_linked',
++          const AppError(AppErrorKind.conflict,
++              code: 'already_linked', status: 409),
++          false, (l) => l.iapErrAlreadyLinked),
++      ('503 iap_disabled',
++          const AppError(AppErrorKind.server,
++              code: 'iap_disabled', status: 503),
++          false, (l) => l.iapErrDisabled),
++      ('timeout',
++          const AppError(AppErrorKind.timeout),
++          false, (l) => l.iapErrNetwork),
++    ];
++
++    for (final (name, error, terminal, msg) in cases) {
++      testWidgets(
++          'server $name: ${terminal ? 'YAKUNIY — bir marta yopiladi' : 'ochiq qoladi'}',
+           (tester) async {
+         final e = await _pumpPremium(tester);
+         final l = await _uz();
+-        e.store.onBuy = (id) => _purchased(id, 'JWS-$code');
+-        e.iap.verifyResult = Err(AppError(kind, code: code));
++        e.store.onBuy = (id) => _purchased(id, 'JWS-$name');
++        e.iap.verifyResult = Err(error);
+         await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
+         await settle(tester, frames: 10);
+-        expect(_log.where((s) => s.startsWith('complete')), isEmpty);
+-        final msg = switch (text) {
+-          'mismatch' => l.iapErrAccountMismatch,
+-          'linked' => l.iapErrAlreadyLinked,
+-          _ => l.iapErrDisabled,
+-        };
+-        expect(find.text(msg), findsOneWidget);
++        expect(_log, contains('verify:JWS-$name'));
++        final completes = _log.where((s) => s.startsWith('complete'));
++        expect(completes.length, terminal ? 1 : 0,
++            reason: terminal
++                ? 'yakuniy rad etish — StoreKit abadiy qayta bermasin'
++                : 'vaqtincha xato — tranzaksiya ochiq qolishi kerak');
++        if (terminal) {
++          // Yopilganidan keyin "Premium faol" deb sessiya yangilanmaydi.
++          expect(_log, isNot(contains('me')));
++        }
++        expect(find.text(msg(l)), findsOneWidget);
++        expect(e.c.read(iapControllerProvider).busy, isFalse);
+       }, variant: _ios);
+     }
+ 
++    testWidgets('409 matni: Apple ID boshqa hisobga ulangan (uch tilda)',
++        (tester) async {
++      for (final code in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(code));
++        expect(l.iapErrAlreadyLinked, contains('Apple ID'), reason: code);
++        expect(l.iapErrAlreadyLinked, contains('NFCSTORE'), reason: code);
++      }
++    });
++
+     testWidgets('kutilayotgan xarid (Ask to Buy) — holat ko‘rsatiladi',
+         (tester) async {
+       final e = await _pumpPremium(tester);
+-- 
+2.43.0
+

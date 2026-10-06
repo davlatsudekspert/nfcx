@@ -1,0 +1,1197 @@
+From 093f235947ac8a4b1caafc356b6994468ed93cf7 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 09:26:20 +0000
+Subject: [PATCH 53/53] =?UTF-8?q?Nova:=20"Do'stlarni=20taklif=20qilish"=20?=
+ =?UTF-8?q?=E2=80=94=20shaxsiy=20havola,=20natija,=20/i/<kod>=20havolasi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- InviteScreen (iPhone + Android, Sozlamalar → Hisob): GET
+  /api/referrals/summary — havola (nusxa / ulashish, uz/ru/en matn),
+  "N do'st · +M oy Premium", qanday ishlaydi (3 qadam, sinov
+  davridagi bonus izohi). iPhone'da chegirma / narx yo'q; Android'da
+  "saytdagi xaridlarga chegirma" faqat kShowSiteNotice bo'lsa.
+- /i/<kod>: kirmagan — /register?ref=<kod>, promokod maydoni oldindan
+  to'ldirilgan (tahrirlanadi); kirgan — taklif ekrani. Sessiya
+  tekshirilayotganda kelgan havola ham saqlanadi. Android App Links
+  filtriga /i/ qo'shildi (paket o'zgarmadi).
+- Bildirishnoma `referral_reward`: "<ism> sizning taklifingiz bilan
+  qo'shildi — +1 oy Premium", bosilsa taklif ekrani.
+- Sinovlar: test/invite_test.dart.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../android/app/src/main/AndroidManifest.xml  |   3 +
+ mobile_nova/lib/data/models/models.dart       |  39 +++
+ .../features/activity/activity_screen.dart    |   4 +
+ .../lib/features/auth/register_screen.dart    |  16 +-
+ .../features/profile/profile_repository.dart  |   9 +
+ .../lib/features/settings/invite_screen.dart  | 223 +++++++++++++++
+ .../features/settings/settings_screen.dart    |   7 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |  17 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  17 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  17 +-
+ .../lib/l10n/gen/app_localizations.dart       |  78 ++++++
+ .../lib/l10n/gen/app_localizations_en.dart    |  53 ++++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  55 ++++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  52 ++++
+ mobile_nova/lib/routing/router.dart           |  40 ++-
+ mobile_nova/lib/routing/routes.dart           |   6 +
+ mobile_nova/test/invite_test.dart             | 265 ++++++++++++++++++
+ mobile_nova/test/routes_test.dart             |   3 +
+ 18 files changed, 898 insertions(+), 6 deletions(-)
+ create mode 100644 mobile_nova/lib/features/settings/invite_screen.dart
+ create mode 100644 mobile_nova/test/invite_test.dart
+
+diff --git a/mobile_nova/android/app/src/main/AndroidManifest.xml b/mobile_nova/android/app/src/main/AndroidManifest.xml
+index 5fcbb86..5910e4e 100644
+--- a/mobile_nova/android/app/src/main/AndroidManifest.xml
++++ b/mobile_nova/android/app/src/main/AndroidManifest.xml
+@@ -71,6 +71,9 @@
+                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/post/"/>
+                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/story/"/>
+                 <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/nfc/"/>
++                <!-- TAKLIF HAVOLASI `/i/<kod>`: kirmagan odam — ro'yxatdan
++                     o'tish (kod oldindan yozilgan), kirgan — taklif ekrani. -->
++                <data android:scheme="https" android:host="nfcstore.uz" android:pathPrefix="/i/"/>
+             </intent-filter>
+             <!-- ILOVA SXEMASI — nfcstore://nfcstore.uz/post/<id>?code=...
+                  Saytdagi "Ilovada ochish" tugmasi (intent://) shu orqali
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index 1eb3866..728031d 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1165,6 +1165,40 @@ class PriceTier {
+       );
+ }
+ 
++/// Taklif qilish natijasi (`GET /api/referrals/summary`).
++class ReferralSummary {
++  const ReferralSummary({
++    this.code = '',
++    this.link = '',
++    this.invited = 0,
++    this.rewardedDays = 0,
++    this.nextRewardDays = 30,
++  });
++
++  final String code;
++
++  /// `https://nfcstore.uz/i/<code>` — server beradi.
++  final String link;
++  final int invited;
++
++  /// Taklif uchun olingan Premium kunlari (jami).
++  final int rewardedDays;
++
++  /// Keyingi do'st uchun beriladigan kunlar (hozir 30).
++  final int nextRewardDays;
++
++  /// Olingan bonus — oylarda (30 kun = 1 oy), yaxlitlangan.
++  int get rewardedMonths => (rewardedDays / 30).round();
++
++  factory ReferralSummary.fromJson(Map<String, dynamic> j) => ReferralSummary(
++        code: _s(j['code']),
++        link: _s(j['link']),
++        invited: _i(j['invited']),
++        rewardedDays: _i(j['rewardedDays']),
++        nextRewardDays: _i(j['nextRewardDays']) > 0 ? _i(j['nextRewardDays']) : 30,
++      );
++}
++
+ /// NFC ID yig'ma tarixi (`/api/records/:code/analytics`).
+ class CardAnalytics {
+   const CardAnalytics({
+@@ -1794,6 +1828,10 @@ enum ActivityKind {
+   /// Bepul sinov muddati tugashi haqida eslatma (`trial_ending`).
+   /// `targetId` — tugash sanasi, `YYYY-MM-DD`.
+   trial,
++
++  /// Do'st taklif bilan qo'shildi — +1 oy Premium (`referral_reward`).
++  /// Aktyor — do'st (`title` — uning ismi).
++  referral,
+ }
+ 
+ class ActivityEvent {
+@@ -1852,6 +1890,7 @@ class ActivityEvent {
+           'business' || 'company' => ActivityKind.business,
+           'support_reply' => ActivityKind.support,
+           'trial_ending' => ActivityKind.trial,
++          'referral_reward' => ActivityKind.referral,
+           _ => ActivityKind.system,
+         },
+         title: _s(j['title'] ?? j['text']),
+diff --git a/mobile_nova/lib/features/activity/activity_screen.dart b/mobile_nova/lib/features/activity/activity_screen.dart
+index ff101c7..a3812dd 100644
+--- a/mobile_nova/lib/features/activity/activity_screen.dart
++++ b/mobile_nova/lib/features/activity/activity_screen.dart
+@@ -150,6 +150,7 @@ class _EventTile extends ConsumerWidget {
+         ActivityKind.follow => l.activityFollowed,
+         ActivityKind.like => l.activityLiked,
+         ActivityKind.comment => l.activityCommented,
++        ActivityKind.referral => l.activityReferralReward,
+         ActivityKind.trial => _trialDate == null
+             ? l.activityGeneric
+             : l.activityTrialEnding(_trialDate!),
+@@ -195,6 +196,8 @@ class _EventTile extends ConsumerWidget {
+     // yo'naltirish taqiqlangan; xabar faqat sanani aytadi. Bosilsa
+     // faqat o'qildi deb belgilanadi.
+     if (event.kind == ActivityKind.trial || _generic) return null;
++    // Taklif bonusi — "Do'stlarni taklif qilish" ekrani.
++    if (event.kind == ActivityKind.referral) return Routes.invite;
+     // QO'LLAB-QUVVATLASH JAVOBI — Yordam ekrani, o'sha murojaat
+     // ajratilgan holda. ID kelmasa ham ekranning o'zi ochiladi.
+     if (event.kind == ActivityKind.support) {
+@@ -266,6 +269,7 @@ class _EventTile extends ConsumerWidget {
+       ActivityKind.system => (Icons.info_rounded, t.text3),
+       ActivityKind.support => (Icons.support_agent_rounded, t.accent2),
+       ActivityKind.trial => (Icons.event_rounded, t.accent2),
++      ActivityKind.referral => (Icons.card_giftcard_rounded, t.accent2),
+     };
+     // Tizim xabari: ism ham avatar ham yo'q — sarlavha shu yerda,
+     // tilga qarab yoziladi (server tayyor matn yubormaydi).
+diff --git a/mobile_nova/lib/features/auth/register_screen.dart b/mobile_nova/lib/features/auth/register_screen.dart
+index abae33c..a172182 100644
+--- a/mobile_nova/lib/features/auth/register_screen.dart
++++ b/mobile_nova/lib/features/auth/register_screen.dart
+@@ -28,7 +28,11 @@ import 'verify_screen.dart';
+ /// savol bo'lgani uchun klaviatura ochilganda ham maydon ko'rinib
+ /// turadi va xato aynan qaysi maydonga tegishli ekani aniq.
+ class RegisterScreen extends ConsumerStatefulWidget {
+-  const RegisterScreen({super.key});
++  const RegisterScreen({super.key, this.initialPromo});
++
++  /// Taklif havolasidan (`/i/<kod>` → `/register?ref=<kod>`) kelgan
++  /// kod — promokod maydoniga oldindan yoziladi, o'zgartirsa bo'ladi.
++  final String? initialPromo;
+ 
+   @override
+   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+@@ -49,7 +53,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+   /// yo'q edi (egasi, 2026-09), server esa `promoCode` ni kutardi:
+   /// ilova orqali kelganlar taklif qilgan odamning ro'yxatiga
+   /// tushmasdi va unga 10% chegirma yozilmasdi.
+-  final _promo = TextEditingController();
++  late final _promo = TextEditingController(
++      text: normalizeInviteCode(widget.initialPromo) ?? '');
+ 
+   int _step = 0;
+ 
+@@ -883,3 +888,10 @@ class _TypeCard extends StatelessWidget {
+     );
+   }
+ }
++
++/// Taklif kodi: faqat harf va raqam, ko'pi bilan 12 ta, katta harfda
++/// (promokod maydoni bilan bir xil qoida). Yaroqsiz — `null`.
++String? normalizeInviteCode(String? raw) {
++  final c = (raw ?? '').trim().toUpperCase();
++  return RegExp(r'^[A-Z0-9]{1,12}$').hasMatch(c) ? c : null;
++}
+diff --git a/mobile_nova/lib/features/profile/profile_repository.dart b/mobile_nova/lib/features/profile/profile_repository.dart
+index 5017f85..22737da 100644
+--- a/mobile_nova/lib/features/profile/profile_repository.dart
++++ b/mobile_nova/lib/features/profile/profile_repository.dart
+@@ -353,6 +353,15 @@ class ProfileRepository {
+     });
+   }
+ 
++  /// "Do'stlarni taklif qilish" — shaxsiy havola va natija.
++  /// `GET /api/referrals/summary` → `{code, link, invited,
++  /// rewardedDays, nextRewardDays}`.
++  Future<Result<ReferralSummary>> referralSummary() async {
++    final res =
++        await _api.get<Map<String, dynamic>>('/api/referrals/summary');
++    return res.map(ReferralSummary.fromJson);
++  }
++
+   Future<Result<List<Map<String, dynamic>>>> referrals() async {
+     final res = await _api.get<Map<String, dynamic>>('/api/referrals');
+     return res.map((j) {
+diff --git a/mobile_nova/lib/features/settings/invite_screen.dart b/mobile_nova/lib/features/settings/invite_screen.dart
+new file mode 100644
+index 0000000..24c249d
+--- /dev/null
++++ b/mobile_nova/lib/features/settings/invite_screen.dart
+@@ -0,0 +1,223 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../core/utils/external_link.dart' show copyToClipboard;
++import '../../core/utils/sharing.dart' show shareWithFeedback;
++import '../../data/models/models.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/buttons.dart';
++import '../../design/widgets/nova_scaffold.dart';
++import '../../design/widgets/states.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../profile/profile_repository.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild, kShowSiteNotice;
++
++/// `GET /api/referrals/summary`.
++final referralSummaryProvider =
++    FutureProvider.autoDispose<ReferralSummary>((ref) async {
++  final res = await ref.watch(profileRepositoryProvider).referralSummary();
++  return res.when(ok: (v) => v, err: (e) => throw e);
++});
++
++/// Ulashiladigan matn — havola bilan.
++String inviteShareText(L l, String link) => l.inviteShareText(link);
++
++/// "DO'STLARNI TAKLIF QILISH" — iPhone va Android.
++///
++/// Shaxsiy havola (`https://nfcstore.uz/i/<kod>`), nusxa olish va
++/// ulashish, natija ("N do'st · +M oy Premium") va qanday ishlashi.
++///
++/// iPHONE'DA chegirma yoki narx HAQIDA HECH NARSA YO'Q (Apple 3.1.1):
++/// saytdagi 10% chegirma faqat Android'da va faqat sayt yozuvlari
++/// yoqilgan bo'lsa (`kShowSiteNotice`) tilga olinadi.
++class InviteScreen extends ConsumerWidget {
++  const InviteScreen({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final summary = ref.watch(referralSummaryProvider);
++
++    return NovaScaffold(
++      title: l.inviteTitle,
++      showBack: true,
++      body: summary.when(
++        loading: () => const SkeletonList(count: 3, height: 120),
++        error: (e, __) => StatePanel.fromError(context, asAppError(e),
++            onRetry: () => ref.invalidate(referralSummaryProvider)),
++        data: (s) => RefreshIndicator(
++          onRefresh: () async => ref.invalidate(referralSummaryProvider),
++          child: _InviteBody(s: s),
++        ),
++      ),
++    );
++  }
++}
++
++class _InviteBody extends StatelessWidget {
++  const _InviteBody({required this.s});
++  final ReferralSummary s;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final siteDiscount = !isAppStoreBuild && kShowSiteNotice;
++
++    return NovaScroll(
++      children: [
++        // HAVOLA KARTASI.
++        Container(
++          key: const ValueKey('invite-card'),
++          padding: const EdgeInsets.all(Gap.xl),
++          decoration: BoxDecoration(
++            gradient: t.accentGradient,
++            borderRadius: R.organic(a: 34, b: 34, c: 34, d: 14),
++            boxShadow: t.shadowSoft,
++          ),
++          child: Column(
++            crossAxisAlignment: CrossAxisAlignment.start,
++            children: [
++              Icon(Icons.card_giftcard_rounded, color: t.onAccent, size: 28),
++              const SizedBox(height: Gap.md),
++              Text(l.inviteHeadline,
++                  style: text.titleLarge?.copyWith(color: t.onAccent)),
++              const SizedBox(height: Gap.lg),
++              Container(
++                width: double.infinity,
++                padding: const EdgeInsets.symmetric(
++                    horizontal: Gap.md, vertical: Gap.md),
++                decoration: BoxDecoration(
++                  color: t.onAccent.withValues(alpha: .12),
++                  borderRadius: R.tile,
++                ),
++                child: SelectableText(
++                  s.link,
++                  key: const ValueKey('invite-link'),
++                  style: AppType.monoStyle(color: t.onAccent, size: 14),
++                ),
++              ),
++              const SizedBox(height: Gap.lg),
++              Row(
++                children: [
++                  Expanded(
++                    child: NovaButton(
++                      key: const ValueKey('invite-copy'),
++                      label: l.inviteCopy,
++                      icon: Icons.copy_rounded,
++                      tone: ButtonTone.quiet,
++                      onPressed: s.link.isEmpty
++                          ? null
++                          : () async {
++                              await copyToClipboard(s.link);
++                              if (!context.mounted) return;
++                              ScaffoldMessenger.maybeOf(context)
++                                ?..hideCurrentSnackBar()
++                                ..showSnackBar(
++                                    SnackBar(content: Text(l.inviteCopied)));
++                            },
++                    ),
++                  ),
++                  const SizedBox(width: Gap.md),
++                  Expanded(
++                    child: NovaButton(
++                      key: const ValueKey('invite-share'),
++                      label: l.actionShare,
++                      icon: Icons.ios_share_rounded,
++                      tone: ButtonTone.quiet,
++                      onPressed: s.link.isEmpty
++                          ? null
++                          : () => shareWithFeedback(
++                                context,
++                                inviteShareText(l, s.link),
++                                subject: l.inviteTitle,
++                                copiedMessage: l.inviteCopied,
++                              ),
++                    ),
++                  ),
++                ],
++              ),
++            ],
++          ),
++        ),
++        const SizedBox(height: Gap.lg),
++        // NATIJA.
++        FloatingSurface(
++          key: const ValueKey('invite-stats'),
++          solid: true,
++          child: Row(
++            children: [
++              Icon(Icons.group_add_rounded, color: t.accent2),
++              const SizedBox(width: Gap.md),
++              Expanded(
++                child: Text(
++                  l.inviteStats(s.invited, s.rewardedMonths),
++                  style: text.titleSmall,
++                ),
++              ),
++            ],
++          ),
++        ),
++        SectionHeader(color: t.text2, title: l.inviteHowTitle),
++        FloatingSurface(
++          solid: true,
++          child: Column(
++            crossAxisAlignment: CrossAxisAlignment.start,
++            children: [
++              _Step(n: 1, text: l.inviteStep1),
++              _Step(n: 2, text: l.inviteStep2),
++              _Step(
++                n: 3,
++                text: siteDiscount
++                    ? '${l.inviteStep3} ${l.inviteSiteDiscount}'
++                    : l.inviteStep3,
++              ),
++              const SizedBox(height: Gap.sm),
++              Text(l.inviteTrialNote,
++                  key: const ValueKey('invite-trial-note'),
++                  style: text.bodySmall?.copyWith(color: t.text2)),
++            ],
++          ),
++        ),
++      ],
++    );
++  }
++}
++
++class _Step extends StatelessWidget {
++  const _Step({required this.n, required this.text});
++  final int n;
++  final String text;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    return Padding(
++      padding: const EdgeInsets.only(bottom: Gap.md),
++      child: Row(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Container(
++            width: 26,
++            height: 26,
++            alignment: Alignment.center,
++            decoration: BoxDecoration(
++              color: t.accent2.withValues(alpha: .16),
++              shape: BoxShape.circle,
++            ),
++            child: Text('$n',
++                style: AppType.monoStyle(color: t.text1, size: 12)),
++          ),
++          const SizedBox(width: Gap.md),
++          Expanded(
++            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
++          ),
++        ],
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 8fd4b01..0e16c16 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -137,6 +137,13 @@ class SettingsScreen extends ConsumerWidget {
+               label: l.settingsSecurity,
+               onTap: () => context.push(Routes.settingsSecurity),
+             ),
++            // DO'STLARNI TAKLIF QILISH — iPhone ham, Android ham. Bonus
++            // — Premium kunlari (chegirma yoki narx emas).
++            SettingsItem(
++              icon: Icons.card_giftcard_rounded,
++              label: l.inviteTitle,
++              onTap: () => context.push(Routes.invite),
++            ),
+             // PREMIUM — FAQAT iPHONE'DA VA IAP KALITI YOQILGANDA.
+             //
+             // Xarid Apple In-App Purchase orqali (`features/premium/`).
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 9baa43d..1495c95 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1201,5 +1201,20 @@
+   "errDemoBusiness": "The sample business can’t be changed",
+   "errRequiredFields": "Please fill in the required fields",
+   "profileMusicOverLimit": "A profile can have at most {max} tracks — extra ones will be removed when you save.",
+-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
++  "inviteTitle": "Invite friends",
++  "inviteHeadline": "Invite friends — get +1 month of Premium for each",
++  "inviteCopy": "Copy",
++  "inviteCopied": "Link copied",
++  "inviteShareText": "Join NFCSTORE — digital business card, NFC and Reels: {link}",
++  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
++  "inviteStats": "{invited, plural, =0{You haven’t invited anyone yet} =1{You invited 1 friend} other{You invited {invited} friends}} · +{months} months of Premium",
++  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
++  "inviteHowTitle": "How it works",
++  "inviteStep1": "Send the link to a friend",
++  "inviteStep2": "Your friend signs up with this link",
++  "inviteStep3": "You get +1 month of Premium",
++  "inviteSiteDiscount": "(and a discount on website purchases)",
++  "inviteTrialNote": "During your free trial, the bonus is added after the trial ends.",
++  "activityReferralReward": "joined with your invite — +1 month of Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index b674fa7..a91a0d5 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1201,5 +1201,20 @@
+   "errDemoBusiness": "Демо-бизнес нельзя изменять",
+   "errRequiredFields": "Заполните обязательные поля",
+   "profileMusicOverLimit": "В профиле может быть не более {max} треков — лишние будут удалены при сохранении.",
+-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
++  "inviteTitle": "Пригласить друзей",
++  "inviteHeadline": "Приглашайте друзей — +1 месяц Premium за каждого",
++  "inviteCopy": "Копировать",
++  "inviteCopied": "Ссылка скопирована",
++  "inviteShareText": "Присоединяйтесь к NFCSTORE — цифровая визитка, NFC и Reels: {link}",
++  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
++  "inviteStats": "{invited, plural, =0{Вы ещё никого не пригласили} one{Вы пригласили {invited} друга} few{Вы пригласили {invited} друзей} many{Вы пригласили {invited} друзей} other{Вы пригласили {invited} друзей}} · +{months} мес. Premium",
++  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
++  "inviteHowTitle": "Как это работает",
++  "inviteStep1": "Отправьте ссылку другу",
++  "inviteStep2": "Друг регистрируется по этой ссылке",
++  "inviteStep3": "Вы получаете +1 месяц Premium",
++  "inviteSiteDiscount": "(и скидку на покупки на сайте)",
++  "inviteTrialNote": "Во время бесплатного пробного периода бонус добавится после его окончания.",
++  "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 243782b..398159b 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1352,5 +1352,20 @@
+   "errDemoBusiness": "Namuna biznesni o‘zgartirib bo‘lmaydi",
+   "errRequiredFields": "Majburiy maydonlarni to‘ldiring",
+   "profileMusicOverLimit": "Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.",
+-  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}},
++  "inviteTitle": "Do‘stlarni taklif qilish",
++  "inviteHeadline": "Do‘stingizni taklif qiling — har biri uchun +1 oy Premium",
++  "inviteCopy": "Nusxa olish",
++  "inviteCopied": "Havola nusxalandi",
++  "inviteShareText": "NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: {link}",
++  "@inviteShareText": {"placeholders": {"link": {"type": "String"}}},
++  "inviteStats": "{invited, plural, =0{Hali do‘st taklif qilmadingiz} other{{invited} do‘st taklif qildingiz}} · +{months} oy Premium",
++  "@inviteStats": {"placeholders": {"invited": {"type": "int"}, "months": {"type": "int"}}},
++  "inviteHowTitle": "Qanday ishlaydi",
++  "inviteStep1": "Havolani do‘stingizga yuboring",
++  "inviteStep2": "Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi",
++  "inviteStep3": "Siz +1 oy Premium olasiz",
++  "inviteSiteDiscount": "(va saytdagi xaridlarga chegirma)",
++  "inviteTrialNote": "Bepul sinov davrida bonus sinov tugagach qo‘shiladi.",
++  "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium"
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 234ff94..a676daf 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6266,6 +6266,84 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.'**
+   String profileMusicOverLimit(int max);
++
++  /// No description provided for @inviteTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Do‘stlarni taklif qilish'**
++  String get inviteTitle;
++
++  /// No description provided for @inviteHeadline.
++  ///
++  /// In uz, this message translates to:
++  /// **'Do‘stingizni taklif qiling — har biri uchun +1 oy Premium'**
++  String get inviteHeadline;
++
++  /// No description provided for @inviteCopy.
++  ///
++  /// In uz, this message translates to:
++  /// **'Nusxa olish'**
++  String get inviteCopy;
++
++  /// No description provided for @inviteCopied.
++  ///
++  /// In uz, this message translates to:
++  /// **'Havola nusxalandi'**
++  String get inviteCopied;
++
++  /// No description provided for @inviteShareText.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: {link}'**
++  String inviteShareText(String link);
++
++  /// No description provided for @inviteStats.
++  ///
++  /// In uz, this message translates to:
++  /// **'{invited, plural, =0{Hali do‘st taklif qilmadingiz} other{{invited} do‘st taklif qildingiz}} · +{months} oy Premium'**
++  String inviteStats(int invited, int months);
++
++  /// No description provided for @inviteHowTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Qanday ishlaydi'**
++  String get inviteHowTitle;
++
++  /// No description provided for @inviteStep1.
++  ///
++  /// In uz, this message translates to:
++  /// **'Havolani do‘stingizga yuboring'**
++  String get inviteStep1;
++
++  /// No description provided for @inviteStep2.
++  ///
++  /// In uz, this message translates to:
++  /// **'Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi'**
++  String get inviteStep2;
++
++  /// No description provided for @inviteStep3.
++  ///
++  /// In uz, this message translates to:
++  /// **'Siz +1 oy Premium olasiz'**
++  String get inviteStep3;
++
++  /// No description provided for @inviteSiteDiscount.
++  ///
++  /// In uz, this message translates to:
++  /// **'(va saytdagi xaridlarga chegirma)'**
++  String get inviteSiteDiscount;
++
++  /// No description provided for @inviteTrialNote.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.'**
++  String get inviteTrialNote;
++
++  /// No description provided for @activityReferralReward.
++  ///
++  /// In uz, this message translates to:
++  /// **'sizning taklifingiz bilan qo‘shildi — +1 oy Premium'**
++  String get activityReferralReward;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 0978d41..4bcfaee 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3471,4 +3471,57 @@ class LEn extends L {
+   String profileMusicOverLimit(int max) {
+     return 'A profile can have at most $max tracks — extra ones will be removed when you save.';
+   }
++
++  @override
++  String get inviteTitle => 'Invite friends';
++
++  @override
++  String get inviteHeadline =>
++      'Invite friends — get +1 month of Premium for each';
++
++  @override
++  String get inviteCopy => 'Copy';
++
++  @override
++  String get inviteCopied => 'Link copied';
++
++  @override
++  String inviteShareText(String link) {
++    return 'Join NFCSTORE — digital business card, NFC and Reels: $link';
++  }
++
++  @override
++  String inviteStats(int invited, int months) {
++    String _temp0 = intl.Intl.pluralLogic(
++      invited,
++      locale: localeName,
++      other: 'You invited $invited friends',
++      one: 'You invited 1 friend',
++      zero: 'You haven’t invited anyone yet',
++    );
++    return '$_temp0 · +$months months of Premium';
++  }
++
++  @override
++  String get inviteHowTitle => 'How it works';
++
++  @override
++  String get inviteStep1 => 'Send the link to a friend';
++
++  @override
++  String get inviteStep2 => 'Your friend signs up with this link';
++
++  @override
++  String get inviteStep3 => 'You get +1 month of Premium';
++
++  @override
++  String get inviteSiteDiscount => '(and a discount on website purchases)';
++
++  @override
++  String get inviteTrialNote =>
++      'During your free trial, the bonus is added after the trial ends.';
++
++  @override
++  String get activityReferralReward =>
++      'joined with your invite — +1 month of Premium';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 793e898..8acc2ac 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3495,4 +3495,59 @@ class LRu extends L {
+   String profileMusicOverLimit(int max) {
+     return 'В профиле может быть не более $max треков — лишние будут удалены при сохранении.';
+   }
++
++  @override
++  String get inviteTitle => 'Пригласить друзей';
++
++  @override
++  String get inviteHeadline =>
++      'Приглашайте друзей — +1 месяц Premium за каждого';
++
++  @override
++  String get inviteCopy => 'Копировать';
++
++  @override
++  String get inviteCopied => 'Ссылка скопирована';
++
++  @override
++  String inviteShareText(String link) {
++    return 'Присоединяйтесь к NFCSTORE — цифровая визитка, NFC и Reels: $link';
++  }
++
++  @override
++  String inviteStats(int invited, int months) {
++    String _temp0 = intl.Intl.pluralLogic(
++      invited,
++      locale: localeName,
++      other: 'Вы пригласили $invited друзей',
++      many: 'Вы пригласили $invited друзей',
++      few: 'Вы пригласили $invited друзей',
++      one: 'Вы пригласили $invited друга',
++      zero: 'Вы ещё никого не пригласили',
++    );
++    return '$_temp0 · +$months мес. Premium';
++  }
++
++  @override
++  String get inviteHowTitle => 'Как это работает';
++
++  @override
++  String get inviteStep1 => 'Отправьте ссылку другу';
++
++  @override
++  String get inviteStep2 => 'Друг регистрируется по этой ссылке';
++
++  @override
++  String get inviteStep3 => 'Вы получаете +1 месяц Premium';
++
++  @override
++  String get inviteSiteDiscount => '(и скидку на покупки на сайте)';
++
++  @override
++  String get inviteTrialNote =>
++      'Во время бесплатного пробного периода бонус добавится после его окончания.';
++
++  @override
++  String get activityReferralReward =>
++      'присоединился(ась) по вашему приглашению — +1 месяц Premium';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 591bea9..637f8a0 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3451,4 +3451,56 @@ class LUz extends L {
+   String profileMusicOverLimit(int max) {
+     return 'Profilda ko‘pi bilan $max ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.';
+   }
++
++  @override
++  String get inviteTitle => 'Do‘stlarni taklif qilish';
++
++  @override
++  String get inviteHeadline =>
++      'Do‘stingizni taklif qiling — har biri uchun +1 oy Premium';
++
++  @override
++  String get inviteCopy => 'Nusxa olish';
++
++  @override
++  String get inviteCopied => 'Havola nusxalandi';
++
++  @override
++  String inviteShareText(String link) {
++    return 'NFCSTORE’ga qo‘shiling — raqamli vizitka, NFC va Reels: $link';
++  }
++
++  @override
++  String inviteStats(int invited, int months) {
++    String _temp0 = intl.Intl.pluralLogic(
++      invited,
++      locale: localeName,
++      other: '$invited do‘st taklif qildingiz',
++      zero: 'Hali do‘st taklif qilmadingiz',
++    );
++    return '$_temp0 · +$months oy Premium';
++  }
++
++  @override
++  String get inviteHowTitle => 'Qanday ishlaydi';
++
++  @override
++  String get inviteStep1 => 'Havolani do‘stingizga yuboring';
++
++  @override
++  String get inviteStep2 => 'Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi';
++
++  @override
++  String get inviteStep3 => 'Siz +1 oy Premium olasiz';
++
++  @override
++  String get inviteSiteDiscount => '(va saytdagi xaridlarga chegirma)';
++
++  @override
++  String get inviteTrialNote =>
++      'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.';
++
++  @override
++  String get activityReferralReward =>
++      'sizning taklifingiz bilan qo‘shildi — +1 oy Premium';
+ }
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index d5f4169..6a1d090 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -37,6 +37,7 @@ import '../features/settings/news_screen.dart';
+ import '../l10n/gen/app_localizations.dart';
+ import '../features/settings/analytics_screen.dart';
+ import '../features/settings/settings_subscreens.dart';
++import '../features/settings/invite_screen.dart' show InviteScreen;
+ import '../features/premium/iap_controller.dart' show iapEnabledProvider;
+ import '../features/premium/premium_iap_screen.dart';
+ import '../features/premium/boost_controller.dart' show iapBoostEnabledProvider;
+@@ -125,6 +126,23 @@ final routerProvider = Provider<GoRouter>((ref) {
+           loc.startsWith('/login') ||
+           (loc.startsWith('/register') && loc != Routes.profileSetup);
+       final card = _cardLinkTarget(state);
++      // TAKLIF HAVOLASI `/i/<kod>`: kirgan odam — taklif ekrani;
++      // kirmagan — ro'yxatdan o'tish, kod oldindan yozilgan.
++      final invite = _inviteCode(state.uri);
++      if (invite != null && session is SessionActive) return Routes.invite;
++      if (invite != null && session is SessionAnonymous) {
++        return '${Routes.register}?ref=$invite';
++      }
++      // Sessiya tekshirilayotganda kelgan taklif havolasi — tekshiruv
++      // anonim bilan tugasa ro'yxatdan o'tishga olib boradi.
++      if (session is SessionAnonymous && loc == Routes.splash) {
++        final p = pending;
++        final code = p == null ? null : _inviteCode(Uri.parse(p));
++        if (code != null) {
++          pending = null;
++          return '${Routes.register}?ref=$code';
++        }
++      }
+ 
+       // Chiqishdan (yoki sessiya tugashidan) keyin turgan ekran
+       // "kutilayotgan manzil" bo'lmaydi — keyingi kirish Home'dan.
+@@ -159,7 +177,20 @@ final routerProvider = Provider<GoRouter>((ref) {
+               const VerifyArgs(email: ''),
+         ),
+       ),
+-      GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
++      GoRoute(
++          path: Routes.register,
++          builder: (_, s) =>
++              RegisterScreen(initialPromo: s.uri.queryParameters['ref'])),
++      // Taklif havolasi — yo'naltirish yuqoridagi `redirect` da; bu
++      // marshrut faqat havola "tanilishi" uchun (App Links).
++      GoRoute(
++          path: '/i/:code',
++          redirect: (_, s) => normalizeInviteCode(s.pathParameters['code']) ==
++                  null
++              ? Routes.home
++              : Routes.invite,
++          builder: (_, __) => const InviteScreen()),
++      GoRoute(path: Routes.invite, builder: (_, __) => const InviteScreen()),
+       GoRoute(
+         path: Routes.registerVerify,
+         builder: (_, s) => VerifyScreen(
+@@ -625,6 +656,13 @@ CustomTransitionPage<T> fadeScalePage<T>({
+ 
+ /// Manzilning yo'li va so'rovi (sxema/xost'siz) — `https://nfcstore.uz/u/X`
+ /// -> `/u/X`.
++/// `/i/<kod>` dan taklif kodi (yaroqsiz — `null`).
++String? _inviteCode(Uri u) {
++  final seg = u.pathSegments.where((e) => e.isNotEmpty).toList();
++  if (seg.length != 2 || seg.first != 'i') return null;
++  return normalizeInviteCode(seg[1]);
++}
++
+ String _pathAndQuery(Uri u) =>
+     Uri(path: u.path.isEmpty ? '/' : u.path, query: u.hasQuery ? u.query : null)
+         .toString();
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index 352624f..cd83e59 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -182,6 +182,12 @@ abstract final class Routes {
+   /// "Ko'tarish kreditlari" — Apple consumable bilan to'langan, lekin
+   /// hali ishlatilmagan ko'tarishlar. Faqat iPhone + `boostEnabled`.
+   static const boostCredits = '/boost/credits';
++
++  /// "Do'stlarni taklif qilish" — shaxsiy havola va natija.
++  static const invite = '/invite';
++
++  /// Taklif havolasi (`https://nfcstore.uz/i/<kod>`).
++  static String inviteLink(String code) => '/i/$code';
+   static const settingsSupport = '/settings/support';
+ 
+   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —
+diff --git a/mobile_nova/test/invite_test.dart b/mobile_nova/test/invite_test.dart
+new file mode 100644
+index 0000000..e84e274
+--- /dev/null
++++ b/mobile_nova/test/invite_test.dart
+@@ -0,0 +1,265 @@
++import 'dart:io';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/core/utils/sharing.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/activity_repository.dart';
++import 'package:nfcstore_nova/features/activity/activity_screen.dart';
++import 'package:nfcstore_nova/features/auth/register_screen.dart';
++import 'package:nfcstore_nova/features/settings/invite_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// "DO'STLARNI TAKLIF QILISH" — iPhone va Android.
++
++const _summary = ReferralSummary(
++  code: 'ALI77',
++  link: 'https://nfcstore.uz/i/ALI77',
++  invited: 3,
++  rewardedDays: 60,
++);
++
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++Future<void> _pumpInvite(WidgetTester tester) async {
++  tester.view.physicalSize = const Size(393 * 3, 1800 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...await testOverrides(),
++      referralSummaryProvider.overrideWith((ref) async => _summary),
++    ],
++    child: wrapScreen(const InviteScreen()),
++  ));
++  await settle(tester);
++}
++
++class _Activity extends ActivityRepository {
++  _Activity() : super(ApiClient());
++  @override
++  Future<Result<NotificationPage>> list({int cursor = 0}) async =>
++      const Ok(NotificationPage(items: [
++        ActivityEvent(
++            id: 9, kind: ActivityKind.referral, title: 'Zafar', read: true),
++      ]));
++}
++
++void main() {
++  test('server javobi va kod qoidasi', () {
++    final s = ReferralSummary.fromJson(const {
++      'code': 'ALI77',
++      'link': 'https://nfcstore.uz/i/ALI77',
++      'invited': 3,
++      'rewardedDays': 90,
++      'nextRewardDays': 30,
++    });
++    expect([s.invited, s.rewardedMonths, s.nextRewardDays], [3, 3, 30]);
++    expect(normalizeInviteCode(' ali77 '), 'ALI77');
++    expect(normalizeInviteCode('bad code!'), isNull);
++    expect(normalizeInviteCode(''), isNull);
++    expect(
++        ActivityEvent.fromJson(const {'id': 1, 'type': 'referral_reward'}).kind,
++        ActivityKind.referral);
++  });
++
++  testWidgets('Android: havola, nusxa/ulashish, natija, chegirma eslatmasi',
++      (tester) async {
++    final shared = <String>[];
++    shareInvokerOverride = (text, _) async => shared.add(text);
++    addTearDown(() => shareInvokerOverride = null);
++    await _pumpInvite(tester);
++    final l = await _uz();
++    expect(find.text('https://nfcstore.uz/i/ALI77'), findsOneWidget);
++    expect(find.text(l.inviteStats(3, 2)), findsOneWidget);
++    expect(find.text('${l.inviteStep3} ${l.inviteSiteDiscount}'), findsOneWidget);
++    expect(find.text(l.inviteTrialNote), findsOneWidget);
++
++    await tester.tap(find.byKey(const ValueKey('invite-share')));
++    await settle(tester);
++    expect(shared.single, l.inviteShareText('https://nfcstore.uz/i/ALI77'));
++    expect(shared.single, contains('https://nfcstore.uz/i/ALI77'));
++  });
++
++  testWidgets('iPhone: chegirma ham, narx ham YO‘Q', (tester) async {
++    await _pumpInvite(tester);
++    final l = await _uz();
++    expect(find.text(l.inviteStep3), findsOneWidget);
++    expect(find.textContaining(l.inviteSiteDiscount), findsNothing);
++    expect(find.textContaining('chegirma'), findsNothing);
++    expect(find.textContaining('%'), findsNothing);
++    expect(find.textContaining("so'm"), findsNothing);
++  }, variant: _ios);
++
++  test('iPhone matnlarida chegirma / narx so‘zi yo‘q (uch tilda)', () async {
++    for (final c in ['uz', 'ru', 'en']) {
++      final l = await L.delegate.load(Locale(c));
++      for (final s in [
++        l.inviteTitle,
++        l.inviteHeadline,
++        l.inviteStep1,
++        l.inviteStep2,
++        l.inviteStep3,
++        l.inviteTrialNote,
++        l.inviteShareText('x'),
++        l.inviteStats(1, 1),
++        l.activityReferralReward,
++      ]) {
++        expect(s.toLowerCase(),
++            isNot(anyOf(contains('chegirma'), contains('скидк'), contains('discount'), contains('%'))),
++            reason: '$c: $s');
++      }
++    }
++  });
++
++  testWidgets('Sozlamalar → Hisob: taklif qatori (Android va iPhone)',
++      (tester) async {
++    tester.view.physicalSize = const Size(393 * 3, 2000 * 3);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    final opened = <String>[];
++    final router = GoRouter(routes: [
++      GoRoute(path: '/', builder: (_, __) => const SettingsScreen()),
++      GoRoute(
++          path: Routes.invite,
++          builder: (_, __) {
++            opened.add(Routes.invite);
++            return const Scaffold(body: Text('INVITE'));
++          }),
++    ]);
++    await tester.pumpWidget(ProviderScope(
++      overrides: [...await testOverrides()],
++      child: MaterialApp.router(
++        routerConfig: router,
++        locale: const Locale('uz'),
++        supportedLocales: L.supportedLocales,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ));
++    await settle(tester);
++    final l = await _uz();
++    await tester.tap(find.text(l.inviteTitle));
++    await settle(tester);
++    expect(opened, [Routes.invite]);
++  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++
++  group('/i/<kod> havolasi', () {
++    Future<GoRouter> boot(WidgetTester tester, {required bool signedIn}) async {
++      tester.view.physicalSize = const Size(1170, 2532);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(signedIn: signedIn),
++        referralSummaryProvider.overrideWith((ref) async => _summary),
++      ]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(
++          UncontrolledProviderScope(container: c, child: const NovaApp()));
++      for (var i = 0; i < 30; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      return c.read(routerProvider);
++    }
++
++    Future<void> frames(WidgetTester tester) async {
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++    }
++
++    testWidgets('kirmagan: ro‘yxatdan o‘tish, kod yozilgan', (tester) async {
++      final r = await boot(tester, signedIn: false);
++      r.go('/i/ali77');
++      await frames(tester);
++      final uri = r.routerDelegate.currentConfiguration.uri;
++      expect(uri.path, Routes.register);
++      expect(uri.queryParameters['ref'], 'ALI77');
++      final reg = tester.widget<RegisterScreen>(find.byType(RegisterScreen));
++      expect(reg.initialPromo, 'ALI77');
++    });
++
++    testWidgets('kirgan: taklif ekrani', (tester) async {
++      final r = await boot(tester, signedIn: true);
++      r.go('/i/ALI77');
++      await frames(tester);
++      expect(r.routerDelegate.currentConfiguration.uri.path, Routes.invite);
++      expect(find.byType(InviteScreen), findsOneWidget);
++    });
++
++    testWidgets('yaroqsiz kod — taklif emas', (tester) async {
++      final r = await boot(tester, signedIn: false);
++      r.go('/i/bad!code');
++      await frames(tester);
++      expect(r.routerDelegate.currentConfiguration.uri.queryParameters['ref'],
++          isNull);
++    });
++
++    test('Android App Links: /i/ manifestda', () {
++      final m = File('android/app/src/main/AndroidManifest.xml')
++          .readAsStringSync();
++      expect(m, contains('android:pathPrefix="/i/"'));
++    });
++  });
++
++  testWidgets('bildirishnoma referral_reward — matn va taklif ekrani',
++      (tester) async {
++    String? opened;
++    final router = GoRouter(initialLocation: '/activity', routes: [
++      GoRoute(
++        path: '/',
++        builder: (_, __) => const SizedBox.shrink(),
++        routes: [
++          GoRoute(path: 'activity', builder: (_, __) => const ActivityScreen()),
++          GoRoute(
++              path: 'invite',
++              builder: (_, s) {
++                opened = s.uri.toString();
++                return const SizedBox.shrink();
++              }),
++        ],
++      ),
++    ]);
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        activityRepositoryProvider.overrideWithValue(_Activity()),
++      ],
++      child: MaterialApp.router(
++        routerConfig: router,
++        locale: const Locale('uz'),
++        supportedLocales: L.supportedLocales,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ));
++    await settle(tester);
++    final l = await _uz();
++    expect(find.text('Zafar'), findsOneWidget);
++    expect(find.text(l.activityReferralReward), findsOneWidget);
++    await tester.tap(find.text(l.activityReferralReward));
++    await settle(tester);
++    expect(opened, Routes.invite);
++  });
++}
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index 434eccc..cdff2ed 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -70,6 +70,7 @@ void main() {
+     Routes.settingsPremium,
+     Routes.premium,
+     Routes.boostCredits,
++    Routes.invite,
+     Routes.settingsSupport,
+     Routes.settingsAbout,
+     Routes.settingsNews,
+@@ -176,6 +177,8 @@ void main() {
+       '/post/': '/post/42?code=ABC123',
+       '/story/': '/story/ABC123',
+       '/nfc/': '/nfc/id/ABC123',
++      // Taklif havolasi (`/i/<kod>`).
++      '/i/': '/i/ALI77',
+     };
+     final router = buildTestRouter();
+     for (final p in prefixes) {
+-- 
+2.43.0
+

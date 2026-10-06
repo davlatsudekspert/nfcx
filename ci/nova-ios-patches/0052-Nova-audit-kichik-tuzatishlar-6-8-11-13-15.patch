@@ -1,0 +1,1290 @@
+From 9de7e5420d5ccb88ef57a9fc214c5d596d6b5b13 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 09:11:37 +0000
+Subject: [PATCH 52/53] =?UTF-8?q?Nova=20audit:=20kichik=20tuzatishlar=20(6?=
+ =?UTF-8?q?,=208=E2=80=9311,=2013=E2=80=9315)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- iPhone hisob o'chirish: faol Apple obunasi bekor bo'lmasligi haqida
+  matn va App Store obunalarini boshqarish tugmasi.
+- NFC ID'larim (bo'sh holat ham) va NFC Markazda pastga tortib
+  yangilash; fondan qaytganda sessiya yangilanadi (≥60 s).
+- Android'da ham bildirishnoma sozlamasi yo'q — push yo'q.
+- Obuna: 409 ALREADY_FOLLOWING — muvaffaqiyat; CANNOT_FOLLOW_SELF —
+  o'z matni. describeError: limit_reached (limit bilan),
+  bad_promotion_price (+ilovada sale < price), demo_business,
+  required_fields.
+- Android orqaga: Asosiy bo'lmagan tab ildizida avval Asosiy tab,
+  ilovadan chiqish faqat Asosiy'dan.
+- Rasm: JPEG 700 KB dan katta bo'lsa kichikroq qayta urinadi; shaffof
+  PNG > 700 KB — shaffoflik saqlangan holda PNG kichraytiriladi
+  (Android ImageShrinker.toPng, iOS AppDelegate toPng).
+- Profil tahriri: qo'shiqlar chegaradan ortiq bo'lsa ogohlantirish.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../kotlin/uz/nfcstore/nova/ImageShrinker.kt  |  50 +++
+ .../kotlin/uz/nfcstore/nova/MainActivity.kt   |  13 +
+ mobile_nova/ios/Runner/AppDelegate.swift      |  37 ++
+ mobile_nova/lib/app/app.dart                  |   2 +
+ mobile_nova/lib/core/media/image_prep.dart    |  81 +++-
+ mobile_nova/lib/design/widgets/states.dart    |   9 +
+ mobile_nova/lib/features/auth/session.dart    |  35 ++
+ .../lib/features/business/business_forms.dart |   6 +
+ .../lib/features/nfc/nfc_center_screen.dart   |   9 +-
+ .../lib/features/nfc/nfc_ids_screen.dart      |  30 +-
+ .../features/profile/profile_edit_screen.dart |  17 +-
+ .../features/profile/profile_repository.dart  |  14 +-
+ .../settings/settings_subscreens.dart         |  26 ++
+ .../lib/features/shop/store_policy.dart       |   9 +-
+ mobile_nova/lib/l10n/arb/app_en.arb           |  12 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  12 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  12 +-
+ .../lib/l10n/gen/app_localizations.dart       |  48 +++
+ .../lib/l10n/gen/app_localizations_en.dart    |  30 ++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  30 ++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  30 ++
+ mobile_nova/lib/routing/shell.dart            |  16 +-
+ .../test/app_store_ios_fixes_test.dart        |  13 +-
+ mobile_nova/test/audit_1006_d_test.dart       | 352 ++++++++++++++++++
+ mobile_nova/test/store_policy_test.dart       |   6 +-
+ 25 files changed, 863 insertions(+), 36 deletions(-)
+ create mode 100644 mobile_nova/test/audit_1006_d_test.dart
+
+diff --git a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/ImageShrinker.kt b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/ImageShrinker.kt
+index 4eb6f61..f2d480e 100644
+--- a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/ImageShrinker.kt
++++ b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/ImageShrinker.kt
+@@ -35,6 +35,56 @@ object ImageShrinker {
+         }.start()
+     }
+ 
++    /**
++     * SHAFFOF rasm (logotip, PNG): uzun tomoni `maxSide` gacha, PNG —
++     * shaffoflik saqlanadi. JPEG'ga o'tkazib bo'lmaydi (fon qorayadi),
++     * lekin 700 KB dan katta PNG server tomonidan rad etiladi
++     * (audit 2026-10-06). Natija kichraymasa yoki xato — `null`.
++     */
++    fun toPng(path: String, out: String, maxSide: Int, result: MethodChannel.Result) {
++        Thread {
++            val res = try {
++                shrinkPng(path, out, maxSide)
++            } catch (_: Throwable) {
++                File(out).delete()
++                null
++            }
++            main.post { result.success(res) }
++        }.start()
++    }
++
++    private fun shrinkPng(path: String, out: String, maxSide: Int): String? {
++        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
++        BitmapFactory.decodeFile(path, bounds)
++        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
++        var sample = 1
++        while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
++        val decoded = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
++            ?: return null
++        var bmp = decoded
++        try {
++            val scale = min(1.0, maxSide.toDouble() / max(bmp.width, bmp.height))
++            if (scale < 1.0) {
++                bmp = Bitmap.createScaledBitmap(
++                    decoded,
++                    max(1, (decoded.width * scale).toInt()),
++                    max(1, (decoded.height * scale).toInt()),
++                    true,
++                )
++            }
++            FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
++            val outFile = File(out)
++            if (outFile.length() <= 0 || outFile.length() >= File(path).length()) {
++                outFile.delete()
++                return null
++            }
++            return out
++        } finally {
++            if (bmp !== decoded) bmp.recycle()
++            decoded.recycle()
++        }
++    }
++
+     private fun shrink(path: String, out: String, maxSide: Int, quality: Int): String? {
+         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+         BitmapFactory.decodeFile(path, bounds)
+diff --git a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
+index 5c6b7d2..76c627a 100644
+--- a/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
++++ b/mobile_nova/android/app/src/main/kotlin/uz/nfcstore/nova/MainActivity.kt
+@@ -48,6 +48,19 @@ class MainActivity : FlutterFragmentActivity() {
+                             )
+                         }
+                     }
++                    "toPng" -> {
++                        val path = call.argument<String>("path")
++                        val out = call.argument<String>("out")
++                        if (path == null || out == null) {
++                            result.success(null)
++                        } else {
++                            ImageShrinker.toPng(
++                                path, out,
++                                call.argument<Int>("maxSide") ?: 1600,
++                                result,
++                            )
++                        }
++                    }
+                     else -> result.notImplemented()
+                 }
+             }
+diff --git a/mobile_nova/ios/Runner/AppDelegate.swift b/mobile_nova/ios/Runner/AppDelegate.swift
+index 053bf30..b9af233 100644
+--- a/mobile_nova/ios/Runner/AppDelegate.swift
++++ b/mobile_nova/ios/Runner/AppDelegate.swift
+@@ -46,12 +46,49 @@ enum NovaVideoExport {
+           let res = toJpeg(path: path, out: out, maxSide: maxSide, quality: quality)
+           DispatchQueue.main.async { result(res) }
+         }
++      case "toPng":
++        guard let out = args["out"] as? String else {
++          result(nil)
++          return
++        }
++        let maxSide = args["maxSide"] as? Int ?? 1600
++        DispatchQueue.global(qos: .userInitiated).async {
++          let res = toPng(path: path, out: out, maxSide: maxSide)
++          DispatchQueue.main.async { result(res) }
++        }
+       default:
+         result(FlutterMethodNotImplemented)
+       }
+     }
+   }
+ 
++  /// SHAFFOF rasm: uzun tomoni `maxSide` gacha, PNG — shaffoflik
++  /// saqlanadi (audit 2026-10-06: 700 KB dan katta logotip PNG server
++  /// tomonidan rad etilardi). Natija kichraymasa yoki xato — `nil`.
++  static func toPng(path: String, out: String, maxSide: Int) -> String? {
++    guard let image = UIImage(contentsOfFile: path) else { return nil }
++    let w = image.size.width
++    let h = image.size.height
++    guard w > 0, h > 0 else { return nil }
++    let scale = min(1.0, CGFloat(maxSide) / max(w, h))
++    let size = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
++    let format = UIGraphicsImageRendererFormat.default()
++    format.scale = 1
++    format.opaque = false
++    let drawn = UIGraphicsImageRenderer(size: size, format: format).image { _ in
++      image.draw(in: CGRect(origin: .zero, size: size))
++    }
++    guard let data = drawn.pngData() else { return nil }
++    let original = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? 0
++    if original > 0 && data.count >= original { return nil }
++    do {
++      try data.write(to: URL(fileURLWithPath: out))
++      return out
++    } catch {
++      return nil
++    }
++  }
++
+   /// Rasm yuklashdan oldin: uzun tomoni `maxSide` gacha, JPEG (Dart:
+   /// lib/core/media/image_prep.dart). `image_picker` PNG'ni siqmaydi —
+   /// skrinshot 2 MB bo'lib ketardi, server esa 700 KB dan kattasini
+diff --git a/mobile_nova/lib/app/app.dart b/mobile_nova/lib/app/app.dart
+index 7f7d388..655e952 100644
+--- a/mobile_nova/lib/app/app.dart
++++ b/mobile_nova/lib/app/app.dart
+@@ -25,6 +25,8 @@ class NovaApp extends ConsumerWidget {
+     ref.watch(sessionExpiryWatcherProvider);
+     // Chiqish / sessiya tugashi — ilova qulfi va PIN o'chadi.
+     ref.watch(appLockSessionGuardProvider);
++    // Fondan qaytganda sessiya (NFC ID, Premium) yangilanadi, ≥60 s.
++    ref.watch(sessionResumeRefreshProvider);
+     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
+     // tranzaksiyalari ilova ochilishidanoq tinglanadi
+     // (`features/premium/iap_controller.dart`). Android'da hech narsa.
+diff --git a/mobile_nova/lib/core/media/image_prep.dart b/mobile_nova/lib/core/media/image_prep.dart
+index 37e37b6..90de974 100644
+--- a/mobile_nova/lib/core/media/image_prep.dart
++++ b/mobile_nova/lib/core/media/image_prep.dart
+@@ -25,11 +25,21 @@ const kImagePrepMinBytes = 400 * 1024;
+ const kImagePrepMaxSide = 1600;
+ const kImagePrepQuality = 85;
+ 
+-/// Yuklashga tayyor rasm yo'li: yangi vaqtinchalik `.jpg` (chaqiruvchi
+-/// yuklagandan keyin o'chiradi) yoki o'zgartirish kerak bo'lmasa —
+-/// [path] ning o'zi.
++/// Server chegarasi — oddiy rasm (`kind` siz). Muqova 20 MB.
++const kServerImageLimit = 700 * 1024;
++
++/// Yuklashga tayyor rasm yo'li: yangi vaqtinchalik `.jpg` / `.png`
++/// (chaqiruvchi yuklagandan keyin o'chiradi) yoki o'zgartirish kerak
++/// bo'lmasa — [path] ning o'zi.
++///
++/// IKKINCHI BOSQICH (audit 2026-10-06). Birinchi o'tish (1600 px,
++/// sifat 85) ham [limitBytes] dan katta bo'lsa — kichikroq o'lcham va
++/// sifat bilan yana urinib ko'riladi. Shaffof rasm (logotip) JPEG'ga
++/// o'tmaydi: u PNG holida, shaffofligi SAQLANGAN holda kichraytiriladi
++/// (`toPng`). Ilgari bunday rasm asl holida ketib, server 700 KB
++/// chegarasida rad etardi.
+ Future<String> prepareImageForUpload(String path,
+-    {int maxSide = kImagePrepMaxSide}) async {
++    {int maxSide = kImagePrepMaxSide, int limitBytes = kServerImageLimit}) async {
+   if (kIsWeb) return path;
+   if (path.toLowerCase().endsWith('.gif')) return path;
+   final int len;
+@@ -39,20 +49,67 @@ Future<String> prepareImageForUpload(String path,
+     return path;
+   }
+   if (len <= kImagePrepMinBytes) return path;
+-  final stamp = DateTime.now().microsecondsSinceEpoch;
++
++  Future<int> sizeOf(String p) async {
++    try {
++      return await File(p).length();
++    } on FileSystemException {
++      return 0;
++    }
++  }
++
++  // 1) JPEG: oddiy o'tish, keyin kerak bo'lsa kichikroq.
++  final jpegPasses = <(int, int)>[
++    (maxSide, kImagePrepQuality),
++    (maxSide < 1280 ? maxSide : 1280, 70),
++    (maxSide < 1024 ? maxSide : 1024, 60),
++  ];
++  String? best;
++  for (final (side, q) in jpegPasses) {
++    final out = await _native('toJpeg', path, '.jpg', side, quality: q);
++    if (out == null) break; // shaffof / kichraymadi / xato
++    if (best != null && best != out) File(best).delete().ignore();
++    best = out;
++    if (await sizeOf(out) <= limitBytes) return out;
++  }
++  if (best != null) return best;
++
++  // 2) Shaffof (yoki JPEG kichraymagan) va hali ham chegaradan katta —
++  //    PNG holida kichraytiriladi, shaffoflik saqlanadi.
++  if (len <= limitBytes) return path;
++  for (final side in <int>{
++    maxSide,
++    maxSide < 1280 ? maxSide : 1280,
++    maxSide < 1024 ? maxSide : 1024,
++    maxSide < 768 ? maxSide : 768,
++  }) {
++    final out = await _native('toPng', path, '.png', side);
++    if (out == null) continue;
++    if (best != null && best != out) File(best).delete().ignore();
++    best = out;
++    if (await sizeOf(out) <= limitBytes) return out;
++  }
++  return best ?? path;
++}
++
++int _seq = 0;
++
++Future<String?> _native(String method, String path, String ext, int maxSide,
++    {int? quality}) async {
++  final stamp = '${DateTime.now().microsecondsSinceEpoch}_${_seq++}';
+   try {
+-    final out = await videoPrepChannel.invokeMethod<String>('toJpeg', <String, Object>{
++    final out = await videoPrepChannel.invokeMethod<String>(method, <String, Object>{
+       'path': path,
+-      'out': '${Directory.systemTemp.path}/nova_i_$stamp.jpg',
++      'out': '${Directory.systemTemp.path}/nova_i_$stamp$ext',
+       'maxSide': maxSide,
+-      'quality': kImagePrepQuality,
++      if (quality != null) 'quality': quality,
+     }).timeout(const Duration(seconds: 30));
+-    return (out == null || out.isEmpty) ? path : out;
++    return (out == null || out.isEmpty) ? null : out;
+   } on PlatformException {
+-    return path;
++    return null;
+   } on MissingPluginException {
+-    return path;
++    return null;
+   } on TimeoutException {
+-    return path;
++    return null;
+   }
+ }
+diff --git a/mobile_nova/lib/design/widgets/states.dart b/mobile_nova/lib/design/widgets/states.dart
+index 7adf631..823ef33 100644
+--- a/mobile_nova/lib/design/widgets/states.dart
++++ b/mobile_nova/lib/design/widgets/states.dart
+@@ -24,6 +24,15 @@ bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
+ /// kalit qo'shsa ham ilovada "bo'sh xato" chiqmaydi.
+ String describeError(L l, AppError e) => switch (e.code) {
+       'bad_credentials' => l.errBadCredentials,
++      'CANNOT_FOLLOW_SELF' => l.errFollowSelf,
++      // Katalog / post / ko'tarish limiti — server `limit` beradi.
++      'limit_reached' => switch (e.data?['limit']) {
++          final num n => l.errLimitReachedN(n.toInt()),
++          _ => l.errLimitReached,
++        },
++      'bad_promotion_price' => l.errPromotionPrice,
++      'demo_business' => l.errDemoBusiness,
++      'required_fields' => l.errRequiredFields,
+       // Parolni almashtirish: JORIY parol xato (401, sessiya joyida).
+       'bad_current_password' => l.errBadCurrentPassword,
+       'email_taken' => l.errEmailTaken,
+diff --git a/mobile_nova/lib/features/auth/session.dart b/mobile_nova/lib/features/auth/session.dart
+index e1b8bd6..65dff01 100644
+--- a/mobile_nova/lib/features/auth/session.dart
++++ b/mobile_nova/lib/features/auth/session.dart
+@@ -1,5 +1,6 @@
+ import 'dart:async';
+ 
++import 'package:flutter/widgets.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../app/providers.dart';
+@@ -186,6 +187,40 @@ final sessionExpiryWatcherProvider = Provider<void>((ref) {
+   });
+ });
+ 
++/// ILOVA QAYTA OCHILGANDA SESSIYA YANGILANADI (audit 2026-10-06).
++///
++/// Saytda olingan NFC ID, Premium yoki sinov holati ilovaga faqat
++/// `/api/auth/me` orqali keladi. Ilgari u faqat ishga tushishda
++/// so'ralardi — fondan qaytgan odam eski holatni ko'rardi. Endi
++/// `resumed` da yangilanadi, lekin [kSessionResumeGap] dan tez-tez
++/// emas (ilova almashtirib turish serverni bezovta qilmasin).
++const kSessionResumeGap = Duration(seconds: 60);
++
++@visibleForTesting
++DateTime Function() sessionResumeClock = DateTime.now;
++
++final sessionResumeRefreshProvider = Provider<void>((ref) {
++  final obs = _ResumeRefresher(ref);
++  WidgetsBinding.instance.addObserver(obs);
++  ref.onDispose(() => WidgetsBinding.instance.removeObserver(obs));
++});
++
++class _ResumeRefresher with WidgetsBindingObserver {
++  _ResumeRefresher(this._ref) : _last = sessionResumeClock();
++  final Ref _ref;
++  DateTime _last;
++
++  @override
++  void didChangeAppLifecycleState(AppLifecycleState state) {
++    if (state != AppLifecycleState.resumed) return;
++    if (_ref.read(sessionProvider) is! SessionActive) return;
++    final now = sessionResumeClock();
++    if (now.difference(_last) < kSessionResumeGap) return;
++    _last = now;
++    _ref.read(sessionProvider.notifier).refresh();
++  }
++}
++
+ /// Qulaylik: joriy foydalanuvchi yoki `null`.
+ final currentUserProvider = Provider<User?>((ref) {
+   final s = ref.watch(sessionProvider);
+diff --git a/mobile_nova/lib/features/business/business_forms.dart b/mobile_nova/lib/features/business/business_forms.dart
+index 989f304..8502d67 100644
+--- a/mobile_nova/lib/features/business/business_forms.dart
++++ b/mobile_nova/lib/features/business/business_forms.dart
+@@ -1138,6 +1138,12 @@ class _BusinessProductFormScreenState
+       setState(() => _error = l.bizPriceRequired);
+       return;
+     }
++    // Chegirma narxi asosiy narxdan PAST bo'lishi shart — server buni
++    // `bad_promotion_price` (422) bilan rad etadi; oldindan aytamiz.
++    if (!onRequest && sale > 0 && sale >= price) {
++      setState(() => _error = l.errPromotionPrice);
++      return;
++    }
+     setState(() {
+       _busy = true;
+       _error = null;
+diff --git a/mobile_nova/lib/features/nfc/nfc_center_screen.dart b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+index 4ebe258..494bb2f 100644
+--- a/mobile_nova/lib/features/nfc/nfc_center_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_center_screen.dart
+@@ -76,7 +76,13 @@ class NfcCenterScreen extends ConsumerWidget {
+           onPressed: () => context.push(Routes.nfcHistory),
+         ),
+       ],
+-      body: NovaScroll(
++      // Pastga tortib yangilash — NFC ID'lar sessiya bilan keladi
++      // (saytda olingan yangi ID darhol ko'rinadi).
++      body: RefreshIndicator(
++        key: const ValueKey('nfc-center-refresh'),
++        color: context.tokens.accent2,
++        onRefresh: () => ref.read(sessionProvider.notifier).refresh(),
++        child: NovaScroll(
+         // Gorizontal chegara har bo'limda alohida: ID lentasi ekran
+         // chetigacha suriladi.
+         padding: EdgeInsets.only(
+@@ -226,6 +232,7 @@ class NfcCenterScreen extends ConsumerWidget {
+             const MyIdsStrip(),
+         ],
+       ),
++      ),
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+index 5d5733b..1c1047f 100644
+--- a/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
++++ b/mobile_nova/lib/features/nfc/nfc_ids_screen.dart
+@@ -42,14 +42,30 @@ class NfcIdsScreen extends ConsumerWidget {
+       // beradi, ekran esa `items` ni kutadi). iPhone'da bu boshi berk
+       // ko'cha bo'lardi, ID'siz yangi hisob esa aynan shu holatni
+       // ko'radi (`store_policy.dart`). Android o'zgarmaydi.
++      // BO'SH HOLATDA HAM pastga tortib yangilash: saytda ID olgan odam
++      // ilovani qayta ochmasdan uni ko'ra oladi.
+       body: ids.isEmpty
+-          ? StatePanel(
+-              icon: Icons.badge_outlined,
+-              title: l.homeNoId,
+-              message: isAppStoreBuild ? null : l.homeNoIdHint,
+-              actionLabel: isAppStoreBuild ? null : l.homeShop,
+-              onAction:
+-                  isAppStoreBuild ? null : () => context.push(Routes.shop),
++          ? RefreshIndicator(
++              key: const ValueKey('nfc-ids-refresh'),
++              color: context.tokens.accent2,
++              onRefresh: () => ref.read(sessionProvider.notifier).refresh(),
++              child: LayoutBuilder(
++                builder: (context, box) => SingleChildScrollView(
++                  physics: const AlwaysScrollableScrollPhysics(),
++                  child: ConstrainedBox(
++                    constraints: BoxConstraints(minHeight: box.maxHeight),
++                    child: StatePanel(
++                      icon: Icons.badge_outlined,
++                      title: l.homeNoId,
++                      message: isAppStoreBuild ? null : l.homeNoIdHint,
++                      actionLabel: isAppStoreBuild ? null : l.homeShop,
++                      onAction: isAppStoreBuild
++                          ? null
++                          : () => context.push(Routes.shop),
++                    ),
++                  ),
++                ),
++              ),
+             )
+           : RefreshIndicator(
+               color: context.tokens.accent2,
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index bfc7d88..92cb3cd 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -533,8 +533,23 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+             icon: Icons.music_note_outlined,
+             gap: Gap.sm,
+             trailing: Text('${_music.length}/$_musicMax',
+-                style: AppType.monoStyle(color: t.text2, size: 12)),
++                style: AppType.monoStyle(
++                    color: _music.length > _musicMax ? t.error : t.text2,
++                    size: 12)),
+             children: [
++              // CHEGARADAN ORTIQ (masalan, Premium / sinov tugagan):
++              // server saqlashda ortiqchasini JIM kesib tashlaydi —
++              // odam buni oldindan bilsin (audit 2026-10-06).
++              if (_music.length > _musicMax)
++                Text(
++                  l.profileMusicOverLimit(_musicMax),
++                  key: const ValueKey('music-over-limit'),
++                  style: TextStyle(
++                      fontFamily: AppType.sans,
++                      fontSize: 12.5,
++                      fontWeight: FontWeight.w600,
++                      color: t.error),
++                ),
+               for (var i = 0; i < _music.length; i++)
+                 Container(
+                   padding: const EdgeInsets.fromLTRB(
+diff --git a/mobile_nova/lib/features/profile/profile_repository.dart b/mobile_nova/lib/features/profile/profile_repository.dart
+index 3036e45..5017f85 100644
+--- a/mobile_nova/lib/features/profile/profile_repository.dart
++++ b/mobile_nova/lib/features/profile/profile_repository.dart
+@@ -148,7 +148,16 @@ class ProfileRepository {
+     _api.post<void>('/api/records/$code/view');
+   }
+ 
+-  Future<Result<void>> follow(String code) => _api.post<void>('/api/follow/$code');
++  /// Obuna bo'lish. 409 `ALREADY_FOLLOWING` — maqsadga allaqachon
++  /// erishilgan (boshqa qurilmada obuna bo'lingan): MUVAFFAQIYAT.
++  /// `CANNOT_FOLLOW_SELF` esa xato bo'lib qoladi (o'z matni bor).
++  Future<Result<void>> follow(String code) async {
++    final res = await _api.post<void>('/api/follow/$code');
++    if (res case Err(:final error) when error.code == 'ALREADY_FOLLOWING') {
++      return const Ok(null);
++    }
++    return res;
++  }
+ 
+   Future<Result<void>> unfollow(String code) =>
+       _api.post<void>('/api/unfollow/$code');
+@@ -224,7 +233,8 @@ class ProfileRepository {
+     // bo'ladi — iPhone'da ham, Android'da ham (image_prep.dart). Muqova
+     // biroz kattaroq qoladi.
+     final prepared = await prepareImageForUpload(filePath,
+-        maxSide: kind == 'cover' ? 2048 : kImagePrepMaxSide);
++        maxSide: kind == 'cover' ? 2048 : kImagePrepMaxSide,
++        limitBytes: kind == 'cover' ? 20 * 1024 * 1024 : kServerImageLimit);
+     final List<int> bytes;
+     try {
+       bytes = await File(prepared).readAsBytes();
+diff --git a/mobile_nova/lib/features/settings/settings_subscreens.dart b/mobile_nova/lib/features/settings/settings_subscreens.dart
+index 0ceb916..2ace512 100644
+--- a/mobile_nova/lib/features/settings/settings_subscreens.dart
++++ b/mobile_nova/lib/features/settings/settings_subscreens.dart
+@@ -23,6 +23,8 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../shop/shop_screens.dart' show orderStatusView;
+ import '../shop/store_policy.dart';
++import '../premium/premium_access.dart' show iapPaidPremium;
++import '../premium/premium_iap_screen.dart' show kAppleManageSubscriptionsUrl;
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../business/business_screens.dart' show formatMoney;
+@@ -401,6 +403,12 @@ class _SecuritySettingsScreenState
+   /// kirish ekraniga qaytadi.
+   Future<void> _confirmDelete(BuildContext context) async {
+     final l = L.of(context);
++    final user = ref.read(currentUserProvider);
++    // Muddatli (obuna) to'langan Premium — eski muddatsiz emas.
++    final appleSub = isAppStoreBuild &&
++        user != null &&
++        iapPaidPremium(user) &&
++        user.premiumUntil != null;
+     final ok = await showDialog<bool>(
+       context: context,
+       builder: (context) {
+@@ -420,6 +428,24 @@ class _SecuritySettingsScreenState
+                 Text(isAppStoreBuild
+                     ? l.deleteAccountWhatIos
+                     : l.deleteAccountWhat),
++                // iPHONE + FAOL TO'LANGAN OBUNA: Apple obunasi hisob
++                // o'chirilganda O'ZI BEKOR BO'LMAYDI — Apple 5.1.1(v)
++                // talabi: odamga aytiladi va boshqarish yo'li beriladi.
++                if (appleSub) ...[
++                  const SizedBox(height: Gap.md),
++                  Text(l.deleteAccountAppleSub,
++                      key: const ValueKey('delete-apple-sub'),
++                      style: const TextStyle(fontWeight: FontWeight.w600)),
++                  Align(
++                    alignment: Alignment.centerLeft,
++                    child: TextButton.icon(
++                      key: const ValueKey('delete-manage-sub'),
++                      onPressed: () => openLink(kAppleManageSubscriptionsUrl),
++                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                      label: Text(l.iapManage),
++                    ),
++                  ),
++                ],
+                 const SizedBox(height: Gap.md),
+                 CheckboxListTile(
+                   key: const ValueKey('delete-understood'),
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index 0eb781e..ddce891 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -163,9 +163,12 @@ bool get showIdMarket => !isAppStoreBuild;
+ /// mumkin emas edi — bittasi ham ishlamaydi.
+ ///
+ /// iPhone'da Sozlamalardagi qator chizilmaydi, `/settings/notifications`
+-/// esa Sozlamalarga buriladi. Push qo'shilganda (APNs) bu kalit
+-/// qaytariladi. ANDROID O'ZGARMAYDI.
+-bool get showNotificationSettings => !isAppStoreBuild;
++/// esa Sozlamalarga buriladi.
++///
++/// ANDROID'DA HAM YO'Q (audit 2026-10-06): sabab bir xil — push yo'q,
++/// tugmalar hech narsaga ta'sir qilmaydi (Play'da ham "ishlamaydigan
++/// imkoniyat"). Push (FCM / APNs) qo'shilganda bu kalit qaytariladi.
++bool get showNotificationSettings => false;
+ 
+ /// Shu buyurtmani ILOVA ICHIDA to'lash mumkinmi.
+ ///
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index a3611ab..9baa43d 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1191,5 +1191,15 @@
+   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+   "nfcCancelled": "Cancelled",
+   "nfcNotNfcstore": "This is not an NFCSTORE tag",
+-  "nfcOpenInBrowser": "Open in browser"
++  "nfcOpenInBrowser": "Open in browser",
++  "deleteAccountAppleSub": "A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.",
++  "errFollowSelf": "You can’t follow yourself",
++  "errLimitReached": "Limit reached",
++  "errLimitReachedN": "Limit reached: at most {limit}",
++  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
++  "errPromotionPrice": "The sale price must be lower than the regular price",
++  "errDemoBusiness": "The sample business can’t be changed",
++  "errRequiredFields": "Please fill in the required fields",
++  "profileMusicOverLimit": "A profile can have at most {max} tracks — extra ones will be removed when you save.",
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index a5c2b4d..b674fa7 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1191,5 +1191,15 @@
+   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+   "nfcCancelled": "Отменено",
+   "nfcNotNfcstore": "Это не метка NFCSTORE",
+-  "nfcOpenInBrowser": "Открыть в браузере"
++  "nfcOpenInBrowser": "Открыть в браузере",
++  "deleteAccountAppleSub": "Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.",
++  "errFollowSelf": "Нельзя подписаться на себя",
++  "errLimitReached": "Достигнут лимит",
++  "errLimitReachedN": "Достигнут лимит: не более {limit}",
++  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
++  "errPromotionPrice": "Цена со скидкой должна быть ниже основной цены",
++  "errDemoBusiness": "Демо-бизнес нельзя изменять",
++  "errRequiredFields": "Заполните обязательные поля",
++  "profileMusicOverLimit": "В профиле может быть не более {max} треков — лишние будут удалены при сохранении.",
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 6315aa6..243782b 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1342,5 +1342,15 @@
+   "@nfcEventType": {"placeholders": {"type": {"type": "String"}}},
+   "nfcCancelled": "Bekor qilindi",
+   "nfcNotNfcstore": "Bu NFCSTORE yorlig‘i emas",
+-  "nfcOpenInBrowser": "Brauzerda ochish"
++  "nfcOpenInBrowser": "Brauzerda ochish",
++  "deleteAccountAppleSub": "Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.",
++  "errFollowSelf": "O‘zingizga obuna bo‘lib bo‘lmaydi",
++  "errLimitReached": "Chegaraga yetildi",
++  "errLimitReachedN": "Chegaraga yetildi: ko‘pi bilan {limit} ta",
++  "@errLimitReachedN": {"placeholders": {"limit": {"type": "int"}}},
++  "errPromotionPrice": "Chegirma narxi asosiy narxdan past bo‘lishi kerak",
++  "errDemoBusiness": "Namuna biznesni o‘zgartirib bo‘lmaydi",
++  "errRequiredFields": "Majburiy maydonlarni to‘ldiring",
++  "profileMusicOverLimit": "Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.",
++  "@profileMusicOverLimit": {"placeholders": {"max": {"type": "int"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index a024ce1..234ff94 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6218,6 +6218,54 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Brauzerda ochish'**
+   String get nfcOpenInBrowser;
++
++  /// No description provided for @deleteAccountAppleSub.
++  ///
++  /// In uz, this message translates to:
++  /// **'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.'**
++  String get deleteAccountAppleSub;
++
++  /// No description provided for @errFollowSelf.
++  ///
++  /// In uz, this message translates to:
++  /// **'O‘zingizga obuna bo‘lib bo‘lmaydi'**
++  String get errFollowSelf;
++
++  /// No description provided for @errLimitReached.
++  ///
++  /// In uz, this message translates to:
++  /// **'Chegaraga yetildi'**
++  String get errLimitReached;
++
++  /// No description provided for @errLimitReachedN.
++  ///
++  /// In uz, this message translates to:
++  /// **'Chegaraga yetildi: ko‘pi bilan {limit} ta'**
++  String errLimitReachedN(int limit);
++
++  /// No description provided for @errPromotionPrice.
++  ///
++  /// In uz, this message translates to:
++  /// **'Chegirma narxi asosiy narxdan past bo‘lishi kerak'**
++  String get errPromotionPrice;
++
++  /// No description provided for @errDemoBusiness.
++  ///
++  /// In uz, this message translates to:
++  /// **'Namuna biznesni o‘zgartirib bo‘lmaydi'**
++  String get errDemoBusiness;
++
++  /// No description provided for @errRequiredFields.
++  ///
++  /// In uz, this message translates to:
++  /// **'Majburiy maydonlarni to‘ldiring'**
++  String get errRequiredFields;
++
++  /// No description provided for @profileMusicOverLimit.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profilda ko‘pi bilan {max} ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.'**
++  String profileMusicOverLimit(int max);
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 01b6b88..0978d41 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3441,4 +3441,34 @@ class LEn extends L {
+ 
+   @override
+   String get nfcOpenInBrowser => 'Open in browser';
++
++  @override
++  String get deleteAccountAppleSub =>
++      'A Premium subscription bought through Apple is not cancelled when you delete your account — billing continues until you cancel it. Cancel it in your App Store subscriptions.';
++
++  @override
++  String get errFollowSelf => 'You can’t follow yourself';
++
++  @override
++  String get errLimitReached => 'Limit reached';
++
++  @override
++  String errLimitReachedN(int limit) {
++    return 'Limit reached: at most $limit';
++  }
++
++  @override
++  String get errPromotionPrice =>
++      'The sale price must be lower than the regular price';
++
++  @override
++  String get errDemoBusiness => 'The sample business can’t be changed';
++
++  @override
++  String get errRequiredFields => 'Please fill in the required fields';
++
++  @override
++  String profileMusicOverLimit(int max) {
++    return 'A profile can have at most $max tracks — extra ones will be removed when you save.';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 72c6012..793e898 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3465,4 +3465,34 @@ class LRu extends L {
+ 
+   @override
+   String get nfcOpenInBrowser => 'Открыть в браузере';
++
++  @override
++  String get deleteAccountAppleSub =>
++      'Подписка Premium, оформленная через Apple, не отменяется при удалении аккаунта — оплата продолжится, пока вы её не отмените. Отмените её в подписках App Store.';
++
++  @override
++  String get errFollowSelf => 'Нельзя подписаться на себя';
++
++  @override
++  String get errLimitReached => 'Достигнут лимит';
++
++  @override
++  String errLimitReachedN(int limit) {
++    return 'Достигнут лимит: не более $limit';
++  }
++
++  @override
++  String get errPromotionPrice =>
++      'Цена со скидкой должна быть ниже основной цены';
++
++  @override
++  String get errDemoBusiness => 'Демо-бизнес нельзя изменять';
++
++  @override
++  String get errRequiredFields => 'Заполните обязательные поля';
++
++  @override
++  String profileMusicOverLimit(int max) {
++    return 'В профиле может быть не более $max треков — лишние будут удалены при сохранении.';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index e01d4a4..591bea9 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3421,4 +3421,34 @@ class LUz extends L {
+ 
+   @override
+   String get nfcOpenInBrowser => 'Brauzerda ochish';
++
++  @override
++  String get deleteAccountAppleSub =>
++      'Apple orqali olingan Premium obunasi hisob o‘chirilganda o‘zi bekor bo‘lmaydi — bekor qilinmaguncha to‘lov davom etadi. Uni App Store obunalarida bekor qiling.';
++
++  @override
++  String get errFollowSelf => 'O‘zingizga obuna bo‘lib bo‘lmaydi';
++
++  @override
++  String get errLimitReached => 'Chegaraga yetildi';
++
++  @override
++  String errLimitReachedN(int limit) {
++    return 'Chegaraga yetildi: ko‘pi bilan $limit ta';
++  }
++
++  @override
++  String get errPromotionPrice =>
++      'Chegirma narxi asosiy narxdan past bo‘lishi kerak';
++
++  @override
++  String get errDemoBusiness => 'Namuna biznesni o‘zgartirib bo‘lmaydi';
++
++  @override
++  String get errRequiredFields => 'Majburiy maydonlarni to‘ldiring';
++
++  @override
++  String profileMusicOverLimit(int max) {
++    return 'Profilda ko‘pi bilan $max ta qo‘shiq bo‘ladi — saqlanganda ortiqchasi olib tashlanadi.';
++  }
+ }
+diff --git a/mobile_nova/lib/routing/shell.dart b/mobile_nova/lib/routing/shell.dart
+index 5545995..185bc78 100644
+--- a/mobile_nova/lib/routing/shell.dart
++++ b/mobile_nova/lib/routing/shell.dart
+@@ -126,7 +126,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
+     final onReels = shell.currentIndex == kReelsTab;
+     final clean = onReels && ref.watch(reelsCleanProvider);
+ 
+-    return Scaffold(
++    // ANDROID "ORQAGA" (audit 2026-10-06): Asosiy bo'lmagan tab ildizida
++    // orqaga bosilsa ilova YOPILMAYDI — avval Asosiy tabga qaytadi;
++    // ilovadan chiqish faqat Asosiy tabdan. Tab ichidagi ekranlar
++    // (branch navigatori) avvalgidek o'z tarixi bo'yicha qaytadi —
++    // PopScope faqat shell sahifasining o'zi yopilmoqchi bo'lganda
++    // ishlaydi.
++    return PopScope(
++      canPop: shell.currentIndex == 0,
++      onPopInvokedWithResult: (didPop, _) {
++        if (didPop || shell.currentIndex == 0) return;
++        ref.read(audioOwnerProvider).stopAll();
++        shell.goBranch(0);
++      },
++      child: Scaffold(
+       backgroundColor: Colors.transparent,
+       extendBody: true,
+       // Reels'da videolar vertikal aylanadi — u yerda panel doim to'liq.
+@@ -178,6 +191,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
+           ),
+         ),
+       ),
++      ),
+     );
+   }
+ }
+diff --git a/mobile_nova/test/app_store_ios_fixes_test.dart b/mobile_nova/test/app_store_ios_fixes_test.dart
+index 30c4221..77bdd66 100644
+--- a/mobile_nova/test/app_store_ios_fixes_test.dart
++++ b/mobile_nova/test/app_store_ios_fixes_test.dart
+@@ -272,11 +272,12 @@ void main() {
+           Routes.settings);
+     }, variant: _ios);
+ 
+-    testWidgets('Android: ikkalasi ham ochiladi', (tester) async {
++    testWidgets('Android: yangiliklar ochiladi; bildirishnoma sozlamasi '
++        'push yo‘qligi uchun yo‘q (audit 2026-10-06)', (tester) async {
+       final r = await boot(tester);
+       expect(await go(tester, r, Routes.settingsNews), Routes.settingsNews);
+       expect(await go(tester, r, Routes.settingsNotifications),
+-          Routes.settingsNotifications);
++          Routes.settings);
+     });
+   });
+ 
+@@ -365,10 +366,12 @@ void main() {
+       expect(find.text(l.settingsLanguage), findsOneWidget);
+     }, variant: _ios);
+ 
+-    testWidgets('Android: qator bor', (tester) async {
++    testWidgets('Android: push yo‘q — qator ham yo‘q (audit 2026-10-06)',
++        (tester) async {
+       final l = await pumpSettings(tester);
+-      expect(find.text(l.settingsNotifications), findsOneWidget);
+-      expect(showNotificationSettings, isTrue);
++      expect(find.text(l.settingsNotifications), findsNothing);
++      expect(showNotificationSettings, isFalse);
++      expect(find.text(l.settingsPrivacy), findsOneWidget);
+     });
+   });
+ 
+diff --git a/mobile_nova/test/audit_1006_d_test.dart b/mobile_nova/test/audit_1006_d_test.dart
+new file mode 100644
+index 0000000..05931ac
+--- /dev/null
++++ b/mobile_nova/test/audit_1006_d_test.dart
+@@ -0,0 +1,352 @@
++import 'dart:io';
++
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/media/image_prep.dart';
++import 'package:nfcstore_nova/core/media/video_prep.dart' show videoPrepChannel;
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/external_link.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/design/widgets/states.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/premium/premium_iap_screen.dart'
++    show kAppleManageSubscriptionsUrl;
++import 'package:nfcstore_nova/features/profile/profile_edit_screen.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/settings/settings_subscreens.dart';
++import 'package:nfcstore_nova/features/shop/store_policy.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// AUDIT 2026-10-06 (4-qism): kichik tuzatishlar.
++
++class _Auth extends FakeAuthRepository {
++  _Auth(this.user, {super.ids});
++  User user;
++  int meCalls = 0;
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> restore() async =>
++      Ok((user: user, ids: ids));
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> me() async {
++    meCalls++;
++    return restore();
++  }
++}
++
++/// `post` natijasini qo'lda beradigan ApiClient.
++class _Api extends ApiClient {
++  _Api(this.result);
++  final Result<Object?> result;
++  final paths = <String>[];
++
++  @override
++  Future<Result<T>> post<T>(String path, [Object? body]) async {
++    paths.add(path);
++    return switch (result) {
++      Ok() => Ok(null as T),
++      Err(:final error) => Err(error),
++    };
++  }
++}
++
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void main() {
++  group('6. iPhone: hisob o‘chirishda Apple obunasi ogohlantirishi', () {
++    Future<void> openDialog(WidgetTester tester, User user) async {
++      tester.view.physicalSize = const Size(390, 2400) * 3;
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        authRepositoryProvider.overrideWithValue(_Auth(user)),
++      ]);
++      addTearDown(c.dispose);
++      c.read(sessionProvider);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child:
++            wrapScreen(const SecuritySettingsScreen(), tokens: NfcTokens.ivory),
++      ));
++      await settle(tester, frames: 8);
++      final l = await _uz();
++      await tester.scrollUntilVisible(
++          find.text(l.settingsDeleteAccount).last, 300,
++          scrollable: find.byType(Scrollable).first);
++      await tester.tap(find.text(l.settingsDeleteAccount).last);
++      await settle(tester, frames: 8);
++    }
++
++    final sub = User(
++        id: 1,
++        email: 'a@b.uz',
++        premium: true,
++        premiumUntil: DateTime.now().add(const Duration(days: 20)));
++
++    testWidgets('faol obuna — matn va boshqarish tugmasi', (tester) async {
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      await openDialog(tester, sub);
++      final l = await _uz();
++      expect(find.text(l.deleteAccountAppleSub), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('delete-manage-sub')));
++      await settle(tester, frames: 4);
++      expect(opened.single.toString(), kAppleManageSubscriptionsUrl);
++    }, variant: _ios);
++
++    testWidgets('obunasiz / muddatsiz Premium — yo‘q', (tester) async {
++      await openDialog(
++          tester, const User(id: 1, email: 'a@b.uz', premium: true));
++      expect(find.byKey(const ValueKey('delete-apple-sub')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android — yo‘q', (tester) async {
++      await openDialog(tester, sub);
++      expect(find.byKey(const ValueKey('delete-apple-sub')), findsNothing);
++    });
++  });
++
++  group('8. fondan qaytganda sessiya yangilanadi (≥60 s)', () {
++    testWidgets('60 s dan tez — yo‘q, keyin — bir marta', (tester) async {
++      var now = DateTime(2026, 10, 6, 12);
++      sessionResumeClock = () => now;
++      addTearDown(() => sessionResumeClock = DateTime.now);
++      final auth = _Auth(testUser);
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        authRepositoryProvider.overrideWithValue(auth),
++      ]);
++      addTearDown(c.dispose);
++      c.listen(sessionResumeRefreshProvider, (_, __) {});
++      c.read(sessionProvider);
++      await tester.pump(const Duration(milliseconds: 20));
++      expect(c.read(sessionProvider), isA<SessionActive>());
++
++      now = now.add(const Duration(seconds: 30));
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++      await tester.pump(const Duration(milliseconds: 20));
++      expect(auth.meCalls, 0);
++
++      now = now.add(const Duration(seconds: 61));
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++      await tester.pump(const Duration(milliseconds: 20));
++      expect(auth.meCalls, 1);
++
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++      await tester.pump(const Duration(milliseconds: 20));
++      expect(auth.meCalls, 1, reason: 'darhol qayta — so‘ralmaydi');
++    });
++
++    test('NFC ekranlarida pastga tortib yangilash bor', () {
++      final ids = File('lib/features/nfc/nfc_ids_screen.dart').readAsStringSync();
++      expect(ids, contains("ValueKey('nfc-ids-refresh')"));
++      final center =
++          File('lib/features/nfc/nfc_center_screen.dart').readAsStringSync();
++      expect(center, contains("ValueKey('nfc-center-refresh')"));
++    });
++  });
++
++  test('9. bildirishnoma sozlamasi Android’da ham yo‘q (push yo‘q)', () {
++    expect(showNotificationSettings, isFalse);
++  });
++
++  group('10. obuna 409', () {
++    test('ALREADY_FOLLOWING — muvaffaqiyat', () async {
++      final api = _Api(const Err(AppError(AppErrorKind.conflict,
++          code: 'ALREADY_FOLLOWING', status: 409)));
++      final r = await ProfileRepository(api).follow('ABC123');
++      expect(r.isOk, isTrue);
++    });
++
++    test('CANNOT_FOLLOW_SELF — o‘z matni', () async {
++      final api = _Api(const Err(AppError(AppErrorKind.conflict,
++          code: 'CANNOT_FOLLOW_SELF', status: 409)));
++      final r = await ProfileRepository(api).follow('ABC123');
++      final l = await _uz();
++      expect(describeError(l, r.errorOrNull!), l.errFollowSelf);
++    });
++  });
++
++  group('11. yangi xato kalitlari', () {
++    test('describeError', () async {
++      for (final code in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(code));
++        String d(String c, [Map<String, dynamic>? data]) => describeError(
++            l, AppError(AppErrorKind.conflict, code: c, data: data));
++        expect(d('limit_reached', {'limit': 30}), l.errLimitReachedN(30));
++        expect(d('limit_reached'), l.errLimitReached);
++        expect(d('bad_promotion_price'), l.errPromotionPrice);
++        expect(d('demo_business'), l.errDemoBusiness);
++        expect(d('required_fields'), l.errRequiredFields);
++        expect(l.errLimitReachedN(30), contains('30'));
++      }
++    });
++
++    test('chegirma narxi asosiy narxdan past — ilovada tekshiriladi', () {
++      final src =
++          File('lib/features/business/business_forms.dart').readAsStringSync();
++      expect(src, contains('sale > 0 && sale >= price'));
++      expect(src, contains('l.errPromotionPrice'));
++    });
++  });
++
++  group('13. Android orqaga: avval Asosiy tab', () {
++    testWidgets('Profil tabida orqaga — Asosiy, ilova yopilmaydi',
++        (tester) async {
++      tester.view.physicalSize = const Size(1170, 2532);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [...await testOverrides()]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(
++          UncontrolledProviderScope(container: c, child: const NovaApp()));
++      for (var i = 0; i < 30; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      final router = c.read(routerProvider);
++      router.go(Routes.profile);
++      for (var i = 0; i < 20; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      expect(router.routerDelegate.currentConfiguration.uri.path,
++          Routes.profile);
++
++      var exited = false;
++      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
++          SystemChannels.platform, (call) async {
++        if (call.method == 'SystemNavigator.pop') exited = true;
++        return null;
++      });
++      addTearDown(() => tester.binding.defaultBinaryMessenger
++          .setMockMethodCallHandler(SystemChannels.platform, null));
++
++      await tester.binding.handlePopRoute();
++      for (var i = 0; i < 10; i++) {
++        await tester.pump(const Duration(milliseconds: 50));
++      }
++      expect(router.routerDelegate.currentConfiguration.uri.path, Routes.home);
++      expect(exited, isFalse);
++    });
++  });
++
++  group('14. rasm: ikkinchi o‘tish va shaffof PNG', () {
++    TestWidgetsFlutterBinding.ensureInitialized();
++    final messenger =
++        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
++    late Directory dir;
++    setUp(() => dir = Directory.systemTemp.createTempSync('img_prep2'));
++    tearDown(() {
++      messenger.setMockMethodCallHandler(videoPrepChannel, null);
++      dir.deleteSync(recursive: true);
++    });
++    String file(String name, int bytes) {
++      final f = File('${dir.path}/$name')
++        ..writeAsBytesSync(List.filled(bytes, 1));
++      return f.path;
++    }
++
++    test('JPEG hali 700 KB dan katta — kichikroq qayta urinadi', () async {
++      final calls = <Map>[];
++      messenger.setMockMethodCallHandler(videoPrepChannel, (c) async {
++        final a = c.arguments as Map;
++        calls.add({'m': c.method, ...a});
++        // 1-o'tish 900 KB, 2-o'tish 500 KB.
++        final size = calls.length == 1 ? 900 * 1024 : 500 * 1024;
++        File(a['out'] as String).writeAsBytesSync(List.filled(size, 2));
++        return a['out'];
++      });
++      final out = await prepareImageForUpload(file('photo.jpg', 3 << 20));
++      expect(calls.map((c) => c['m']), ['toJpeg', 'toJpeg']);
++      expect(calls[1]['maxSide'], 1280);
++      expect(calls[1]['quality'], 70);
++      expect(File(out).lengthSync(), 500 * 1024);
++      expect(File(calls[0]['out'] as String).existsSync(), isFalse,
++          reason: 'oraliq fayl o‘chirildi');
++    });
++
++    test('shaffof PNG > 700 KB — PNG holida kichraytiriladi', () async {
++      final calls = <String>[];
++      messenger.setMockMethodCallHandler(videoPrepChannel, (c) async {
++        calls.add(c.method);
++        if (c.method == 'toJpeg') return null; // shaffof
++        final a = c.arguments as Map;
++        File(a['out'] as String).writeAsBytesSync(List.filled(300 * 1024, 3));
++        return a['out'];
++      });
++      final out = await prepareImageForUpload(file('logo.png', 1200 * 1024));
++      expect(calls, ['toJpeg', 'toPng']);
++      expect(out, endsWith('.png'));
++    });
++
++    test('shaffof PNG, lekin 700 KB dan kichik — tegilmaydi', () async {
++      final calls = <String>[];
++      messenger.setMockMethodCallHandler(videoPrepChannel, (c) async {
++        calls.add(c.method);
++        return null;
++      });
++      final p = file('logo.png', 600 * 1024);
++      expect(await prepareImageForUpload(p), p);
++      expect(calls, ['toJpeg']);
++    });
++
++    test('muqova — chegara 20 MB, ikkinchi o‘tish yo‘q', () async {
++      final calls = <String>[];
++      messenger.setMockMethodCallHandler(videoPrepChannel, (c) async {
++        calls.add(c.method);
++        final a = c.arguments as Map;
++        File(a['out'] as String).writeAsBytesSync(List.filled(900 * 1024, 2));
++        return a['out'];
++      });
++      await prepareImageForUpload(file('cover.jpg', 3 << 20),
++          maxSide: 2048, limitBytes: 20 * 1024 * 1024);
++      expect(calls, ['toJpeg']);
++    });
++  });
++
++  group('15. qo‘shiqlar chegaradan ortiq — ogohlantirish', () {
++    testWidgets('6 ta qo‘shiq, chegara 5', (tester) async {
++      tester.view.physicalSize = const Size(393 * 3, 2400 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final music = [for (var i = 0; i < 6; i++) '/uploads/m$i.mp3'];
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          authRepositoryProvider.overrideWithValue(_Auth(testUser, ids: [
++            NfcId(code: '48210377', name: 'T', primary: true, musicUrls: music),
++          ])),
++        ],
++        child: wrapScreen(const ProfileEditScreen()),
++      ));
++      await settle(tester, frames: 20);
++      final section = find.byKey(const ValueKey('edit-section-music'));
++      await tester.scrollUntilVisible(section, 300,
++          scrollable: find.byType(Scrollable).first);
++      await settle(tester, frames: 4);
++      final l = await _uz();
++      expect(find.text('6/5'), findsOneWidget);
++      expect(find.text(l.profileMusicOverLimit(5)), findsOneWidget);
++    });
++  });
++}
+diff --git a/mobile_nova/test/store_policy_test.dart b/mobile_nova/test/store_policy_test.dart
+index 80ff63b..f64925c 100644
+--- a/mobile_nova/test/store_policy_test.dart
++++ b/mobile_nova/test/store_policy_test.dart
+@@ -99,7 +99,11 @@ void main() {
+           // chaqiruv joyida ko'rinmaydi. Bu TEShIK emas: quyida
+           // o'sha maydonga nima berilishi alohida tekshiriladi.
+           final wrapper = arg.trim() == 'url';
+-          final legal = arg.contains('/maxfiylik') || arg.contains('/shartlar');
++          // Apple'ning o'z obunalarni boshqarish sahifasi (hisob
++          // o'chirishda, iPhone) — to'lov emas, bekor qilish yo'li.
++          final legal = arg.contains('/maxfiylik') ||
++              arg.contains('/shartlar') ||
++              arg.trim() == 'kAppleManageSubscriptionsUrl';
+           expect(wrapper || legal, isTrue,
+               reason: '${entry.key}: huquqiy hujjat emas — `$arg`');
+         }
+-- 
+2.43.0
+

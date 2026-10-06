@@ -1,0 +1,2728 @@
+From c39d0d62e61a6fef766d75463622f9cd093cc227 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 05:53:30 +0000
+Subject: [PATCH 44/53] Nova (iPhone): Premium obunasi Apple In-App Purchase
+ orqali (StoreKit 2)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- in_app_purchase_storekit 0.4.8+1 (+ platform_interface 1.4.0) — faqat
+  StoreKit plagini; Android'ga Play Billing / BILLING ruxsati qo'shilmaydi.
+- IapStore interfeysi (StoreKit 2 ustida), IapRepository (/api/iap/apple/
+  config, account-token, verify), IapController: JWS serverga, 200 dan
+  keyingina completePurchase; tarmoq xatosida tranzaksiya ochiq qoladi.
+  Kirgan foydalanuvchida purchaseStream ilova ochilishidan tinglanadi.
+- /premium ekrani: App Store narxi va davri, obuna, tiklash, Apple 3.1.2
+  matni, EULA va maxfiylik havolalari, kutilayotgan / faol holatlar.
+- Kirish yo'li faqat iPhone + server kaliti yoqilganda: Sozlamalar va
+  biznes katalogi kartasi. Kalit o'chiq / Android — bugungi xulq.
+- iPhone'da Premium obunachiga 10 ta profil qo'shig'i (server bilan bir).
+- Sinovlar: test/iap_premium_test.dart (24 ta).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/app/app.dart                  |   5 +
+ .../lib/data/repositories/iap_repository.dart | 109 ++++
+ .../lib/features/business/business_forms.dart |  26 +-
+ .../lib/features/premium/iap_controller.dart  | 346 +++++++++++
+ .../lib/features/premium/iap_store.dart       | 209 +++++++
+ .../features/premium/premium_iap_screen.dart  | 418 +++++++++++++
+ .../features/profile/profile_edit_screen.dart |  12 +-
+ .../features/settings/settings_screen.dart    |  13 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |  34 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  34 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  35 +-
+ .../lib/l10n/gen/app_localizations.dart       | 150 +++++
+ .../lib/l10n/gen/app_localizations_en.dart    | 121 ++++
+ .../lib/l10n/gen/app_localizations_ru.dart    | 128 ++++
+ .../lib/l10n/gen/app_localizations_uz.dart    | 120 ++++
+ mobile_nova/lib/routing/router.dart           |  12 +
+ mobile_nova/lib/routing/routes.dart           |   5 +
+ mobile_nova/pubspec.lock                      |  24 +
+ mobile_nova/pubspec.yaml                      |   8 +
+ mobile_nova/test/helpers.dart                 |  14 +
+ mobile_nova/test/iap_premium_test.dart        | 571 ++++++++++++++++++
+ mobile_nova/test/routes_test.dart             |   1 +
+ 22 files changed, 2389 insertions(+), 6 deletions(-)
+ create mode 100644 mobile_nova/lib/data/repositories/iap_repository.dart
+ create mode 100644 mobile_nova/lib/features/premium/iap_controller.dart
+ create mode 100644 mobile_nova/lib/features/premium/iap_store.dart
+ create mode 100644 mobile_nova/lib/features/premium/premium_iap_screen.dart
+ create mode 100644 mobile_nova/test/iap_premium_test.dart
+
+diff --git a/mobile_nova/lib/app/app.dart b/mobile_nova/lib/app/app.dart
+index 96b357a..936bc29 100644
+--- a/mobile_nova/lib/app/app.dart
++++ b/mobile_nova/lib/app/app.dart
+@@ -9,6 +9,7 @@ import '../routing/router.dart';
+ import 'providers.dart';
+ import '../features/settings/app_lock.dart';
+ import '../features/auth/session.dart';
++import '../features/premium/iap_controller.dart' show iapWatcherProvider;
+ import 'ui_scale.dart';
+ 
+ class NovaApp extends ConsumerWidget {
+@@ -21,6 +22,10 @@ class NovaApp extends ConsumerWidget {
+     // eshitmasdi. `watch` shu yerda turishi kerak — kuzatuvchi
+     // ilovaning umri davomida tirik bo'lishi uchun.
+     ref.watch(sessionExpiryWatcherProvider);
++    // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
++    // tranzaksiyalari ilova ochilishidanoq tinglanadi
++    // (`features/premium/iap_controller.dart`). Android'da hech narsa.
++    ref.watch(iapWatcherProvider);
+ 
+     final tokens = ref.watch(themeProvider);
+     final locale = ref.watch(localeProvider);
+diff --git a/mobile_nova/lib/data/repositories/iap_repository.dart b/mobile_nova/lib/data/repositories/iap_repository.dart
+new file mode 100644
+index 0000000..f66c013
+--- /dev/null
++++ b/mobile_nova/lib/data/repositories/iap_repository.dart
+@@ -0,0 +1,109 @@
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../app/providers.dart';
++import '../../core/network/api_client.dart';
++import '../../core/utils/result.dart';
++
++/// APPLE IN-APP PURCHASE — SERVER TOMONI (`/api/iap/apple/*`).
++///
++/// ## ILOVA PREMIUMNI O'ZI YOQMAYDI
++///
++/// StoreKit bergan imzolangan tranzaksiya (JWS) serverga yuboriladi;
++/// server uni Apple kaliti bilan tekshiradi, `appAccountToken` hisobga
++/// mosligini ko'radi va Premium muddatini O'ZI yozadi. Ilova faqat
++/// natijani o'qiydi va sessiyani yangilaydi.
++///
++/// ## KALIT (KILL SWITCH)
++///
++/// `config.enabled == false` yoki so'rov muvaffaqiyatsiz — ilovada
++/// xarid haqida HECH NARSA ko'rinmaydi (ekran ham, kirish yo'li ham).
++class IapRepository {
++  IapRepository(this._api);
++  final ApiClient _api;
++
++  /// `GET /api/iap/apple/config` → `{enabled, products}`.
++  Future<Result<IapConfig>> config() async {
++    final res = await _api.get<Map<String, dynamic>>('/api/iap/apple/config');
++    return res.map(IapConfig.fromJson);
++  }
++
++  /// `GET /api/iap/apple/account-token` → `{token: '<uuid>'}`.
++  Future<Result<String>> accountToken() async {
++    final res =
++        await _api.get<Map<String, dynamic>>('/api/iap/apple/account-token');
++    return res.map((j) => '${j['token'] ?? ''}');
++  }
++
++  /// `POST /api/iap/apple/verify` `{signedTransaction}`.
++  ///
++  /// 200 — `premium: true` (muddati bilan) yoki `premium: false`
++  /// (`reason: expired | revoked`). Boshqasi — `Err`: 403
++  /// `account_mismatch`, 409 `already_linked`, 503 `iap_disabled`,
++  /// tarmoq xatosi.
++  Future<Result<IapVerifyResult>> verify(String signedTransaction) async {
++    final res = await _api.post<Map<String, dynamic>>(
++      '/api/iap/apple/verify',
++      {'signedTransaction': signedTransaction},
++    );
++    return res.map(IapVerifyResult.fromJson);
++  }
++}
++
++/// Server kaliti va sotuvdagi mahsulotlar.
++class IapConfig {
++  const IapConfig({this.enabled = false, this.products = const []});
++
++  /// O'chiq — hech qanday xarid UI yo'q.
++  static const disabled = IapConfig();
++
++  final bool enabled;
++
++  /// App Store mahsulot identifikatorlari — tartibi ekrandagi tartib.
++  final List<String> products;
++
++  factory IapConfig.fromJson(Map<String, dynamic> j) {
++    final raw = j['products'];
++    final products = raw is List
++        ? raw.map((e) => '$e').where((e) => e.isNotEmpty).toList()
++        : const <String>[];
++    return IapConfig(
++      // Mahsulotsiz yoqilgan kalit — sotadigan narsa yo'q, ya'ni o'chiq.
++      enabled: j['enabled'] == true && products.isNotEmpty,
++      products: products,
++    );
++  }
++}
++
++/// `verify` natijasi (HTTP 200).
++class IapVerifyResult {
++  const IapVerifyResult({
++    required this.premium,
++    this.expiresAt,
++    this.productId = '',
++    this.reason = '',
++  });
++
++  final bool premium;
++  final DateTime? expiresAt;
++  final String productId;
++
++  /// `premium: false` bo'lganda: `expired` | `revoked`.
++  final String reason;
++
++  factory IapVerifyResult.fromJson(Map<String, dynamic> j) => IapVerifyResult(
++        premium: j['premium'] == true,
++        expiresAt: _date(j['premiumExpiresAt']),
++        productId: '${j['productId'] ?? ''}',
++        reason: '${j['reason'] ?? ''}',
++      );
++
++  static DateTime? _date(Object? v) {
++    if (v is int) return DateTime.fromMillisecondsSinceEpoch(v, isUtc: true);
++    if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
++    return null;
++  }
++}
++
++final iapRepositoryProvider = Provider<IapRepository>(
++  (ref) => IapRepository(ref.watch(apiProvider)),
++);
+diff --git a/mobile_nova/lib/features/business/business_forms.dart b/mobile_nova/lib/features/business/business_forms.dart
+index 0d39b6a..8216be1 100644
+--- a/mobile_nova/lib/features/business/business_forms.dart
++++ b/mobile_nova/lib/features/business/business_forms.dart
+@@ -31,6 +31,7 @@ import 'business_providers.dart';
+ import 'business_screens.dart';
+ import 'store_catalog.dart';
+ import '../shop/store_policy.dart';
++import '../premium/iap_controller.dart' show iapEnabledProvider;
+ 
+ /// Backend qabul qiladigan yo'nalishlar (`COMPANY_V2_CATEGORIES`).
+ ///
+@@ -880,16 +881,18 @@ class _AddProductCard extends StatelessWidget {
+ /// ham, saytga bosiladigan havola ham YO'Q ([StoreNotice] — faqat matn).
+ /// iPhone'da tarif nomi ham, keyingi qadam ham yo'q — faqat limit va
+ /// hisoblagich (Apple 3.1.1, `store_policy.dart`).
+-class BusinessPlanCard extends StatelessWidget {
++class BusinessPlanCard extends ConsumerWidget {
+   const BusinessPlanCard({super.key, required this.plan, required this.count});
+ 
+   final CompanyPlan plan;
+   final int count;
+ 
+   @override
+-  Widget build(BuildContext context) {
++  Widget build(BuildContext context, WidgetRef ref) {
+     final l = L.of(context);
+     final t = context.tokens;
++    // iPhone + Apple IAP kaliti yoqilgan (Android'da doim `false`).
++    final iap = ref.watch(iapEnabledProvider);
+ 
+     // Sinov davrida server cheklov qo'ymaydi — ko'rsatadigan limit
+     // yo'q. Ilgari "Sinov davri: hozircha cheklov yo'q" yozilardi:
+@@ -968,6 +971,25 @@ class BusinessPlanCard extends StatelessWidget {
+               style: Theme.of(context).textTheme.bodySmall,
+             ),
+           ],
++          // iPHONE + IAP KALITI YOQILGAN: Premium ilova ichida (Apple
++          // In-App Purchase) olinadi — bepul tarifda Premium necha tovar
++          // berishi (serverdan) va xarid ekraniga yo'l. Kalit o'chiq
++          // bo'lsa — avvalgidek, hech narsa (`store_policy.dart`).
++          if (iap && plan.free && plan.premiumItemLimit != null) ...[
++            const SizedBox(height: Gap.md),
++            Text(
++              l.iapPlanUpsell(plan.premiumItemLimit!),
++              style: Theme.of(context).textTheme.bodySmall,
++            ),
++            const SizedBox(height: Gap.md),
++            NovaButton(
++              key: const ValueKey('plan-premium'),
++              label: l.premiumBuy,
++              tone: ButtonTone.outline,
++              icon: Icons.workspace_premium_rounded,
++              onPressed: () => context.push(Routes.premium),
++            ),
++          ],
+           const SizedBox(height: Gap.md),
+           StoreNotice(text: l.bizPlanStoreNotice),
+         ],
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+new file mode 100644
+index 0000000..a3285ec
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -0,0 +1,346 @@
++import 'dart:async';
++
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../core/errors/app_error.dart';
++import '../../core/utils/result.dart';
++import '../../data/repositories/iap_repository.dart';
++import '../auth/session.dart';
++import '../shop/store_policy.dart' show isAppStoreBuild;
++import 'iap_store.dart';
++
++// ═══════════════════════════════════════════════════════════════════
++// PREMIUM — APPLE IN-APP PURCHASE (FAQAT iPHONE)
++//
++// Oqim:
++//   1. `GET /api/iap/apple/config` — kalit. O'chiq yoki xato bo'lsa
++//      ilovada xarid haqida hech narsa ko'rinmaydi.
++//   2. Xarid: `account-token` (UUID) -> StoreKit 2 `appAccountToken`.
++//   3. `purchaseStream` dan kelgan JWS -> `POST /api/iap/apple/verify`.
++//   4. Server 200 qaytargandagina `completePurchase`. Tarmoq xatosida
++//      tranzaksiya OCHIQ qoladi va StoreKit uni keyingi ishga
++//      tushirishda qayta beradi (`Transaction.updates`).
++//   5. Sessiya yangilanadi — Premium holati butun ilovada o'zgaradi.
++//
++// ANDROID: `iapConfigProvider` tarmoqqa chiqmay o'chiq qaytaradi,
++// StoreKit esa umuman chaqirilmaydi. Android xulqi o'zgarmaydi.
++// ═══════════════════════════════════════════════════════════════════
++
++final iapStoreProvider = Provider<IapStore>((_) => StoreKitIapStore());
++
++/// Server kaliti. iPhone bo'lmasa — tarmoqsiz o'chiq.
++final iapConfigProvider = FutureProvider<IapConfig>((ref) async {
++  if (!isAppStoreBuild) return IapConfig.disabled;
++  final res = await ref.watch(iapRepositoryProvider).config();
++  return res.valueOrNull ?? IapConfig.disabled;
++});
++
++/// Xarid UI ko'rsatilsinmi — iPhone VA server kaliti yoqilgan.
++///
++/// Javob hali kelmagan bo'lsa ham `false`: kirish yo'li faqat kalit
++/// aniq yoqilganda paydo bo'ladi.
++final iapEnabledProvider = Provider<bool>((ref) {
++  if (!isAppStoreBuild) return false;
++  return ref.watch(iapConfigProvider).valueOrNull?.enabled ?? false;
++});
++
++/// Ekranda ko'rsatiladigan natija.
++enum IapNotice {
++  /// Server tasdiqladi — Premium faol.
++  activated,
++
++  /// Xarid tasdiq kutmoqda (Ask to Buy / SCA).
++  pending,
++
++  /// Server: obuna faol emas (`expired` / `revoked`).
++  inactive,
++
++  /// Tiklashda faol obuna topilmadi.
++  nothingToRestore,
++}
++
++enum IapFailure {
++  network,
++  accountMismatch,
++  alreadyLinked,
++  disabled,
++  server,
++  store,
++
++  /// App Store narxlarni bermadi yoki qurilmada xarid taqiqlangan.
++  unavailable,
++}
++
++class IapState {
++  const IapState({
++    this.loading = false,
++    this.loaded = false,
++    this.products = const [],
++    this.buyingId,
++    this.restoring = false,
++    this.verifying = false,
++    this.notice,
++    this.failure,
++  });
++
++  final bool loading;
++  final bool loaded;
++  final List<IapProduct> products;
++
++  /// Xarid oynasi ochilgan mahsulot.
++  final String? buyingId;
++  final bool restoring;
++
++  /// Server tekshiruvi ketmoqda.
++  final bool verifying;
++  final IapNotice? notice;
++  final IapFailure? failure;
++
++  bool get busy => buyingId != null || restoring || verifying;
++
++  IapState copyWith({
++    bool? loading,
++    bool? loaded,
++    List<IapProduct>? products,
++    String? Function()? buyingId,
++    bool? restoring,
++    bool? verifying,
++    IapNotice? Function()? notice,
++    IapFailure? Function()? failure,
++  }) =>
++      IapState(
++        loading: loading ?? this.loading,
++        loaded: loaded ?? this.loaded,
++        products: products ?? this.products,
++        buyingId: buyingId == null ? this.buyingId : buyingId(),
++        restoring: restoring ?? this.restoring,
++        verifying: verifying ?? this.verifying,
++        notice: notice == null ? this.notice : notice(),
++        failure: failure == null ? this.failure : failure(),
++      );
++}
++
++class IapController extends StateNotifier<IapState> {
++  IapController(this._ref) : super(const IapState());
++
++  final Ref _ref;
++  StreamSubscription<List<IapPurchase>>? _sub;
++
++  /// Hozir serverda tekshirilayotgan tranzaksiyalar — bir tranzaksiya
++  /// ikki marta kelsa (yangilanish + tiklash) ikki marta yuborilmaydi.
++  final Map<String, Future<void>> _inFlight = {};
++  int _restoredSeen = 0;
++
++  IapStore get _store => _ref.read(iapStoreProvider);
++  IapRepository get _repo => _ref.read(iapRepositoryProvider);
++
++  /// `purchaseStream` ga ulanadi (bir marta). Ilova ochilganda
++  /// [iapWatcherProvider] chaqiradi — ochiq qolgan tranzaksiyalar
++  /// shu yerdan keladi.
++  void attach() {
++    _sub ??= _store.purchases.listen(_onPurchases, onError: (_) {});
++  }
++
++  void detach() {
++    _sub?.cancel();
++    _sub = null;
++  }
++
++  @override
++  void dispose() {
++    detach();
++    super.dispose();
++  }
++
++  /// Narxlarni App Store'dan oladi (ekran ochilganda).
++  Future<void> load({bool force = false}) async {
++    if (state.loading || (state.loaded && !force)) return;
++    final cfg = await _ref.read(iapConfigProvider.future);
++    if (!mounted || !cfg.enabled) return;
++    attach();
++    state = state.copyWith(loading: true, failure: () => null);
++    List<IapProduct> list = const [];
++    try {
++      if (await _store.isAvailable()) {
++        list = await _store.products(cfg.products.toSet());
++      }
++    } catch (_) {
++      list = const [];
++    }
++    if (!mounted) return;
++    // Server bergan tartib (oylik, yillik).
++    int rank(IapProduct p) {
++      final i = cfg.products.indexOf(p.id);
++      return i < 0 ? cfg.products.length : i;
++    }
++
++    list = [...list]..sort((a, b) => rank(a).compareTo(rank(b)));
++    state = state.copyWith(
++      loading: false,
++      loaded: list.isNotEmpty,
++      products: list,
++      failure: () => list.isEmpty ? IapFailure.unavailable : null,
++    );
++  }
++
++  /// Obuna xaridi.
++  Future<void> buy(IapProduct product) async {
++    if (state.busy) return;
++    attach();
++    state = state.copyWith(
++      buyingId: () => product.id,
++      notice: () => null,
++      failure: () => null,
++    );
++    final token = await _repo.accountToken();
++    if (!mounted) return;
++    final value = token.valueOrNull ?? '';
++    if (value.isEmpty) {
++      state = state.copyWith(
++        buyingId: () => null,
++        failure: () => token.errorOrNull == null
++            ? IapFailure.server
++            : _failureOf(token.errorOrNull!),
++      );
++      return;
++    }
++    try {
++      await _store.buy(product.id, accountToken: value);
++    } catch (_) {
++      if (!mounted) return;
++      state = state.copyWith(
++          buyingId: () => null, failure: () => IapFailure.store);
++      return;
++    }
++    // StoreKit 2: oyna yopilganda natija oqimga allaqachon yuborilgan.
++    if (mounted && state.buyingId == product.id) {
++      state = state.copyWith(buyingId: () => null);
++    }
++  }
++
++  /// "Xaridlarni tiklash" — faol obunalar oqim orqali qaytadi.
++  Future<void> restore() async {
++    if (state.busy) return;
++    attach();
++    _restoredSeen = 0;
++    state = state.copyWith(
++      restoring: true,
++      notice: () => null,
++      failure: () => null,
++    );
++    var failed = false;
++    try {
++      await _store.restore();
++    } catch (_) {
++      failed = true;
++    }
++    // Oqimdagi yangilanishlar yetib kelsin, tekshiruvlar tugasin.
++    await Future<void>.delayed(Duration.zero);
++    await Future.wait(_inFlight.values.toList());
++    if (!mounted) return;
++    state = state.copyWith(
++      restoring: false,
++      failure: failed ? () => IapFailure.store : null,
++      notice: !failed && _restoredSeen == 0 && state.failure == null
++          ? () => IapNotice.nothingToRestore
++          : null,
++    );
++  }
++
++  Future<void> _onPurchases(List<IapPurchase> list) async {
++    for (final p in list) {
++      if (!mounted) return;
++      switch (p.status) {
++        case IapPurchaseStatus.pending:
++          state = state.copyWith(
++              buyingId: () => null, notice: () => IapNotice.pending);
++        case IapPurchaseStatus.canceled:
++          state = state.copyWith(buyingId: () => null);
++        case IapPurchaseStatus.error:
++          state = state.copyWith(
++              buyingId: () => null, failure: () => IapFailure.store);
++        case IapPurchaseStatus.purchased:
++        case IapPurchaseStatus.restored:
++          if (p.status == IapPurchaseStatus.restored) _restoredSeen++;
++          await _deliver(p);
++      }
++    }
++  }
++
++  /// JWS ni serverga beradi; 200 bo'lsagina tranzaksiyani yopadi.
++  Future<void> _deliver(IapPurchase p) {
++    final key = p.purchaseId ?? p.signedTransaction;
++    final running = _inFlight[key];
++    if (running != null) return running;
++    final f = _verify(p).whenComplete(() => _inFlight.remove(key));
++    _inFlight[key] = f;
++    return f;
++  }
++
++  Future<void> _verify(IapPurchase p) async {
++    if (p.signedTransaction.isEmpty) {
++      state = state.copyWith(
++          buyingId: () => null, failure: () => IapFailure.store);
++      return;
++    }
++    state = state.copyWith(buyingId: () => null, verifying: true);
++    final res = await _repo.verify(p.signedTransaction);
++    if (!mounted) return;
++
++    switch (res) {
++      case Ok(:final value):
++        // Server qarorini berdi (faol yoki faol emas) — tranzaksiya
++        // yopiladi, StoreKit uni boshqa qayta bermaydi.
++        if (p.needsCompletion) {
++          try {
++            await _store.complete(p);
++          } catch (_) {/* keyingi ishga tushirishda qayta keladi */}
++        }
++        await _ref.read(sessionProvider.notifier).refresh();
++        if (!mounted) return;
++        final activated = value.premium || state.notice == IapNotice.activated;
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          notice: () => activated ? IapNotice.activated : IapNotice.inactive,
++          failure: () => null,
++        );
++      case Err(:final error):
++        // TRANZAKSIYA OCHIQ QOLADI — `completePurchase` YO'Q. Pul
++        // olingan, lekin server hali yozmagan: StoreKit uni keyingi
++        // ochilishda qayta beradi va tekshiruv takrorlanadi.
++        state = state.copyWith(
++          verifying: _inFlight.length > 1,
++          failure: () => _failureOf(error),
++        );
++    }
++  }
++
++  static IapFailure _failureOf(AppError e) => switch (e.code) {
++        'account_mismatch' => IapFailure.accountMismatch,
++        'already_linked' => IapFailure.alreadyLinked,
++        'iap_disabled' => IapFailure.disabled,
++        _ => switch (e.kind) {
++            AppErrorKind.offline || AppErrorKind.timeout => IapFailure.network,
++            _ => IapFailure.server,
++          },
++      };
++}
++
++final iapControllerProvider =
++    StateNotifierProvider<IapController, IapState>((ref) => IapController(ref));
++
++/// OCHIQ TRANZAKSIYALARNI ILOVA OCHILISHIDAN TINGLAYDI.
++///
++/// Kirgan foydalanuvchi + iPhone + kalit yoqilgan bo'lsa
++/// `purchaseStream` ga ulanadi. Avvalgi safar tarmoq uzilib serverga
++/// yetmagan xarid StoreKit tomonidan shu yerga qayta beriladi va
++/// tekshiruv takrorlanadi. Chiqishda uziladi.
++final iapWatcherProvider = Provider<void>((ref) {
++  if (!isAppStoreBuild) return;
++  final signedIn =
++      ref.watch(sessionProvider.select((s) => s is SessionActive));
++  if (!signedIn || !ref.watch(iapEnabledProvider)) return;
++  final c = ref.read(iapControllerProvider.notifier);
++  c.attach();
++  ref.onDispose(c.detach);
++});
+diff --git a/mobile_nova/lib/features/premium/iap_store.dart b/mobile_nova/lib/features/premium/iap_store.dart
+new file mode 100644
+index 0000000..47566d4
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/iap_store.dart
+@@ -0,0 +1,209 @@
++import 'dart:async';
++
++import 'package:flutter/services.dart';
++import 'package:in_app_purchase_platform_interface/in_app_purchase_platform_interface.dart';
++import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
++import 'package:in_app_purchase_storekit/store_kit_2_wrappers.dart'
++    show SK2SubscriptionPeriodUnit;
++
++// ═══════════════════════════════════════════════════════════════════
++// APP STORE (StoreKit 2) — ILOVA SHU YUPQA QATLAM ORQALI GAPLASHADI
++//
++// Nima uchun alohida interfeys: xarid oqimi (narx, xarid, tiklash,
++// tranzaksiyani yopish) widget testida haqiqiy StoreKit'siz sinalishi
++// kerak. Test [IapStore] ning soxta nusxasini beradi
++// (`iapStoreProvider.overrideWithValue`).
++//
++// FAQAT iPHONE. Android'da bu qatlam umuman chaqirilmaydi:
++// `iapConfigProvider` iPhone bo'lmasa tarmoqqa ham chiqmay "o'chiq"
++// qaytaradi, `registerPlatform()` esa birinchi chaqiruvda (ya'ni faqat
++// iPhone'da) ishlaydi. `pubspec.yaml` da umumiy `in_app_purchase` emas,
++// faqat StoreKit plagini — Android ilovaga Play Billing kutubxonasi va
++// `BILLING` ruxsati qo'shilmaydi.
++// ═══════════════════════════════════════════════════════════════════
++
++/// Obuna davri birligi (StoreKit `Product.SubscriptionPeriod.Unit`).
++enum IapPeriodUnit { day, week, month, year }
++
++/// Do'kondagi mahsulot — ilovaga kerakli qismi.
++class IapProduct {
++  const IapProduct({
++    required this.id,
++    required this.title,
++    required this.price,
++    this.periodUnit,
++    this.periodValue = 1,
++  });
++
++  final String id;
++  final String title;
++
++  /// App Store'ning O'ZI formatlagan narx (`Product.displayPrice`):
++  /// valyuta va mamlakatga mos. Ilova narxni hech qachon o'zi yozmaydi.
++  final String price;
++
++  /// Obuna davri. `null` — obuna emas yoki do'kon aytmadi.
++  final IapPeriodUnit? periodUnit;
++  final int periodValue;
++}
++
++enum IapPurchaseStatus { pending, purchased, restored, canceled, error }
++
++/// Xarid / tiklash yangilanishi (`purchaseStream` dan).
++class IapPurchase {
++  const IapPurchase({
++    required this.productId,
++    required this.status,
++    this.purchaseId,
++    this.signedTransaction = '',
++    this.needsCompletion = false,
++    this.errorCode,
++    this.raw,
++  });
++
++  final String productId;
++  final IapPurchaseStatus status;
++
++  /// StoreKit tranzaksiya raqami. Kutilayotgan / bekor qilinganda yo'q.
++  final String? purchaseId;
++
++  /// StoreKit 2 imzolangan tranzaksiyasi (JWS) — serverga shu yuboriladi
++  /// (`verificationData.serverVerificationData`).
++  final String signedTransaction;
++
++  /// `completePurchase` kerakmi (StoreKit 2 da — faqat yangi xarid).
++  final bool needsCompletion;
++  final String? errorCode;
++
++  /// Plagin obyekti — `complete()` ga qaytariladi.
++  final Object? raw;
++}
++
++/// StoreKit bilan ishlash interfeysi.
++abstract class IapStore {
++  /// Bu qurilmada xarid qilish mumkinmi (`AppStore.canMakePayments`).
++  Future<bool> isAvailable();
++
++  /// Narx va davr — App Store'dan. Topilmaganlari ro'yxatda bo'lmaydi.
++  Future<List<IapProduct>> products(Set<String> ids);
++
++  /// Xarid oynasini ochadi. Natija [purchases] oqimiga keladi.
++  /// [accountToken] — server bergan UUID (StoreKit 2 `appAccountToken`).
++  Future<void> buy(String productId, {String? accountToken});
++
++  /// Faol obunalarni qayta yuboradi ([IapPurchaseStatus.restored]).
++  Future<void> restore();
++
++  /// Tranzaksiyani yopadi — FAQAT server tasdiqlagandan keyin.
++  Future<void> complete(IapPurchase purchase);
++
++  Stream<List<IapPurchase>> get purchases;
++}
++
++/// Haqiqiy StoreKit 2 (`in_app_purchase_storekit`).
++///
++/// 0.4.x da StoreKit 2 sukut bo'yicha yoqilgan
++/// (`enableStoreKit2()` eskirgan va shunchaki `true` qo'yadi), shuning
++/// uchun `serverVerificationData` — tranzaksiyaning JWS ko'rinishi
++/// (`VerificationResult.jwsRepresentation`).
++class StoreKitIapStore implements IapStore {
++  StoreKitIapStore();
++
++  static bool _registered = false;
++  final Map<String, ProductDetails> _details = {};
++
++  InAppPurchasePlatform get _platform {
++    if (!_registered) {
++      InAppPurchaseStoreKitPlatform.registerPlatform();
++      _registered = true;
++    }
++    return InAppPurchasePlatform.instance;
++  }
++
++  @override
++  Future<bool> isAvailable() async {
++    try {
++      return await _platform.isAvailable();
++    } catch (_) {
++      return false;
++    }
++  }
++
++  @override
++  Future<List<IapProduct>> products(Set<String> ids) async {
++    final res = await _platform.queryProductDetails(ids);
++    final out = <IapProduct>[];
++    for (final d in res.productDetails) {
++      _details[d.id] = d;
++      final sub = d is AppStoreProduct2Details
++          ? d.sk2Product.subscription?.subscriptionPeriod
++          : null;
++      out.add(IapProduct(
++        id: d.id,
++        title: d.title,
++        price: d.price,
++        periodUnit: switch (sub?.unit) {
++          SK2SubscriptionPeriodUnit.day => IapPeriodUnit.day,
++          SK2SubscriptionPeriodUnit.week => IapPeriodUnit.week,
++          SK2SubscriptionPeriodUnit.month => IapPeriodUnit.month,
++          SK2SubscriptionPeriodUnit.year => IapPeriodUnit.year,
++          null => null,
++        },
++        periodValue: sub?.value ?? 1,
++      ));
++    }
++    if (out.isEmpty && res.error != null) {
++      throw PlatformException(
++          code: res.error!.code, message: res.error!.message);
++    }
++    return out;
++  }
++
++  @override
++  Future<void> buy(String productId, {String? accountToken}) async {
++    final d = _details[productId];
++    if (d == null) {
++      throw PlatformException(code: 'product_not_loaded', message: productId);
++    }
++    await _platform.buyNonConsumable(
++      purchaseParam: PurchaseParam(
++        productDetails: d,
++        // StoreKit 2: UUID bo'lsa `appAccountToken` sifatida ketadi va
++        // server tranzaksiyani shu hisobga bog'laydi.
++        applicationUserName: accountToken,
++      ),
++    );
++  }
++
++  @override
++  Future<void> restore() => _platform.restorePurchases();
++
++  @override
++  Future<void> complete(IapPurchase purchase) async {
++    final raw = purchase.raw;
++    // Tranzaksiya raqami yo'q bo'lsa (kutilayotgan / bekor) StoreKit 2
++    // `finish` ni chaqirib bo'lmaydi — plagin `int.parse(null)` qiladi.
++    if (raw is! PurchaseDetails || raw.purchaseID == null) return;
++    await _platform.completePurchase(raw);
++  }
++
++  @override
++  Stream<List<IapPurchase>> get purchases =>
++      _platform.purchaseStream.map((list) => [for (final p in list) _map(p)]);
++
++  static IapPurchase _map(PurchaseDetails p) => IapPurchase(
++        productId: p.productID,
++        purchaseId: p.purchaseID,
++        status: switch (p.status) {
++          PurchaseStatus.pending => IapPurchaseStatus.pending,
++          PurchaseStatus.purchased => IapPurchaseStatus.purchased,
++          PurchaseStatus.restored => IapPurchaseStatus.restored,
++          PurchaseStatus.canceled => IapPurchaseStatus.canceled,
++          PurchaseStatus.error => IapPurchaseStatus.error,
++        },
++        signedTransaction: p.verificationData.serverVerificationData,
++        needsCompletion: p.pendingCompletePurchase,
++        errorCode: p.error?.code,
++        raw: p,
++      );
++}
+diff --git a/mobile_nova/lib/features/premium/premium_iap_screen.dart b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+new file mode 100644
+index 0000000..0f624a7
+--- /dev/null
++++ b/mobile_nova/lib/features/premium/premium_iap_screen.dart
+@@ -0,0 +1,418 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../core/utils/external_link.dart';
++import '../../data/models/models.dart';
++import '../../design/motion/motion.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/buttons.dart';
++import '../../design/widgets/nova_scaffold.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../auth/session.dart';
++import 'iap_controller.dart';
++import 'iap_store.dart';
++
++/// Apple'ning standart foydalanish shartlari (EULA) — App Store
++/// Connect'da alohida EULA yuklanmagan ilovalar uchun.
++const kAppleEulaUrl =
++    'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
++
++/// Maxfiylik siyosati.
++const kPrivacyUrl = 'https://nfcstore.uz/privacy';
++
++/// App Store hisobidagi obunalarni boshqarish sahifasi (Apple'niki —
++/// tashqi to'lovga yo'naltirish emas).
++const kAppleManageSubscriptionsUrl =
++    'https://apps.apple.com/account/subscriptions';
++
++/// PREMIUM NIMA BERADI — serverdagi qiymatlar bilan AYNAN bir xil.
++///
++/// `hosting/worker.js`: `COMPANY_FREE_ITEM_LIMIT = 5`,
++/// `COMPANY_PREMIUM_ITEM_LIMIT = 25` (biznes katalogi) va
++/// `MUSIC_LIMIT_FREE_D1 = 5` / `MUSIC_LIMIT_PREMIUM_D1 = 10` (profil
++/// qo'shiqlari, `musicLimitD1(user.isPremium)`). Post, istoriya,
++/// video va izoh ro'yxatda YO'Q — ular hammaga bepul (egasining
++/// qarori, 2026-10-04). Yangi imkoniyat o'ylab topilmaydi.
++const kCatalogFreeLimit = 5;
++const kCatalogPremiumLimit = 25;
++const kMusicFreeLimit = 5;
++const kMusicPremiumLimit = 10;
++
++/// PREMIUM OBUNASI — APPLE IN-APP PURCHASE (faqat iPhone).
++///
++/// Marshrut (`/premium`) faqat `iapEnabledProvider` yoqilganda
++/// ochiladi (`router.dart`); Android'da va kalit o'chiq bo'lsa ekran
++/// umuman yo'q. Narx va davr App Store'dan (`ProductDetails.price`) —
++/// ilova narx yozmaydi. Saytga to'lov havolasi YO'Q (Apple 3.1.1).
++class PremiumIapScreen extends ConsumerStatefulWidget {
++  const PremiumIapScreen({super.key});
++
++  @override
++  ConsumerState<PremiumIapScreen> createState() => _PremiumIapScreenState();
++}
++
++class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
++  String? _selected;
++
++  @override
++  void initState() {
++    super.initState();
++    Future.microtask(() {
++      if (mounted) ref.read(iapControllerProvider.notifier).load();
++    });
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final enabled = ref.watch(iapEnabledProvider);
++    final s = ref.watch(iapControllerProvider);
++    final user = ref.watch(currentUserProvider);
++    final paid = user != null && _paidPremium(user);
++    final c = ref.read(iapControllerProvider.notifier);
++
++    final products = s.products;
++    final selected = products.isEmpty
++        ? null
++        : products.firstWhere((p) => p.id == _selected,
++            orElse: () => products.first);
++
++    return NovaScaffold(
++      title: l.premiumTitle,
++      showBack: true,
++      body: !enabled
++          // Kalit ish paytida o'chirilsa — xarid UI darhol yo'qoladi.
++          ? Center(
++              key: const ValueKey('iap-disabled'),
++              child: Padding(
++                padding: const EdgeInsets.all(Gap.xl),
++                child: Text(l.iapErrDisabled,
++                    textAlign: TextAlign.center, style: text.bodyMedium),
++              ),
++            )
++          : NovaScroll(
++              children: [
++                Center(
++                  child: Container(
++                    width: 84,
++                    height: 84,
++                    decoration: BoxDecoration(
++                        gradient: t.accentGradient, shape: BoxShape.circle),
++                    child: Icon(Icons.workspace_premium_rounded,
++                        size: 38, color: t.onAccent),
++                  ),
++                ),
++                const SizedBox(height: Gap.xl),
++                Text(paid ? l.premiumActive : l.premiumTitle,
++                    textAlign: TextAlign.center, style: text.displayMedium),
++                const SizedBox(height: Gap.sm),
++                Text(
++                  paid ? _validity(l, user) : l.premiumTagline,
++                  key: const ValueKey('iap-status'),
++                  textAlign: TextAlign.center,
++                  style: text.bodyMedium,
++                ),
++                const SizedBox(height: Gap.section),
++                const _Perks(),
++                const SizedBox(height: Gap.section),
++                if (paid) ...[
++                  NovaButton(
++                    key: const ValueKey('iap-manage'),
++                    label: l.iapManage,
++                    tone: ButtonTone.outline,
++                    icon: Icons.open_in_new_rounded,
++                    onPressed: () => openLink(kAppleManageSubscriptionsUrl),
++                  ),
++                ] else if (s.loading) ...[
++                  const Center(
++                    key: ValueKey('iap-loading'),
++                    child: Padding(
++                      padding: EdgeInsets.all(Gap.xl),
++                      child: CircularProgressIndicator(strokeWidth: 2),
++                    ),
++                  ),
++                ] else if (products.isEmpty) ...[
++                  Text(l.iapUnavailable,
++                      key: const ValueKey('iap-unavailable'),
++                      textAlign: TextAlign.center,
++                      style: text.bodyMedium),
++                  const SizedBox(height: Gap.md),
++                  NovaButton(
++                    label: l.actionRetry,
++                    tone: ButtonTone.quiet,
++                    onPressed: () => c.load(force: true),
++                  ),
++                ] else ...[
++                  for (final p in products) ...[
++                    _PlanCard(
++                      product: p,
++                      selected: p.id == selected?.id,
++                      onTap: s.busy ? null : () => setState(() => _selected = p.id),
++                    ),
++                    const SizedBox(height: Gap.md),
++                  ],
++                  const SizedBox(height: Gap.sm),
++                  NovaButton(
++                    key: const ValueKey('iap-subscribe'),
++                    label: l.iapSubscribe,
++                    busy: s.buyingId != null || s.verifying,
++                    onPressed: s.busy || selected == null
++                        ? null
++                        : () => c.buy(selected),
++                  ),
++                ],
++                if (s.notice != null) ...[
++                  const SizedBox(height: Gap.xl),
++                  Text(
++                    _notice(l, s.notice!),
++                    key: const ValueKey('iap-notice'),
++                    textAlign: TextAlign.center,
++                    style: text.bodyMedium,
++                  ),
++                ],
++                if (s.failure != null && s.failure != IapFailure.unavailable) ...[
++                  const SizedBox(height: Gap.xl),
++                  Text(
++                    _failure(l, s.failure!),
++                    key: const ValueKey('iap-error'),
++                    textAlign: TextAlign.center,
++                    style: text.bodyMedium?.copyWith(color: t.error),
++                  ),
++                ],
++                const SizedBox(height: Gap.md),
++                NovaButton(
++                  key: const ValueKey('iap-restore'),
++                  label: l.iapRestore,
++                  tone: ButtonTone.quiet,
++                  busy: s.restoring,
++                  onPressed: s.busy ? null : c.restore,
++                ),
++                const SizedBox(height: Gap.xl),
++                // APPLE 3.1.2: avtomatik yangilanish, bekor qilish va
++                // to'lov haqida ochiq matn + shartlar va maxfiylik.
++                Text(
++                  l.iapDisclosure,
++                  key: const ValueKey('iap-disclosure'),
++                  style: text.bodySmall?.copyWith(color: t.text2),
++                ),
++                const SizedBox(height: Gap.md),
++                Wrap(
++                  alignment: WrapAlignment.center,
++                  spacing: Gap.lg,
++                  runSpacing: Gap.sm,
++                  children: [
++                    _Link(
++                      key: const ValueKey('iap-terms'),
++                      label: l.iapTermsOfUse,
++                      url: kAppleEulaUrl,
++                    ),
++                    _Link(
++                      key: const ValueKey('iap-privacy'),
++                      label: l.legalPrivacy,
++                      url: kPrivacyUrl,
++                    ),
++                  ],
++                ),
++              ],
++            ),
++    );
++  }
++
++  /// To'langan Premium (sinov muddati emas). Sinovdagi odam obuna
++  /// bo'la oladi — unga rejalar ko'rsatiladi.
++  static bool _paidPremium(User u) =>
++      u.premium || (u.premiumUntil?.isAfter(DateTime.now()) ?? false);
++
++  static String _validity(L l, User u) {
++    final until = u.premiumUntil;
++    if (until == null) return l.premiumForever;
++    final d = until.toLocal();
++    String two(int n) => n.toString().padLeft(2, '0');
++    return l.premiumUntil('${two(d.day)}.${two(d.month)}.${d.year}');
++  }
++
++  static String _notice(L l, IapNotice n) => switch (n) {
++        IapNotice.activated => l.iapActivated,
++        IapNotice.pending => l.iapPending,
++        IapNotice.inactive => l.iapInactive,
++        IapNotice.nothingToRestore => l.iapNothingToRestore,
++      };
++
++  static String _failure(L l, IapFailure f) => switch (f) {
++        IapFailure.network => l.iapErrNetwork,
++        IapFailure.accountMismatch => l.iapErrAccountMismatch,
++        IapFailure.alreadyLinked => l.iapErrAlreadyLinked,
++        IapFailure.disabled => l.iapErrDisabled,
++        IapFailure.server => l.iapErrServer,
++        IapFailure.store => l.iapErrStore,
++        IapFailure.unavailable => l.iapUnavailable,
++      };
++}
++
++/// Obuna davri matni — "oy", "yil", "3 oy".
++String iapPeriodLabel(L l, IapProduct p) => switch (p.periodUnit) {
++      IapPeriodUnit.day => l.iapPeriodDays(p.periodValue),
++      IapPeriodUnit.week => l.iapPeriodWeeks(p.periodValue),
++      IapPeriodUnit.month => l.iapPeriodMonths(p.periodValue),
++      IapPeriodUnit.year => l.iapPeriodYears(p.periodValue),
++      null => '',
++    };
++
++/// Reja nomi — "Oylik" / "Yillik"; boshqa davrda App Store nomi.
++String iapPlanName(L l, IapProduct p) => switch ((p.periodUnit, p.periodValue)) {
++      (IapPeriodUnit.month, 1) => l.iapPlanMonthly,
++      (IapPeriodUnit.year, 1) => l.iapPlanYearly,
++      _ => p.title.isNotEmpty ? p.title : l.premiumTitle,
++    };
++
++class _PlanCard extends StatelessWidget {
++  const _PlanCard({
++    required this.product,
++    required this.selected,
++    required this.onTap,
++  });
++
++  final IapProduct product;
++  final bool selected;
++  final VoidCallback? onTap;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final period = iapPeriodLabel(l, product);
++    return Semantics(
++      selected: selected,
++      button: true,
++      child: PressableScale(
++        onTap: onTap,
++        child: AnimatedContainer(
++          key: ValueKey('iap-plan-${product.id}'),
++          duration: Motion.fast,
++          padding: const EdgeInsets.all(Gap.lg),
++          decoration: BoxDecoration(
++            color: t.surfaceSolid,
++            borderRadius: R.soft,
++            border: Border.all(
++              color: selected ? t.accent2 : t.border1,
++              width: selected ? 1.6 : 1,
++            ),
++            boxShadow: t.shadowTiny,
++          ),
++          child: Row(
++            children: [
++              Icon(
++                selected
++                    ? Icons.radio_button_checked_rounded
++                    : Icons.radio_button_off_rounded,
++                size: 20,
++                color: selected ? t.accent2 : t.text3,
++              ),
++              const SizedBox(width: Gap.md),
++              Expanded(
++                child: Text(iapPlanName(l, product), style: text.titleMedium),
++              ),
++              const SizedBox(width: Gap.md),
++              Column(
++                crossAxisAlignment: CrossAxisAlignment.end,
++                children: [
++                  // App Store'ning lokallashtirilgan narxi — o'zgarmasdan.
++                  Text(product.price,
++                      style: TextStyle(
++                        fontFamily: AppType.sans,
++                        fontSize: 16,
++                        fontWeight: FontWeight.w700,
++                        color: t.text1,
++                      )),
++                  if (period.isNotEmpty)
++                    Text('/ $period',
++                        style: text.bodySmall?.copyWith(color: t.text2)),
++                ],
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _Perks extends StatelessWidget {
++  const _Perks();
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final items = <(IconData, String)>[
++      (
++        Icons.inventory_2_outlined,
++        l.iapPerkCatalog(kCatalogPremiumLimit, kCatalogFreeLimit)
++      ),
++      (
++        Icons.music_note_rounded,
++        l.iapPerkMusic(kMusicPremiumLimit, kMusicFreeLimit)
++      ),
++    ];
++    return FloatingSurface(
++      solid: true,
++      child: Column(
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Text(l.premiumPerksTitle,
++              style: Theme.of(context).textTheme.titleMedium),
++          const SizedBox(height: Gap.md),
++          for (final (icon, label) in items)
++            Padding(
++              padding: const EdgeInsets.only(bottom: Gap.sm),
++              child: Row(
++                children: [
++                  Icon(icon, size: 20, color: t.accent2),
++                  const SizedBox(width: Gap.md),
++                  Expanded(
++                    child: Text(label,
++                        style: Theme.of(context).textTheme.bodyMedium),
++                  ),
++                ],
++              ),
++            ),
++        ],
++      ),
++    );
++  }
++}
++
++class _Link extends StatelessWidget {
++  const _Link({super.key, required this.label, required this.url});
++
++  final String label;
++  final String url;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    return PressableScale(
++      onTap: () => openLink(url),
++      child: Padding(
++        padding: const EdgeInsets.symmetric(vertical: Gap.sm),
++        child: Text(
++          label,
++          style: TextStyle(
++            fontFamily: AppType.sans,
++            fontSize: 13,
++            fontWeight: FontWeight.w600,
++            color: t.accent2,
++            decoration: TextDecoration.underline,
++            decorationColor: t.accent2,
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index 16db1a9..19077a7 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -21,6 +21,8 @@ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../home/widgets/avatar.dart';
+ import '../shop/store_policy.dart' show isAppStoreBuild;
++import '../premium/premium_iap_screen.dart'
++    show kMusicFreeLimit, kMusicPremiumLimit;
+ import 'contact_editor.dart';
+ import 'music_player.dart' show musicTitleOf;
+ import 'music_source.dart';
+@@ -99,7 +101,15 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+ 
+   /// Aloqa va havolalar — `ContactEditor` har o'zgarishda yangilaydi.
+   ContactInfo? _contact;
+-  static const _musicMax = 5;
++
++  /// iPHONE'DA PREMIUM OBUNACHIGA 10 TA — server `musicLimitD1(true)`.
++  /// Premium iPhone'da ilova ichida sotiladi (Apple IAP) va xarid
++  /// ekrani "10 tagacha qo'shiq" deydi — va'da shu yerda ham ishlashi
++  /// kerak. ANDROID O'ZGARMAYDI: har doim 5.
++  int get _musicMax => isAppStoreBuild &&
++          (ref.read(currentUserProvider)?.premium ?? false)
++      ? kMusicPremiumLimit
++      : kMusicFreeLimit;
+   double _uploadProgress = 0;
+ 
+   @override
+diff --git a/mobile_nova/lib/features/settings/settings_screen.dart b/mobile_nova/lib/features/settings/settings_screen.dart
+index 44af011..9e3d0c8 100644
+--- a/mobile_nova/lib/features/settings/settings_screen.dart
++++ b/mobile_nova/lib/features/settings/settings_screen.dart
+@@ -16,6 +16,7 @@ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/widgets/avatar.dart';
++import '../premium/iap_controller.dart' show iapEnabledProvider;
+ import '../shop/store_policy.dart';
+ import '../social/content_rules.dart';
+ import '../../design/widgets/brand_icon.dart';
+@@ -134,6 +135,18 @@ class SettingsScreen extends ConsumerWidget {
+               label: l.settingsSecurity,
+               onTap: () => context.push(Routes.settingsSecurity),
+             ),
++            // PREMIUM — FAQAT iPHONE'DA VA IAP KALITI YOQILGANDA.
++            //
++            // Xarid Apple In-App Purchase orqali (`features/premium/`).
++            // Kalit o'chiq / javob kelmagan / Android — qator YO'Q,
++            // menyu avvalgidek (Play qoidasi va 3.1.1 izohlari yuqorida
++            // va pastda).
++            if (ref.watch(iapEnabledProvider))
++              SettingsItem(
++                icon: Icons.workspace_premium_rounded,
++                label: l.settingsPremium,
++                onTap: () => context.push(Routes.premium),
++              ),
+           ]),
+           SectionHeader(color: t.text2, title: l.settingsAppearance),
+           SettingsGroup(items: [
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 895a128..ca1a39c 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1095,5 +1095,37 @@
+   "activitySupportReply": "NFCSTORE Support replied to your request",
+   "activityTrialEnding": "Your free trial ends on {date}",
+   "@activityTrialEnding": {"placeholders": {"date": {"type": "String"}}},
+-  "activityGeneric": "New notification"
++  "activityGeneric": "New notification",
++  "iapPlanMonthly": "Monthly",
++  "iapPlanYearly": "Yearly",
++  "iapPeriodDays": "{count, plural, =1{day} other{{count} days}}",
++  "@iapPeriodDays": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodWeeks": "{count, plural, =1{week} other{{count} weeks}}",
++  "@iapPeriodWeeks": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodMonths": "{count, plural, =1{month} other{{count} months}}",
++  "@iapPeriodMonths": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodYears": "{count, plural, =1{year} other{{count} years}}",
++  "@iapPeriodYears": {"placeholders": {"count": {"type": "int"}}},
++  "iapSubscribe": "Subscribe",
++  "iapRestore": "Restore purchases",
++  "iapManage": "Manage subscription",
++  "iapPerkCatalog": "Up to {premium} items in your business catalogue (without Premium — {free})",
++  "@iapPerkCatalog": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPerkMusic": "Up to {premium} profile tracks (without Premium — {free})",
++  "@iapPerkMusic": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPlanUpsell": "With Premium — up to {premium} items.",
++  "@iapPlanUpsell": {"placeholders": {"premium": {"type": "int"}}},
++  "iapActivated": "Premium is active. Thank you!",
++  "iapPending": "Your purchase is awaiting approval. Premium turns on automatically once it is approved.",
++  "iapInactive": "This subscription is not active.",
++  "iapNothingToRestore": "No active subscription was found to restore.",
++  "iapUnavailable": "Subscriptions are not available right now. Please try again later.",
++  "iapErrNetwork": "No internet connection. If the purchase went through, the app will check it again the next time it opens.",
++  "iapErrAccountMismatch": "This purchase belongs to a different NFCSTORE account.",
++  "iapErrAlreadyLinked": "This Apple subscription is already linked to another NFCSTORE account.",
++  "iapErrDisabled": "Purchases are temporarily unavailable.",
++  "iapErrServer": "Could not reach the server. Please try again later.",
++  "iapErrStore": "The App Store could not complete the purchase.",
++  "iapTermsOfUse": "Terms of Use (EULA)",
++  "iapDisclosure": "Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 2719408..5e24490 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1095,5 +1095,37 @@
+   "activitySupportReply": "Поддержка NFCSTORE ответила на ваше обращение",
+   "activityTrialEnding": "Бесплатный пробный период закончится {date}",
+   "@activityTrialEnding": {"placeholders": {"date": {"type": "String"}}},
+-  "activityGeneric": "Новое уведомление"
++  "activityGeneric": "Новое уведомление",
++  "iapPlanMonthly": "Ежемесячная",
++  "iapPlanYearly": "Годовая",
++  "iapPeriodDays": "{count, plural, =1{день} few{{count} дня} many{{count} дней} other{{count} дня}}",
++  "@iapPeriodDays": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodWeeks": "{count, plural, =1{неделя} few{{count} недели} many{{count} недель} other{{count} недели}}",
++  "@iapPeriodWeeks": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodMonths": "{count, plural, =1{месяц} few{{count} месяца} many{{count} месяцев} other{{count} месяца}}",
++  "@iapPeriodMonths": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodYears": "{count, plural, =1{год} few{{count} года} many{{count} лет} other{{count} года}}",
++  "@iapPeriodYears": {"placeholders": {"count": {"type": "int"}}},
++  "iapSubscribe": "Оформить подписку",
++  "iapRestore": "Восстановить покупки",
++  "iapManage": "Управлять подпиской",
++  "iapPerkCatalog": "До {premium} товаров в бизнес-каталоге (без Premium — {free})",
++  "@iapPerkCatalog": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPerkMusic": "До {premium} треков в профиле (без Premium — {free})",
++  "@iapPerkMusic": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPlanUpsell": "С Premium — до {premium} товаров.",
++  "@iapPlanUpsell": {"placeholders": {"premium": {"type": "int"}}},
++  "iapActivated": "Premium активирован. Спасибо!",
++  "iapPending": "Покупка ожидает подтверждения. Premium включится автоматически после подтверждения.",
++  "iapInactive": "Эта подписка сейчас не активна.",
++  "iapNothingToRestore": "Активных подписок для восстановления не найдено.",
++  "iapUnavailable": "Подписки сейчас недоступны. Попробуйте позже.",
++  "iapErrNetwork": "Нет подключения к интернету. Если покупка прошла, приложение проверит её при следующем запуске.",
++  "iapErrAccountMismatch": "Эта покупка относится к другому аккаунту NFCSTORE.",
++  "iapErrAlreadyLinked": "Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.",
++  "iapErrDisabled": "Покупки временно недоступны.",
++  "iapErrServer": "Не удалось связаться с сервером. Попробуйте позже.",
++  "iapErrStore": "App Store не смог завершить покупку.",
++  "iapTermsOfUse": "Условия использования (EULA)",
++  "iapDisclosure": "Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store."
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 2ed14d5..7de74b3 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1245,5 +1245,38 @@
+   "activityTrialEnding": "Bepul sinov muddatingiz {date} da tugaydi",
+   "@activityTrialEnding": {"description": "Bildirishnoma (type trial_ending): bepul sinov muddati tugash sanasi. Sotib olish yoki narx haqida HECH NARSA demaydi (App Store 3.1.1). Bosilganda hech narsa ochilmaydi.", "placeholders": {"date": {"type": "String"}}},
+   "activityGeneric": "Yangi bildirishnoma",
+-  "@activityGeneric": {"description": "Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn."}
++  "@activityGeneric": {"description": "Bildirishnoma: ilova hali tanimaydigan yangi tur — NFCSTORE nomidan umumiy matn."},
++  "iapPlanMonthly": "Oylik",
++  "iapPlanYearly": "Yillik",
++  "iapPeriodDays": "{count, plural, =1{kun} other{{count} kun}}",
++  "@iapPeriodDays": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodWeeks": "{count, plural, =1{hafta} other{{count} hafta}}",
++  "@iapPeriodWeeks": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodMonths": "{count, plural, =1{oy} other{{count} oy}}",
++  "@iapPeriodMonths": {"placeholders": {"count": {"type": "int"}}},
++  "iapPeriodYears": "{count, plural, =1{yil} other{{count} yil}}",
++  "@iapPeriodYears": {"placeholders": {"count": {"type": "int"}}},
++  "iapSubscribe": "Obuna bo‘lish",
++  "iapRestore": "Xaridlarni tiklash",
++  "iapManage": "Obunani boshqarish",
++  "iapPerkCatalog": "Biznes katalogida {premium} tagacha tovar (Premium’siz — {free})",
++  "@iapPerkCatalog": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPerkMusic": "Profilda {premium} tagacha qo‘shiq (Premium’siz — {free})",
++  "@iapPerkMusic": {"placeholders": {"premium": {"type": "int"}, "free": {"type": "int"}}},
++  "iapPlanUpsell": "Premium bilan — {premium} tagacha tovar.",
++  "@iapPlanUpsell": {"placeholders": {"premium": {"type": "int"}}},
++  "iapActivated": "Premium faollashdi. Rahmat!",
++  "iapPending": "Xarid tasdiqlanishi kutilmoqda. Tasdiqlangach Premium o‘zi yoqiladi.",
++  "iapInactive": "Bu obuna hozir faol emas.",
++  "iapNothingToRestore": "Tiklanadigan faol obuna topilmadi.",
++  "iapUnavailable": "Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.",
++  "iapErrNetwork": "Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.",
++  "iapErrAccountMismatch": "Bu xarid boshqa NFCSTORE hisobiga tegishli.",
++  "iapErrAlreadyLinked": "Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.",
++  "iapErrDisabled": "Xaridlar vaqtincha mavjud emas.",
++  "iapErrServer": "Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.",
++  "iapErrStore": "App Store xaridni yakunlay olmadi.",
++  "iapTermsOfUse": "Foydalanish shartlari (EULA)",
++  "iapDisclosure": "To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.",
++  "@iapDisclosure": {"description": "Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone)."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index b9ad601..7955056 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -5762,6 +5762,156 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Yangi bildirishnoma'**
+   String get activityGeneric;
++
++  /// No description provided for @iapPlanMonthly.
++  ///
++  /// In uz, this message translates to:
++  /// **'Oylik'**
++  String get iapPlanMonthly;
++
++  /// No description provided for @iapPlanYearly.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yillik'**
++  String get iapPlanYearly;
++
++  /// No description provided for @iapPeriodDays.
++  ///
++  /// In uz, this message translates to:
++  /// **'{count, plural, =1{kun} other{{count} kun}}'**
++  String iapPeriodDays(int count);
++
++  /// No description provided for @iapPeriodWeeks.
++  ///
++  /// In uz, this message translates to:
++  /// **'{count, plural, =1{hafta} other{{count} hafta}}'**
++  String iapPeriodWeeks(int count);
++
++  /// No description provided for @iapPeriodMonths.
++  ///
++  /// In uz, this message translates to:
++  /// **'{count, plural, =1{oy} other{{count} oy}}'**
++  String iapPeriodMonths(int count);
++
++  /// No description provided for @iapPeriodYears.
++  ///
++  /// In uz, this message translates to:
++  /// **'{count, plural, =1{yil} other{{count} yil}}'**
++  String iapPeriodYears(int count);
++
++  /// No description provided for @iapSubscribe.
++  ///
++  /// In uz, this message translates to:
++  /// **'Obuna bo‘lish'**
++  String get iapSubscribe;
++
++  /// No description provided for @iapRestore.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xaridlarni tiklash'**
++  String get iapRestore;
++
++  /// No description provided for @iapManage.
++  ///
++  /// In uz, this message translates to:
++  /// **'Obunani boshqarish'**
++  String get iapManage;
++
++  /// No description provided for @iapPerkCatalog.
++  ///
++  /// In uz, this message translates to:
++  /// **'Biznes katalogida {premium} tagacha tovar (Premium’siz — {free})'**
++  String iapPerkCatalog(int premium, int free);
++
++  /// No description provided for @iapPerkMusic.
++  ///
++  /// In uz, this message translates to:
++  /// **'Profilda {premium} tagacha qo‘shiq (Premium’siz — {free})'**
++  String iapPerkMusic(int premium, int free);
++
++  /// No description provided for @iapPlanUpsell.
++  ///
++  /// In uz, this message translates to:
++  /// **'Premium bilan — {premium} tagacha tovar.'**
++  String iapPlanUpsell(int premium);
++
++  /// No description provided for @iapActivated.
++  ///
++  /// In uz, this message translates to:
++  /// **'Premium faollashdi. Rahmat!'**
++  String get iapActivated;
++
++  /// No description provided for @iapPending.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xarid tasdiqlanishi kutilmoqda. Tasdiqlangach Premium o‘zi yoqiladi.'**
++  String get iapPending;
++
++  /// No description provided for @iapInactive.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu obuna hozir faol emas.'**
++  String get iapInactive;
++
++  /// No description provided for @iapNothingToRestore.
++  ///
++  /// In uz, this message translates to:
++  /// **'Tiklanadigan faol obuna topilmadi.'**
++  String get iapNothingToRestore;
++
++  /// No description provided for @iapUnavailable.
++  ///
++  /// In uz, this message translates to:
++  /// **'Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.'**
++  String get iapUnavailable;
++
++  /// No description provided for @iapErrNetwork.
++  ///
++  /// In uz, this message translates to:
++  /// **'Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.'**
++  String get iapErrNetwork;
++
++  /// No description provided for @iapErrAccountMismatch.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu xarid boshqa NFCSTORE hisobiga tegishli.'**
++  String get iapErrAccountMismatch;
++
++  /// No description provided for @iapErrAlreadyLinked.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.'**
++  String get iapErrAlreadyLinked;
++
++  /// No description provided for @iapErrDisabled.
++  ///
++  /// In uz, this message translates to:
++  /// **'Xaridlar vaqtincha mavjud emas.'**
++  String get iapErrDisabled;
++
++  /// No description provided for @iapErrServer.
++  ///
++  /// In uz, this message translates to:
++  /// **'Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.'**
++  String get iapErrServer;
++
++  /// No description provided for @iapErrStore.
++  ///
++  /// In uz, this message translates to:
++  /// **'App Store xaridni yakunlay olmadi.'**
++  String get iapErrStore;
++
++  /// No description provided for @iapTermsOfUse.
++  ///
++  /// In uz, this message translates to:
++  /// **'Foydalanish shartlari (EULA)'**
++  String get iapTermsOfUse;
++
++  /// Apple 3.1.2: avtomatik yangilanadigan obuna haqida majburiy matn (Premium xarid ekrani, faqat iPhone).
++  ///
++  /// In uz, this message translates to:
++  /// **'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.'**
++  String get iapDisclosure;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index a8cad9b..ddab780 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3092,4 +3092,125 @@ class LEn extends L {
+ 
+   @override
+   String get activityGeneric => 'New notification';
++
++  @override
++  String get iapPlanMonthly => 'Monthly';
++
++  @override
++  String get iapPlanYearly => 'Yearly';
++
++  @override
++  String iapPeriodDays(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count days',
++      one: 'day',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodWeeks(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count weeks',
++      one: 'week',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodMonths(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count months',
++      one: 'month',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodYears(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count years',
++      one: 'year',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapSubscribe => 'Subscribe';
++
++  @override
++  String get iapRestore => 'Restore purchases';
++
++  @override
++  String get iapManage => 'Manage subscription';
++
++  @override
++  String iapPerkCatalog(int premium, int free) {
++    return 'Up to $premium items in your business catalogue (without Premium — $free)';
++  }
++
++  @override
++  String iapPerkMusic(int premium, int free) {
++    return 'Up to $premium profile tracks (without Premium — $free)';
++  }
++
++  @override
++  String iapPlanUpsell(int premium) {
++    return 'With Premium — up to $premium items.';
++  }
++
++  @override
++  String get iapActivated => 'Premium is active. Thank you!';
++
++  @override
++  String get iapPending =>
++      'Your purchase is awaiting approval. Premium turns on automatically once it is approved.';
++
++  @override
++  String get iapInactive => 'This subscription is not active.';
++
++  @override
++  String get iapNothingToRestore =>
++      'No active subscription was found to restore.';
++
++  @override
++  String get iapUnavailable =>
++      'Subscriptions are not available right now. Please try again later.';
++
++  @override
++  String get iapErrNetwork =>
++      'No internet connection. If the purchase went through, the app will check it again the next time it opens.';
++
++  @override
++  String get iapErrAccountMismatch =>
++      'This purchase belongs to a different NFCSTORE account.';
++
++  @override
++  String get iapErrAlreadyLinked =>
++      'This Apple subscription is already linked to another NFCSTORE account.';
++
++  @override
++  String get iapErrDisabled => 'Purchases are temporarily unavailable.';
++
++  @override
++  String get iapErrServer =>
++      'Could not reach the server. Please try again later.';
++
++  @override
++  String get iapErrStore => 'The App Store could not complete the purchase.';
++
++  @override
++  String get iapTermsOfUse => 'Terms of Use (EULA)';
++
++  @override
++  String get iapDisclosure =>
++      'Payment is charged to your Apple ID account at confirmation of purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the end of the current period. You can manage and cancel your subscription in your App Store account settings.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 67e3092..09e5373 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3099,4 +3099,132 @@ class LRu extends L {
+ 
+   @override
+   String get activityGeneric => 'Новое уведомление';
++
++  @override
++  String get iapPlanMonthly => 'Ежемесячная';
++
++  @override
++  String get iapPlanYearly => 'Годовая';
++
++  @override
++  String iapPeriodDays(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count дня',
++      many: '$count дней',
++      few: '$count дня',
++      one: 'день',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodWeeks(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count недели',
++      many: '$count недель',
++      few: '$count недели',
++      one: 'неделя',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodMonths(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count месяца',
++      many: '$count месяцев',
++      few: '$count месяца',
++      one: 'месяц',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodYears(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count года',
++      many: '$count лет',
++      few: '$count года',
++      one: 'год',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapSubscribe => 'Оформить подписку';
++
++  @override
++  String get iapRestore => 'Восстановить покупки';
++
++  @override
++  String get iapManage => 'Управлять подпиской';
++
++  @override
++  String iapPerkCatalog(int premium, int free) {
++    return 'До $premium товаров в бизнес-каталоге (без Premium — $free)';
++  }
++
++  @override
++  String iapPerkMusic(int premium, int free) {
++    return 'До $premium треков в профиле (без Premium — $free)';
++  }
++
++  @override
++  String iapPlanUpsell(int premium) {
++    return 'С Premium — до $premium товаров.';
++  }
++
++  @override
++  String get iapActivated => 'Premium активирован. Спасибо!';
++
++  @override
++  String get iapPending =>
++      'Покупка ожидает подтверждения. Premium включится автоматически после подтверждения.';
++
++  @override
++  String get iapInactive => 'Эта подписка сейчас не активна.';
++
++  @override
++  String get iapNothingToRestore =>
++      'Активных подписок для восстановления не найдено.';
++
++  @override
++  String get iapUnavailable => 'Подписки сейчас недоступны. Попробуйте позже.';
++
++  @override
++  String get iapErrNetwork =>
++      'Нет подключения к интернету. Если покупка прошла, приложение проверит её при следующем запуске.';
++
++  @override
++  String get iapErrAccountMismatch =>
++      'Эта покупка относится к другому аккаунту NFCSTORE.';
++
++  @override
++  String get iapErrAlreadyLinked =>
++      'Эта подписка Apple уже привязана к другому аккаунту NFCSTORE.';
++
++  @override
++  String get iapErrDisabled => 'Покупки временно недоступны.';
++
++  @override
++  String get iapErrServer =>
++      'Не удалось связаться с сервером. Попробуйте позже.';
++
++  @override
++  String get iapErrStore => 'App Store не смог завершить покупку.';
++
++  @override
++  String get iapTermsOfUse => 'Условия использования (EULA)';
++
++  @override
++  String get iapDisclosure =>
++      'Оплата списывается с учётной записи Apple ID при подтверждении покупки. Подписка продлевается автоматически, если её не отменить как минимум за 24 часа до окончания текущего периода; плата за продление списывается в течение 24 часов до окончания периода. Управлять подпиской и отменить её можно в настройках учётной записи App Store.';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 3ad11d9..130accf 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3072,4 +3072,124 @@ class LUz extends L {
+ 
+   @override
+   String get activityGeneric => 'Yangi bildirishnoma';
++
++  @override
++  String get iapPlanMonthly => 'Oylik';
++
++  @override
++  String get iapPlanYearly => 'Yillik';
++
++  @override
++  String iapPeriodDays(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count kun',
++      one: 'kun',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodWeeks(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count hafta',
++      one: 'hafta',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodMonths(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count oy',
++      one: 'oy',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String iapPeriodYears(int count) {
++    String _temp0 = intl.Intl.pluralLogic(
++      count,
++      locale: localeName,
++      other: '$count yil',
++      one: 'yil',
++    );
++    return '$_temp0';
++  }
++
++  @override
++  String get iapSubscribe => 'Obuna bo‘lish';
++
++  @override
++  String get iapRestore => 'Xaridlarni tiklash';
++
++  @override
++  String get iapManage => 'Obunani boshqarish';
++
++  @override
++  String iapPerkCatalog(int premium, int free) {
++    return 'Biznes katalogida $premium tagacha tovar (Premium’siz — $free)';
++  }
++
++  @override
++  String iapPerkMusic(int premium, int free) {
++    return 'Profilda $premium tagacha qo‘shiq (Premium’siz — $free)';
++  }
++
++  @override
++  String iapPlanUpsell(int premium) {
++    return 'Premium bilan — $premium tagacha tovar.';
++  }
++
++  @override
++  String get iapActivated => 'Premium faollashdi. Rahmat!';
++
++  @override
++  String get iapPending =>
++      'Xarid tasdiqlanishi kutilmoqda. Tasdiqlangach Premium o‘zi yoqiladi.';
++
++  @override
++  String get iapInactive => 'Bu obuna hozir faol emas.';
++
++  @override
++  String get iapNothingToRestore => 'Tiklanadigan faol obuna topilmadi.';
++
++  @override
++  String get iapUnavailable =>
++      'Obunalar hozircha mavjud emas. Keyinroq urinib ko‘ring.';
++
++  @override
++  String get iapErrNetwork =>
++      'Internet aloqasi yo‘q. Xarid amalga oshgan bo‘lsa, ilova uni keyingi ochilishda qayta tekshiradi.';
++
++  @override
++  String get iapErrAccountMismatch =>
++      'Bu xarid boshqa NFCSTORE hisobiga tegishli.';
++
++  @override
++  String get iapErrAlreadyLinked =>
++      'Bu Apple obunasi allaqachon boshqa NFCSTORE hisobiga ulangan.';
++
++  @override
++  String get iapErrDisabled => 'Xaridlar vaqtincha mavjud emas.';
++
++  @override
++  String get iapErrServer =>
++      'Server bilan bog‘lanib bo‘lmadi. Keyinroq urinib ko‘ring.';
++
++  @override
++  String get iapErrStore => 'App Store xaridni yakunlay olmadi.';
++
++  @override
++  String get iapTermsOfUse => 'Foydalanish shartlari (EULA)';
++
++  @override
++  String get iapDisclosure =>
++      'To‘lov xarid tasdiqlanganda Apple ID hisobingizdan yechiladi. Obuna joriy davr tugashidan kamida 24 soat oldin bekor qilinmasa, avtomatik yangilanadi; yangilash to‘lovi davr tugashidan oldingi 24 soat ichida yechiladi. Obunani App Store hisob sozlamalarida boshqarish va bekor qilish mumkin.';
+ }
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index 1f660e5..a8b3e6e 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -37,6 +37,8 @@ import '../features/settings/news_screen.dart';
+ import '../l10n/gen/app_localizations.dart';
+ import '../features/settings/analytics_screen.dart';
+ import '../features/settings/settings_subscreens.dart';
++import '../features/premium/iap_controller.dart' show iapEnabledProvider;
++import '../features/premium/premium_iap_screen.dart';
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+ import '../features/shop/store_policy.dart'
+@@ -479,6 +481,16 @@ final routerProvider = Provider<GoRouter>((ref) {
+           redirect: _closedOnIos(Routes.settings),
+           builder: (_, __) => const OrdersScreen()),
+ 
++      // PREMIUM — APPLE IN-APP PURCHASE. Faqat iPhone'da va server
++      // kaliti (`/api/iap/apple/config`) yoqilganda ochiladi; aks holda
++      // (Android, kalit o'chiq, javob hali kelmagan) Sozlamalarga
++      // buriladi — xarid ekrani umuman yo'q (`iapEnabledProvider`).
++      GoRoute(
++          path: Routes.premium,
++          redirect: (_, __) =>
++              ref.read(iapEnabledProvider) ? null : Routes.settings,
++          builder: (_, __) => const PremiumIapScreen()),
++
+       // Bildirishnomalar va sozlamalar
+       GoRoute(path: Routes.activity, builder: (_, __) => const ActivityScreen()),
+       GoRoute(
+diff --git a/mobile_nova/lib/routing/routes.dart b/mobile_nova/lib/routing/routes.dart
+index ee1afb1..997adeb 100644
+--- a/mobile_nova/lib/routing/routes.dart
++++ b/mobile_nova/lib/routing/routes.dart
+@@ -173,6 +173,11 @@ abstract final class Routes {
+   static const settingsPayment = '/settings/payment';
+   static const settingsReferral = '/settings/referral';
+   static const settingsPremium = '/settings/premium';
++
++  /// Premium obunasi — Apple In-App Purchase. Faqat iPhone'da va server
++  /// kaliti yoqilganda (`features/premium/`); aks holda Sozlamalarga
++  /// buriladi.
++  static const premium = '/premium';
+   static const settingsSupport = '/settings/support';
+ 
+   /// Yordam ekrani, [id] li murojaat ajratib ko'rsatiladi —
+diff --git a/mobile_nova/pubspec.lock b/mobile_nova/pubspec.lock
+index 8ca085a..5fc4040 100644
+--- a/mobile_nova/pubspec.lock
++++ b/mobile_nova/pubspec.lock
+@@ -455,6 +455,22 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "0.2.2"
++  in_app_purchase_platform_interface:
++    dependency: "direct main"
++    description:
++      name: in_app_purchase_platform_interface
++      sha256: "1d353d38251da5b9fea6635c0ebfc6bb17a2d28d0e86ea5e083bf64244f1fb4c"
++      url: "https://pub.dev"
++    source: hosted
++    version: "1.4.0"
++  in_app_purchase_storekit:
++    dependency: "direct main"
++    description:
++      name: in_app_purchase_storekit
++      sha256: "1d512809edd9f12ff88fce4596a13a18134e2499013f4d6a8894b04699363c93"
++      url: "https://pub.dev"
++    source: hosted
++    version: "0.4.8+1"
+   in_app_update:
+     dependency: "direct main"
+     description:
+@@ -484,6 +500,14 @@ packages:
+       url: "https://pub.dev"
+     source: hosted
+     version: "0.6.7"
++  json_annotation:
++    dependency: transitive
++    description:
++      name: json_annotation
++      sha256: "2a743920d81b7910627f68ee2c9ac1fc0bfee32b9fc3403587d7c6791ca12f80"
++      url: "https://pub.dev"
++    source: hosted
++    version: "4.12.0"
+   leak_tracker:
+     dependency: transitive
+     description:
+diff --git a/mobile_nova/pubspec.yaml b/mobile_nova/pubspec.yaml
+index d4edab9..939597c 100644
+--- a/mobile_nova/pubspec.yaml
++++ b/mobile_nova/pubspec.yaml
+@@ -52,6 +52,14 @@ dependencies:
+   webview_flutter: ^4.13.1
+   webview_flutter_android: ^4.12.0
+   webview_flutter_wkwebview: ^3.25.0
++  # APPLE IN-APP PURCHASE — faqat iPhone (Premium obunasi, StoreKit 2).
++  # `in_app_purchase` (umumiy paket) EMAS: u Android'ga Play Billing
++  # kutubxonasini va `com.android.vending.BILLING` ruxsatini qo'shardi.
++  # Android ilova o'zgarmasin — shuning uchun faqat StoreKit
++  # implementatsiyasi (ios/macos plagini) va uning interfeysi.
++  # 0.4.9+ Flutter 3.38 talab qiladi; CI va mahalliy — 3.35.
++  in_app_purchase_storekit: 0.4.8+1
++  in_app_purchase_platform_interface: ^1.4.0
+ 
+ dev_dependencies:
+   flutter_test:
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 4a3ccff..778ee6d 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -11,6 +11,7 @@ import 'package:nfcstore_nova/core/utils/result.dart';
+ import 'package:nfcstore_nova/data/models/models.dart';
+ import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
++import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/saves_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/social_repository.dart';
+ import 'package:nfcstore_nova/design/theme/app_theme.dart';
+@@ -176,6 +177,17 @@ class FakeSavesRepository extends SavesRepository {
+   }
+ }
+ 
++/// Apple IAP serveri — sukut bo'yicha kalit O'CHIQ (tarmoqqa chiqmaydi).
++/// iPhone sinovlarida xarid UI paydo bo'lmaydi — bugungi xulq.
++class FakeIapRepository extends IapRepository {
++  FakeIapRepository({this.cfg = IapConfig.disabled}) : super(ApiClient());
++
++  IapConfig cfg;
++
++  @override
++  Future<Result<IapConfig>> config() async => Ok(cfg);
++}
++
+ /// Test uchun tayyor `ProviderContainer` overridelari.
+ Future<List<Override>> testOverrides({bool signedIn = true}) async {
+   SharedPreferences.setMockInitialValues({});
+@@ -186,6 +198,8 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
+     socialRepositoryProvider.overrideWithValue(FakeSocialRepository()),
+     discoverRepositoryProvider.overrideWithValue(FakeDiscoverRepository()),
+     savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
++    // Oxirida: ba'zi sinovlar ro'yxatni INDEKS bo'yicha almashtiradi.
++    iapRepositoryProvider.overrideWithValue(FakeIapRepository()),
+   ];
+ }
+ 
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+new file mode 100644
+index 0000000..c5f5776
+--- /dev/null
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -0,0 +1,571 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/auth/session.dart';
++import 'package:nfcstore_nova/features/business/business_forms.dart';
++import 'package:nfcstore_nova/features/premium/iap_controller.dart';
++import 'package:nfcstore_nova/features/premium/iap_store.dart';
++import 'package:nfcstore_nova/features/premium/premium_iap_screen.dart';
++import 'package:nfcstore_nova/features/settings/settings_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++
++import 'helpers.dart';
++
++/// APPLE IN-APP PURCHASE — Premium obunasi (faqat iPhone).
++///
++/// StoreKit va server soxta: xarid oqimi (narx -> xarid -> JWS ->
++/// server tekshiruvi -> `completePurchase` -> sessiya yangilanishi)
++/// haqiqiy plaginsiz sinaladi.
++
++const _monthly = 'uz.nfcstore.nova.premium.monthly';
++const _yearly = 'uz.nfcstore.nova.premium.yearly';
++const _enabled = IapConfig(enabled: true, products: [_monthly, _yearly]);
++
++final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
++
++/// Hamma soxta qatlamlar bitta jurnalga yozadi — TARTIB tekshiriladi.
++final _log = <String>[];
++
++class _Store implements IapStore {
++  final _ctrl = StreamController<List<IapPurchase>>.broadcast();
++  bool available = true;
++  bool listened = false;
++
++  /// `buy()` chaqirilganda oqimga yuboriladigan natija.
++  IapPurchase Function(String id)? onBuy;
++  List<IapPurchase> restorable = const [];
++
++  void emit(List<IapPurchase> list) => _ctrl.add(list);
++
++  @override
++  Future<bool> isAvailable() async => available;
++
++  @override
++  Future<List<IapProduct>> products(Set<String> ids) async => [
++        // Ataylab teskari tartibda — ekran server tartibini tiklaydi.
++        if (ids.contains(_yearly))
++          const IapProduct(
++              id: _yearly,
++              title: 'Premium Year',
++              price: r'$39.99',
++              periodUnit: IapPeriodUnit.year),
++        if (ids.contains(_monthly))
++          const IapProduct(
++              id: _monthly,
++              title: 'Premium Month',
++              price: r'$4.99',
++              periodUnit: IapPeriodUnit.month),
++      ];
++
++  @override
++  Future<void> buy(String productId, {String? accountToken}) async {
++    _log.add('buy:$productId:$accountToken');
++    final r = onBuy?.call(productId);
++    if (r != null) emit([r]);
++  }
++
++  @override
++  Future<void> restore() async {
++    _log.add('restore');
++    if (restorable.isNotEmpty) emit(restorable);
++  }
++
++  @override
++  Future<void> complete(IapPurchase purchase) async =>
++      _log.add('complete:${purchase.purchaseId}');
++
++  @override
++  Stream<List<IapPurchase>> get purchases {
++    listened = true;
++    return _ctrl.stream;
++  }
++}
++
++class _Iap extends FakeIapRepository {
++  _Iap({super.cfg});
++
++  int configCalls = 0;
++  Result<IapVerifyResult> verifyResult = const Ok(IapVerifyResult(premium: true));
++
++  /// `true` — verify qaytgach sessiya "premium" bo'ladi.
++  void Function()? onVerified;
++
++  @override
++  Future<Result<IapConfig>> config() {
++    configCalls++;
++    return super.config();
++  }
++
++  @override
++  Future<Result<String>> accountToken() async {
++    _log.add('token');
++    return const Ok('6f1c2a7e-0d3b-4e4f-9a51-2b8c7d6e5f40');
++  }
++
++  @override
++  Future<Result<IapVerifyResult>> verify(String signedTransaction) async {
++    _log.add('verify:$signedTransaction');
++    if (verifyResult.isOk) onVerified?.call();
++    return verifyResult;
++  }
++}
++
++class _Auth extends FakeAuthRepository {
++  _Auth({this.user = testUser});
++  User user;
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> restore() async =>
++      Ok((user: user, ids: testIds));
++
++  @override
++  Future<Result<({User user, List<NfcId> ids})>> me() async {
++    _log.add('me');
++    return restore();
++  }
++}
++
++const _premiumUser = User(
++  id: 1,
++  email: 'test@nfcstore.uz',
++  name: 'Test Foydalanuvchi',
++  premium: true,
++);
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void _tall(WidgetTester tester) {
++  tester.view.physicalSize = const Size(393 * 3, 2000 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++}
++
++IapPurchase _purchased(String id, String jws,
++        {IapPurchaseStatus status = IapPurchaseStatus.purchased}) =>
++    IapPurchase(
++      productId: id,
++      status: status,
++      purchaseId: '2000000123',
++      signedTransaction: jws,
++      needsCompletion: status == IapPurchaseStatus.purchased,
++    );
++
++class _Env {
++  _Env(this.c, this.store, this.iap, this.auth);
++  final ProviderContainer c;
++  final _Store store;
++  final _Iap iap;
++  final _Auth auth;
++}
++
++Future<_Env> _env({IapConfig cfg = _enabled, User user = testUser}) async {
++  _log.clear();
++  final store = _Store();
++  final iap = _Iap(cfg: cfg);
++  final auth = _Auth(user: user);
++  final c = ProviderContainer(overrides: [
++    ...await testOverrides(),
++    authRepositoryProvider.overrideWithValue(auth),
++    iapRepositoryProvider.overrideWithValue(iap),
++    iapStoreProvider.overrideWithValue(store),
++  ]);
++  addTearDown(c.dispose);
++  return _Env(c, store, iap, auth);
++}
++
++Widget _app(ProviderContainer c, GoRouter router) => UncontrolledProviderScope(
++      container: c,
++      child: MaterialApp.router(
++        routerConfig: router,
++        theme: buildTheme(NfcTokens.ivory),
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    );
++
++/// Sozlamalar + `/premium` (haqiqiy marshrutdagi kabi kalit bilan).
++GoRouter _router(ProviderContainer c) => GoRouter(routes: [
++      GoRoute(path: '/', builder: (_, __) => const SettingsScreen()),
++      GoRoute(
++          path: Routes.premium,
++          redirect: (_, __) =>
++              c.read(iapEnabledProvider) ? null : Routes.settings,
++          builder: (_, __) => const PremiumIapScreen()),
++      GoRoute(
++          path: Routes.settings,
++          builder: (_, __) => const Scaffold(body: Text('SETTINGS'))),
++    ]);
++
++Future<_Env> _pumpPremium(WidgetTester tester,
++    {IapConfig cfg = _enabled, User user = testUser}) async {
++  _tall(tester);
++  final e = await _env(cfg: cfg, user: user);
++  await e.c.read(iapConfigProvider.future);
++  final router = _router(e.c);
++  await tester.pumpWidget(_app(e.c, router));
++  await settle(tester, frames: 6);
++  router.push(Routes.premium);
++  await settle(tester, frames: 10);
++  return e;
++}
++
++void main() {
++  tearDown(disposeTestContainers);
++
++  group('kalit (kill switch)', () {
++    testWidgets('Android: o‘chiq, serverga ham chiqilmaydi', (tester) async {
++      final e = await _env();
++      final cfg = await e.c.read(iapConfigProvider.future);
++      expect(cfg.enabled, isFalse);
++      expect(e.iap.configCalls, 0, reason: 'Android’da so‘rov ketmasin');
++      expect(e.c.read(iapEnabledProvider), isFalse);
++      e.c.read(iapWatcherProvider);
++      expect(e.store.listened, isFalse, reason: 'StoreKit’ga tegilmaydi');
++    });
++
++    testWidgets('Android: Sozlamalarda Premium yo‘q, /premium ochilmaydi',
++        (tester) async {
++      _tall(tester);
++      final e = await _env();
++      final router = _router(e.c);
++      await tester.pumpWidget(_app(e.c, router));
++      await settle(tester, frames: 8);
++      final l = await _uz();
++      expect(find.text(l.settingsPremium), findsNothing);
++      router.push(Routes.premium);
++      await settle(tester, frames: 8);
++      expect(find.byType(PremiumIapScreen), findsNothing);
++      expect(find.text('SETTINGS'), findsOneWidget);
++    });
++
++    testWidgets('iPhone, kalit o‘chiq: kirish yo‘li ham, ekran ham yo‘q',
++        (tester) async {
++      _tall(tester);
++      final e = await _env(cfg: IapConfig.disabled);
++      final router = _router(e.c);
++      await tester.pumpWidget(_app(e.c, router));
++      await settle(tester, frames: 8);
++      final l = await _uz();
++      expect(e.iap.configCalls, 1);
++      expect(find.text(l.settingsPremium), findsNothing);
++      router.push(Routes.premium);
++      await settle(tester, frames: 8);
++      expect(find.byType(PremiumIapScreen), findsNothing);
++      expect(find.text('SETTINGS'), findsOneWidget);
++      expect(e.store.listened, isFalse);
++    }, variant: _ios);
++
++    testWidgets('iPhone, config so‘rovi xato — o‘chiq', (tester) async {
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        iapRepositoryProvider.overrideWithValue(_FailingIap()),
++        iapStoreProvider.overrideWithValue(_Store()),
++      ]);
++      addTearDown(c.dispose);
++      final cfg = await c.read(iapConfigProvider.future);
++      expect(cfg.enabled, isFalse);
++      expect(c.read(iapEnabledProvider), isFalse);
++    }, variant: _ios);
++
++    test('mahsulotsiz yoqilgan kalit — o‘chiq', () {
++      expect(IapConfig.fromJson(const {'enabled': true, 'products': []}).enabled,
++          isFalse);
++      final c = IapConfig.fromJson(const {
++        'enabled': true,
++        'products': [_monthly, _yearly]
++      });
++      expect([c.enabled, c.products], [true, [_monthly, _yearly]]);
++    });
++  });
++
++  group('kalit yoqilgan (iPhone)', () {
++    testWidgets('Sozlamalarda Premium qatori -> ekran', (tester) async {
++      _tall(tester);
++      final e = await _env();
++      await e.c.read(iapConfigProvider.future);
++      final router = _router(e.c);
++      await tester.pumpWidget(_app(e.c, router));
++      await settle(tester, frames: 8);
++      final l = await _uz();
++      expect(find.text(l.settingsPremium), findsOneWidget);
++      await tester.tap(find.text(l.settingsPremium));
++      await settle(tester, frames: 10);
++      expect(find.byType(PremiumIapScreen), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('ikki reja, narx App Store’dan, server tartibida',
++        (tester) async {
++      await _pumpPremium(tester);
++      final l = await _uz();
++      expect(tester.takeException(), isNull);
++      final m = find.byKey(const ValueKey('iap-plan-$_monthly'));
++      final y = find.byKey(const ValueKey('iap-plan-$_yearly'));
++      expect(m, findsOneWidget);
++      expect(y, findsOneWidget);
++      expect(tester.getTopLeft(m).dy, lessThan(tester.getTopLeft(y).dy),
++          reason: 'oylik birinchi (server tartibi)');
++      expect(find.text(r'$4.99'), findsOneWidget);
++      expect(find.text(r'$39.99'), findsOneWidget);
++      expect(find.text('/ ${l.iapPeriodMonths(1)}'), findsOneWidget);
++      expect(find.text('/ ${l.iapPeriodYears(1)}'), findsOneWidget);
++      expect(find.text(l.iapPlanMonthly), findsOneWidget);
++      expect(find.text(l.iapPlanYearly), findsOneWidget);
++      // Apple talab qiladigan matn va havolalar.
++      expect(find.text(l.iapDisclosure), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-terms')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-privacy')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-restore')), findsOneWidget);
++      // Saytga to'lov yo'li yo'q (Apple 3.1.1).
++      expect(find.textContaining('Payme'), findsNothing);
++      expect(find.textContaining('Click'), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('xarid: token -> JWS verify -> complete -> sessiya',
++        (tester) async {
++      final e = await _pumpPremium(tester);
++      final l = await _uz();
++      e.store.onBuy = (id) => _purchased(id, 'JWS-$id');
++      e.iap.onVerified = () => e.auth.user = _premiumUser;
++
++      // Yillik tanlanadi, keyin obuna.
++      await tester.tap(find.byKey(const ValueKey('iap-plan-$_yearly')));
++      await settle(tester, frames: 2);
++      await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++      await settle(tester, frames: 10);
++
++      expect(_log, [
++        'token',
++        'buy:$_yearly:6f1c2a7e-0d3b-4e4f-9a51-2b8c7d6e5f40',
++        'verify:JWS-$_yearly',
++        'complete:2000000123',
++        'me',
++      ], reason: 'completePurchase FAQAT server tasdig‘idan keyin');
++      expect(e.c.read(currentUserProvider)?.premium, isTrue,
++          reason: 'Premium holati butun ilovada yangilandi');
++      expect(find.text(l.iapActivated), findsOneWidget);
++      expect(find.text(l.premiumActive), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('server 200 premium:false — baribir yopiladi', (tester) async {
++      final e = await _pumpPremium(tester);
++      final l = await _uz();
++      e.store.onBuy = (id) => _purchased(id, 'JWS-X');
++      e.iap.verifyResult =
++          const Ok(IapVerifyResult(premium: false, reason: 'expired'));
++      await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++      await settle(tester, frames: 10);
++      expect(_log, contains('complete:2000000123'));
++      expect(find.text(l.iapInactive), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('tarmoq xatosi: completePurchase CHAQIRILMAYDI',
++        (tester) async {
++      final e = await _pumpPremium(tester);
++      final l = await _uz();
++      e.store.onBuy = (id) => _purchased(id, 'JWS-NET');
++      e.iap.verifyResult = const Err(AppError(AppErrorKind.offline));
++      await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++      await settle(tester, frames: 10);
++      expect(_log, contains('verify:JWS-NET'));
++      expect(_log.where((s) => s.startsWith('complete')), isEmpty,
++          reason: 'tranzaksiya ochiq qolishi kerak — StoreKit qayta beradi');
++      expect(_log, isNot(contains('me')));
++      expect(find.text(l.iapErrNetwork), findsOneWidget);
++    }, variant: _ios);
++
++    for (final (code, kind, text) in [
++      ('account_mismatch', AppErrorKind.forbidden, 'mismatch'),
++      ('already_linked', AppErrorKind.conflict, 'linked'),
++      ('iap_disabled', AppErrorKind.server, 'disabled'),
++    ]) {
++      testWidgets('server $code: yopilmaydi, sabab ko‘rsatiladi',
++          (tester) async {
++        final e = await _pumpPremium(tester);
++        final l = await _uz();
++        e.store.onBuy = (id) => _purchased(id, 'JWS-$code');
++        e.iap.verifyResult = Err(AppError(kind, code: code));
++        await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++        await settle(tester, frames: 10);
++        expect(_log.where((s) => s.startsWith('complete')), isEmpty);
++        final msg = switch (text) {
++          'mismatch' => l.iapErrAccountMismatch,
++          'linked' => l.iapErrAlreadyLinked,
++          _ => l.iapErrDisabled,
++        };
++        expect(find.text(msg), findsOneWidget);
++      }, variant: _ios);
++    }
++
++    testWidgets('kutilayotgan xarid (Ask to Buy) — holat ko‘rsatiladi',
++        (tester) async {
++      final e = await _pumpPremium(tester);
++      final l = await _uz();
++      e.store.onBuy = (id) =>
++          IapPurchase(productId: id, status: IapPurchaseStatus.pending);
++      await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++      await settle(tester, frames: 8);
++      expect(find.text(l.iapPending), findsOneWidget);
++      expect(_log.where((s) => s.startsWith('verify')), isEmpty);
++    }, variant: _ios);
++
++    testWidgets('bekor qilindi — xato yo‘q, tugma yana faol', (tester) async {
++      final e = await _pumpPremium(tester);
++      e.store.onBuy = (id) =>
++          IapPurchase(productId: id, status: IapPurchaseStatus.canceled);
++      await tester.tap(find.byKey(const ValueKey('iap-subscribe')));
++      await settle(tester, frames: 8);
++      expect(find.byKey(const ValueKey('iap-error')), findsNothing);
++      expect(e.c.read(iapControllerProvider).busy, isFalse);
++    }, variant: _ios);
++
++    testWidgets('tiklash: restored -> verify, complete yo‘q, sessiya',
++        (tester) async {
++      final e = await _pumpPremium(tester);
++      final l = await _uz();
++      e.store.restorable = [
++        _purchased(_monthly, 'JWS-R', status: IapPurchaseStatus.restored),
++      ];
++      e.iap.onVerified = () => e.auth.user = _premiumUser;
++      await tester.tap(find.byKey(const ValueKey('iap-restore')));
++      await settle(tester, frames: 10);
++      expect(_log, ['restore', 'verify:JWS-R', 'me']);
++      expect(e.c.read(currentUserProvider)?.premium, isTrue);
++      expect(find.text(l.iapActivated), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('tiklash: hech narsa topilmadi', (tester) async {
++      await _pumpPremium(tester);
++      final l = await _uz();
++      await tester.tap(find.byKey(const ValueKey('iap-restore')));
++      await settle(tester, frames: 8);
++      expect(_log, ['restore']);
++      expect(find.text(l.iapNothingToRestore), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('allaqachon Premium — muddat, boshqarish, rejalar yo‘q',
++        (tester) async {
++      final until = DateTime(2027, 3, 9, 12);
++      await _pumpPremium(tester,
++          user: User(
++              id: 1,
++              email: 'a@b.uz',
++              premium: true,
++              premiumUntil: until));
++      final l = await _uz();
++      expect(find.text(l.premiumActive), findsOneWidget);
++      expect(find.text(l.premiumUntil('09.03.2027')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-manage')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
++      expect(find.byKey(const ValueKey('iap-restore')), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('App Store narx bermadi — tushunarli holat', (tester) async {
++      _tall(tester);
++      final e = await _env();
++      e.store.available = false;
++      await e.c.read(iapConfigProvider.future);
++      final router = _router(e.c);
++      await tester.pumpWidget(_app(e.c, router));
++      await settle(tester, frames: 4);
++      router.push(Routes.premium);
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('iap-unavailable')), findsOneWidget);
++      expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
++    }, variant: _ios);
++  });
++
++  group('ilova ochilishida ochiq tranzaksiya', () {
++    testWidgets('kirgan + kalit yoqilgan: oqim tinglanadi va tasdiqlanadi',
++        (tester) async {
++      final e = await _env();
++      e.c.listen(iapWatcherProvider, (_, __) {});
++      // Sessiya tiklanishi va config.
++      await e.c.read(iapConfigProvider.future);
++      await tester.pump(const Duration(milliseconds: 50));
++      expect(e.c.read(sessionProvider), isA<SessionActive>());
++      expect(e.store.listened, isTrue);
++
++      // Oldingi safar tarmoq uzilgan xarid StoreKit'dan qayta keladi.
++      e.store.emit([_purchased(_monthly, 'JWS-OLD')]);
++      await tester.pump(const Duration(milliseconds: 50));
++      expect(_log, ['verify:JWS-OLD', 'complete:2000000123', 'me']);
++    }, variant: _ios);
++
++    testWidgets('kirmagan: tinglanmaydi', (tester) async {
++      _log.clear();
++      final store = _Store();
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(signedIn: false),
++        iapRepositoryProvider.overrideWithValue(_Iap(cfg: _enabled)),
++        iapStoreProvider.overrideWithValue(store),
++      ]);
++      addTearDown(c.dispose);
++      c.listen(iapWatcherProvider, (_, __) {});
++      await tester.pump(const Duration(milliseconds: 50));
++      expect(store.listened, isFalse);
++    }, variant: _ios);
++  });
++
++  group('biznes katalogi kartasi', () {
++    const plan = CompanyPlan(free: true, itemLimit: 5, premiumItemLimit: 25);
++
++    Future<void> pumpCard(WidgetTester tester, IapConfig cfg) async {
++      _tall(tester);
++      final e = await _env(cfg: cfg);
++      await e.c.read(iapConfigProvider.future);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: e.c,
++        child: wrapScreen(const Scaffold(
++            body: Padding(
++                padding: EdgeInsets.all(16),
++                child: BusinessPlanCard(plan: plan, count: 5)))),
++      ));
++      await settle(tester, frames: 4);
++    }
++
++    testWidgets('iPhone + kalit: Premium tugmasi', (tester) async {
++      await pumpCard(tester, _enabled);
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('plan-premium')), findsOneWidget);
++      expect(find.text(l.iapPlanUpsell(25)), findsOneWidget);
++    }, variant: _ios);
++
++    testWidgets('iPhone, kalit o‘chiq: avvalgidek — tugma yo‘q',
++        (tester) async {
++      await pumpCard(tester, IapConfig.disabled);
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
++      expect(find.text(l.iapPlanUpsell(25)), findsNothing);
++    }, variant: _ios);
++
++    testWidgets('Android: tugma yo‘q', (tester) async {
++      await pumpCard(tester, _enabled);
++      expect(find.byKey(const ValueKey('plan-premium')), findsNothing);
++    });
++  });
++}
++
++class _FailingIap extends FakeIapRepository {
++  @override
++  Future<Result<IapConfig>> config() async =>
++      const Err(AppError(AppErrorKind.offline));
++}
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index 91f2941..65e4cf7 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -68,6 +68,7 @@ void main() {
+     Routes.settingsPayment,
+     Routes.settingsReferral,
+     Routes.settingsPremium,
++    Routes.premium,
+     Routes.settingsSupport,
+     Routes.settingsAbout,
+     Routes.settingsNews,
+-- 
+2.43.0
+

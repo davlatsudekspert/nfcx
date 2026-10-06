@@ -1,0 +1,1454 @@
+From 633e0eac835411cd942435067a58fd549c7281a3 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Tue, 6 Oct 2026 08:07:07 +0000
+Subject: [PATCH 49/53] Nova audit: parol xatosi chiqarmaydi; do'kon va NFC
+ tarixi haqiqiy javobdan
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- 401 bad_current_password (change-password-direct) sessiyani yopmaydi;
+  "Joriy parol noto'g'ri" xabari.
+- Do'kon (Android): /api/settings/physical-nfc-pricing dan jismoniy NFC
+  karta mahsuloti — narx physicalCardFee, ko'p dona narxlari (tiers) va
+  yetkazib berish muddati. Ilgari mavjud bo'lmagan `items` o'qilib do'kon
+  doim bo'sh edi. Checkout matni — jismoniy karta (storeBuyOnSitePhysical).
+- NFC ID tarixi: /api/records/:code/analytics yig'ma ko'rsatkichlari
+  (ko'rishlar, noyob tashrifchilar, harakatlar, kunlar, manbalar).
+- O'lik / noto'g'ri shartnomali kod olib tashlandi: ShopRepository
+  enabledProviders / startPayment / categories, PayProvider,
+  BusinessRepository.search. IAP verify 413 — yakuniy (Premium va
+  Ko'tarish).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../integration_test/e2e_backend_test.dart    |  11 +-
+ mobile_nova/lib/core/network/api_client.dart  |  17 +-
+ mobile_nova/lib/data/models/models.dart       |  83 +++++++
+ .../repositories/business_repository.dart     |   6 -
+ .../lib/data/repositories/nfc_repository.dart |  14 +-
+ .../data/repositories/shop_repository.dart    | 114 +++------
+ mobile_nova/lib/design/widgets/states.dart    |   2 +
+ .../lib/features/nfc/nfc_misc_screens.dart    | 143 +++++++----
+ .../features/premium/boost_controller.dart    |   4 +-
+ .../lib/features/premium/iap_controller.dart  |   4 +-
+ .../lib/features/shop/shop_screens.dart       |  86 +++++--
+ mobile_nova/lib/l10n/arb/app_en.arb           |  18 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |  18 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |  18 +-
+ .../lib/l10n/gen/app_localizations.dart       |  72 ++++++
+ .../lib/l10n/gen/app_localizations_en.dart    |  61 +++++
+ .../lib/l10n/gen/app_localizations_ru.dart    |  61 +++++
+ .../lib/l10n/gen/app_localizations_uz.dart    |  61 +++++
+ mobile_nova/test/audit_1006_a_test.dart       | 230 ++++++++++++++++++
+ mobile_nova/test/iap_boost_test.dart          |   4 +
+ mobile_nova/test/iap_premium_test.dart        |   4 +
+ mobile_nova/tool/gallery.dart                 |   7 +-
+ 22 files changed, 876 insertions(+), 162 deletions(-)
+ create mode 100644 mobile_nova/test/audit_1006_a_test.dart
+
+diff --git a/mobile_nova/integration_test/e2e_backend_test.dart b/mobile_nova/integration_test/e2e_backend_test.dart
+index 37997c0..d31bda6 100644
+--- a/mobile_nova/integration_test/e2e_backend_test.dart
++++ b/mobile_nova/integration_test/e2e_backend_test.dart
+@@ -1947,7 +1947,14 @@ void main() {
+     );
+ 
+     // ── TO'LOV — FAQAT O'QISH, HECH QANDAY TO'LOV BOSHLANMAYDI ──
+-    final providers = await shop.enabledProviders();
++    // `/api/settings/payments-enabled` — to'g'ridan-to'g'ri o'qiladi
++    // (ilovada bu ro'yxatni ishlatadigan ekran yo'q).
++    final providers = (await api
++            .get<Map<String, dynamic>>('/api/settings/payments-enabled'))
++        .map((j) => {
++              for (final p in const ['payme', 'click', 'paynet'])
++                if (j[p] == true || j[p] == 1 || j[p] == 'true') p,
++            });
+     switch (providers) {
+       case Err(:final error):
+         partial('Payment checkout',
+@@ -1956,7 +1963,7 @@ void main() {
+             cause: why(error),
+             pathHint: 'pay');
+       case Ok(:final value):
+-        final names = value.map((p) => p.name).toList()..sort();
++        final names = value.toList()..sort();
+         report.add(MatrixRow(
+           name: 'Payment checkout',
+           verdict: Verdict.manualPayment,
+diff --git a/mobile_nova/lib/core/network/api_client.dart b/mobile_nova/lib/core/network/api_client.dart
+index f3787a5..90e2892 100644
+--- a/mobile_nova/lib/core/network/api_client.dart
++++ b/mobile_nova/lib/core/network/api_client.dart
+@@ -434,7 +434,11 @@ class ApiClient {
+       _ => status >= 500 ? AppErrorKind.server : AppErrorKind.unknown,
+     };
+ 
+-    if (kind == AppErrorKind.unauthorized) _onUnauthorized(path);
++    // `bad_current_password` (parolni almashtirishda joriy parol xato)
++    // — 401, lekin sessiya JOYIDA. Ilgari bu odamni chiqarib yuborardi.
++    if (kind == AppErrorKind.unauthorized && !_keepsSession(code)) {
++      _onUnauthorized(path);
++    }
+     return AppError(kind,
+         code: code,
+         detail: detail,
+@@ -473,8 +477,12 @@ class ApiClient {
+   void debugSetTokenForTest(String? v) => _token = v;
+ 
+   @visibleForTesting
+-  void debugHandleStatus(int status, String path) =>
+-      _httpError(status, const <String, dynamic>{}, path);
++  AppError debugHandleStatus(int status, String path,
++          [Map<String, dynamic> body = const <String, dynamic>{}]) =>
++      _httpError(status, body, path);
++
++  /// 401, lekin "sessiya tugadi" EMAS — server kodi bo'yicha.
++  static bool _keepsSession(String? code) => code == 'bad_current_password';
+ 
+   /// KIRISH YO'LLARI — u yerdagi 401 "sessiya tugadi" EMAS.
+   ///
+@@ -482,6 +490,9 @@ class ApiClient {
+   /// sessiya tugashi deb qabul qilsak, parolni bir marta xato
+   /// yozgan odam saqlangan sessiyasidan ham ayrilardi.
+   static bool _isAuthEntry(String path) =>
++      // Parolni almashtirish: joriy parol xato bo'lsa 401
++      // (`bad_current_password`) — sessiya joyida qoladi.
++      path.contains('/settings/change-password-direct') ||
+       path.contains('/auth/login') ||
+       path.contains('/auth/register') ||
+       path.contains('/auth/verify') ||
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index 6c32d98..1eb3866 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1149,9 +1149,85 @@ class CatalogCategory {
+ }
+ 
+ /// Do'kon mahsuloti — NFC karta va ID paketlari.
++/// Ko'p dona narxi (`/api/settings/physical-nfc-pricing` `tiers`).
++class PriceTier {
++  const PriceTier({required this.minQty, this.maxQty, required this.pricePerUnit});
++  final int minQty;
++
++  /// `null` — yuqori chegara yo'q (`50+`).
++  final int? maxQty;
++  final int pricePerUnit;
++
++  factory PriceTier.fromJson(Map<String, dynamic> j) => PriceTier(
++        minQty: _i(j['minQty']),
++        maxQty: j['maxQty'] == null ? null : _i(j['maxQty']),
++        pricePerUnit: _i(j['pricePerUnit']),
++      );
++}
++
++/// NFC ID yig'ma tarixi (`/api/records/:code/analytics`).
++class CardAnalytics {
++  const CardAnalytics({
++    this.days = 30,
++    this.totalViews = 0,
++    this.uniqueVisitors = 0,
++    this.byType = const {},
++    this.byDay = const [],
++    this.byRef = const [],
++  });
++
++  final int days;
++  final int totalViews;
++  final int uniqueVisitors;
++
++  /// Hodisa turi (`phone_click`, `contact_save`...) -> soni.
++  final Map<String, int> byType;
++
++  /// `YYYY-MM-DD` -> profil ko'rishlari (eski kun birinchi).
++  final List<({String day, int n})> byDay;
++
++  /// Manba (`ref`) -> soni.
++  final List<({String ref, int n})> byRef;
++
++  bool get isEmpty =>
++      totalViews == 0 && byType.values.every((n) => n == 0) && byDay.isEmpty;
++
++  factory CardAnalytics.fromJson(Map<String, dynamic> j) {
++    final types = <String, int>{};
++    final bt = j['byType'];
++    if (bt is Map) {
++      bt.forEach((k, v) {
++        final n = _i(v);
++        if (n > 0) types['$k'] = n;
++      });
++    }
++    return CardAnalytics(
++      days: _i(j['days']) > 0 ? _i(j['days']) : 30,
++      totalViews: _i(j['totalViews']),
++      uniqueVisitors: _i(j['uniqueVisitors']),
++      byType: types,
++      byDay: [
++        for (final e in _list(j['byDay']))
++          if (_s(e['day']).isNotEmpty) (day: _s(e['day']), n: _i(e['n'])),
++      ],
++      byRef: [
++        for (final e in _list(j['byRef']))
++          if (_s(e['ref']).isNotEmpty) (ref: _s(e['ref']), n: _i(e['n'])),
++      ],
++    );
++  }
++}
++
++/// Jismoniy NFC karta mahsulotining identifikatori — server alohida
++/// mahsulot ro'yxati bermaydi, mahsulot narx javobidan quriladi.
++const kPhysicalCardId = 'nfc-card';
++
+ class ShopProduct {
+   const ShopProduct({
+     required this.id,
++    this.priceTiers = const [],
++    this.deliveryMinDays,
++    this.deliveryMaxDays,
+     this.name = '',
+     this.description = '',
+     this.imageUrl = '',
+@@ -1176,6 +1252,13 @@ class ShopProduct {
+   /// ID uzunligi darajasi (backend `tier`) — narx shundan kelib chiqadi.
+   final String tier;
+ 
++  /// Ko'p dona narxlari (jismoniy karta, kompaniyalar uchun).
++  final List<PriceTier> priceTiers;
++  final int? deliveryMinDays;
++  final int? deliveryMaxDays;
++
++  bool get isPhysicalCard => id == kPhysicalCardId;
++
+   bool get hasDiscount => oldPrice != null && oldPrice! > price;
+ 
+   factory ShopProduct.fromJson(Map<String, dynamic> j) => ShopProduct(
+diff --git a/mobile_nova/lib/data/repositories/business_repository.dart b/mobile_nova/lib/data/repositories/business_repository.dart
+index 490af33..f56a836 100644
+--- a/mobile_nova/lib/data/repositories/business_repository.dart
++++ b/mobile_nova/lib/data/repositories/business_repository.dart
+@@ -73,12 +73,6 @@ class BusinessRepository {
+   Future<Result<void>> submit(String companyId) =>
+       _api.post<void>('/api/companies/$companyId/submit');
+ 
+-  Future<Result<List<Business>>> search(String q) async {
+-    final res = await _api
+-        .get<Map<String, dynamic>>('/api/companies/search', query: {'q': q});
+-    return res.map((j) => parseList(j['companies'] ?? j['items'], Business.fromJson));
+-  }
+-
+   // ---- katalog ------------------------------------------------------------
+ 
+   /// Kompaniya katalogi.
+diff --git a/mobile_nova/lib/data/repositories/nfc_repository.dart b/mobile_nova/lib/data/repositories/nfc_repository.dart
+index 69304db..55cc014 100644
+--- a/mobile_nova/lib/data/repositories/nfc_repository.dart
++++ b/mobile_nova/lib/data/repositories/nfc_repository.dart
+@@ -37,10 +37,16 @@ class NfcRepository {
+ 
+   Future<Result<void>> deleteId(String code) => _api.delete<void>('/api/records/$code');
+ 
+-  /// Skanerlash/ko'rish tarixi.
+-  Future<Result<List<ActivityEvent>>> history(String code) async {
+-    final res = await _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
+-    return res.map((j) => parseList(j['events'] ?? j['items'], ActivityEvent.fromJson));
++  /// NFC ID tarixi — YIG'MA ko'rsatkichlar (`/api/records/:code/analytics`).
++  ///
++  /// Server alohida hodisalar ro'yxatini BERMAYDI (ilgari bu yerda
++  /// `events` o'qilardi va ekran doim bo'sh edi). Javob:
++  /// `{days, totalViews, uniqueVisitors, byType, byDay?, byRef?}` —
++  /// `byDay`/`byRef` faqat kengaytirilgan analitikada.
++  Future<Result<CardAnalytics>> analytics(String code) async {
++    final res =
++        await _api.get<Map<String, dynamic>>('/api/records/$code/analytics');
++    return res.map(CardAnalytics.fromJson);
+   }
+ 
+   /// Jismoniy NFC kartalar ro'yxati.
+diff --git a/mobile_nova/lib/data/repositories/shop_repository.dart b/mobile_nova/lib/data/repositories/shop_repository.dart
+index 9371cba..bfcfda8 100644
+--- a/mobile_nova/lib/data/repositories/shop_repository.dart
++++ b/mobile_nova/lib/data/repositories/shop_repository.dart
+@@ -1,36 +1,55 @@
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../app/providers.dart';
+-import '../../core/errors/app_error.dart';
+ import '../../core/network/api_client.dart';
+ import '../../core/utils/result.dart';
+ import '../models/models.dart';
+ 
+-/// To'lov provayderi — backend `/api/settings/payments-enabled` orqali
+-/// qaysilari YOQILGANINI aytadi. Ilova ro'yxatni o'zi to'qimaydi.
+-enum PayProvider { payme, click, paynet }
+-
+ /// NFCSTORE do'koni, buyurtmalar va to'lovlar.
+ class ShopRepository {
+   ShopRepository(this._api);
+   final ApiClient _api;
+ 
+-  /// Sotuvdagi NFC ID narxlari — daraja (tier) bo'yicha.
+-  Future<Result<List<ShopProduct>>> products({String? category}) async {
+-    final res = await _api.get<Map<String, dynamic>>(
+-      '/api/settings/physical-nfc-pricing',
+-      query: {if (category != null) 'category': category},
+-    );
+-    return res.map((j) =>
+-        parseList(j['items'] ?? j['products'] ?? j['pricing'], ShopProduct.fromJson));
++  /// JISMONIY NFC KARTA — do'kondagi yagona mahsulot.
++  ///
++  /// `/api/settings/physical-nfc-pricing` mahsulot RO'YXATI BERMAYDI:
++  ///
++  ///     { tiers: [{minQty, maxQty, pricePerUnit}],
++  ///       delivery: {minDays, maxDays}, physicalCardFee }
++  ///
++  /// Ilgari bu yerda `items`/`products` o'qilardi — server ularni hech
++  /// qachon yubormagan, do'kon DOIM bo'sh edi. Endi bitta mahsulot
++  /// quriladi: narxi — `physicalCardFee` (karta buyurtmasidagi bilan
++  /// bitta manba), `tiers` — ko'p dona narxlari, `delivery` — muddat.
++  /// Hech narsa ilovada yozilmaydi.
++  Future<Result<List<ShopProduct>>> products() async {
++    final res = await _api
++        .get<Map<String, dynamic>>('/api/settings/physical-nfc-pricing');
++    return res.map(physicalProductsFromPricing);
+   }
+ 
+-  Future<Result<List<String>>> categories() async {
+-    final res = await _api.get<Map<String, dynamic>>('/api/categories');
+-    return res.map((j) {
+-      final raw = j['categories'] ?? j['items'];
+-      return raw is List ? raw.map((e) => '$e').toList() : <String>[];
+-    });
++  /// Narx javobidan mahsulot(lar) — testda tarmoqsiz sinaladi.
++  static List<ShopProduct> physicalProductsFromPricing(Map<String, dynamic> j) {
++    final tiers = parseList(j['tiers'], PriceTier.fromJson)
++        .where((t) => t.pricePerUnit > 0)
++        .toList()
++      ..sort((a, b) => a.minQty.compareTo(b.minQty));
++    final fee = j['physicalCardFee'];
++    final price = fee is num && fee > 0
++        ? fee.toInt()
++        : (tiers.isEmpty ? 0 : tiers.first.pricePerUnit);
++    if (price <= 0) return const [];
++    final d = j['delivery'];
++    int? day(Object? v) => v is num && v > 0 ? v.toInt() : null;
++    return [
++      ShopProduct(
++        id: kPhysicalCardId,
++        price: price,
++        priceTiers: tiers,
++        deliveryMinDays: d is Map ? day(d['minDays']) : null,
++        deliveryMaxDays: d is Map ? day(d['maxDays']) : null,
++      ),
++    ];
+   }
+ 
+   /// Jismoniy karta buyurtmasi.
+@@ -68,33 +87,6 @@ class ShopRepository {
+   Future<Result<Map<String, dynamic>>> paymentStatus(int orderId) =>
+       _api.get<Map<String, dynamic>>('/api/payments/$orderId');
+ 
+-  /// Qaysi to'lov tizimlari YOQILGAN.
+-  ///
+-  /// NIMA UCHUN MUHIM: agar hech biri yoqilmagan bo'lsa, ilova
+-  /// "to'lash" tugmasini ko'rsatib, keyin foydalanuvchini bo'sh
+-  /// ekranga olib borishi mumkin emas. Buning o'rniga CONFIG REQUIRED
+-  /// holati ko'rsatiladi.
+-  Future<Result<Set<PayProvider>>> enabledProviders() async {
+-    final res = await _api.get<Map<String, dynamic>>('/api/settings/payments-enabled');
+-    return res.map((j) {
+-      final out = <PayProvider>{};
+-      for (final p in PayProvider.values) {
+-        final v = j[p.name];
+-        if (v == true || v == 1 || v == 'true') out.add(p);
+-      }
+-      // Ro'yxat ko'rinishida kelgan variant.
+-      final list = j['providers'];
+-      if (list is List) {
+-        for (final e in list) {
+-          final m = PayProvider.values.where((p) => p.name == '$e');
+-          if (m.isNotEmpty) out.add(m.first);
+-        }
+-      }
+-      return out;
+-    });
+-  }
+-
+-
+   // ═══════════════════════════════════════════════════════════════
+   // SHAXSIY NFC ID XARIDI
+   //
+@@ -148,36 +140,6 @@ class ShopRepository {
+     );
+     return res.map(IdOrderDraft.fromJson);
+   }
+-
+-  /// To'lov sahifasiga o'tish havolasi.
+-  ///
+-  /// Provayder sozlanmagan bo'lsa bu yerda SOXTA muvaffaqiyat
+-  /// qaytarilmaydi — `AppErrorKind.endpointMissing` chiqadi va ekran
+-  /// CONFIG REQUIRED holatini ko'rsatadi.
+-  Future<Result<String>> startPayment({
+-    required PayProvider provider,
+-    required int orderId,
+-  }) async {
+-    final path = switch (provider) {
+-      PayProvider.payme => '/api/pay/payme',
+-      PayProvider.click => '/api/pay/click/prepare',
+-      PayProvider.paynet => '/api/pay/paynet/webhook',
+-    };
+-    final res = await _api.post<Map<String, dynamic>>(path, {'orderId': orderId});
+-    return switch (res) {
+-      Err(:final error) => Err(error),
+-      Ok(:final value) => () {
+-          final url = '${value['url'] ?? value['payUrl'] ?? value['checkoutUrl'] ?? ''}';
+-          if (url.isEmpty) {
+-            return const Err<String>(AppError(
+-              AppErrorKind.endpointMissing,
+-              code: 'payment_not_configured',
+-            ));
+-          }
+-          return Ok(url);
+-        }(),
+-    };
+-  }
+ }
+ 
+ final shopRepositoryProvider = Provider<ShopRepository>(
+diff --git a/mobile_nova/lib/design/widgets/states.dart b/mobile_nova/lib/design/widgets/states.dart
+index b491743..7adf631 100644
+--- a/mobile_nova/lib/design/widgets/states.dart
++++ b/mobile_nova/lib/design/widgets/states.dart
+@@ -24,6 +24,8 @@ bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
+ /// kalit qo'shsa ham ilovada "bo'sh xato" chiqmaydi.
+ String describeError(L l, AppError e) => switch (e.code) {
+       'bad_credentials' => l.errBadCredentials,
++      // Parolni almashtirish: JORIY parol xato (401, sessiya joyida).
++      'bad_current_password' => l.errBadCurrentPassword,
+       'email_taken' => l.errEmailTaken,
+       // Telefon boshqa akkauntda. Ilgari kalit tanilmasdi va umumiy
+       // "Bu ma'lumot allaqachon band" chiqardi — odam NIMA band
+diff --git a/mobile_nova/lib/features/nfc/nfc_misc_screens.dart b/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
+index 52198ed..9474bbc 100644
+--- a/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
++++ b/mobile_nova/lib/features/nfc/nfc_misc_screens.dart
+@@ -20,7 +20,6 @@ import '../../routing/routes.dart';
+ import '../auth/session.dart';
+ import '../home/home_screen.dart';
+ import '../profile/profile_repository.dart';
+-import '../../design/widgets/brand_icon.dart';
+ 
+ // ---------------------------------------------------------------- kartalar
+ 
+@@ -267,20 +266,25 @@ class NfcCardsScreen extends ConsumerWidget {
+ // ------------------------------------------------------------------ tarix
+ 
+ final nfcHistoryProvider =
+-    FutureProvider.autoDispose<List<ActivityEvent>>((ref) async {
++    FutureProvider.autoDispose<CardAnalytics?>((ref) async {
+   final id = ref.watch(activeIdProvider);
+-  if (id == null) return const [];
+-  final res = await ref.watch(nfcRepositoryProvider).history(id.code);
++  if (id == null) return null;
++  final res = await ref.watch(nfcRepositoryProvider).analytics(id.code);
+   return res.when(ok: (v) => v, err: (e) => throw e);
+ });
+ 
++/// NFC ID TARIXI — yig'ma ko'rsatkichlar.
++///
++/// Server alohida hodisalar ro'yxatini bermaydi, faqat yig'ma son:
++/// ko'rishlar, noyob tashrifchilar, harakatlar (tur bo'yicha), kunlar
++/// va manbalar. Ekran aynan shuni ko'rsatadi — o'ylab topilgan
++/// "hodisa" qatorlari yo'q.
+ class NfcHistoryScreen extends ConsumerWidget {
+   const NfcHistoryScreen({super.key});
+ 
+   @override
+   Widget build(BuildContext context, WidgetRef ref) {
+     final l = L.of(context);
+-    final t = context.tokens;
+     final history = ref.watch(nfcHistoryProvider);
+ 
+     return NovaScaffold(
+@@ -290,56 +294,105 @@ class NfcHistoryScreen extends ConsumerWidget {
+         loading: () => const SkeletonList(),
+         error: (e, __) => StatePanel.fromError(context, asAppError(e),
+             onRetry: () => ref.invalidate(nfcHistoryProvider)),
+-        data: (items) => items.isEmpty
++        data: (a) => a == null || a.isEmpty
+             ? StatePanel(
++                key: const ValueKey('nfc-history-empty'),
+                 icon: Icons.history_toggle_off_rounded,
+                 title: l.stateEmpty,
+                 message: l.stateEmptyHint)
+-            : ListView.separated(
+-                padding:
+-                    const EdgeInsets.fromLTRB(Gap.screenX, Gap.md, Gap.screenX, 120),
+-                itemCount: items.length,
+-                separatorBuilder: (_, __) => const SizedBox(height: Gap.sm),
+-                itemBuilder: (context, i) {
+-                  final e = items[i];
+-                  return FloatingSurface(
+-                    solid: true,
+-                    padding: const EdgeInsets.all(Gap.md),
+-                    child: Row(
+-                      children: [
+-                        Container(
+-                          width: 34,
+-                          height: 34,
+-                          decoration: BoxDecoration(
+-                              color: t.accent2.withValues(alpha: .16),
+-                              shape: BoxShape.circle),
+-                          child: BrandAwareIcon(Icons.nfc_rounded, size: 15, color: t.accent2),
+-                        ),
+-                        const SizedBox(width: Gap.md),
+-                        Expanded(
+-                          child: Column(
+-                            crossAxisAlignment: CrossAxisAlignment.start,
+-                            children: [
+-                              Text(e.title.isEmpty ? l.nfcScans : e.title,
+-                                  maxLines: 1,
+-                                  overflow: TextOverflow.ellipsis,
+-                                  style: Theme.of(context).textTheme.titleSmall),
+-                              if (e.createdAt != null)
+-                                Text(relativeTime(e.createdAt!, l),
+-                                    style: Theme.of(context).textTheme.bodySmall),
+-                            ],
+-                          ),
+-                        ),
+-                      ],
+-                    ),
+-                  );
+-                },
++            : RefreshIndicator(
++                onRefresh: () async => ref.invalidate(nfcHistoryProvider),
++                child: _HistoryBody(a: a),
+               ),
+       ),
+     );
+   }
+ }
+ 
++class _HistoryBody extends StatelessWidget {
++  const _HistoryBody({required this.a});
++  final CardAnalytics a;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final t = context.tokens;
++    final text = Theme.of(context).textTheme;
++    final types = a.byType.entries.toList()
++      ..sort((x, y) => y.value.compareTo(x.value));
++    // Eng yangi kun birinchi.
++    final days = a.byDay.reversed.toList();
++
++    Widget row(String label, int n, {Key? key}) => Padding(
++          key: key,
++          padding: const EdgeInsets.symmetric(vertical: Gap.xs),
++          child: Row(
++            children: [
++              Expanded(
++                  child: Text(label,
++                      maxLines: 1,
++                      overflow: TextOverflow.ellipsis,
++                      style: text.bodyMedium)),
++              Text('$n', style: AppType.monoStyle(color: t.text1, size: 13)),
++            ],
++          ),
++        );
++
++    return NovaScroll(
++      children: [
++        Text(l.analyticsPeriod(a.days),
++            style: text.bodySmall?.copyWith(color: t.text2)),
++        const SizedBox(height: Gap.md),
++        FloatingSurface(
++          key: const ValueKey('nfc-history-summary'),
++          solid: true,
++          child: Column(
++            children: [
++              row(l.analyticsProfileViews, a.totalViews),
++              row(l.nfcUniqueVisitors, a.uniqueVisitors),
++            ],
++          ),
++        ),
++        if (types.isNotEmpty) ...[
++          SectionHeader(color: t.text2, title: l.nfcHistoryActions),
++          FloatingSurface(
++            solid: true,
++            child: Column(children: [
++              for (final e in types)
++                row(l.nfcEventType(e.key), e.value,
++                    key: ValueKey('nfc-type-${e.key}')),
++            ]),
++          ),
++        ],
++        if (days.isNotEmpty) ...[
++          SectionHeader(color: t.text2, title: l.analyticsByDay),
++          FloatingSurface(
++            solid: true,
++            child: Column(children: [
++              for (final d in days) row(_day(d.day), d.n),
++            ]),
++          ),
++        ],
++        if (a.byRef.isNotEmpty) ...[
++          SectionHeader(color: t.text2, title: l.nfcHistorySources),
++          FloatingSurface(
++            solid: true,
++            child: Column(children: [
++              for (final r in a.byRef) row(r.ref, r.n),
++            ]),
++          ),
++        ],
++      ],
++    );
++  }
++
++  /// `2026-10-06` -> `06.10.2026`.
++  static String _day(String iso) {
++    final p = iso.split('-');
++    return p.length == 3 ? '${p[2]}.${p[1]}.${p[0]}' : iso;
++  }
++}
++
+ /// "3 soat oldin" ko'rinishidagi sana.
+ ///
+ /// `intl` ning to'liq nisbiy formatlagichi uchta til uchun alohida
+diff --git a/mobile_nova/lib/features/premium/boost_controller.dart b/mobile_nova/lib/features/premium/boost_controller.dart
+index c5585e8..8d89270 100644
+--- a/mobile_nova/lib/features/premium/boost_controller.dart
++++ b/mobile_nova/lib/features/premium/boost_controller.dart
+@@ -433,7 +433,9 @@ class BoostController extends StateNotifier<BoostState> {
+     return null;
+   }
+ 
+-  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
++  /// 413 `payload_too_large` ham — o'sha JWS hech qachon qabul qilinmaydi.
++  static bool _isTerminal(AppError e) =>
++      e.status == 400 || e.status == 413 || e.status == 422;
+ 
+   static BoostFailure _failureOf(AppError e) => switch (e.code) {
+         'iap_disabled' || 'payments_disabled' => BoostFailure.disabled,
+diff --git a/mobile_nova/lib/features/premium/iap_controller.dart b/mobile_nova/lib/features/premium/iap_controller.dart
+index 2899813..6b16219 100644
+--- a/mobile_nova/lib/features/premium/iap_controller.dart
++++ b/mobile_nova/lib/features/premium/iap_controller.dart
+@@ -358,7 +358,9 @@ class IapController extends StateNotifier<IapState> {
+   }
+ 
+   /// Server tranzaksiyani BUTUNLAY rad etdimi (400 / 422).
+-  static bool _isTerminal(AppError e) => e.status == 400 || e.status == 422;
++  /// 413 `payload_too_large` ham — o'sha JWS hech qachon qabul qilinmaydi.
++  static bool _isTerminal(AppError e) =>
++      e.status == 400 || e.status == 413 || e.status == 422;
+ 
+   static IapFailure _failureOf(AppError e) => switch (e.code) {
+         'account_mismatch' => IapFailure.accountMismatch,
+diff --git a/mobile_nova/lib/features/shop/shop_screens.dart b/mobile_nova/lib/features/shop/shop_screens.dart
+index de2622b..2fc5104 100644
+--- a/mobile_nova/lib/features/shop/shop_screens.dart
++++ b/mobile_nova/lib/features/shop/shop_screens.dart
+@@ -35,11 +35,19 @@ final ordersProvider = FutureProvider.autoDispose<List<Order>>((ref) async {
+   return res.when(ok: (v) => v, err: (e) => throw e);
+ });
+ 
+-final paymentProvidersProvider =
+-    FutureProvider<Set<PayProvider>>((ref) async {
+-  final res = await ref.watch(shopRepositoryProvider).enabledProviders();
+-  return res.when(ok: (v) => v, err: (e) => throw e);
+-});
++/// Mahsulot nomi — jismoniy karta uchun tarjima qilingan.
++String shopProductName(L l, ShopProduct p) => p.name.isNotEmpty
++    ? p.name
++    : p.isPhysicalCard
++        ? l.shopPhysicalCard
++        : p.id;
++
++String shopProductDescription(L l, ShopProduct p) =>
++    p.description.isNotEmpty
++        ? p.description
++        : p.isPhysicalCard
++            ? l.shopPhysicalCardHint
++            : '';
+ 
+ /// NFCSTORE do'koni.
+ ///
+@@ -198,12 +206,12 @@ class _ProductTile extends StatelessWidget {
+             child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+-                Text(product.name.isEmpty ? product.id : product.name,
++                Text(shopProductName(l, product),
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                     style: Theme.of(context).textTheme.titleSmall),
+-                if (product.description.isNotEmpty)
+-                  Text(product.description,
++                if (shopProductDescription(l, product).isNotEmpty)
++                  Text(shopProductDescription(l, product),
+                       maxLines: 2,
+                       overflow: TextOverflow.ellipsis,
+                       style: Theme.of(context).textTheme.bodySmall),
+@@ -289,7 +297,7 @@ class ShopProductScreen extends ConsumerWidget {
+                 ),
+               ),
+               const SizedBox(height: Gap.xl),
+-              Text(p.name.isEmpty ? p.id : p.name,
++              Text(shopProductName(l, p),
+                   style: Theme.of(context).textTheme.displayMedium),
+               if (p.tier.isNotEmpty) ...[
+                 const SizedBox(height: Gap.sm),
+@@ -310,11 +318,59 @@ class ShopProductScreen extends ConsumerWidget {
+                   ],
+                 ],
+               ),
+-              if (p.description.isNotEmpty) ...[
++              if (shopProductDescription(l, p).isNotEmpty) ...[
+                 const SizedBox(height: Gap.xl),
+-                Text(p.description,
++                Text(shopProductDescription(l, p),
+                     style: Theme.of(context).textTheme.bodyLarge),
+               ],
++              // Yetkazib berish muddati — serverdan (`delivery`).
++              if (p.deliveryMinDays != null && p.deliveryMaxDays != null) ...[
++                const SizedBox(height: Gap.md),
++                Text(
++                  l.shopDelivery(p.deliveryMinDays!, p.deliveryMaxDays!),
++                  key: const ValueKey('shop-delivery'),
++                  style: Theme.of(context).textTheme.bodyMedium,
++                ),
++              ],
++              // KO'P DONA NARXLARI (kompaniyalar uchun) — `tiers`.
++              if (p.priceTiers.isNotEmpty) ...[
++                const SizedBox(height: Gap.xl),
++                FloatingSurface(
++                  key: const ValueKey('shop-tiers'),
++                  solid: true,
++                  child: Column(
++                    crossAxisAlignment: CrossAxisAlignment.start,
++                    children: [
++                      Text(l.shopBulkTitle,
++                          style: Theme.of(context).textTheme.titleSmall),
++                      const SizedBox(height: Gap.sm),
++                      for (final tier in p.priceTiers)
++                        Padding(
++                          padding: const EdgeInsets.only(top: Gap.xs),
++                          child: Row(
++                            children: [
++                              Expanded(
++                                child: Text(
++                                  tier.maxQty == null
++                                      ? l.shopBulkTierOpen(tier.minQty)
++                                      : l.shopBulkTier(
++                                          tier.minQty, tier.maxQty!),
++                                  style:
++                                      Theme.of(context).textTheme.bodyMedium,
++                                ),
++                              ),
++                              Text(
++                                '${formatMoney(tier.pricePerUnit, p.currency)} ${l.shopPerUnit}',
++                                style: AppType.monoStyle(
++                                    color: t.text1, size: 13),
++                              ),
++                            ],
++                          ),
++                        ),
++                    ],
++                  ),
++                ),
++              ],
+               const SizedBox(height: Gap.section),
+               NovaButton(
+                 label: p.inStock ? l.shopBuy : l.shopSoldOut,
+@@ -371,7 +427,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
+               child: Row(
+                 children: [
+                   Expanded(
+-                    child: Text(p.name.isEmpty ? p.id : p.name,
++                    child: Text(shopProductName(l, p),
+                         style: Theme.of(context).textTheme.titleMedium),
+                   ),
+                   Text(formatMoney(p.price, p.currency),
+@@ -406,10 +462,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
+           // JISMONIY tovar — iPhone'da ham ko'rinadi (Apple 3.1.5(a)).
+           // iPhone'da matn "NFC ID xaridi" emas, "buyurtma": raqamli
+           // xaridga ishora bo'lmasin (`store_policy.dart`).
++          // Ikkala platformada ham — bu JISMONIY karta buyurtmasi
++          // (ilgari Android'da "NFC ID" xaridi deb yozilardi).
+           StoreNotice(
+-            text: isAppStoreBuild
+-                ? l.storeBuyOnSitePhysical
+-                : l.storeBuyOnSiteId,
++            text: l.storeBuyOnSitePhysical,
+             physical: true,
+           ),
+           const SizedBox(height: Gap.xxl),
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 34e48f1..c633353 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1172,5 +1172,21 @@
+   "boostErrNotFound": "Post not found.",
+   "boostErrCreditUsed": "This credit has already been used.",
+   "boostErrCreditRevoked": "This credit was cancelled.",
+-  "boostErrCreditNotFound": "Credit not found."
++  "boostErrCreditNotFound": "Credit not found.",
++  "errBadCurrentPassword": "Current password is incorrect",
++  "shopPhysicalCard": "Physical NFC card",
++  "shopPhysicalCardHint": "A card with your NFC ID — tap it with a phone to open your profile.",
++  "shopDelivery": "Delivery: {min}–{max} days",
++  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
++  "shopBulkTitle": "Bulk pricing",
++  "shopBulkTier": "{from}–{to} pcs",
++  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
++  "shopBulkTierOpen": "{from}+ pcs",
++  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
++  "shopPerUnit": "/ pc",
++  "nfcUniqueVisitors": "Unique visitors",
++  "nfcHistoryActions": "Actions",
++  "nfcHistorySources": "Sources",
++  "nfcEventType": "{type, select, profile_view{Profile viewed} phone_click{Phone tapped} telegram_click{Telegram opened} whatsapp_click{WhatsApp opened} instagram_click{Instagram opened} website_click{Website opened} email_click{Email tapped} link_click{Link opened} contact_save{Contact saved} lead{Request submitted} menu_view{Menu viewed} products_view{Products viewed} services_view{Services viewed} other{Other action}}",
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index ea0c591..4beb277 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1172,5 +1172,21 @@
+   "boostErrNotFound": "Пост не найден.",
+   "boostErrCreditUsed": "Этот кредит уже использован.",
+   "boostErrCreditRevoked": "Этот кредит отменён.",
+-  "boostErrCreditNotFound": "Кредит не найден."
++  "boostErrCreditNotFound": "Кредит не найден.",
++  "errBadCurrentPassword": "Текущий пароль неверный",
++  "shopPhysicalCard": "Физическая NFC-карта",
++  "shopPhysicalCardHint": "Карта с вашим NFC ID — при касании телефоном открывается ваш профиль.",
++  "shopDelivery": "Доставка: {min}–{max} дн.",
++  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
++  "shopBulkTitle": "Цена при заказе нескольких штук",
++  "shopBulkTier": "{from}–{to} шт.",
++  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
++  "shopBulkTierOpen": "от {from} шт.",
++  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
++  "shopPerUnit": "/ шт.",
++  "nfcUniqueVisitors": "Уникальные посетители",
++  "nfcHistoryActions": "Действия",
++  "nfcHistorySources": "Источники",
++  "nfcEventType": "{type, select, profile_view{Просмотр профиля} phone_click{Нажатие на телефон} telegram_click{Переход в Telegram} whatsapp_click{Переход в WhatsApp} instagram_click{Переход в Instagram} website_click{Переход на сайт} email_click{Нажатие на email} link_click{Переход по ссылке} contact_save{Контакт сохранён} lead{Оставлена заявка} menu_view{Просмотр меню} products_view{Просмотр товаров} services_view{Просмотр услуг} other{Другое действие}}",
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index ce78ad6..eb43ca5 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1323,5 +1323,21 @@
+   "boostErrNotFound": "Post topilmadi.",
+   "boostErrCreditUsed": "Bu kredit allaqachon ishlatilgan.",
+   "boostErrCreditRevoked": "Bu kredit bekor qilingan.",
+-  "boostErrCreditNotFound": "Kredit topilmadi."
++  "boostErrCreditNotFound": "Kredit topilmadi.",
++  "errBadCurrentPassword": "Joriy parol noto‘g‘ri",
++  "shopPhysicalCard": "Jismoniy NFC karta",
++  "shopPhysicalCardHint": "NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.",
++  "shopDelivery": "Yetkazib berish: {min}–{max} kun",
++  "@shopDelivery": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
++  "shopBulkTitle": "Ko‘p dona uchun narx",
++  "shopBulkTier": "{from}–{to} dona",
++  "@shopBulkTier": {"placeholders": {"from": {"type": "int"}, "to": {"type": "int"}}},
++  "shopBulkTierOpen": "{from} va undan ko‘p dona",
++  "@shopBulkTierOpen": {"placeholders": {"from": {"type": "int"}}},
++  "shopPerUnit": "/ dona",
++  "nfcUniqueVisitors": "Noyob tashrifchilar",
++  "nfcHistoryActions": "Harakatlar",
++  "nfcHistorySources": "Manbalar",
++  "nfcEventType": "{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}",
++  "@nfcEventType": {"placeholders": {"type": {"type": "String"}}}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 309470c..2b64e5a 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6128,6 +6128,78 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Kredit topilmadi.'**
+   String get boostErrCreditNotFound;
++
++  /// No description provided for @errBadCurrentPassword.
++  ///
++  /// In uz, this message translates to:
++  /// **'Joriy parol noto‘g‘ri'**
++  String get errBadCurrentPassword;
++
++  /// No description provided for @shopPhysicalCard.
++  ///
++  /// In uz, this message translates to:
++  /// **'Jismoniy NFC karta'**
++  String get shopPhysicalCard;
++
++  /// No description provided for @shopPhysicalCardHint.
++  ///
++  /// In uz, this message translates to:
++  /// **'NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.'**
++  String get shopPhysicalCardHint;
++
++  /// No description provided for @shopDelivery.
++  ///
++  /// In uz, this message translates to:
++  /// **'Yetkazib berish: {min}–{max} kun'**
++  String shopDelivery(int min, int max);
++
++  /// No description provided for @shopBulkTitle.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ko‘p dona uchun narx'**
++  String get shopBulkTitle;
++
++  /// No description provided for @shopBulkTier.
++  ///
++  /// In uz, this message translates to:
++  /// **'{from}–{to} dona'**
++  String shopBulkTier(int from, int to);
++
++  /// No description provided for @shopBulkTierOpen.
++  ///
++  /// In uz, this message translates to:
++  /// **'{from} va undan ko‘p dona'**
++  String shopBulkTierOpen(int from);
++
++  /// No description provided for @shopPerUnit.
++  ///
++  /// In uz, this message translates to:
++  /// **'/ dona'**
++  String get shopPerUnit;
++
++  /// No description provided for @nfcUniqueVisitors.
++  ///
++  /// In uz, this message translates to:
++  /// **'Noyob tashrifchilar'**
++  String get nfcUniqueVisitors;
++
++  /// No description provided for @nfcHistoryActions.
++  ///
++  /// In uz, this message translates to:
++  /// **'Harakatlar'**
++  String get nfcHistoryActions;
++
++  /// No description provided for @nfcHistorySources.
++  ///
++  /// In uz, this message translates to:
++  /// **'Manbalar'**
++  String get nfcHistorySources;
++
++  /// No description provided for @nfcEventType.
++  ///
++  /// In uz, this message translates to:
++  /// **'{type, select, profile_view{Profil ko‘rildi} phone_click{Telefon raqami bosildi} telegram_click{Telegram bosildi} whatsapp_click{WhatsApp bosildi} instagram_click{Instagram bosildi} website_click{Sayt havolasi bosildi} email_click{Email bosildi} link_click{Havola bosildi} contact_save{Kontakt saqlandi} lead{Ariza qoldirildi} menu_view{Menyu ko‘rildi} products_view{Mahsulotlar ko‘rildi} services_view{Xizmatlar ko‘rildi} other{Boshqa harakat}}'**
++  String nfcEventType(String type);
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index bef68fa..1b6bfa9 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3371,4 +3371,65 @@ class LEn extends L {
+ 
+   @override
+   String get boostErrCreditNotFound => 'Credit not found.';
++
++  @override
++  String get errBadCurrentPassword => 'Current password is incorrect';
++
++  @override
++  String get shopPhysicalCard => 'Physical NFC card';
++
++  @override
++  String get shopPhysicalCardHint =>
++      'A card with your NFC ID — tap it with a phone to open your profile.';
++
++  @override
++  String shopDelivery(int min, int max) {
++    return 'Delivery: $min–$max days';
++  }
++
++  @override
++  String get shopBulkTitle => 'Bulk pricing';
++
++  @override
++  String shopBulkTier(int from, int to) {
++    return '$from–$to pcs';
++  }
++
++  @override
++  String shopBulkTierOpen(int from) {
++    return '$from+ pcs';
++  }
++
++  @override
++  String get shopPerUnit => '/ pc';
++
++  @override
++  String get nfcUniqueVisitors => 'Unique visitors';
++
++  @override
++  String get nfcHistoryActions => 'Actions';
++
++  @override
++  String get nfcHistorySources => 'Sources';
++
++  @override
++  String nfcEventType(String type) {
++    String _temp0 = intl.Intl.selectLogic(type, {
++      'profile_view': 'Profile viewed',
++      'phone_click': 'Phone tapped',
++      'telegram_click': 'Telegram opened',
++      'whatsapp_click': 'WhatsApp opened',
++      'instagram_click': 'Instagram opened',
++      'website_click': 'Website opened',
++      'email_click': 'Email tapped',
++      'link_click': 'Link opened',
++      'contact_save': 'Contact saved',
++      'lead': 'Request submitted',
++      'menu_view': 'Menu viewed',
++      'products_view': 'Products viewed',
++      'services_view': 'Services viewed',
++      'other': 'Other action',
++    });
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 1ec6840..80ab8c2 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3395,4 +3395,65 @@ class LRu extends L {
+ 
+   @override
+   String get boostErrCreditNotFound => 'Кредит не найден.';
++
++  @override
++  String get errBadCurrentPassword => 'Текущий пароль неверный';
++
++  @override
++  String get shopPhysicalCard => 'Физическая NFC-карта';
++
++  @override
++  String get shopPhysicalCardHint =>
++      'Карта с вашим NFC ID — при касании телефоном открывается ваш профиль.';
++
++  @override
++  String shopDelivery(int min, int max) {
++    return 'Доставка: $min–$max дн.';
++  }
++
++  @override
++  String get shopBulkTitle => 'Цена при заказе нескольких штук';
++
++  @override
++  String shopBulkTier(int from, int to) {
++    return '$from–$to шт.';
++  }
++
++  @override
++  String shopBulkTierOpen(int from) {
++    return 'от $from шт.';
++  }
++
++  @override
++  String get shopPerUnit => '/ шт.';
++
++  @override
++  String get nfcUniqueVisitors => 'Уникальные посетители';
++
++  @override
++  String get nfcHistoryActions => 'Действия';
++
++  @override
++  String get nfcHistorySources => 'Источники';
++
++  @override
++  String nfcEventType(String type) {
++    String _temp0 = intl.Intl.selectLogic(type, {
++      'profile_view': 'Просмотр профиля',
++      'phone_click': 'Нажатие на телефон',
++      'telegram_click': 'Переход в Telegram',
++      'whatsapp_click': 'Переход в WhatsApp',
++      'instagram_click': 'Переход в Instagram',
++      'website_click': 'Переход на сайт',
++      'email_click': 'Нажатие на email',
++      'link_click': 'Переход по ссылке',
++      'contact_save': 'Контакт сохранён',
++      'lead': 'Оставлена заявка',
++      'menu_view': 'Просмотр меню',
++      'products_view': 'Просмотр товаров',
++      'services_view': 'Просмотр услуг',
++      'other': 'Другое действие',
++    });
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 263e8c1..6fdbfde 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3351,4 +3351,65 @@ class LUz extends L {
+ 
+   @override
+   String get boostErrCreditNotFound => 'Kredit topilmadi.';
++
++  @override
++  String get errBadCurrentPassword => 'Joriy parol noto‘g‘ri';
++
++  @override
++  String get shopPhysicalCard => 'Jismoniy NFC karta';
++
++  @override
++  String get shopPhysicalCardHint =>
++      'NFC ID’ingiz yozilgan karta — telefonga tegizilsa profilingiz ochiladi.';
++
++  @override
++  String shopDelivery(int min, int max) {
++    return 'Yetkazib berish: $min–$max kun';
++  }
++
++  @override
++  String get shopBulkTitle => 'Ko‘p dona uchun narx';
++
++  @override
++  String shopBulkTier(int from, int to) {
++    return '$from–$to dona';
++  }
++
++  @override
++  String shopBulkTierOpen(int from) {
++    return '$from va undan ko‘p dona';
++  }
++
++  @override
++  String get shopPerUnit => '/ dona';
++
++  @override
++  String get nfcUniqueVisitors => 'Noyob tashrifchilar';
++
++  @override
++  String get nfcHistoryActions => 'Harakatlar';
++
++  @override
++  String get nfcHistorySources => 'Manbalar';
++
++  @override
++  String nfcEventType(String type) {
++    String _temp0 = intl.Intl.selectLogic(type, {
++      'profile_view': 'Profil ko‘rildi',
++      'phone_click': 'Telefon raqami bosildi',
++      'telegram_click': 'Telegram bosildi',
++      'whatsapp_click': 'WhatsApp bosildi',
++      'instagram_click': 'Instagram bosildi',
++      'website_click': 'Sayt havolasi bosildi',
++      'email_click': 'Email bosildi',
++      'link_click': 'Havola bosildi',
++      'contact_save': 'Kontakt saqlandi',
++      'lead': 'Ariza qoldirildi',
++      'menu_view': 'Menyu ko‘rildi',
++      'products_view': 'Mahsulotlar ko‘rildi',
++      'services_view': 'Xizmatlar ko‘rildi',
++      'other': 'Boshqa harakat',
++    });
++    return '$_temp0';
++  }
+ }
+diff --git a/mobile_nova/test/audit_1006_a_test.dart b/mobile_nova/test/audit_1006_a_test.dart
+new file mode 100644
+index 0000000..16168f7
+--- /dev/null
++++ b/mobile_nova/test/audit_1006_a_test.dart
+@@ -0,0 +1,230 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/shop_repository.dart';
++import 'package:nfcstore_nova/design/widgets/states.dart';
++import 'package:nfcstore_nova/features/nfc/nfc_misc_screens.dart';
++import 'package:nfcstore_nova/features/shop/shop_screens.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++
++import 'helpers.dart';
++
++/// AUDIT 2026-10-06 (1-qism): parol xatosi sessiyani yopmaydi; do'kon
++/// va NFC tarixi server javobining HAQIQIY shaklidan quriladi.
++
++const _pricing = <String, dynamic>{
++  'tiers': [
++    {'minQty': 50, 'maxQty': null, 'pricePerUnit': 75000},
++    {'minQty': 1, 'maxQty': 9, 'pricePerUnit': 120000},
++    {'minQty': 10, 'maxQty': 49, 'pricePerUnit': 95000},
++  ],
++  'delivery': {'minDays': 3, 'maxDays': 5},
++  'physicalCardFee': 200000,
++};
++
++class _Shop extends ShopRepository {
++  _Shop() : super(ApiClient());
++  @override
++  Future<Result<List<ShopProduct>>> products() async =>
++      Ok(ShopRepository.physicalProductsFromPricing(_pricing));
++}
++
++Future<L> _uz() => L.delegate.load(const Locale('uz'));
++
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  group('1. joriy parol xato — sessiya JOYIDA', () {
++    ApiClient client() {
++      final api = ApiClient();
++      addTearDown(() {
++        api.online.dispose();
++        api.sessionExpired.dispose();
++      });
++      api.debugSetTokenForTest('tok');
++      return api;
++    }
++
++    test('401 bad_current_password chiqarib yubormaydi', () async {
++      final api = client();
++      final before = api.sessionExpired.value;
++      final e = api.debugHandleStatus(401, '/api/settings/change-password-direct',
++          {'error': 'bad_current_password'});
++      expect(api.sessionExpired.value, before);
++      expect(api.token, 'tok', reason: 'token o‘chmadi');
++      expect(e.code, 'bad_current_password');
++      expect(describeError(await _uz(), e), (await _uz()).errBadCurrentPassword);
++    });
++
++    test('kod boshqa yo‘lda kelsa ham — sessiya joyida', () {
++      final api = client();
++      final before = api.sessionExpired.value;
++      api.debugHandleStatus(
++          401, '/api/settings/other', {'error': 'bad_current_password'});
++      expect(api.sessionExpired.value, before);
++    });
++
++    test('oddiy 401 esa avvalgidek sessiyani yopadi', () {
++      final api = client();
++      final before = api.sessionExpired.value;
++      api.debugHandleStatus(401, '/api/my/analytics', {'error': 'unauthorized'});
++      expect(api.sessionExpired.value, greaterThan(before));
++    });
++
++    test('uch tilda matn', () async {
++      for (final c in ['uz', 'ru', 'en']) {
++        final l = await L.delegate.load(Locale(c));
++        expect(
++            describeError(
++                l,
++                const AppError(AppErrorKind.unauthorized,
++                    code: 'bad_current_password')),
++            l.errBadCurrentPassword);
++      }
++    });
++  });
++
++  group('2. do‘kon — jismoniy karta narx javobidan', () {
++    test('mahsulot: narx = physicalCardFee, tiers tartiblangan, muddat', () {
++      final list = ShopRepository.physicalProductsFromPricing(_pricing);
++      expect(list, hasLength(1));
++      final p = list.single;
++      expect(p.isPhysicalCard, isTrue);
++      expect(p.price, 200000);
++      expect(p.priceTiers.map((t) => t.minQty), [1, 10, 50]);
++      expect(p.priceTiers.last.maxQty, isNull);
++      expect([p.deliveryMinDays, p.deliveryMaxDays], [3, 5]);
++    });
++
++    test('fee yo‘q — eng kichik tier narxi; hech narsa yo‘q — bo‘sh', () {
++      expect(
++          ShopRepository.physicalProductsFromPricing(const {
++            'tiers': [
++              {'minQty': 1, 'maxQty': 9, 'pricePerUnit': 120000}
++            ]
++          }).single.price,
++          120000);
++      expect(ShopRepository.physicalProductsFromPricing(const {}), isEmpty);
++    });
++
++    testWidgets('Android: do‘kon BO‘SH EMAS — karta va narx', (tester) async {
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          shopRepositoryProvider.overrideWithValue(_Shop()),
++        ],
++        child: wrapScreen(const ShopScreen()),
++      ));
++      await settle(tester);
++      final l = await _uz();
++      expect(find.text(l.shopPhysicalCard), findsOneWidget);
++      expect(find.text(l.stateEmpty), findsNothing);
++    });
++
++    testWidgets('mahsulot ekrani: ko‘p dona narxlari va muddat', (tester) async {
++      tester.view.physicalSize = const Size(390 * 3, 1600 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          shopRepositoryProvider.overrideWithValue(_Shop()),
++        ],
++        child: wrapScreen(const ShopProductScreen(id: kPhysicalCardId)),
++      ));
++      await settle(tester);
++      final l = await _uz();
++      expect(find.text(l.shopPhysicalCard), findsOneWidget);
++      expect(find.text(l.shopDelivery(3, 5)), findsOneWidget);
++      expect(find.byKey(const ValueKey('shop-tiers')), findsOneWidget);
++      expect(find.text(l.shopBulkTier(1, 9)), findsOneWidget);
++      expect(find.text(l.shopBulkTierOpen(50)), findsOneWidget);
++    });
++
++    testWidgets('16. Android checkout: jismoniy karta matni', (tester) async {
++      await tester.pumpWidget(ProviderScope(
++        overrides: [...await testOverrides()],
++        child: wrapScreen(const CheckoutScreen(
++            product: ShopProduct(id: kPhysicalCardId, price: 200000))),
++      ));
++      await settle(tester);
++      final l = await _uz();
++      expect(find.text(l.storeBuyOnSitePhysical), findsOneWidget);
++      expect(find.text(l.storeBuyOnSiteId), findsNothing);
++    });
++  });
++
++  group('3. NFC ID tarixi — yig‘ma ko‘rsatkichlar', () {
++    const json = {
++      'advanced': true,
++      'days': 30,
++      'totalViews': 42,
++      'uniqueVisitors': 17,
++      'byType': {'profile_view': 42, 'phone_click': 5, 'contact_save': 2},
++      'byDay': [
++        {'day': '2026-10-05', 'n': 10},
++        {'day': '2026-10-06', 'n': 32},
++      ],
++      'byRef': [
++        {'ref': 'instagram', 'n': 4}
++      ],
++    };
++
++    test('server javobi o‘qiladi', () {
++      final a = CardAnalytics.fromJson(json);
++      expect([a.totalViews, a.uniqueVisitors, a.days], [42, 17, 30]);
++      expect(a.byType['phone_click'], 5);
++      expect(a.byDay.map((d) => d.day), ['2026-10-05', '2026-10-06']);
++      expect(a.byRef.single.ref, 'instagram');
++      expect(a.isEmpty, isFalse);
++      expect(CardAnalytics.fromJson(const {'advanced': false}).isEmpty, isTrue);
++    });
++
++    testWidgets('ekran: ko‘rishlar, harakatlar, kunlar, manbalar',
++        (tester) async {
++      tester.view.physicalSize = const Size(390 * 3, 1800 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          nfcHistoryProvider
++              .overrideWith((ref) async => CardAnalytics.fromJson(json)),
++        ],
++        child: wrapScreen(const NfcHistoryScreen()),
++      ));
++      await settle(tester);
++      final l = await _uz();
++      expect(find.byKey(const ValueKey('nfc-history-summary')), findsOneWidget);
++      expect(find.text('42'), findsWidgets);
++      expect(find.text('17'), findsOneWidget);
++      expect(find.text(l.nfcEventType('phone_click')), findsOneWidget);
++      expect(find.text(l.nfcEventType('contact_save')), findsOneWidget);
++      expect(find.text('06.10.2026'), findsOneWidget);
++      expect(find.text('instagram'), findsOneWidget);
++      expect(find.byType(RefreshIndicator), findsOneWidget);
++    });
++
++    testWidgets('ma’lumot yo‘q — bo‘sh holat', (tester) async {
++      await tester.pumpWidget(ProviderScope(
++        overrides: [
++          ...await testOverrides(),
++          nfcHistoryProvider.overrideWith(
++              (ref) async => CardAnalytics.fromJson(const {})),
++        ],
++        child: wrapScreen(const NfcHistoryScreen()),
++      ));
++      await settle(tester);
++      expect(find.byKey(const ValueKey('nfc-history-empty')), findsOneWidget);
++    });
++
++    test('noma’lum hodisa turi — umumiy yorliq', () async {
++      final l = await _uz();
++      expect(l.nfcEventType('something_new'), isNotEmpty);
++    });
++  });
++}
+diff --git a/mobile_nova/test/iap_boost_test.dart b/mobile_nova/test/iap_boost_test.dart
+index f2d56cf..cd535aa 100644
+--- a/mobile_nova/test/iap_boost_test.dart
++++ b/mobile_nova/test/iap_boost_test.dart
+@@ -363,6 +363,10 @@ void main() {
+       ('400 bad_request',
+           const AppError(AppErrorKind.unknown, code: 'bad_request', status: 400),
+           true),
++      ('413 payload_too_large',
++          const AppError(AppErrorKind.unknown,
++              code: 'payload_too_large', status: 413),
++          true),
+       ('403 intent_forbidden',
+           const AppError(AppErrorKind.forbidden,
+               code: 'intent_forbidden', status: 403),
+diff --git a/mobile_nova/test/iap_premium_test.dart b/mobile_nova/test/iap_premium_test.dart
+index 78d34f2..595ba1f 100644
+--- a/mobile_nova/test/iap_premium_test.dart
++++ b/mobile_nova/test/iap_premium_test.dart
+@@ -431,6 +431,10 @@ void main() {
+         ('400 $code',
+             AppError(AppErrorKind.unknown, code: code, status: 400),
+             true, (l) => l.iapErrRejected),
++      ('413 payload_too_large',
++          const AppError(AppErrorKind.unknown,
++              code: 'payload_too_large', status: 413),
++          true, (l) => l.iapErrRejected),
+       // ── VAQTINCHA (ochiq qoladi) ──
+       ('429 too_many_requests',
+           const AppError(AppErrorKind.rateLimited,
+diff --git a/mobile_nova/tool/gallery.dart b/mobile_nova/tool/gallery.dart
+index fc55488..5976a0a 100644
+--- a/mobile_nova/tool/gallery.dart
++++ b/mobile_nova/tool/gallery.dart
+@@ -368,18 +368,13 @@ class _GalleryShop extends ShopRepository {
+   _GalleryShop() : super(ApiClient());
+ 
+   @override
+-  Future<Result<List<ShopProduct>>> products({String? category}) async =>
+-      const Ok(_sampleShop);
++  Future<Result<List<ShopProduct>>> products() async => const Ok(_sampleShop);
+ 
+   @override
+   Future<Result<List<Order>>> orders() async => const Ok([
+         Order(id: 1042, status: 'paid', total: 149000, itemsText: 'NFC karta — Matte Black'),
+         Order(id: 1038, status: 'pending', total: 2400000, itemsText: '4 xonali NFC ID'),
+       ]);
+-
+-  @override
+-  Future<Result<Set<PayProvider>>> enabledProviders() async =>
+-      const Ok({PayProvider.payme, PayProvider.click});
+ }
+ 
+ class _GalleryDiscover extends DiscoverRepository {
+-- 
+2.43.0
+
