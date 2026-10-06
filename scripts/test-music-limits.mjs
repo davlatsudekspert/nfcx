@@ -43,6 +43,20 @@ const tracks = (n) => Array.from({ length: n }, (_, i) => `https://cdn.example.c
   await env.DB.prepare(`UPDATE users SET is_premium = 0 WHERE id = 1`).run();
 }
 
+// ═══ 3b. FAOL SINOV -> Premium limiti (10); sinov tugagan -> 5 ═══
+// Egasi (2026-10-06): sinov muddatida to'liq Premium limitlari.
+{
+  await env.DB.prepare(`UPDATE users SET is_premium = 0, premium_expires_at = NULL, trial_expires_at = ? WHERE id = 1`)
+    .bind(new Date(Date.now() + 10 * 86400000).toISOString()).run();
+  const r = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Muhammad', musicUrls: tracks(10) } });
+  check('active trial: 10 tracks accepted', [r.status, r.body?.musicUrls?.length], [200, 10]);
+  check('active trial: still capped at 10', (await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'M', musicUrls: tracks(14) } })).body?.musicUrls?.length, 10);
+  await env.DB.prepare(`UPDATE users SET trial_expires_at = ? WHERE id = 1`).bind(new Date(Date.now() - 86400000).toISOString()).run();
+  const e = await j('/api/records/VIP001', { method: 'PUT', cookie: cookie.user, json: { name: 'Muhammad', musicUrls: tracks(10) } });
+  check('expired trial, not premium: trimmed to 5', e.body?.musicUrls?.length, 5);
+  await env.DB.prepare(`UPDATE users SET trial_expires_at = NULL WHERE id = 1`).run();
+}
+
 // ═══ 4. Frontend va backend limiti BIR XIL ═══
 {
   await env.DB.prepare(`UPDATE cards SET music_url = '[]' WHERE code = 'VIP001'`).run();

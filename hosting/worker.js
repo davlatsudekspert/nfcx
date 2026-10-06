@@ -6773,7 +6773,9 @@ async function recordsApi(request, env, url) {
       const body = await request.json().catch(() => ({}));
       // Musiqa limiti FOYDALANUVCHINING premium holatiga bog'liq:
       // oddiy 5 ta, Premium 10 ta (NFC ID darajasiga bog'liq emas).
-      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
+      // Faol BEPUL SINOV ham to'liq Premium limitini oladi (egasi,
+      // 2026-10-06) — `trialActiveD1` (getCurrentUser `trialExpiresAt` beradi).
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)) });
       if (error) return json({ error }, 422);
       // KOMPANIYA EGALIGI — SERVERDA. Aks holda istalgan odam profiliga
       // begona brendni "o'zimniki" qilib biriktirib olardi. Faqat
@@ -6805,7 +6807,8 @@ async function recordsApi(request, env, url) {
       if (RESERVED_CODES.has(code)) return json({ error: 'reserved' }, 400);
 
       const body = await request.json().catch(() => ({}));
-      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium) });
+      // Sinov muddati ham Premium limiti (yuqoridagi PUT bilan bir xil).
+      const { record, error } = validateRecordBody(body, { musicMax: musicLimitD1(!!user.isPremium || trialActiveD1(user)) });
       if (error) return json({ error }, 422);
 
       // Jismoniy karta qo'shimchasi hali D1'da portlanmagan
