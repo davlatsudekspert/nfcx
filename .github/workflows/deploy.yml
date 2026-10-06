@@ -95,7 +95,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -162,6 +162,9 @@ jobs:
       # kontenti, hold (purge to'siladi), eksport, rollar va jurnal.
       - name: Huquqiy so'rov — dosye, hold va eksport
         run: node scripts/test-legal-requests.mjs
+      # Aksiya: mavjud sinovlar bir marta 90 kunga uzaytiriladi (qisqarmaydi).
+      - name: Mavjud sinovlarni 90 kunga uzaytirish (bir marta)
+        run: node scripts/test-trial-promo.mjs
       # Bepul sinov: admin tarif filtri, "sinov tugayapti" eslatmasi (cron,
       # bir marta, Premium'ga emas) va aksiya muddati (2026 oxirigacha 90 kun).
       - name: Bepul sinov — filtr, eslatma va aksiya muddati

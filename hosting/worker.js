@@ -18,6 +18,7 @@ import * as apiComments from './api/comments.js';
 import * as apiMyAnalytics from './api/my-analytics.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
+import { applyLaunchTrialExtension } from './api/trial-promo.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
@@ -12167,6 +12168,15 @@ export default {
         if (n) console.log('orders_expired', n);
       } catch (e) {
         console.error('orders_expire', String(e?.message || e).slice(0, 120));
+      }
+      // Aksiya (egasi, 2026-10-06): mavjud sinovlar BIR MARTA 90 kunga
+      // uzaytiriladi (api/trial-promo.js). Eslatmadan OLDIN — aks holda
+      // uzaytiriladigan odamga "sinov tugayapti" xabari ketardi.
+      try {
+        const ext = await applyLaunchTrialExtension(env);
+        if (ext?.applied) console.log('launch_trial_extended', JSON.stringify({ users: ext.users, companies: ext.companies }));
+      } catch (e) {
+        console.error('launch_trial_extend', String(e?.message || e).slice(0, 160));
       }
       // Bepul sinovi 3 kun ichida tugaydiganlarga bitta ilova ichidagi
       // eslatma (api/notifications.js). Xatoni o'zi yutadi; logga faqat son.
