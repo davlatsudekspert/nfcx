@@ -279,6 +279,7 @@ const DICT_BASE = {
   'sizga obuna bo‘ldi': { ru: 'подписался на вас', en: 'followed you' },
   'postingizni yoqtirdi': { ru: 'оценил ваш пост', en: 'liked your post' },
   'postingizga izoh yozdi': { ru: 'оставил комментарий к вашему посту', en: 'commented on your post' },
+  'murojaatingizga javob berdi': { ru: 'ответил на ваше обращение', en: 'replied to your request' },
   'Hammasini o‘qildi': { ru: 'Отметить всё прочитанным', en: 'Mark all as read' },
   'Foydalanuvchi': { ru: 'Пользователь', en: 'User' },
   "auksionida g'olib bo'ldingiz — to'lov kutilmoqda": { ru: '— вы победили на аукционе, ожидается оплата', en: '— you won the auction, payment pending' },

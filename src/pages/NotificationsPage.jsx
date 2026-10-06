@@ -61,7 +61,9 @@ export default function NotificationsPage() {
   }
 
   const loading = gifts === null || support === null || auctions === null || social === null;
-  const repliedSupport = (support || []).filter((m) => m.status === 'replied');
+  // Javob bor bo'lsa ko'rsatiladi — holati qanday bo'lishidan qat'i nazar:
+  // admin "Hal qilindi" yoki "Rejada" deb javob bersa ham u yo'qolmasin.
+  const repliedSupport = (support || []).filter((m) => m.status !== 'pending' && String(m.reply || '').trim());
   const totalCount = (gifts?.length || 0) + repliedSupport.length + (auctions?.length || 0) + (social?.length || 0);
 
   // Jumla SERVERDAN kelmaydi — `type` keladi va matn shu yerda,
@@ -71,6 +73,7 @@ export default function NotificationsPage() {
     if (n.type === 'follow') return t('sizga obuna bo‘ldi');
     if (n.type === 'like') return t('postingizni yoqtirdi');
     if (n.type === 'comment') return t('postingizga izoh yozdi');
+    if (n.type === 'support_reply') return t('murojaatingizga javob berdi');
     return '';
   };
 
@@ -79,6 +82,7 @@ export default function NotificationsPage() {
   // postlar profil ichida. Kod bo'sh bo'lsa (yozuv o'chirilgan)
   // hech qayerga o'tilmaydi — sahifa yiqilmasligi kerak.
   const socialTarget = (n) => {
+    if (n.type === 'support_reply') return '';
     const code = n.type === 'follow' ? n.actorCode : n.code;
     return code ? '/' + code : '';
   };
@@ -90,6 +94,11 @@ export default function NotificationsPage() {
       // Server javobi aniq sanoqni beradi — mahalliy taxmin emas.
       const res = await dbMarkNotificationRead(n.id).catch(() => null);
       if (res && typeof res.unreadCount === 'number') setUnread(res.unreadCount);
+    }
+    // Murojaat javobi shu sahifaning o'zida (pastda) — o'shanga tushiladi.
+    if (n.type === 'support_reply') {
+      document.getElementById('support-' + n.targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
     const to = socialTarget(n);
     if (to) navigate(to);
@@ -145,7 +154,7 @@ export default function NotificationsPage() {
           >
             {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />}
             <span className="min-w-0 flex-1 break-words">
-              <b>{n.title || t('Foydalanuvchi')}</b> {socialText(n)}
+              <b>{n.type === 'support_reply' ? 'NFCSTORE' : (n.title || t('Foydalanuvchi'))}</b> {socialText(n)}
             </span>
             <span className="shrink-0 text-xs text-base-content/45">
               {n.createdAt ? timeAgo(new Date(String(n.createdAt).replace(' ', 'T')).getTime()) : ''}
@@ -168,7 +177,7 @@ export default function NotificationsPage() {
         ))}
 
         {repliedSupport.map((m) => (
-          <div key={'sup' + m.id} className="vz-card px-4 py-3 text-sm">
+          <div key={'sup' + m.id} id={'support-' + m.id} className="vz-card px-4 py-3 text-sm">
             <div className="flex items-center gap-1.5 text-xs text-base-content/45"><IconSupport width={12} height={12} /> {t('{when} murojaatingizga javob keldi', { when: timeAgo(new Date(m.createdAt).getTime()) })}</div>
             <p className="mt-1 break-words text-base-content/70">{m.message}</p>
             <p className="mt-2 break-words rounded-lg bg-accent/10 p-2 text-accent"><b>{t('Admin')}:</b> {m.reply}</p>
