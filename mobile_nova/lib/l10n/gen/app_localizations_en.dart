@@ -1430,7 +1430,7 @@ class LEn extends L {
   String get premiumForever => 'No expiry';
 
   @override
-  String get premiumTrial => 'Trial period';
+  String get premiumTrial => 'All features unlocked';
 
   @override
   String get premiumExtend => 'Extend';
@@ -3230,33 +3230,17 @@ class LEn extends L {
   String get iapErrRateLimited => 'Too many requests. Please try again later.';
 
   @override
-  String iapTrialTitle(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Free trial active — $days days left',
-      one: 'Free trial active — 1 day left',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialTitle => 'All Premium features are unlocked';
 
   @override
   String get iapTrialBody =>
       'You have every Premium feature right now — there is nothing to pay.';
 
   @override
-  String get iapTrialSubscribeLater => 'Subscribe after the trial';
+  String get iapTrialSubscribeLater => 'Premium plans';
 
   @override
-  String iapTrialSettings(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Free trial: $days days left',
-      one: 'Free trial: 1 day left',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialSettings => 'Everything unlocked';
 
   @override
   String get boostAction => 'Boost';
@@ -3519,7 +3503,7 @@ class LEn extends L {
 
   @override
   String get inviteTrialNote =>
-      'During your free trial, the bonus is added after the trial ends.';
+      'The bonus month is added to your Premium time.';
 
   @override
   String get activityReferralReward =>

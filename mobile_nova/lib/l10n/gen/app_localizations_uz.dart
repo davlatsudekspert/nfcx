@@ -1431,7 +1431,7 @@ class LUz extends L {
   String get premiumForever => 'Muddatsiz';
 
   @override
-  String get premiumTrial => 'Sinov muddati';
+  String get premiumTrial => 'Barcha imkoniyatlar ochiq';
 
   @override
   String get premiumExtend => 'Muddatni uzaytirish';
@@ -3209,33 +3209,17 @@ class LUz extends L {
       'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.';
 
   @override
-  String iapTrialTitle(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Bepul sinov faol — $days kun qoldi',
-      one: 'Bepul sinov faol — 1 kun qoldi',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialTitle => 'Barcha Premium imkoniyatlar ochiq';
 
   @override
   String get iapTrialBody =>
       'Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.';
 
   @override
-  String get iapTrialSubscribeLater => 'Sinov tugagach obuna bo‘lish';
+  String get iapTrialSubscribeLater => 'Premium rejalari';
 
   @override
-  String iapTrialSettings(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Bepul sinov: $days kun qoldi',
-      one: 'Bepul sinov: 1 kun qoldi',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialSettings => 'Hammasi ochiq';
 
   @override
   String get boostAction => 'Ko‘tarish';
@@ -3497,8 +3481,7 @@ class LUz extends L {
   String get inviteSiteDiscount => '(va saytdagi xaridlarga chegirma)';
 
   @override
-  String get inviteTrialNote =>
-      'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.';
+  String get inviteTrialNote => 'Bonus oy Premium muddatingizga qo‘shiladi.';
 
   @override
   String get activityReferralReward =>

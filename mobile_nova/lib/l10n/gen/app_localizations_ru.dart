@@ -1432,7 +1432,7 @@ class LRu extends L {
   String get premiumForever => 'Бессрочно';
 
   @override
-  String get premiumTrial => 'Пробный период';
+  String get premiumTrial => 'Все возможности открыты';
 
   @override
   String get premiumExtend => 'Продлить';
@@ -3244,38 +3244,17 @@ class LRu extends L {
       'Слишком много запросов. Попробуйте чуть позже.';
 
   @override
-  String iapTrialTitle(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Бесплатный период активен — осталось $days дня',
-      many: 'Бесплатный период активен — осталось $days дней',
-      few: 'Бесплатный период активен — осталось $days дня',
-      one: 'Бесплатный период активен — остался $days день',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialTitle => 'Все возможности Premium открыты';
 
   @override
   String get iapTrialBody =>
       'Сейчас вам доступны все возможности Premium — ничего платить не нужно.';
 
   @override
-  String get iapTrialSubscribeLater =>
-      'Оформить подписку после пробного периода';
+  String get iapTrialSubscribeLater => 'Планы Premium';
 
   @override
-  String iapTrialSettings(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Пробный период — осталось $days дня',
-      many: 'Пробный период — осталось $days дней',
-      few: 'Пробный период — осталось $days дня',
-      one: 'Пробный период — остался $days день',
-    );
-    return '$_temp0';
-  }
+  String get iapTrialSettings => 'Всё открыто';
 
   @override
   String get boostAction => 'Продвинуть';
@@ -3545,7 +3524,7 @@ class LRu extends L {
 
   @override
   String get inviteTrialNote =>
-      'Во время бесплатного пробного периода бонус добавится после его окончания.';
+      'Бонусный месяц добавится к вашему сроку Premium.';
 
   @override
   String get activityReferralReward =>

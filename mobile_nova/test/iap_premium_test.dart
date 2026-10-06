@@ -689,8 +689,12 @@ void main() {
       final l = await _uz();
       expect(tester.takeException(), isNull);
       expect(find.byKey(const ValueKey('iap-trial')), findsOneWidget);
-      expect(find.text(l.iapTrialTitle(30)), findsOneWidget);
+      expect(find.text(l.iapTrialTitle), findsOneWidget);
       expect(find.text(l.iapTrialBody), findsOneWidget);
+      // Teskari sanoq YO'Q: kunlar soni hech qayerda ko'rinmaydi.
+      expect(find.textContaining('30'), findsNothing);
+      expect(find.textContaining('kun qoldi'), findsNothing);
+      expect(find.text(l.iapTrialSubscribeLater), findsOneWidget);
       // Sotuv qatori va asosiy xarid tugmasi YO'Q.
       expect(find.text(l.premiumTagline), findsNothing);
       expect(find.byKey(const ValueKey('iap-subscribe')), findsNothing);
@@ -747,12 +751,13 @@ void main() {
       await settle(tester, frames: 8);
     }
 
-    testWidgets('Sozlamalar: sinovda "Bepul sinov: N kun qoldi"',
+    testWidgets('Sozlamalar: sinovda "Hammasi ochiq", kunlar soni yo‘q',
         (tester) async {
       await pumpSettings(tester, _trialUser(30));
       final l = await _uz();
       expect(find.text(l.settingsPremium), findsOneWidget);
-      expect(find.text(l.iapTrialSettings(30)), findsOneWidget);
+      expect(find.text(l.iapTrialSettings), findsOneWidget);
+      expect(find.textContaining('kun qoldi'), findsNothing);
     }, variant: _ios);
 
     testWidgets('Sozlamalar: sinovsiz — qo‘shimcha yozuv yo‘q', (tester) async {
@@ -760,13 +765,29 @@ void main() {
       final l = await _uz();
       expect(find.text(l.settingsPremium), findsOneWidget);
       expect(find.textContaining('kun qoldi'), findsNothing);
+      expect(find.text(l.iapTrialSettings), findsNothing);
     }, variant: _ios);
 
-    test('uch tilda kun soni va "to‘lash shart emas" ma’nosi', () async {
+    test('uch tilda: kunlar sanog‘i, "sinov tugaydi" va "obuna" yo‘q',
+        () async {
+      // Bepul sinov matnlari ilovani "pullik" ko'rsatmasin: raqam yo'q,
+      // tugash / obuna haqida gap yo'q.
+      final banned = RegExp(
+          r'\d|qoldi|tugag|obuna|left|ends?\b|after the trial|subscribe|'
+          r'остал|оконч|после|подписк',
+          caseSensitive: false);
       for (final code in ['uz', 'ru', 'en']) {
         final l = await L.delegate.load(Locale(code));
-        expect(l.iapTrialTitle(5), contains('5'), reason: code);
-        expect(l.iapTrialSettings(21), contains('21'), reason: code);
+        for (final s in [
+          l.iapTrialTitle,
+          l.iapTrialSettings,
+          l.iapTrialSubscribeLater,
+          l.premiumTrial,
+          l.inviteTrialNote,
+        ]) {
+          expect(s, isNotEmpty, reason: code);
+          expect(banned.hasMatch(s), isFalse, reason: '$code: $s');
+        }
         expect(l.iapTrialBody, isNotEmpty);
       }
     });

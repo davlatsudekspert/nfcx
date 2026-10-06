@@ -2772,7 +2772,7 @@ abstract class L {
   /// No description provided for @premiumTrial.
   ///
   /// In uz, this message translates to:
-  /// **'Sinov muddati'**
+  /// **'Barcha imkoniyatlar ochiq'**
   String get premiumTrial;
 
   /// No description provided for @premiumExtend.
@@ -5937,11 +5937,11 @@ abstract class L {
   /// **'So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.'**
   String get iapErrRateLimited;
 
-  /// No description provided for @iapTrialTitle.
+  /// Bepul sinov (launch promo) paytidagi tinch karta sarlavhasi. Kunlar sanog'i, "sinov tugaydi" yoki "obuna" so'zlari YO'Q — ilova pullik degan taassurot bermasin (egasining qarori).
   ///
   /// In uz, this message translates to:
-  /// **'{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}'**
-  String iapTrialTitle(int days);
+  /// **'Barcha Premium imkoniyatlar ochiq'**
+  String get iapTrialTitle;
 
   /// No description provided for @iapTrialBody.
   ///
@@ -5952,14 +5952,14 @@ abstract class L {
   /// No description provided for @iapTrialSubscribeLater.
   ///
   /// In uz, this message translates to:
-  /// **'Sinov tugagach obuna bo‘lish'**
+  /// **'Premium rejalari'**
   String get iapTrialSubscribeLater;
 
   /// No description provided for @iapTrialSettings.
   ///
   /// In uz, this message translates to:
-  /// **'{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}'**
-  String iapTrialSettings(int days);
+  /// **'Hammasi ochiq'**
+  String get iapTrialSettings;
 
   /// No description provided for @boostAction.
   ///
@@ -6336,7 +6336,7 @@ abstract class L {
   /// No description provided for @inviteTrialNote.
   ///
   /// In uz, this message translates to:
-  /// **'Bepul sinov davrida bonus sinov tugagach qo‘shiladi.'**
+  /// **'Bonus oy Premium muddatingizga qo‘shiladi.'**
   String get inviteTrialNote;
 
   /// No description provided for @activityReferralReward.

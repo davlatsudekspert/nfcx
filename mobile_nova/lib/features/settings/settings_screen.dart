@@ -154,11 +154,10 @@ class SettingsScreen extends ConsumerWidget {
               SettingsItem(
                 icon: Icons.workspace_premium_rounded,
                 label: l.settingsPremium,
-                // Bepul sinov paytida — sotuv emas, qolgan kunlar.
-                subtitle: switch (iapTrialDaysLeft(user)) {
-                  final int d => l.iapTrialSettings(d),
-                  null => null,
-                },
+                // Bepul sinov paytida — sotuv ham, kunlar sanog'i ham
+                // emas: "Hammasi ochiq".
+                subtitle:
+                    iapTrialDaysLeft(user) != null ? l.iapTrialSettings : null,
                 onTap: () => context.push(Routes.premium),
               ),
             // KO'TARISH KREDITLARI — iPhone + kalit va kredit BOR bo'lsa.

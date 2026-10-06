@@ -521,7 +521,7 @@
     }
   },
   "premiumForever": "No expiry",
-  "premiumTrial": "Trial period",
+  "premiumTrial": "All features unlocked",
   "premiumExtend": "Extend",
   "premiumBuy": "Get Premium",
   "premiumPerksTitle": "What you unlock",
@@ -1132,12 +1132,10 @@
   "iapErrFamilyShared": "Family Sharing purchases are not supported. Please subscribe with your own Apple ID.",
   "iapErrRejected": "The purchase could not be verified. Please contact support.",
   "iapErrRateLimited": "Too many requests. Please try again later.",
-  "iapTrialTitle": "{days, plural, =1{Free trial active — 1 day left} other{Free trial active — {days} days left}}",
-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialTitle": "All Premium features are unlocked",
   "iapTrialBody": "You have every Premium feature right now — there is nothing to pay.",
-  "iapTrialSubscribeLater": "Subscribe after the trial",
-  "iapTrialSettings": "{days, plural, =1{Free trial: 1 day left} other{Free trial: {days} days left}}",
-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialSubscribeLater": "Premium plans",
+  "iapTrialSettings": "Everything unlocked",
   "boostAction": "Boost",
   "boostTitle": "Boost post",
   "boostExplain": "Your post is shown to more people in the feed as «Recommended».",
@@ -1215,6 +1213,6 @@
   "inviteStep2": "Your friend signs up with this link",
   "inviteStep3": "You get +1 month of Premium",
   "inviteSiteDiscount": "(and a discount on website purchases)",
-  "inviteTrialNote": "During your free trial, the bonus is added after the trial ends.",
+  "inviteTrialNote": "The bonus month is added to your Premium time.",
   "activityReferralReward": "joined with your invite — +1 month of Premium"
 }

@@ -550,7 +550,7 @@
     }
   },
   "premiumForever": "Muddatsiz",
-  "premiumTrial": "Sinov muddati",
+  "premiumTrial": "Barcha imkoniyatlar ochiq",
   "premiumExtend": "Muddatni uzaytirish",
   "premiumBuy": "Premium olish",
   "premiumPerksTitle": "Nimalar ochiladi",
@@ -1283,12 +1283,11 @@
   "iapErrFamilyShared": "Oilaviy kirish (Family Sharing) orqali olingan xaridlar qo‘llab-quvvatlanmaydi. O‘z Apple ID’ingiz bilan obuna bo‘ling.",
   "iapErrRejected": "Xaridni tasdiqlab bo‘lmadi. Yordam xizmatiga murojaat qiling.",
   "iapErrRateLimited": "So‘rovlar juda ko‘p. Birozdan keyin qayta urinib ko‘ring.",
-  "iapTrialTitle": "{days, plural, =1{Bepul sinov faol — 1 kun qoldi} other{Bepul sinov faol — {days} kun qoldi}}",
-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialTitle": "Barcha Premium imkoniyatlar ochiq",
+  "@iapTrialTitle": {"description": "Bepul sinov (launch promo) paytidagi tinch karta sarlavhasi. Kunlar sanog'i, \"sinov tugaydi\" yoki \"obuna\" so'zlari YO'Q — ilova pullik degan taassurot bermasin (egasining qarori)."},
   "iapTrialBody": "Hozir hamma Premium imkoniyatlar sizda, hech narsa to‘lash shart emas.",
-  "iapTrialSubscribeLater": "Sinov tugagach obuna bo‘lish",
-  "iapTrialSettings": "{days, plural, =1{Bepul sinov: 1 kun qoldi} other{Bepul sinov: {days} kun qoldi}}",
-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialSubscribeLater": "Premium rejalari",
+  "iapTrialSettings": "Hammasi ochiq",
   "boostAction": "Ko‘tarish",
   "boostTitle": "Postni ko‘tarish",
   "boostExplain": "Postingiz lentada «Tavsiya etilgan» sifatida ko‘proq odamga ko‘rinadi.",
@@ -1366,6 +1365,6 @@
   "inviteStep2": "Do‘stingiz shu havola orqali ro‘yxatdan o‘tadi",
   "inviteStep3": "Siz +1 oy Premium olasiz",
   "inviteSiteDiscount": "(va saytdagi xaridlarga chegirma)",
-  "inviteTrialNote": "Bepul sinov davrida bonus sinov tugagach qo‘shiladi.",
+  "inviteTrialNote": "Bonus oy Premium muddatingizga qo‘shiladi.",
   "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium"
 }

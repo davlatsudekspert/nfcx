@@ -521,7 +521,7 @@
     }
   },
   "premiumForever": "Бессрочно",
-  "premiumTrial": "Пробный период",
+  "premiumTrial": "Все возможности открыты",
   "premiumExtend": "Продлить",
   "premiumBuy": "Получить Premium",
   "premiumPerksTitle": "Что открывается",
@@ -1132,12 +1132,10 @@
   "iapErrFamilyShared": "Покупки через Семейный доступ (Family Sharing) не поддерживаются. Оформите подписку со своим Apple ID.",
   "iapErrRejected": "Не удалось подтвердить покупку. Обратитесь в поддержку.",
   "iapErrRateLimited": "Слишком много запросов. Попробуйте чуть позже.",
-  "iapTrialTitle": "{days, plural, one{Бесплатный период активен — остался {days} день} few{Бесплатный период активен — осталось {days} дня} many{Бесплатный период активен — осталось {days} дней} other{Бесплатный период активен — осталось {days} дня}}",
-  "@iapTrialTitle": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialTitle": "Все возможности Premium открыты",
   "iapTrialBody": "Сейчас вам доступны все возможности Premium — ничего платить не нужно.",
-  "iapTrialSubscribeLater": "Оформить подписку после пробного периода",
-  "iapTrialSettings": "{days, plural, one{Пробный период — остался {days} день} few{Пробный период — осталось {days} дня} many{Пробный период — осталось {days} дней} other{Пробный период — осталось {days} дня}}",
-  "@iapTrialSettings": {"placeholders": {"days": {"type": "int"}}},
+  "iapTrialSubscribeLater": "Планы Premium",
+  "iapTrialSettings": "Всё открыто",
   "boostAction": "Продвинуть",
   "boostTitle": "Продвижение поста",
   "boostExplain": "Ваш пост увидит больше людей в ленте в разделе «Рекомендуемое».",
@@ -1215,6 +1213,6 @@
   "inviteStep2": "Друг регистрируется по этой ссылке",
   "inviteStep3": "Вы получаете +1 месяц Premium",
   "inviteSiteDiscount": "(и скидку на покупки на сайте)",
-  "inviteTrialNote": "Во время бесплатного пробного периода бонус добавится после его окончания.",
+  "inviteTrialNote": "Бонусный месяц добавится к вашему сроку Premium.",
   "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium"
 }

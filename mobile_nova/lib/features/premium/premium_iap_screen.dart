@@ -67,8 +67,9 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
     // BEPUL SINOV (launch promo, 90 kun): hamma Premium imkoniyatlar
     // allaqachon ochiq. Ekran "pullik" taassurot bermasin — tepada
     // tinch karta, rejalar esa ikkinchi darajali tugma ortida.
-    final trialDays = iapTrialDaysLeft(user);
-    final trial = trialDays != null;
+    // Kunlar sanog'i ATAYIN ko'rsatilmaydi (egasining qarori): teskari
+    // sanoq "bu pullik, tez orada to'laysiz" degan taassurot beradi.
+    final trial = iapTrialDaysLeft(user) != null;
     final c = ref.read(iapControllerProvider.notifier);
 
     final products = s.products;
@@ -116,7 +117,7 @@ class _PremiumIapScreenState extends ConsumerState<PremiumIapScreen> {
                 ],
                 if (trial) ...[
                   const SizedBox(height: Gap.xl),
-                  _TrialCard(days: trialDays),
+                  const _TrialCard(),
                 ],
                 const SizedBox(height: Gap.section),
                 const _Perks(),
@@ -280,11 +281,10 @@ String iapPlanName(L l, IapProduct p) => switch ((p.periodUnit, p.periodValue)) 
       _ => p.title.isNotEmpty ? p.title : l.premiumTitle,
     };
 
-/// "Bepul sinov faol — N kun qoldi". Tinch karta: sotuv emas, xabar.
+/// "Barcha Premium imkoniyatlar ochiq". Tinch karta: sotuv emas, xabar.
+/// Kunlar sanog'i va "sinov tugaydi" so'zlari YO'Q.
 class _TrialCard extends StatelessWidget {
-  const _TrialCard({required this.days});
-
-  final int days;
+  const _TrialCard();
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +303,7 @@ class _TrialCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.iapTrialTitle(days), style: text.titleMedium),
+                Text(l.iapTrialTitle, style: text.titleMedium),
                 const SizedBox(height: Gap.xs),
                 Text(l.iapTrialBody, style: text.bodyMedium),
               ],
