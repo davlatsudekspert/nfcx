@@ -262,14 +262,21 @@ checkTrue('9) yangi so‘rovda yangi reels bor', idx(await reels(cookie.other, '
 void deletedKey;
 
 // ── 10) Buzuq kursor ────────────────────────────────────────────────
-const base = keysOf(await reels(cookie.other, '?limit=5'));
+// Yangilik bali so'rov soniyasiga bog'liq: soniya chegarasida deyarli teng
+// ikki reels o'rin almashishi mumkin. Shuning uchun buzuq kursorli javob
+// undan OLDINGI yoki KEYINGI kursorsiz 1-sahifaning biri bilan bir xil
+// bo'lishi kerak (ikkalasi bir soniyada bo'lsa — ikkalasi bir xil).
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 for (const bad of ['%%%', 'abc', 'x'.repeat(5000), b64({ v: 1, s: 'x' }), b64({ v: 2 }), b64([1, 2]),
   b64({ v: 1, s: Date.now() - 30 * 86400e3, o: 0, w: 5, k: [], a: [], x: [] }),
   b64({ v: 1, s: Date.now(), o: 5, w: 5, k: ['story:1'], a: [], x: [] }),
   b64({ v: 1, s: Date.now(), o: 1e9, w: 5, k: [], a: [], x: [] })]) {
+  const before = keysOf(await reels(cookie.other, '?limit=5'));
   r = await reels(cookie.other, `?limit=5&cursor=${encodeURIComponent(bad)}`);
-  check(`10) buzuq kursor -> 1-sahifa (${bad.slice(0, 16)})`, [r.status, keysOf(r)], [200, base]);
+  const after = keysOf(await reels(cookie.other, '?limit=5'));
+  const got10 = JSON.stringify(keysOf(r));
+  checkTrue(`10) buzuq kursor -> 1-sahifa (${bad.slice(0, 16)})`,
+    r.status === 200 && (got10 === JSON.stringify(before) || got10 === JSON.stringify(after)));
 }
 
 // ── 11) Reklama: 4 va 9-o'rinda, zanjirda bir marta ─────────────────
