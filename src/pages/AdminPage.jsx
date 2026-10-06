@@ -1542,7 +1542,7 @@ function UserDrawer({ userId, onClose, onChanged }) {
                       <li key={m.id}>
                         <div className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--vz-ink-3)' }}>
                           <span>{dateTime(tsMs(m.createdAt))}</span>
-                          <span className={`vz-badge ${m.status === 'pending' ? 'vz-badge--warn' : 'vz-badge--ok'}`}>{m.status === 'pending' ? t('Kutilmoqda') : t('Javob berilgan')}</span>
+                          <SupportStatusBadge status={m.status} />
                         </div>
                         <div className="mt-1 whitespace-pre-wrap break-words" style={{ color: 'var(--vz-ink)' }}>{m.message}</div>
                         {m.reply && <div className="mt-1 whitespace-pre-wrap break-words border-l-2 pl-2" style={{ borderColor: 'var(--vz-gold)', color: 'var(--vz-ink-2)' }}>{m.reply}</div>}
@@ -2826,24 +2826,56 @@ function AdminsTab() {
   );
 }
 
+// MUROJAAT HOLATI (2026-10): pending | replied | resolved | planned.
+// Belgi matnlari tarjima chaqiruvida to'g'ridan-to'g'ri yozilgan — tarjima
+// qoplami testi (scripts/test-i18n-coverage.mjs) ularni ko'rsin.
+function SupportStatusBadge({ status }) {
+  const { t } = useLanguage();
+  if (status === 'pending') return <StatusBadge tone="pending">{t('Kutilmoqda')}</StatusBadge>;
+  if (status === 'planned') return <StatusBadge tone="info">{t('Rejada')}</StatusBadge>;
+  if (status === 'resolved') return <StatusBadge tone="success">{t('Hal qilingan')}</StatusBadge>;
+  return <StatusBadge tone="accent">{t('Javob berilgan')}</StatusBadge>;
+}
+
+// Tez javob shablonlari: matn JAVOB sifatida foydalanuvchiga boradi (o'zbekcha),
+// shuning uchun u tarjima qilinmaydi; tugma yozuvi esa tarjima qilinadi.
+const SUPPORT_TEMPLATES = [
+  { key: 'planned', status: 'planned', text: "Rahmat! Taklifingiz qabul qilindi — keyingi yangilanishlarda qo'shishni rejalashtirdik." },
+  { key: 'resolved', status: 'resolved', text: "Muammo hal qilindi. Ilovani yangilab, qayta tekshirib ko'ring." },
+  { key: 'details', status: 'replied', text: "Iltimos, batafsilroq yozing yoki skrinshot yuboring — tezroq yordam beramiz." },
+];
+
 function NotificationsTab() {
   const { t } = useLanguage();
   const [messages, setMessages] = useState(null);
+  const [counts, setCounts] = useState(null);
+  // Filtr: '' — hammasi; aks holda server `?status=` bo'yicha qaytaradi.
+  const [filter, setFilter] = useState('');
   const [replyFor, setReplyFor] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [replyStatus, setReplyStatus] = useState('replied');
   const [busy, setBusy] = useState(false);
   const [loadErr, setLoadErr] = useState(null);
   const [actErr, setActErr] = useState(null);
   const [shown, setShown] = useState(30);
 
-  const load = () => { setLoadErr(null); setMessages(null); return adminApi('/support-messages').then((d) => setMessages(Array.isArray(d?.messages) ? d.messages : [])).catch((e) => setLoadErr(e)); };
-  useEffect(() => { load(); }, []);
+  const load = (f = filter) => {
+    setLoadErr(null); setMessages(null);
+    return adminApi('/support-messages' + (f ? `?status=${f}` : '')).then((d) => {
+      setMessages(Array.isArray(d?.messages) ? d.messages : []);
+      setCounts(d?.counts || null);
+    }).catch((e) => setLoadErr(e));
+  };
+  useEffect(() => { load(filter); setShown(30); }, [filter]);
+
+  const openReply = (id) => { setReplyFor(id); setReplyText(''); setReplyStatus('replied'); };
 
   const sendReply = async (id) => {
     if (!replyText.trim()) return;
     setBusy(true); setActErr(null);
     try {
-      await adminApi(`/support-messages/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply: replyText.trim() }) });
+      // Javobdan keyin server foydalanuvchiga ilovada bildirishnoma yaratadi.
+      await adminApi(`/support-messages/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply: replyText.trim(), status: replyStatus }) });
       setReplyFor(null);
       setReplyText('');
       await load();
@@ -2854,13 +2886,46 @@ function NotificationsTab() {
     }
   };
 
-  if (loadErr) return <LoadError err={loadErr} onRetry={load} title={t("Murojaatlarni yuklab bo'lmadi.")} />;
-  if (!messages) return <AdminLoading rows={5} />;
-  if (messages.length === 0) return <EmptyState icon="bell" title={t("Hozircha murojaat yo'q.")} />;
+  // Holatni matnsiz o'zgartirish — bildirishnoma yuborilmaydi.
+  const changeStatus = async (id, status) => {
+    setBusy(true); setActErr(null);
+    try {
+      await adminApi(`/support-messages/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+      await load();
+    } catch (e) {
+      setActErr(apiErrText(e, t));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const tabs = [
+    ['', t('Hammasi'), counts?.total],
+    ['pending', t('Javobsiz'), counts?.pending],
+    ['replied', t('Javob berilgan'), counts?.replied],
+    ['planned', t('Rejada'), counts?.planned],
+    ['resolved', t('Hal qilingan'), counts?.resolved],
+  ];
+  const filterBar = (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Holat bo‘yicha')}>
+      {tabs.map(([v, l, n]) => (
+        <button key={v || 'all'} type="button" aria-pressed={filter === v} onClick={() => setFilter(v)}
+          className={`btn btn-sm min-h-11 ${filter === v ? 'btn-gold' : 'btn-ghost-vz'}`}>
+          {l}{n != null ? ` (${n})` : ''}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (loadErr) return <div className="space-y-3">{filterBar}<LoadError err={loadErr} onRetry={() => load()} title={t("Murojaatlarni yuklab bo'lmadi.")} /></div>;
+  if (!messages) return <div className="space-y-3">{filterBar}<AdminLoading rows={5} /></div>;
   const visible = messages.slice(0, shown);
   return (
     <div className="space-y-3">
+      {filterBar}
+      <p className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Javob yuborilgach foydalanuvchiga ilovada bildirishnoma boradi.')}</p>
       {actErr && <div role="alert" className="vz-err">{actErr}</div>}
+      {messages.length === 0 && <EmptyState icon="bell" title={t("Hozircha murojaat yo'q.")} />}
       {visible.map((m) => (
         <div key={m.id} className="vz-card p-4" style={m.status === 'pending' ? { borderColor: 'rgba(245,158,11,.45)' } : undefined}>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2868,22 +2933,46 @@ function NotificationsTab() {
               {m.userCode ? (
                 <a href={'/' + m.userCode} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">{m.userEmail}</a>
               ) : m.userEmail}
-              {' \u2014 '}{timeAgo(new Date(m.createdAt).getTime())}
+              {' — '}{timeAgo(new Date(m.createdAt).getTime())}
             </div>
-            {m.status === 'pending' && <span className="vz-badge vz-badge--warn">{t('Kutilmoqda')}</span>}
+            <SupportStatusBadge status={m.status} />
           </div>
           <p className="mt-2 whitespace-pre-wrap break-words text-sm">{m.message}</p>
           {m.reply && <p className="vz-panel mt-2 break-words p-2 text-sm" style={{ color: 'var(--vz-gold-2)' }}><b>{t('Javobingiz:')}</b> {m.reply}</p>}
-          {m.status === 'pending' && (
-            replyFor === m.id ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <input value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={t("Javob yozing...")} className="vz-input min-w-0 flex-1" aria-label={t("Javob yozing...")} />
-                <button className="btn btn-gold min-h-11" disabled={busy} onClick={() => sendReply(m.id)}>{t('Yuborish')}</button>
+          {replyFor === m.id ? (
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs" style={{ color: 'var(--vz-ink-3)' }}>{t('Tez javob:')}</span>
+                {SUPPORT_TEMPLATES.map((tpl) => (
+                  <button key={tpl.key} type="button" title={tpl.text} className="btn btn-ghost-vz btn-xs min-h-9"
+                    onClick={() => { setReplyText(tpl.text); setReplyStatus(tpl.status); }}>
+                    {tpl.key === 'planned' ? t('Taklif qabul qilindi') : tpl.key === 'resolved' ? t('Muammo hal qilindi') : t('Batafsilroq so‘rash')}
+                  </button>
+                ))}
+              </div>
+              <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder={t("Javob yozing...")} rows={3} maxLength={1000}
+                className="vz-input w-full min-w-0" aria-label={t("Javob yozing...")} />
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={replyStatus} onChange={(e) => setReplyStatus(e.target.value)} aria-label={t('Javobdan keyingi holat')}
+                  className="vz-input min-h-11 w-auto">
+                  <option value="replied">{t('Javob berilgan')}</option>
+                  <option value="planned">{t('Rejada')}</option>
+                  <option value="resolved">{t('Hal qilingan')}</option>
+                </select>
+                <button className="btn btn-gold min-h-11" disabled={busy || !replyText.trim()} onClick={() => sendReply(m.id)}>{t('Yuborish')}</button>
                 <button className="btn btn-ghost-vz min-h-11" onClick={() => setReplyFor(null)}>{t('Bekor')}</button>
               </div>
-            ) : (
-              <button className="btn btn-outline-gold btn-xs mt-2 min-h-9" onClick={() => { setReplyFor(m.id); setReplyText(''); }}>{t('Javob berish')}</button>
-            )
+            </div>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button className="btn btn-outline-gold btn-xs min-h-9" onClick={() => openReply(m.id)}>{t('Javob berish')}</button>
+              {m.status !== 'resolved' && (
+                <button className="btn btn-ghost-vz btn-xs min-h-9" disabled={busy} onClick={() => changeStatus(m.id, 'resolved')}>{t('Hal qilindi deb belgilash')}</button>
+              )}
+              {m.status !== 'planned' && (
+                <button className="btn btn-ghost-vz btn-xs min-h-9" disabled={busy} onClick={() => changeStatus(m.id, 'planned')}>{t('Rejaga qo‘shish')}</button>
+              )}
+            </div>
           )}
         </div>
       ))}

@@ -95,7 +95,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -154,6 +154,10 @@ jobs:
       # Reels "Obunalar" tabi: faqat obuna bo'lingan odam/kompaniya kontenti.
       - name: Obunalar lentasi (scope=following)
         run: node scripts/test-feed-following.mjs
+      # Murojaatga admin javobi egasiga bildirishnoma bo'lib boradi;
+      # holatlar (javob berilgan / hal qilindi / rejada), filtr va sanoq.
+      - name: Murojaat javoblari va bildirishnoma
+        run: node scripts/test-support-replies.mjs
       # Biznes postida o'z katalogidan 5 tagacha mahsulot belgisi.
       - name: Postda mahsulot belgilash
         run: node scripts/test-product-tags.mjs

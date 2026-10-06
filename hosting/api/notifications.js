@@ -20,7 +20,11 @@
 // mijozning o'zi o'z tilida yig'adi. Serverda tayyor jumla yozilsa,
 // u yozilgan tilda muzlab qolardi.
 
-const KINDS = ['follow', 'like', 'comment'];
+// `support_reply` (2026-10) — admin murojaatga javob berdi. Aktyori yo'q
+// (tizim nomidan): `title` bo'sh keladi, nishon — `support`/<murojaat ID>.
+// Ro'yxat aktyorni LEFT JOIN bilan oladi, shuning uchun bunday qator
+// tushib qolmaydi va o'qilmaganlar sanog'iga ham kiradi.
+const KINDS = ['follow', 'like', 'comment', 'support_reply'];
 const PAGE = 30;
 const PAGE_MAX = 50;
 

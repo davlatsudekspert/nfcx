@@ -28,10 +28,16 @@
 // ═══ ADMIN ═══
 //
 //   GET /api/admin/app-users?q=&sort=recent|new|opens&page=&limit=
-//     -> { stats: { total, today, week, month }, items, hasMore }
+//     -> { stats: { total, today, week, month, ios, android }, items, hasMore }
 //     har yozuvda `platform`, `appBuild`, `registeredAt` ham bor.
 //     `q` — istalgan so'z: email, telefon, NFC ID, profil ismi, kompaniya.
 //     `filter` — premium | today | week.
+//     `platform` — ios | android (ixtiyoriy).
+//
+// PLATFORMA (2026-10): iOS ilova 1.1.1 (323) gacha `x-client: android`
+// yuborgan, shuning uchun eski iOS odamlar Android bo'lib turibdi.
+// Ustun har ochilishda qayta yoziladi — yangilagach o'zi tuzaladi.
+// Sanoq "ichida bor" qoidasi bilan (`signupSourceD1` dagi kabi).
 
 let ready;
 export async function ensureTable(env) {
@@ -95,6 +101,11 @@ export async function recordAppOpen(env, request, userId) {
 }
 
 const PAGE_MAX = 100;
+// Platforma sharti — statistika va filtr uchun bitta joyda (ajralib ketmasin).
+const PLATFORM_SQL = {
+  ios: `LOWER(COALESCE(a.platform,'')) LIKE '%ios%'`,
+  android: `LOWER(COALESCE(a.platform,'')) LIKE '%android%'`,
+};
 const SORTS = {
   recent: 'a.last_seen DESC',
   new: 'a.first_seen DESC',
@@ -199,8 +210,10 @@ export async function handle(request, env, url, H) {
     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS today,
             SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS week,
-            SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS month
-       FROM app_users`
+            SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS month,
+            SUM(CASE WHEN ${PLATFORM_SQL.ios} THEN 1 ELSE 0 END) AS ios,
+            SUM(CASE WHEN ${PLATFORM_SQL.android} THEN 1 ELSE 0 END) AS android
+       FROM app_users a`
   ).bind(since(1), since(7), since(30)).first();
 
   const conds = [];
@@ -230,6 +243,9 @@ export async function handle(request, env, url, H) {
   }
   if (filter === 'today') { conds.push('a.last_seen >= ?'); binds.push(since(1)); }
   if (filter === 'week') { conds.push('a.last_seen >= ?'); binds.push(since(7)); }
+  // PLATFORMA filtri — noma'lum qiymat e'tiborsiz (hammasi).
+  const platform = url.searchParams.get('platform') || '';
+  if (Object.hasOwn(PLATFORM_SQL, platform)) conds.push(PLATFORM_SQL[platform]);
   const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
   const rows = await env.DB.prepare(
     // `a.*` — `app_build` ustuni hali qo'shilmagan bazada ham so'rov yiqilmasin.
@@ -271,6 +287,8 @@ export async function handle(request, env, url, H) {
       today: Number(stats?.today || 0),
       week: Number(stats?.week || 0),
       month: Number(stats?.month || 0),
+      ios: Number(stats?.ios || 0),
+      android: Number(stats?.android || 0),
     },
     items: pageRows.map((r) => ({
       userId: Number(r.user_id),

@@ -753,4 +753,21 @@ export const DICT_ADMIN = {
   'Shikoyat': { ru: 'Жалоба', en: 'Report' },
   'Yopilgan': { ru: 'Закрыта', en: 'Closed' },
   'To‘liq ko‘rish': { ru: 'Открыть полностью', en: 'View in full' },
+
+  // ── Murojaatlar: holatlar, tez javoblar (2026-10) ──
+  'Rejada': { ru: 'В планах', en: 'Planned' },
+  'Hal qilingan': { ru: 'Решено', en: 'Resolved' },
+  'Javobsiz': { ru: 'Без ответа', en: 'Unanswered' },
+  'Javob yuborilgach foydalanuvchiga ilovada bildirishnoma boradi.': { ru: 'После ответа пользователь получит уведомление в приложении.', en: 'Once you reply, the user gets an in-app notification.' },
+  'Tez javob:': { ru: 'Быстрый ответ:', en: 'Quick reply:' },
+  'Taklif qabul qilindi': { ru: 'Предложение принято', en: 'Suggestion accepted' },
+  'Muammo hal qilindi': { ru: 'Проблема решена', en: 'Issue resolved' },
+  'Batafsilroq so‘rash': { ru: 'Попросить подробности', en: 'Ask for details' },
+  'Javobdan keyingi holat': { ru: 'Статус после ответа', en: 'Status after reply' },
+  'Hal qilindi deb belgilash': { ru: 'Отметить как решённое', en: 'Mark as resolved' },
+  'Rejaga qo‘shish': { ru: 'Добавить в план', en: 'Add to plan' },
+
+  // ── Ilova foydalanuvchilari: platforma (2026-10) ──
+  'Barcha platformalar': { ru: 'Все платформы', en: 'All platforms' },
+  'iOS 1.1.1 (323) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.': { ru: 'Версии iOS до 1.1.1 (323) записаны как Android; после обновления будут показаны правильно.', en: 'iOS versions before 1.1.1 (323) were recorded as Android; they will show correctly after updating.' },
 };

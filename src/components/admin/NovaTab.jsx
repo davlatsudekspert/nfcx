@@ -51,6 +51,15 @@ const SLOT_TONE = {
   cancelled: 'muted', stopped: 'danger',
 };
 
+/** Platforma yozuvi: "ios"/"android" (yoki ularni o'z ichiga olgan qiymat)
+ *  — chiroyli nom; boshqasi o'zgarishsiz. Server sanog'i bilan bir xil qoida. */
+function platformLabel(p) {
+  const v = String(p || '').toLowerCase();
+  if (v.includes('ios')) return 'iOS';
+  if (v.includes('android')) return 'Android';
+  return p || '—';
+}
+
 /** Sanani odam o'qiydigan ko'rinishda. `null` — chiziqcha. */
 function when(ms) {
   if (!ms) return '—';
@@ -330,6 +339,8 @@ function UsersSection({ adminApi }) {
   // FILTR va SAHIFALASH (egasi, 2026-09-23: "foydalanuvchi ko'paysa uzun
   // bo'lib ketmasin, filtr va so'z bo'yicha qidiruv bo'lsin").
   const [filter, setFilter] = useState('');
+  // Platforma filtri (2026-10): '' | 'ios' | 'android'.
+  const [platform, setPlatform] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [page, setPage] = useState(1);
@@ -339,6 +350,7 @@ function UsersSection({ adminApi }) {
     const ps = new URLSearchParams({ sort, limit: '50', page: String(p) });
     if (qRef.current.trim()) ps.set('q', qRef.current.trim());
     if (filter) ps.set('filter', filter);
+    if (platform) ps.set('platform', platform);
     return ps;
   };
   const load = useCallback(async () => {
@@ -349,7 +361,7 @@ function UsersSection({ adminApi }) {
       setData(await adminApi(`/app-users?${params(1)}`));
     } catch (e) { setErr(e); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminApi, sort, filter]);
+  }, [adminApi, sort, filter, platform]);
 
   const loadMore = async () => {
     setMore(true);
@@ -366,12 +378,18 @@ function UsersSection({ adminApi }) {
   const stats = data?.stats;
   return (
     <div className="flex flex-col gap-4" data-testid="app-users">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard icon="users" label={t('Jami ilova foydalanuvchisi')} value={stats ? stats.total : '—'} />
         <KpiCard icon="chart" label={t('Bugun ochgan')} value={stats ? stats.today : '—'} />
         <KpiCard icon="chart" label={t('7 kunda ochgan')} value={stats ? stats.week : '—'} />
         <KpiCard icon="chart" label={t('30 kunda ochgan')} value={stats ? stats.month : '—'} />
+        {/* iOS va Android alohida — eski server javobida maydon bo'lmasa chiziqcha. */}
+        <KpiCard icon="users" label="iOS" value={stats?.ios ?? '—'} />
+        <KpiCard icon="users" label="Android" value={stats?.android ?? '—'} />
       </div>
+      <p className="-mt-2 text-[12px] text-[color:var(--vz-ink-faint)]" data-testid="app-users-platform-note">
+        {t('iOS 1.1.1 (323) dan oldingi versiyalar Android deb yozilgan; yangilagach to‘g‘ri ko‘rinadi.')}
+      </p>
       <AdminCard
         title={t('Ilova foydalanuvchilari')}
         right={
@@ -394,6 +412,16 @@ function UsersSection({ adminApi }) {
               <option value="premium">Premium</option>
               <option value="today">{t('Bugun')}</option>
               <option value="week">{t('7 kun')}</option>
+            </select>
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              aria-label={t('Platforma')}
+              className="rounded-lg border border-[color:var(--vz-line)] bg-transparent px-2 py-1 text-[13px]"
+            >
+              <option value="">{t('Barcha platformalar')}</option>
+              <option value="ios">iOS</option>
+              <option value="android">Android</option>
             </select>
             <input
               value={q}
@@ -422,6 +450,7 @@ function UsersSection({ adminApi }) {
                   <b className="text-[14px]">{u.email || `user#${u.userId}`}</b>
                   {u.phone && <span className="text-[13px] text-[color:var(--vz-ink-dim)]">{u.phone}</span>}
                   <span className="text-[12px] text-[color:var(--vz-ink-faint)]">#{u.userId}</span>
+                  {u.platform && <StatusBadge tone={platformLabel(u.platform) === 'iOS' ? 'info' : 'muted'}>{platformLabel(u.platform)}</StatusBadge>}
                   {u.premium && <StatusBadge tone="success">Premium</StatusBadge>}
                   {u.deleted && <StatusBadge tone="danger">{t('Hisob o‘chirilgan')}</StatusBadge>}
                 </div>
@@ -445,7 +474,7 @@ function UsersSection({ adminApi }) {
                   {t('Birinchi ochgan')}: {when(Date.parse(u.firstSeen))} · {t('Oxirgi ochgan')}: {when(Date.parse(u.lastSeen))} · {t('Ochilishlar')}: {u.opens}
                 </p>
                 <p className="mt-0.5 text-[12px] text-[color:var(--vz-ink-faint)]">
-                  {t('Platforma')}: {u.platform || '—'} · {t('Ilova build')}: {u.appBuild ?? '—'} · {t('Ro‘yxatdan o‘tgan')}: {when(dbMs(u.registeredAt))}
+                  {t('Platforma')}: {platformLabel(u.platform)} · {t('Ilova build')}: {u.appBuild ?? '—'} · {t('Ro‘yxatdan o‘tgan')}: {when(dbMs(u.registeredAt))}
                 </p>
               </div>
             ))}

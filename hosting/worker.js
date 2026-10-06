@@ -8323,6 +8323,10 @@ async function rateLimitRemainingSecD1(env, key, windowMs) {
 async function resetRateLimitD1(env, key) {
   try { await env.DB.prepare(`DELETE FROM rate_limits WHERE key = ?`).bind(key).run(); } catch { /* jim tur */ }
 }
+// Murojaat holatlari (support_messages.status). Javob bilan qo'yiladiganlari
+// — 'pending' dan tashqari hammasi.
+const SUPPORT_STATUSES = ['pending', 'replied', 'resolved', 'planned'];
+const SUPPORT_REPLY_STATUSES = ['replied', 'resolved', 'planned'];
 const ADMIN_ROLE_RANK = { content_manager: 1, manager: 2, super_admin: 3 };
 function roleAtLeast(admin, role) { return (ADMIN_ROLE_RANK[admin?.role] || 0) >= (ADMIN_ROLE_RANK[role] || 99); }
 
@@ -9532,11 +9536,38 @@ async function adminCoreApi(request, env, url, admin) {
     return json({ referrals: (rows.results || []).map((r) => ({ id: r.id, createdAt: r.created_at, referrerEmail: r.referrer_email, referrerPromo: r.referrer_promo, referrerName: r.referrer_name, referredEmail: r.referred_email, referredName: r.referred_name })) });
   }
 
+  // MUROJAATLAR (2026-10): javob foydalanuvchiga YETIB BORADI.
+  //
+  // Ilgari admin javob yozardi, lekin odam buni bilmasdi: bildirishnoma
+  // yo'q edi va ilova javoblarni ko'rsatmasdi. Endi javobdan keyin
+  // egasiga ilova ichida `support_reply` bildirishnomasi yaratiladi.
+  //
+  // HOLATLAR: pending (javobsiz) | replied (javob berilgan) |
+  // resolved (hal qilindi) | planned (taklif qabul qilindi, rejada).
+  // Ustun oddiy TEXT — migratsiya kerak emas, eski qatorlar o'zgarmaydi.
+  // Ruxsat — boshqa murojaat yo'llari bilan bir xil (har qanday admin
+  // sessiyasi; tekshiruv yuqorida, /api/admin/* kirishida).
   if (path === '/api/admin/support-messages' && request.method === 'GET') {
+    // `?status=` — ixtiyoriy filtr; noma'lum qiymat — hammasi.
+    const want = String(url.searchParams.get('status') || '');
+    const filter = SUPPORT_STATUSES.includes(want) ? want : '';
     const rows = await env.DB.prepare(`SELECT sm.*, u.email AS user_email,
       (SELECT code FROM cards WHERE user_id = sm.user_id ORDER BY is_primary DESC, ts ASC LIMIT 1) AS user_code
-      FROM support_messages sm JOIN users u ON u.id = sm.user_id ORDER BY sm.created_at DESC LIMIT 200`).all();
-    return json({ messages: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, userEmail: r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at })) });
+      FROM support_messages sm JOIN users u ON u.id = sm.user_id${filter ? ' WHERE sm.status = ?' : ''}
+      ORDER BY sm.created_at DESC LIMIT 200`).bind(...(filter ? [filter] : [])).all();
+    // Tablar uchun sanoq — ro'yxat bilan bir xil (JOIN users) asosda.
+    const grouped = await env.DB.prepare(`SELECT sm.status AS status, COUNT(*) AS n
+      FROM support_messages sm JOIN users u ON u.id = sm.user_id GROUP BY sm.status`).all();
+    const counts = { pending: 0, replied: 0, resolved: 0, planned: 0, total: 0 };
+    for (const g of grouped.results || []) {
+      const n = Number(g.n || 0);
+      counts.total += n;
+      if (SUPPORT_STATUSES.includes(g.status)) counts[g.status] += n;
+    }
+    return json({
+      messages: (rows.results || []).map((r) => ({ id: r.id, userId: r.user_id, userEmail: r.user_email, userCode: r.user_code, message: r.message, reply: r.reply, status: r.status, createdAt: r.created_at, repliedAt: r.replied_at })),
+      counts,
+    });
   }
 
   const supportReplyMatch = path.match(/^\/api\/admin\/support-messages\/(\d+)\/reply$/);
@@ -9544,10 +9575,37 @@ async function adminCoreApi(request, env, url, admin) {
     const body = await request.json().catch(() => ({}));
     const reply = shortText(body.reply, 1000);
     if (!reply) return json({ error: 'reply_required' }, 422);
-    const row = await env.DB.prepare(`UPDATE support_messages SET reply = ?, status = 'replied', replied_at = ? WHERE id = ? RETURNING id`)
-      .bind(reply, nowTs(), Number(supportReplyMatch[1])).first();
+    // `status` ixtiyoriy: eski admin (faqat {reply}) — 'replied'.
+    const status = body.status == null || body.status === '' ? 'replied' : String(body.status);
+    if (!SUPPORT_REPLY_STATUSES.includes(status)) return json({ error: 'bad_status' }, 422);
+    const row = await env.DB.prepare(`UPDATE support_messages SET reply = ?, status = ?, replied_at = ? WHERE id = ? RETURNING id, user_id`)
+      .bind(reply, status, nowTs(), Number(supportReplyMatch[1])).first();
     if (!row) return json({ error: 'not_found' }, 404);
-    return json({ ok: true });
+    // Egasiga ilova ichidagi bildirishnoma. Aktyor yo'q (tizim nomidan);
+    // matnni ilova o'zi yig'adi. Xato javobni HECH QACHON buzmaydi —
+    // createNotification xatoni o'zi yutadi, bu yerdagi catch — ehtiyot.
+    await apiNotifications.createNotification(env, {
+      recipientUserId: row.user_id,
+      actorUserId: null,
+      kind: 'support_reply',
+      targetType: 'support',
+      targetId: String(row.id),
+      now: nowTs(),
+    }).catch(() => false);
+    return json({ ok: true, status });
+  }
+
+  // Holatni matnsiz o'zgartirish (masalan, "Hal qilindi" yoki "Rejada").
+  // Bildirishnoma YUBORILMAYDI — odamga yangi gap aytilmayapti.
+  const supportStatusMatch = path.match(/^\/api\/admin\/support-messages\/(\d+)\/status$/);
+  if (supportStatusMatch && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const status = String(body.status || '');
+    if (!SUPPORT_STATUSES.includes(status)) return json({ error: 'bad_status' }, 422);
+    const row = await env.DB.prepare(`UPDATE support_messages SET status = ? WHERE id = ? RETURNING id`)
+      .bind(status, Number(supportStatusMatch[1])).first();
+    if (!row) return json({ error: 'not_found' }, 404);
+    return json({ ok: true, status });
   }
 
   // GET /api/admin/card-print/cardprint_<24hex>.png — bosma maketni

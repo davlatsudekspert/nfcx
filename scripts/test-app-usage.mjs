@@ -35,7 +35,7 @@ check('2) mehmon kira olmaydi', (await call('/api/admin/app-users')).status, 401
 check('2) oddiy foydalanuvchi kira olmaydi', (await call('/api/admin/app-users', { cookie: cookie.user })).status, 401);
 sqlite.prepare(`UPDATE app_users SET last_seen = ? WHERE user_id = 2`).run(new Date(Date.now() - 10 * 86_400_000).toISOString());
 const r = await call('/api/admin/app-users', { cookie: cookie.admin });
-check('2) statistika: jami, bugun, 7 kun, 30 kun', r.body.stats, { total: 2, today: 1, week: 1, month: 2 });
+check('2) statistika: jami, bugun, 7 kun, 30 kun, platforma', r.body.stats, { total: 2, today: 1, week: 1, month: 2, ios: 0, android: 2 });
 const me = r.body.items.find((i) => i.userId === 1);
 check('2) email, telefon, ochilishlar', [me.email, me.phone, me.opens], ['user@test.local', '+998901111111', 2]);
 check('2) profillari (NFC ID)', me.profiles.map((p) => p.code).sort(), ['BIZ777', 'VIP001']);
@@ -56,5 +56,23 @@ check('4) telefon qismi', await ids('q=2222222'), [2]);
 check('4) % belgisi hammani qaytarmaydi', await ids('q=%25'), []);
 await env.DB.prepare(`UPDATE users SET is_premium = 1 WHERE id = 2`).run();
 check('4) filtr: faqat Premium', await ids('filter=premium'), [2]);
+
+// ===== 5) iOS / ANDROID ALOHIDA (2026-10) =====
+// iOS ilova endi `x-client: ios` yuboradi; platforma har ochilishda
+// qayta yoziladi — eski (Android deb yozilgan) iOS odam o'zi tuzaladi.
+const stats = async (q = '') => (await call(`/api/admin/app-users?${q}`, { cookie: cookie.admin })).body.stats;
+await call('/api/auth/me', { cookie: cookie.user, headers: { 'x-app': 'nova', 'x-client': 'ios' } });
+check('5) iOS ochilishi platformani yangiladi', sqlite.prepare(`SELECT platform FROM app_users WHERE user_id = 1`).get().platform, 'ios');
+check('5) statistika: 1 iOS, 1 Android', [(await stats()).ios, (await stats()).android], [1, 1]);
+check('5) filtr: faqat iOS', await ids('platform=ios'), [1]);
+check('5) filtr: faqat Android', await ids('platform=android'), [2]);
+check('5) iOS qatori platformasi', (await call('/api/admin/app-users?platform=ios', { cookie: cookie.admin })).body.items[0].platform, 'ios');
+check('5) noma’lum platforma — hammasi', (await ids('platform=windows')).sort(), [1, 2]);
+check('5) prototip kaliti yiqitmaydi', (await call('/api/admin/app-users?platform=constructor', { cookie: cookie.admin })).status, 200);
+check('5) filtr + qidiruv birga', await ids('platform=android&q=muham'), []);
+checkTrue('5) statistika filtrdan qat’i nazar umumiy', (await stats('platform=ios')).total === 2);
+// "ichida bor" qoidasi: 'ios-tablet' kabi qiymat ham iOS.
+sqlite.prepare(`UPDATE app_users SET platform = 'ios-tablet' WHERE user_id = 2`).run();
+check('5) qism moslik: ios-tablet → iOS', [(await stats()).ios, (await stats()).android], [2, 0]);
 
 done();
