@@ -348,3 +348,10 @@ yangi son, chegara yoki klinik fakt qo‘shilmagan; 72 tasida izoh o‘zgarmagan
 basis dagi faktlar bilan moslashtirilgan). Endi 21/71 (en), uz va ru da ham ≤ 50 % — test
 buni nazorat qiladi. To‘g‘ri variantlar, savol matni, manbalar va `correct_index` o‘zgarmagan.
 Savollar baribir draft — mustaqil review kerak.
+
+## D-32. Holatni tiklash (state restoration) (2026-10-08)
+Android/iOS ilovani fonda xotira uchun yopsa (process death), qaytganda foydalanuvchi turgan
+tab va sahifa steki tiklanadi: `MaterialApp.router`, `GoRouter`, `StatefulShellRoute` va har
+bir tab uchun `restorationScopeId`. Maydonlardagi kiritilgan matn tiklanmaydi (QC seriyasi va
+qoralamalar baribir saqlanadi). Ishga tushish ekrani tizim mavzusiga ergashadi — ilova ichida
+qorong‘i, tizimda yorug‘ bo‘lsa, birinchi kadr yorug‘ fonda chiqadi (platforma cheklovi).

@@ -66,7 +66,8 @@ kelmagan**.
   chalkashligi eslatmasi; AG da qisman natija; manfiy natija eslatmasi; “1,500” ikki ma’noli.
 - **Qobiq/accessibility (D-28):** TalkBack tap amali; profildan kirish oqimi; past ekran;
   tab xotirasi va qayta bosishda tepaga; WCAG 1.4.11 chegara kontrasti; OTP avtomatik
-  tekshiruv; maxfiylik matnlari; qoralamalar avtosaqlash; Android release imzo (key.properties).
+  tekshiruv; maxfiylik matnlari; qoralamalar avtosaqlash; Android release imzo (key.properties);
+  holatni tiklash — tizim ilovani yopsa, tab va sahifa qaytadi (D-32).
 - **Kontent (D-29, D-31):** qat’iyroq validator; qaror chegaralari alohida bloklarda va
   hisoblangan mmol/L; kirillcha qidiruv; savol manbasi; to‘g‘ri javob uzunligi bo‘yicha
   bilinmaydi (61/71 → 21/71).
@@ -76,7 +77,7 @@ kelmagan**.
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **259 / 259 o‘tdi** (unit 165: auth/settings 14, kontent 54, core logic 26, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 35, QC model 14, Westgard qoidalari 18; widget 94: oqimlar, kalkulyatorlar 13, QC 4, grafik 2, TalkBack amallari, sarlavha, tab xotirasi, qoralamalar, layout matritsa 34) |
+| `flutter test` | **260 / 260 o‘tdi** (unit 165: auth/settings 14, kontent 54, core logic 26, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 35, QC model 14, Westgard qoidalari 18; widget 94: oqimlar, kalkulyatorlar 13, QC 4, grafik 2, TalkBack amallari, sarlavha, tab xotirasi, qoralamalar, holatni tiklash, layout matritsa 34) |
 | Layout matritsa | 30 konfiguratsiya × 48 yo‘l + past ekran (844×390 ×1.0/×2.0, 320×568 ×2.0) uchala tilda — layout xatosi yo‘q, ro‘yxat maydoni ekranning ≥ 30 % i |
 | Yangi testlar | Har bir tuzatilgan xato uchun test tuzatishsiz **yiqilishi** tekshirildi (TalkBack, past ekran, sarlavha, tab xotirasi) |
 | Kontrast | Matn ≥ 4.5:1, boshqaruv chegaralari ≥ 3:1 (light va dark) |

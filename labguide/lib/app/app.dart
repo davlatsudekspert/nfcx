@@ -58,6 +58,7 @@ class _LabGuideAppState extends State<LabGuideApp> {
       child: ListenableBuilder(
         listenable: _settings,
         builder: (context, _) => MaterialApp.router(
+          restorationScopeId: 'app',
           onGenerateTitle: (_) => 'LabGuide',
           debugShowCheckedModeBanner: false,
           routerConfig: _router,

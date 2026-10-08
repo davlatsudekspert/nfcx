@@ -53,6 +53,9 @@ GoRouter buildRouter(
 
   return GoRouter(
     navigatorKey: rootKey,
+    // Holatni tiklash: tizim ilovani fonda yopsa, qaytganda tab steklari va
+    // ochiq sahifalar tiklanadi.
+    restorationScopeId: 'router',
     initialLocation: '/home',
     // Faqat onboarding holati o'zgarganda redirect qayta hisoblanadi. Til,
     // mavzu yoki rol o'zgarishi routerni yangilamaydi — aks holda kechikkan
@@ -117,10 +120,12 @@ GoRouter buildRouter(
         ],
       ),
       StatefulShellRoute.indexedStack(
+        restorationScopeId: 'shell',
         builder: (context, state, shell) =>
             AppShell(shell: shell, memory: tabMemory, location: state.uri.path),
         branches: [
           StatefulShellBranch(
+            restorationScopeId: 'tab-home',
             routes: [
               GoRoute(
                 path: '/home',
@@ -130,6 +135,7 @@ GoRouter buildRouter(
             ],
           ),
           StatefulShellBranch(
+            restorationScopeId: 'tab-tests',
             routes: [
               GoRoute(
                 path: '/tests',
@@ -139,6 +145,7 @@ GoRouter buildRouter(
             ],
           ),
           StatefulShellBranch(
+            restorationScopeId: 'tab-lab',
             routes: [
               GoRoute(
                 path: '/lab',
@@ -212,6 +219,7 @@ GoRouter buildRouter(
             ],
           ),
           StatefulShellBranch(
+            restorationScopeId: 'tab-library',
             routes: [
               GoRoute(
                 path: '/library',
@@ -247,6 +255,7 @@ GoRouter buildRouter(
             ],
           ),
           StatefulShellBranch(
+            restorationScopeId: 'tab-learn',
             routes: [
               GoRoute(
                 path: '/learn',
