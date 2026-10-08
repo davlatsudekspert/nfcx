@@ -63,6 +63,8 @@ import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
 import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload, queueUncheckedUpload } from './api/image-moderation.js';
+import * as guard from './api/content-guard.js';
+import { MODERATION_UNAVAILABLE } from './api/content-guard.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -1535,6 +1537,8 @@ async function companyApi(request, env, url) {
   if (action === 'posts' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const videoGateCp = await videoAttachGateD1(env, body);
+    if (videoGateCp) return videoGateCp;
     // POST HAMMAGA BEPUL (2026-10-04) — tarif/Premium tekshirilmaydi
     // (`companyPlanStateD1` izohiga qarang). Faqat ban va spam chegarasi.
     const gatePost = await publishGateD1(env, owned.auth.user);
@@ -1600,6 +1604,8 @@ async function companyApi(request, env, url) {
   if (action === 'stories' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const videoGateCs = await videoAttachGateD1(env, body);
+    if (videoGateCs) return videoGateCs;
     // Post bilan bir xil qoida — istorya ham hammaga bepul.
     const gateStory = await publishGateD1(env, owned.auth.user);
     if (gateStory) return gateStory;
@@ -3193,7 +3199,11 @@ const COMPANY_POST_MAX = 30;
 // o'tkazib yuborardi. Bu yerda qat'iyroq: papka ichida chuqurlashish
 // yo'q, kengaytma ro'yxatdan.
 const UPLOAD_IMAGE_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(png|jpe?g|webp|gif)$/i;
-const UPLOAD_VIDEO_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
+// `aud_` / `music_` (audio yuklash yo'llari) va eski /api/upload-audio
+// fayllari (prefikssiz 20 hex `.webm` — boshqa hech qaysi yo'l bunday nom
+// bermaydi) VIDEO sifatida ulanmaydi (2026-10): aks holda video "audio"
+// deb tekshiruvsiz yuklanib, post videosi bo'lib chiqardi.
+const UPLOAD_VIDEO_PATH_RE = /^\/uploads\/(?!aud_|music_|[0-9a-f]{20}\.webm$)[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
 
 function storyMediaD1(body) {
   const imageUrl = String(body?.imageUrl || '');
@@ -3209,6 +3219,24 @@ function storyMediaD1(body) {
 // chetlab o'tish mumkin bo'lardi va bizda "u rozilik bergan" degan hech
 // qanday dalil qolmasdi.
 const rulesAcceptedD1 = (body) => body?.agreed === true || body?.agreed === 'true';
+
+// So'rovda VIDEO bormi (`videoUrl`, karusel `media`, ko'rgazma `mediaUrls`).
+const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v)$/i;
+function bodyHasVideoD1(body) {
+  if (String(body?.videoUrl || '').trim()) return true;
+  const items = [
+    ...(Array.isArray(body?.media) ? body.media : []),
+    ...(Array.isArray(body?.mediaUrls) ? body.mediaUrls.map((url) => ({ url })) : []),
+  ];
+  return items.some((m) => String(m?.type || '').toLowerCase() === 'video' || VIDEO_EXT_RE.test(String(m?.url ?? m ?? '')));
+}
+
+// KALIT `videoUploadsBlocked` (api/flags.js): postga/istoriyaga VIDEO ulash
+// ham yopiq — eski ilova va to'g'ridan-to'g'ri API ham shu yerdan o'tadi.
+async function videoAttachGateD1(env, body) {
+  if (!bodyHasVideoD1(body)) return null;
+  return (await getFlags(env)).videoUploadsBlocked ? json(VIDEO_UPLOADS_DISABLED, 403) : null;
+}
 
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const nowIso = new Date().toISOString();
@@ -6668,6 +6696,8 @@ async function recordsApi(request, env, url) {
       // ko'p ishlatiladigan joyda "u rozilik bergan" degan hech
       // qanday dalil saqlanmasdi.
       if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+      const videoGateP = await videoAttachGateD1(env, body);
+      if (videoGateP) return videoGateP;
       // KARUSEL (api/carousel.js): `media` berilsa, `imageUrl`/`videoUrl`
       // undan olinadi (birinchi rasm — eski ilovalar uchun). Berilmasa —
       // avvalgi yo'l, hech narsa o'zgarmaydi.
@@ -6680,7 +6710,8 @@ async function recordsApi(request, env, url) {
       const videoUrl = mediaIn.provided ? String(mediaIn.videoUrl || '') : String(body?.videoUrl || '');
       const caption = String(body?.caption || '').slice(0, 600);
       const okImg = imageUrl.startsWith('/uploads/') && !/[^\w\-./]/.test(imageUrl);
-      const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl);
+      const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl)
+        && !/^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i.test(videoUrl);
       if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
       const rec = await getRecord(env, code);
       if (!rec) return json({ error: 'not_found' }, 404);
@@ -6730,6 +6761,8 @@ async function recordsApi(request, env, url) {
       // bo'lsa, to'g'ridan-to'g'ri API ga so'rov yuborib chetlab
       // o'tish mumkin bo'lardi.
       if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+      const videoGateS = await videoAttachGateD1(env, body);
+      if (videoGateS) return videoGateS;
       const media = storyMediaD1(body);
       if (!media.ok) return json({ error: 'bad_image' }, 422);
       const rec = await getRecord(env, code);
@@ -7011,6 +7044,8 @@ const uploadQuotaDayD1 = () => new Date().toISOString().slice(0, 10);
 // qachon yana urinish mumkinligini ayta olmasdi.
 const uploadErrorJsonD1 = (up) => json({
   error: up.error,
+  ...(up.error === VIDEO_UPLOADS_DISABLED.error ? { message: VIDEO_UPLOADS_DISABLED.message } : {}),
+  ...(up.error === MODERATION_UNAVAILABLE.error ? { message: MODERATION_UNAVAILABLE.message } : {}),
   ...(up.limitMb ? { limitMb: up.limitMb } : {}),
   ...(up.quotaMb ? { quotaMb: up.quotaMb } : {}),
   ...(up.usedMb != null ? { usedMb: up.usedMb } : {}),
@@ -7188,6 +7223,21 @@ function sniffAnyFileTypeD1(bytes) {
   return null;
 }
 
+// /api/upload-audio uchun: ma'lum AUDIO konteyner (mp3/ID3, MPEG/AAC ADTS
+// freym sinxronizatsiyasi, Ogg, WAV/RIFF, MP4/M4A ftyp, WebM/EBML, FLAC).
+// Rasm, PDF yoki axlat — yo'q.
+function sniffAudioContainerD1(bytes) {
+  if (!bytes || bytes.length < 12) return false;
+  const head = String.fromCharCode(...bytes.slice(0, 12));
+  if (head.startsWith('ID3')) return true;
+  if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0 && !(bytes[2] === 0xff)) return true; // MPEG / ADTS
+  if (head.startsWith('OggS') || head.startsWith('fLaC')) return true;
+  if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WAVE') return true;
+  if (head.slice(4, 8) === 'ftyp') return true;
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return true;
+  return false;
+}
+
 // MOLIYA HUJJATLARI uchun alohida sniffer: bu yerda xlsx va csv ham
 // bo'ladi. `sniffAnyFileTypeD1` ularni bilmaydi va bilishi ham SHART
 // EMAS — profil media'siga xlsx tushishi kerak emas.
@@ -7223,6 +7273,11 @@ async function streamUploadToR2(request, env, opts) {
   const {
     prefix, accept, aliases = {}, actor,
     maxBytes = UPLOAD_MAX_BYTES, sniff = sniffAnyFileTypeD1,
+    // KALIT `videoUploadsBlocked` (api/flags.js): video SAQLANMASDAN rad
+    // etiladi. `audioPrefix` — mijoz AUDIO deb e'lon qilgan (ichi WebM/MP4
+    // konteyner) fayl rad etilmaydi, lekin shu prefiks bilan saqlanadi va
+    // video sifatida ulab bo'lmaydi (UPLOAD_VIDEO_PATH_RE).
+    blockVideo = false, audioPrefix = '',
   } = opts;
   const limitMb = Math.round(maxBytes / (1024 * 1024));
   const declaredLen = Number(request.headers.get('content-length') || 0);
@@ -7275,8 +7330,16 @@ async function streamUploadToR2(request, env, opts) {
     await reader.cancel().catch(() => {});
     return { ok: false, error: 'bad_file', status: 422 };
   }
+  let namePrefix = prefix;
+  if (blockVideo && sniffed.type.startsWith('video/')) {
+    if (audioPrefix && declaredType.startsWith('audio/')) namePrefix = audioPrefix;
+    else {
+      await reader.cancel().catch(() => {});
+      return { ok: false, error: VIDEO_UPLOADS_DISABLED.error, status: 403 };
+    }
+  }
 
-  const filename = `${prefix}_${uploadRandomHex(12)}.${sniffed.ext}`;
+  const filename = `${namePrefix}_${uploadRandomHex(12)}.${sniffed.ext}`;
   const meta = {
     httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
     customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
@@ -7506,17 +7569,25 @@ async function scanStoredUploadD1(env, up, actor, source, opts = {}) {
   const type = String(up?.type || '');
   const isVideo = type.startsWith('video/');
   if (!up?.ok || (!type.startsWith('image/') && !isVideo)) return null;
-  // Filtr o'chiq (kalit yo'q) — faylni R2 dan qayta o'qishning keragi yo'q.
-  if (!moderationEnabled(env)) return null;
   const key = String(up.url || '').replace(/^\//, '');
+  // NAVBATGA YOZIB BO'LMASA — yuklash rad etiladi va fayl o'chiriladi
+  // (tekshirilmagan fayl jim o'tib ketmasin).
+  const queueOrReject = async () => {
+    if (await queueUncheckedUpload(env, { actor, url: up.url, source })) return null;
+    await env.UPLOADS.delete(key).catch(() => {});
+    return json(MODERATION_UNAVAILABLE, 503);
+  };
+  // Filtr o'chiq (kalit yo'q) — faylni qayta o'qishning keragi yo'q, lekin
+  // u admin navbatiga tushadi (2026-10: avval jim o'tardi).
+  if (!moderationEnabled(env)) return queueOrReject();
   let obj = null;
   try { obj = await env.UPLOADS.get(key); } catch { obj = null; }
-  if (!obj) return null;
+  if (!obj) return queueOrReject();
   const verdict = isVideo
     ? await moderateVideo(env, obj, type, up.size, opts)
     : await moderateImage(env, new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body), type);
   // Tekshirilmay o'tdi — admin navbatiga (image-moderation.js).
-  if (verdict.allowed && !verdict.checked) await queueUncheckedUpload(env, { actor, url: up.url, source });
+  if (verdict.allowed && !verdict.checked) return queueOrReject();
   if (verdict.allowed) return null;
   await env.UPLOADS.delete(key).catch(() => {});
   await logBlockedUpload(env, actor, verdict.category, source);
@@ -7531,7 +7602,22 @@ async function uploadApi(request, env, pathname) {
   // Video tekshiruvi muddati: Nova ilovasi yuklashni 180 s kutadi; eski
   // ilova (butun so'rov 90 s) va sayt uchun qisqaroq.
   const scanOpts = { timeoutMs: request.headers.get('x-app') === 'nova' ? 45_000 : 25_000 };
+  // BAN — yuklash paytida ham (2026-10). Ilgari faqat chop etishda
+  // tekshirilardi: banlangan odam fayl yuklab, havolasini tarqata olardi.
+  if (!isAdmin) {
+    const banned = banGateD1(auth);
+    if (banned) return banned;
+  }
   if (!isAdmin && await rateLimitD1(env, 'upload:user:' + auth.id, 40, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
+  // KALIT: video yuklash yopiq (admin yo'llari bundan mustasno). Mijoz
+  // video deb e'lon qilgan bo'lsa — tana o'qilmasdan rad etiladi; aks
+  // holda sehrli baytlar bo'yicha (`blockVideo`), saqlashdan OLDIN.
+  const blockVideo = !isAdmin && (await getFlags(env)).videoUploadsBlocked;
+  const declaredVideo = /^video\//i.test(String(request.headers.get('content-type') || '').trim());
+  if (blockVideo && (pathname === '/api/upload-card-video'
+    || (declaredVideo && ['/api/upload-media', '/api/upload-file', '/api/upload-profile-bg'].includes(pathname)))) {
+    return json(VIDEO_UPLOADS_DISABLED, 403);
+  }
 
   // ─── PROFIL FONI UCHUN MEDIA (GIF / video) — 50 MB ───────────────────
   // 2026-09. Nima uchun ALOHIDA endpoint (mavjud /api/upload emas):
@@ -7553,6 +7639,7 @@ async function uploadApi(request, env, pathname) {
       prefix: 'profilebg', actor,
       accept: ['image/gif', 'video/mp4', 'video/webm'],
       aliases: PROFILE_BG_ALIASES,
+      blockVideo,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'profile-bg', scanOpts);
@@ -7569,6 +7656,7 @@ async function uploadApi(request, env, pathname) {
       maxBytes: STORY_MEDIA_MAX_BYTES,
       // Istoryada faqat rasm/video: PDF yoki mp3 bu yerga tushmasin.
       sniff: sniffMediaTypeD1,
+      blockVideo,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'media', scanOpts);
@@ -7615,6 +7703,7 @@ async function uploadApi(request, env, pathname) {
       prefix: 'file', actor,
       accept: ['image/', 'video/', 'audio/', 'application/pdf'],
       aliases: UPLOAD_TYPE_ALIASES,
+      blockVideo, audioPrefix: 'aud',
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'file', scanOpts);
@@ -7681,6 +7770,11 @@ async function uploadApi(request, env, pathname) {
   if (!b64Quota.ok) {
     return json({ error: b64Quota.error, quotaMb: b64Quota.quotaMb, usedMb: b64Quota.usedMb }, b64Quota.status);
   }
+  // AUDIO HAQIQATAN AUDIO KONTEYNERMI (2026-10, doimiy). Bu yo'l
+  // tekshiruvsiz edi: video "audio/webm" deb yuklanib, keyin post videosi
+  // sifatida ulanardi. Endi sehrli baytlar tekshiriladi va fayl `aud_`
+  // prefiksi bilan saqlanadi — video tekshiruvlari uni qabul qilmaydi.
+  if (isAudio && !sniffAudioContainerD1(bytes)) return json({ error: 'bad_audio' }, 422);
   const ext = isAudio
     ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]
     : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
@@ -7695,9 +7789,13 @@ async function uploadApi(request, env, pathname) {
       return contentBlockedJsonD1(verdict.category);
     }
   }
-  const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
+  const filename = `${isAdmin ? 'news_' : isAudio ? 'aud_' : ''}${uploadRandomHex(10)}.${ext}`;
   const b64Url = await putUploadR2(env, filename, bytes, match[1], actor);
-  if (b64Verdict && !b64Verdict.checked) await queueUncheckedUpload(env, { actor, url: b64Url, source: 'upload' });
+  if (b64Verdict && !b64Verdict.checked
+    && !(await queueUncheckedUpload(env, { actor, url: b64Url, source: 'upload' }))) {
+    await env.UPLOADS.delete(`uploads/${filename}`).catch(() => {});
+    return json(MODERATION_UNAVAILABLE, 503);
+  }
   await uploadQuotaAddD1(env, actor, bytes.length);
   return json({ url: b64Url });
 }
@@ -11167,8 +11265,13 @@ const PUBLISH_PER_HOUR_D1 = 60;
 //     — izoh yo'li bilan bir xil, faqat rostlik tekshiriladi);
 //   • soatlik spam chegarasi.
 // `null` — ruxsat; aks holda tayyor javob.
+// Ban — yuklash paytida ham shu tekshiruv (uploadApi).
+function banGateD1(user) {
+  return user?.bannedUntil ? json({ error: 'banned', bannedUntil: user.bannedUntil }, 403) : null;
+}
 async function publishGateD1(env, user) {
-  if (user?.bannedUntil) return json({ error: 'banned', bannedUntil: user.bannedUntil }, 403);
+  const banned = banGateD1(user);
+  if (banned) return banned;
   if (await rateLimitD1(env, 'publish:u:' + user.id, PUBLISH_PER_HOUR_D1, 60 * 60_000)) {
     return json({ error: 'too_many_requests' }, 429);
   }
@@ -12213,6 +12316,9 @@ async function coreApi(request, env, url) {
 }
 
 // ---------- hosting/api/* modullari uchun yordamchilar (CONTRACT.md) ----------
+// Admin Telegram ogohlantirishlari (content-guard.js) — mavjud xabarchi orqali.
+guard.setAdminNotifier(sendTelegramMessage);
+
 const H = {
   json, getCurrentUser, getCurrentAdmin, requireAdmin, checkIpWhitelist,
   getRecord, getRecordOwner, rowToRecord, RECORD_COLUMNS, updateRecord, validateRecordBody,

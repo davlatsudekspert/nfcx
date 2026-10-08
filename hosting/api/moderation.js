@@ -21,6 +21,9 @@
 //   PATCH  /api/admin/reports/:id    (admin) { status } → { ok, report }
 
 import { archiveStmt } from './content-archive.js';
+import {
+  REPORTS_TABLE_SQL, clearPendingUrl, denyUploads, contentUrls, pendingDeleteStmt, ensureGuardSchema,
+} from './content-guard.js';
 import { ensureSchema as ensureCommentsSchema, retireTargetStmts } from './comments.js';
 import { ensureSchema as ensureHighlightsSchema } from './highlights.js';
 
@@ -71,20 +74,7 @@ let schemaReady = null;
 export async function ensureSchema(env) {
   if (!schemaReady) {
     schemaReady = env.DB.batch([
-      env.DB.prepare(`CREATE TABLE IF NOT EXISTS "content_reports" (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        target_kind TEXT NOT NULL,
-        target_id TEXT NOT NULL,
-        owner_code TEXT NOT NULL DEFAULT '',
-        reporter_id INTEGER,
-        reporter_ip TEXT NOT NULL DEFAULT '',
-        reason TEXT NOT NULL,
-        note TEXT NOT NULL DEFAULT '',
-        status TEXT NOT NULL DEFAULT 'new',
-        created_at TEXT NOT NULL,
-        resolved_at TEXT,
-        resolved_by TEXT NOT NULL DEFAULT ''
-      )`),
+      env.DB.prepare(REPORTS_TABLE_SQL),
       // Adminning asosiy ko'rinishi — "yangi shikoyatlar, yangisi
       // yuqorida". Indeks aynan shu so'rov uchun.
       env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_reports_status ON content_reports(status, created_at DESC)`),

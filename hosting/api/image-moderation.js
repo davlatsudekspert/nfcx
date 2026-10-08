@@ -32,6 +32,8 @@
 // O'chirish: `MODERATION_OFF=1` (Worker o'zgaruvchisi).
 // Model: `MODERATION_MODEL`, bo'lmasa `ASSISTANT_MODEL`, bo'lmasa standart.
 
+import { ensureReportsTable, alertUncheckedQueued, alertModerationOff } from './content-guard.js';
+
 export const BLOCK_CATEGORIES = ['sexual', 'violence', 'extremism', 'political', 'drugs', 'hate'];
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
@@ -288,18 +290,21 @@ export async function logBlockedUpload(env, actor, category, source) {
 
 /// TEKSHIRILMAY O'TGAN YUKLASH -> ADMIN NAVBATI (egasi, 2026-10-06).
 ///
-/// Filtr YOQIQ bo'lsa-yu, aynan shu fayl tekshirilmagan bo'lsa (Gemini
-/// javob bermadi, vaqt tugadi, GIF yoki juda katta fayl) — yuklash
-/// to'xtatilmaydi (odam bizning nosozligimiz uchun jazolanmaydi), lekin
-/// fayl admin "Shikoyatlar" navbatiga `reason = 'unchecked'` bilan
-/// tushadi: admin ko'rib, kerak bo'lsa o'chiradi. Filtr umuman O'CHIQ
-/// bo'lsa (kalit yo'q) navbat to'lib ketmasin — yozilmaydi.
-/// Bir fayl ikki marta yozilmaydi. Xatosi yutiladi.
+/// Fayl avtomatik tekshirilmagan bo'lsa (Gemini javob bermadi, vaqt tugadi,
+/// GIF yoki juda katta fayl, FILTR UMUMAN O'CHIQ / kalit yo'q) — u admin
+/// "Shikoyatlar" navbatiga `reason = 'unchecked'` bilan tushadi; shu faylli
+/// post/istoriya admin tasdiqlaguncha egasidan boshqaga ko'rinmaydi
+/// (content-guard.js `content_pending`).
+///
+/// 2026-10: filtr o'chiq bo'lsa ham YOZILADI (hech narsa jim o'tib
+/// ketmasin) va navbatga yozib bo'lmasa `false` qaytadi — chaqiruvchi
+/// yuklashni 503 `moderation_unavailable` bilan rad etadi va faylni
+/// o'chiradi. Bir fayl ikki marta yozilmaydi. → true | false.
 export async function queueUncheckedUpload(env, { actor, url, source }) {
-  if (!moderationEnabled(env)) return;
   const u = String(url || '').trim();
-  if (!u) return;
+  if (!u) return true;
   try {
+    await ensureReportsTable(env);
     await env.DB.prepare(
       `INSERT INTO content_reports
          (target_kind, target_id, owner_code, reporter_id, reporter_ip, reason, note, status, created_at)
@@ -307,5 +312,11 @@ export async function queueUncheckedUpload(env, { actor, url, source }) {
         WHERE NOT EXISTS (SELECT 1 FROM content_reports WHERE target_kind = 'media' AND target_id = ?)`
     ).bind(u, `${String(source || 'upload')} · ${String(actor || '')}`.slice(0, 600),
       new Date().toISOString().replace('T', ' ').replace('Z', '+00'), u).run();
-  } catch { /* jadval hali yo'q / xato — yuklash baribir o'tadi */ }
+  } catch (e) {
+    console.error('queueUncheckedUpload', String(e?.message || e).slice(0, 120));
+    return false;
+  }
+  if (!moderationEnabled(env)) await alertModerationOff(env);
+  await alertUncheckedQueued(env);
+  return true;
 }

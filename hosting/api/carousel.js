@@ -36,7 +36,9 @@ export const CAROUSEL_MAX = 10;
 // worker.js dagi `UPLOAD_IMAGE_PATH_RE` / `UPLOAD_VIDEO_PATH_RE` bilan
 // AYNAN bir xil (modul worker.js dan import qilmaydi — CONTRACT.md).
 export const IMAGE_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(png|jpe?g|webp|gif)$/i;
-export const VIDEO_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
+// `aud_` / `music_` va eski prefikssiz 20 hex `.webm` — audio yuklash
+// yo'llarining fayllari, video EMAS (worker.js bilan bir xil, 2026-10).
+export const VIDEO_PATH_RE = /^\/uploads\/(?!aud_|music_|[0-9a-f]{20}\.webm$)[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
 
 /// So'rovdagi `media` ni tekshiradi.
 ///   media yo'q             → { ok: true, provided: false }
