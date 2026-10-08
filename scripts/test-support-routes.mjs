@@ -108,6 +108,13 @@ for (const code of ['SUPPORT', 'CONTACT', 'TERMS', 'HELP', 'ALOQA']) {
   checkTrue('3) maxfiylik: video ham Gemini da (en)', /photos and videos[^']*Google Gemini/.test(pp));
   checkTrue('3) maxfiylik: "videolar faqat shikoyat bo‘yicha" degan eski gap yo‘q',
     !/Videos are reviewed by a moderator after reports|Videolar shikoyat orqali|Видео проверяются модератором по жалобам/.test(pp));
+  // Tekshirib bo'lmagan fayl — qo'lda ko'rib chiqilguncha yashirin (content_pending).
+  checkTrue('3) maxfiylik: tekshirilmagan fayl "tekshiruvsiz joylanadi" degan eski gap yo‘q',
+    !/may be published without the automatic check|avtomatik tekshiruvsiz joylanishi mumkin|опубликован без автоматической проверки/.test(pp));
+  checkTrue('3) maxfiylik: tekshirilmagan kontent qo‘lda ko‘rib chiqiladi (uz/ru/en)',
+    pp.includes("ko'rib chiqilguncha boshqalarga ko'rsatilmaydi") && pp.includes('не показываются другим до завершения проверки') && pp.includes('not shown to others until the review is done'));
+  checkTrue('3) maxfiylik: Ko‘rgazma YouTube/Instagram havolalari (uz/ru/en)',
+    pp.includes("Ko'rgazma: YouTube va Instagram havolalari") && pp.includes('Витрина: ссылки на YouTube и Instagram') && pp.includes('Showcase: YouTube and Instagram links'));
   // ACCOUNT_PURGE_R2 = off — fayllar o'chadi deb va'da qilinmasin.
   const wr = read('wrangler.jsonc');
   if (/"ACCOUNT_PURGE_R2":\s*"off"/.test(wr)) {
