@@ -300,6 +300,58 @@ void main() {
     expect(r.social.cursors.where((c) => c != null), ['c1']);
   });
 
+  /// TABGA QAYTISH: ro'yxat `kShowcaseStaleAfter` (10 daqiqa) dan eski
+  /// bo'lsa `/api/showcase` qayta so'raladi, yangi bo'lsa — yo'q.
+  ///
+  /// Soat `showcaseClock` orqali boshqariladi (haqiqiy 10 daqiqa
+  /// kutilmaydi). Kursorsiz `showcasePage()` chaqiruvi — 1-sahifa,
+  /// ya'ni `/api/showcase` ning o'zi.
+  testWidgets(
+      'tabga qaytish: 10 daqiqadan oshsa /api/showcase qayta so‘raladi, '
+      'oldin — yo‘q', (tester) async {
+    final loaded = DateTime(2026, 10, 8, 12);
+    var now = loaded;
+    showcaseClock = () => now;
+    addTearDown(() => showcaseClock = DateTime.now);
+
+    final r = await _pump(tester, pages: [
+      ReelsPage(items: [_post(id: 11), _post(id: 12)]),
+    ]);
+    int fetches() => r.social.cursors.where((c) => c == null).length;
+    // Birinchi ochilish. Faol profil (`activeProfileProvider`) testda
+    // kechroq aniqlanadi va ro'yxat bir marta qayta quriladi — shuning
+    // uchun mutlaq son emas, shu nuqtadan keyingi FARQ tekshiriladi.
+    await settle(tester, frames: 8);
+    final base = fetches();
+    expect(base, greaterThanOrEqualTo(1), reason: 'birinchi ochilish');
+
+    Future<void> leaveAndReturn(Duration after) async {
+      r.c.read(activeTabProvider.notifier).state = 0;
+      await settle(tester, frames: 4);
+      now = now.add(after);
+      r.c.read(activeTabProvider.notifier).state = kShowcaseTab;
+      await settle(tester, frames: 8);
+    }
+
+    // 9 daqiqa 59 soniya — ro'yxat hali yangi: so'rov YO'Q.
+    await leaveAndReturn(const Duration(minutes: 9, seconds: 59));
+    expect(fetches(), base, reason: '10 daqiqa o‘tmagan — qayta so‘ralmaydi');
+    expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
+
+    // Yuklangandan 10 daqiqa 1 soniya — eskirgan: qayta so'raladi.
+    await leaveAndReturn(const Duration(seconds: 2));
+    expect(fetches(), base + 1,
+        reason: '10 daqiqadan oshdi — /api/showcase qayta');
+    expect(now.difference(loaded), greaterThan(kShowcaseStaleAfter));
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
+
+    // Yangi ro'yxat yuklangan vaqtdan sanaladi: 1 daqiqadan keyin — yo'q.
+    await leaveAndReturn(const Duration(minutes: 1));
+    expect(fetches(), base + 1,
+        reason: 'yangi yuklangan ro‘yxat qayta so‘ralmaydi');
+  });
+
   testWidgets('musiqa: bitta audio egasi, mixWithOthers false',
       (tester) async {
     final v = FakeVideoPlatform();
