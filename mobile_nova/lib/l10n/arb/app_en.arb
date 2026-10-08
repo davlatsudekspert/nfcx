@@ -1231,5 +1231,14 @@
   "inviteTrialNote": "The bonus month is added to your Premium time.",
   "activityReferralReward": "joined with your invite — +1 month of Premium",
   "errVideoUploadsDisabled": "Video uploads are temporarily disabled. You can upload photos.",
-  "errModerationUnavailable": "Review is temporarily unavailable. Please try again a bit later."
+  "errModerationUnavailable": "Review is temporarily unavailable. Please try again a bit later.",
+  "navShowcase": "Showcase",
+  "showcaseEmpty": "No showcase posts yet",
+  "showcaseEmptyHint": "Show your product or work with 1–5 photos",
+  "showcaseCreate": "Create a showcase",
+  "showcaseViewProduct": "View product",
+  "showcaseOpenYoutube": "Open on YouTube",
+  "showcaseOpenInstagram": "Open on Instagram",
+  "currencyUzs": "UZS",
+  "showcaseImageN": "Photo {n} of {total}"
 }

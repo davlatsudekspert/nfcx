@@ -1388,5 +1388,17 @@
   "errVideoUploadsDisabled": "Video yuklash vaqtincha o‘chirilgan. Rasm yuklashingiz mumkin.",
   "@errVideoUploadsDisabled": {"description": "Server 403 video_uploads_disabled."},
   "errModerationUnavailable": "Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.",
-  "@errModerationUnavailable": {"description": "Server 503 moderation_unavailable."}
+  "@errModerationUnavailable": {"description": "Server 503 moderation_unavailable."},
+  "navShowcase": "Ko‘rgazma",
+  "@navShowcase": {"description": "Pastki menyuning 4-tabi va Ko‘rgazma ekrani sarlavhasi."},
+  "showcaseEmpty": "Hali ko‘rgazma yo‘q",
+  "showcaseEmptyHint": "Mahsulotingiz yoki ishingizni 1–5 ta rasm bilan ko‘rsating",
+  "showcaseCreate": "Ko‘rgazma yaratish",
+  "showcaseViewProduct": "Mahsulotni ko‘rish",
+  "showcaseOpenYoutube": "YouTube’da ochish",
+  "showcaseOpenInstagram": "Instagram’da ochish",
+  "currencyUzs": "so‘m",
+  "@currencyUzs": {"description": "Narx yonidagi valyuta (faqat so‘m)."},
+  "showcaseImageN": "{n}-rasm, jami {total}",
+  "@showcaseImageN": {"description": "Karusel nuqtalari — ekran o‘quvchi uchun.", "placeholders": {"n": {"type": "int"}, "total": {"type": "int"}}}
 }

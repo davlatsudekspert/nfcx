@@ -6446,6 +6446,60 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.'**
   String get errModerationUnavailable;
+
+  /// Pastki menyuning 4-tabi va Ko‘rgazma ekrani sarlavhasi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rgazma'**
+  String get navShowcase;
+
+  /// No description provided for @showcaseEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali ko‘rgazma yo‘q'**
+  String get showcaseEmpty;
+
+  /// No description provided for @showcaseEmptyHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulotingiz yoki ishingizni 1–5 ta rasm bilan ko‘rsating'**
+  String get showcaseEmptyHint;
+
+  /// No description provided for @showcaseCreate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rgazma yaratish'**
+  String get showcaseCreate;
+
+  /// No description provided for @showcaseViewProduct.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahsulotni ko‘rish'**
+  String get showcaseViewProduct;
+
+  /// No description provided for @showcaseOpenYoutube.
+  ///
+  /// In uz, this message translates to:
+  /// **'YouTube’da ochish'**
+  String get showcaseOpenYoutube;
+
+  /// No description provided for @showcaseOpenInstagram.
+  ///
+  /// In uz, this message translates to:
+  /// **'Instagram’da ochish'**
+  String get showcaseOpenInstagram;
+
+  /// Narx yonidagi valyuta (faqat so‘m).
+  ///
+  /// In uz, this message translates to:
+  /// **'so‘m'**
+  String get currencyUzs;
+
+  /// Karusel nuqtalari — ekran o‘quvchi uchun.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n}-rasm, jami {total}'**
+  String showcaseImageN(int n, int total);
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

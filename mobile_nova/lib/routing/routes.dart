@@ -19,6 +19,9 @@ abstract final class Routes {
   static const home = '/home';
   static const discover = '/discover';
   static const reels = '/reels';
+
+  /// KO'RGAZMA — pastki menyuning 4-tabi (Reels o'rnida).
+  static const showcase = '/showcase';
   static const nfc = '/nfc';
   static const profile = '/profile';
 
@@ -29,6 +32,9 @@ abstract final class Routes {
   static const postCreate = '/post/create';
   static const storyCreate = '/story/create';
   static const reelCreate = '/reel/create';
+
+  /// Ko'rgazma yaratish (1–5 rasm, sarlavha, narx, tovar, havola).
+  static const showcaseCreate = '/showcase/create';
 
   /// Post tafsiloti.
   ///

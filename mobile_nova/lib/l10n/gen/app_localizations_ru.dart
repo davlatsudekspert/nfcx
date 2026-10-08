@@ -3587,4 +3587,33 @@ class LRu extends L {
   @override
   String get errModerationUnavailable =>
       'Проверка временно не работает. Попробуйте ещё раз чуть позже.';
+
+  @override
+  String get navShowcase => 'Витрина';
+
+  @override
+  String get showcaseEmpty => 'В витрине пока пусто';
+
+  @override
+  String get showcaseEmptyHint => 'Покажите свой товар или работу на 1–5 фото';
+
+  @override
+  String get showcaseCreate => 'Создать витрину';
+
+  @override
+  String get showcaseViewProduct => 'Посмотреть товар';
+
+  @override
+  String get showcaseOpenYoutube => 'Открыть в YouTube';
+
+  @override
+  String get showcaseOpenInstagram => 'Открыть в Instagram';
+
+  @override
+  String get currencyUzs => 'сум';
+
+  @override
+  String showcaseImageN(int n, int total) {
+    return 'Фото $n из $total';
+  }
 }

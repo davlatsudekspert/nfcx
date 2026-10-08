@@ -438,6 +438,22 @@ class SocialRepository {
     return res.map(ReelsPage.fromJson);
   }
 
+  /// KO'RGAZMA LENTASI (shartnoma §4).
+  ///
+  ///     GET /api/showcase?cursor=<...>&limit=10
+  ///       -> { items: [Post...], hasMore: bool, cursor: "..." }
+  ///
+  /// `/api/reels` bilan bir xil shakl; videosiz ko'rgazma postlari va
+  /// rasmli reel'lar, homiylik (`featured`) aralash.
+  Future<Result<ReelsPage>> showcasePage(
+      {String? cursor, int limit = 10}) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/showcase', query: {
+      'limit': limit,
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    });
+    return res.map(ReelsPage.fromJson);
+  }
+
   /// "QIZIQ EMAS" — server shu reelni bu hisobga boshqa ko'rsatmaydi.
   ///
   /// Kompaniya postining `id` si alohida sanaladi (`like` izohiga
@@ -465,7 +481,9 @@ class ReelsPage {
   final bool hasMore;
 
   factory ReelsPage.fromJson(Map<String, dynamic> j) {
-    final raw = j['nextCursor'];
+    // `/api/reels` — `nextCursor`; `/api/showcase` (shartnoma §4) —
+    // `cursor`. Ikkalasi ham o'qiladi.
+    final raw = j['nextCursor'] ?? j['cursor'];
     final cursor = raw == null ? null : '$raw';
     return ReelsPage(
       items: parseList(j['items'], Post.fromJson),

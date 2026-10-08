@@ -111,6 +111,12 @@ class FakeSocialRepository extends SocialRepository {
   Future<Result<ReelsPage>> reelsPage({String? cursor, int limit = 10}) async =>
       const Ok(ReelsPage());
 
+  /// Ko'rgazma — sukut bo'yicha bo'sh sahifa (tarmoqqa chiqmaydi).
+  @override
+  Future<Result<ReelsPage>> showcasePage(
+          {String? cursor, int limit = 10}) async =>
+      const Ok(ReelsPage());
+
   /// "Qiziq emas" — tarmoqqa chiqmaydi, faqat yoziladi.
   final hiddenReels = <Post>[];
 

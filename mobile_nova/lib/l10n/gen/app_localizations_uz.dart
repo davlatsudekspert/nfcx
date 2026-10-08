@@ -3544,4 +3544,34 @@ class LUz extends L {
   @override
   String get errModerationUnavailable =>
       'Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.';
+
+  @override
+  String get navShowcase => 'Ko‘rgazma';
+
+  @override
+  String get showcaseEmpty => 'Hali ko‘rgazma yo‘q';
+
+  @override
+  String get showcaseEmptyHint =>
+      'Mahsulotingiz yoki ishingizni 1–5 ta rasm bilan ko‘rsating';
+
+  @override
+  String get showcaseCreate => 'Ko‘rgazma yaratish';
+
+  @override
+  String get showcaseViewProduct => 'Mahsulotni ko‘rish';
+
+  @override
+  String get showcaseOpenYoutube => 'YouTube’da ochish';
+
+  @override
+  String get showcaseOpenInstagram => 'Instagram’da ochish';
+
+  @override
+  String get currencyUzs => 'so‘m';
+
+  @override
+  String showcaseImageN(int n, int total) {
+    return '$n-rasm, jami $total';
+  }
 }

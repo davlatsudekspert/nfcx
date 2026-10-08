@@ -99,6 +99,18 @@ class ReelsPager {
     _hasMore = false;
     _loading = false;
   }
+
+  // ── Boshqa sahifalangan lentalar uchun (Ko'rgazma) ────────────────
+
+  /// Ro'yxat qayta yuklandi — eski davomi uziladi.
+  void detach() => _detach();
+
+  /// Yangi ro'yxatning davomi ([more]) ulanadi.
+  void attach(Future<void> Function() more, {required bool hasMore}) =>
+      _attach(more, hasMore: hasMore);
+
+  /// Server javobidagi `hasMore` — davomi tugadimi.
+  set hasMoreFlag(bool v) => _hasMore = v;
 }
 
 final reelsPagerProvider =
@@ -1547,7 +1559,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
             ),
           ),
           // Tugmalar orasidagi `Gap.lg` bo'shliq endi har tugmaning
-          // ICHIDA (`_Action`, tepa va past `Gap.lg / 2`). Ilgari u
+          // ICHIDA (`ReelAction`, tepa va past `Gap.lg / 2`). Ilgari u
           // bosilmas edi va barmoq sal chetga tushsa video pauzaga
           // ketardi. Pastki tugmaning `Gap.lg / 2` hoshiyasi uchun
           // ustun 8 dp pastroqdan boshlanadi — belgilar o'sha joyda.
@@ -1558,7 +1570,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
               hidden: hide,
               child: Column(
               children: [
-                _Action(
+                ReelAction(
                   key: const ValueKey('reel-like'),
                   icon: like.liked
                       ? NovaIcons.liked
@@ -1568,14 +1580,14 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   semantic: l.postLike,
                   onTap: _like,
                 ),
-                _Action(
+                ReelAction(
                   key: const ValueKey('reel-comments'),
                   icon: NovaIcons.comment,
                   label: formatCount(_comments ?? p.comments),
                   semantic: l.postComments,
                   onTap: _openComments,
                 ),
-                _Action(
+                ReelAction(
                   key: const ValueKey('reel-save'),
                   icon: saved
                       ? NovaIcons.saved
@@ -1588,7 +1600,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   semantic: l.actionSave,
                   onTap: _save,
                 ),
-                _Action(
+                ReelAction(
                   key: const ValueKey('reel-share'),
                   icon: NovaIcons.share,
                   label: l.actionShare,
@@ -1602,7 +1614,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                     copiedMessage: l.shareCopied,
                   ),
                 ),
-                _Action(
+                ReelAction(
                   icon: muted
                       ? NovaIcons.muted
                       : NovaIcons.sound,
@@ -1612,7 +1624,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                   semantic: muted ? l.actionUnmute : l.actionMute,
                   onTap: _toggleMute,
                 ),
-                _Action(
+                ReelAction(
                   key: const ValueKey('reel-more'),
                   icon: NovaIcons.more,
                   label: '',
@@ -1671,7 +1683,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                     // Obuna — faqat begona muallifga.
                     if (!mine && p.code.isNotEmpty) ...[
                       const SizedBox(width: Gap.sm),
-                      _FollowPill(
+                      ReelFollowPill(
                         following: following,
                         onTap: () async {
                           final e = await ref
@@ -1811,7 +1823,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
                 ],
                 if (p.text.isNotEmpty) ...[
                   const SizedBox(height: Gap.sm),
-                  _ReelCaption(
+                  ReelCaption(
                     text: p.text,
                     open: _captionOpen,
                     onToggle: () =>
@@ -2013,8 +2025,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
 }
 
 /// Muallifga obuna — video ustida o'qiladigan shaffof kapsula.
-class _FollowPill extends StatelessWidget {
-  const _FollowPill({required this.following, required this.onTap});
+class ReelFollowPill extends StatelessWidget {
+  const ReelFollowPill(
+      {super.key, required this.following, required this.onTap});
   final bool following;
   final VoidCallback onTap;
 
@@ -2128,8 +2141,9 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   }
 }
 
-class _Action extends StatelessWidget {
-  const _Action({
+/// O'ng ustundagi amal tugmasi (Reels va Ko'rgazma).
+class ReelAction extends StatelessWidget {
+  const ReelAction({
     super.key,
     required this.icon,
     required this.label,
@@ -2266,8 +2280,9 @@ class ReelViewsLabel extends StatelessWidget {
 /// Reels izohi: 3 qatordan uzun bo'lsa "…ko'proq", bosilsa to'liq
 /// (egasi, 2026-10-05: Instagram kabi). Juda uzun matn ekranning
 /// uchdan biridan oshmaydi — ichida aylantiriladi.
-class _ReelCaption extends StatelessWidget {
-  const _ReelCaption({
+class ReelCaption extends StatelessWidget {
+  const ReelCaption({
+    super.key,
     required this.text,
     required this.open,
     required this.onToggle,

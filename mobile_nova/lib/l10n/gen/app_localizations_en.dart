@@ -3565,4 +3565,33 @@ class LEn extends L {
   @override
   String get errModerationUnavailable =>
       'Review is temporarily unavailable. Please try again a bit later.';
+
+  @override
+  String get navShowcase => 'Showcase';
+
+  @override
+  String get showcaseEmpty => 'No showcase posts yet';
+
+  @override
+  String get showcaseEmptyHint => 'Show your product or work with 1–5 photos';
+
+  @override
+  String get showcaseCreate => 'Create a showcase';
+
+  @override
+  String get showcaseViewProduct => 'View product';
+
+  @override
+  String get showcaseOpenYoutube => 'Open on YouTube';
+
+  @override
+  String get showcaseOpenInstagram => 'Open on Instagram';
+
+  @override
+  String get currencyUzs => 'UZS';
+
+  @override
+  String showcaseImageN(int n, int total) {
+    return 'Photo $n of $total';
+  }
 }

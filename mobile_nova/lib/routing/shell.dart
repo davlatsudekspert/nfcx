@@ -35,6 +35,9 @@ final reelsCleanProvider = StateProvider<bool>((_) => false);
 /// Reels tabining raqami (`HomeShell.tabRoutes`).
 const kReelsTab = 3;
 
+/// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`).
+const kShowcaseTab = 3;
+
 /// "Asosiy" tugmasi Home'da turib qayta bosilgan — har bosishda
 /// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
 final homeReselectProvider = StateProvider<int>((_) => 0);
