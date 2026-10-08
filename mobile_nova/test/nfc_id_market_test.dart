@@ -39,10 +39,12 @@ void main() {
     });
     final t = NfcTokens.fallback;
 
-    test('egasi bor kod — sotilgan', () {
+    // Savdo so'zi ("Sotilgan"/"Sotuvda") yo'q — Android'da ham
+    // (Google Play to'lov qoidasi, `showDigitalPrices`).
+    test('egasi bor kod — egallangan', () {
       final s = quoteState(l, t,
           const IdQuote(code: 'VIP001', taken: true, reason: 'already_taken'));
-      expect(s.text, l.idStateTaken);
+      expect(s.text, l.idStateTakenIos);
     });
 
     test('boshqa odam band qilgan — sotilgan EMAS, band', () {
@@ -54,13 +56,13 @@ void main() {
           const IdQuote(
               code: 'QWE321', reason: 'reserved_pending_payment'));
       expect(s.text, l.idStateReserved);
-      expect(s.text, isNot(l.idStateTaken));
+      expect(s.text, isNot(l.idStateTakenIos));
     });
 
-    test('bo\'sh kod — sotuvda', () {
+    test('bo\'sh kod — bo\'sh', () {
       final s = quoteState(l, t,
           const IdQuote(code: 'QWE321', purchasable: true, amount: 49000));
-      expect(s.text, l.idStateAvailable);
+      expect(s.text, l.idStateAvailableIos);
       expect(s.color, t.accent2);
     });
 

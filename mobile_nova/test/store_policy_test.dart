@@ -1,7 +1,54 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/featured_repository.dart';
+import 'package:nfcstore_nova/features/business/business_screens.dart'
+    show formatMoney;
+import 'package:nfcstore_nova/features/settings/settings_subscreens.dart'
+    show PremiumScreen;
+import 'package:nfcstore_nova/features/shop/nfc_id_market.dart';
 import 'package:nfcstore_nova/features/shop/store_policy.dart';
+import 'package:nfcstore_nova/features/social/featured_screen.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
+
+import 'helpers.dart';
+
+/// Android va iPhone — raqamli xarid qoidasi ikkalasida bir xil.
+final _both = TargetPlatformVariant(
+    const {TargetPlatform.android, TargetPlatform.iOS});
+
+/// Ekranni ochadi va o'zbekcha matnlarni qaytaradi.
+Future<L> _pump(WidgetTester tester, Widget screen,
+    {List<Override> overrides = const []}) async {
+  tester.view.physicalSize = const Size(393 * 3, 1600 * 3);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(ProviderScope(
+    overrides: [...await testOverrides(), ...overrides],
+    child: wrapScreen(screen),
+  ));
+  await settle(tester);
+  return L.delegate.load(const Locale('uz'));
+}
+
+/// Raqamli xaridni saytga yo'naltiruvchi har qanday yozuv yo'qligi.
+void _expectNoSiteCta(L l) {
+  for (final s in [
+    l.storeBuyOnSiteId,
+    l.storeBuyOnSiteAd,
+    l.storeBuyOnSitePremium,
+    l.storeBuyOnSiteBizName,
+    l.bizPlanStoreNotice,
+    kSiteHost,
+  ]) {
+    expect(find.text(s), findsNothing, reason: s);
+  }
+  expect(find.textContaining('sayt'), findsNothing);
+}
 
 /// ILOVA ICHIDA RAQAMLI TOVAR SOTILMAYDI.
 ///
@@ -58,6 +105,119 @@ void main() {
       expect(canPayInApp('yangi_mahsulot'), isFalse);
       expect(canPayInApp(''), isFalse);
     });
+  });
+
+  /// RAQAMLI MAHSULOT: NARX YO'Q, TASHQI XARIDGA CHAQIRIQ YO'Q —
+  /// iPhone'da HAM, Android'da HAM.
+  ///
+  /// Google Play to'lov qoidasi (2026-10-08): ilova ichidagi raqamli
+  /// xizmat uchun foydalanuvchini Play Billing'dan boshqa to'lov
+  /// usuliga yo'naltirish taqiqlangan — "saytda rasmiylashtiriladi"
+  /// yozuvi va narx ham shunga kiradi. Apple 3.1.1 iPhone'da buni
+  /// avvaldan talab qiladi. Jismoniy tovar (NFC karta) yozuvi QOLADI.
+  group('raqamli xarid — Android va iPhone', () {
+    testWidgets('kalitlar: narx va sayt yozuvi yo‘q', (tester) async {
+      expect(showDigitalPrices, isFalse);
+      expect(showDigitalSiteHints, isFalse);
+      for (final kind in [
+        OrderKind.nfcId,
+        OrderKind.premium,
+        OrderKind.premiumFollow,
+        OrderKind.auction,
+        OrderKind.featured,
+        'yangi_mahsulot',
+      ]) {
+        expect(showOrderAmount(kind), isFalse, reason: kind);
+      }
+      // Jismoniy karta — narxi ko'rinadi.
+      expect(showOrderAmount(OrderKind.physicalCard), isTrue);
+    }, variant: _both);
+
+    testWidgets('StoreNotice: raqamli — hech narsa, jismoniy — matn',
+        (tester) async {
+      final l0 = LUz();
+      final l = await _pump(
+        tester,
+        Column(children: [
+          StoreNotice(text: l0.storeBuyOnSiteId),
+          StoreNotice(text: l0.storeBuyOnSiteAd),
+          StoreNotice(text: l0.storeBuyOnSitePremium),
+          StoreNotice(text: l0.storeBuyOnSitePhysical, physical: true),
+        ]),
+      );
+      expect(find.text(l.storeBuyOnSiteId), findsNothing);
+      expect(find.text(l.storeBuyOnSiteAd), findsNothing);
+      expect(find.text(l.storeBuyOnSitePremium), findsNothing);
+      expect(find.text(l.storeBuyOnSitePhysical), findsOneWidget);
+      expect(find.text(kSiteHost), findsOneWidget, reason: 'faqat jismoniy');
+    }, variant: _both);
+
+    testWidgets('FEATURED (Ko‘tarish): paket narxi va sayt yozuvi yo‘q',
+        (tester) async {
+      final l = await _pump(
+        tester,
+        const FeaturedScreen(targetKind: 'post', targetId: 5),
+        overrides: [
+          featuredPackagesProvider.overrideWith((ref) async =>
+              const FeaturedOffer(enabled: true, packages: [
+                FeaturedPackage(days: 3, price: 30000),
+                FeaturedPackage(days: 7, price: 60000),
+              ])),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      // Ekran haqiqatan yuklangan — paketlar (muddat) chizilgan.
+      expect(find.text(l.featuredDays(3)), findsOneWidget);
+      expect(find.text(formatMoney(30000, 'UZS')), findsNothing);
+      expect(find.text(formatMoney(60000, 'UZS')), findsNothing);
+      _expectNoSiteCta(l);
+    }, variant: _both);
+
+    testWidgets('NFC ID: narx va sayt yozuvi yo‘q', (tester) async {
+      final l = await _pump(
+        tester,
+        const NfcIdBuyScreen(code: 'VIP777'),
+        overrides: [
+          idQuoteProvider('VIP777').overrideWith((ref) async => const IdQuote(
+              code: 'VIP777', purchasable: true, tier: 'gold', amount: 490000)),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      // Holat ko'rinadi (savdo so'zisiz) — narx esa yo'q.
+      expect(find.text(l.idStateAvailableIos), findsOneWidget);
+      expect(find.text(formatMoney(490000, 'UZS')), findsNothing);
+      expect(find.text(l.idStateAvailable), findsNothing);
+      _expectNoSiteCta(l);
+    }, variant: _both);
+
+    testWidgets('NFC ID buyurtmasi (kutilmoqda): summa va "to‘lovni yakunlang" yo‘q',
+        (tester) async {
+      final l = await _pump(
+        tester,
+        const NfcIdOrderScreen(orderId: 9),
+        overrides: [
+          idOrderProvider(9).overrideWith((ref) async => const Order(
+              id: 9,
+              status: 'pending',
+              total: 490000,
+              kind: OrderKind.nfcId,
+              code: 'VIP777')),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text(l.idOrderPending), findsOneWidget);
+      expect(find.text(formatMoney(490000, 'UZS')), findsNothing);
+      expect(find.text(l.idPendingHint), findsNothing);
+      _expectNoSiteCta(l);
+    }, variant: _both);
+
+    testWidgets('Premium: narx va sayt yozuvi yo‘q', (tester) async {
+      final l = await _pump(tester, const PremiumScreen());
+      expect(tester.takeException(), isNull);
+      expect(find.text(l.premiumCheck), findsOneWidget);
+      expect(find.textContaining(l.premiumPerMonth), findsNothing);
+      _expectNoSiteCta(l);
+    }, variant: _both);
   });
 
   group('ekranlarda xarid tugmasi yo\'q', () {

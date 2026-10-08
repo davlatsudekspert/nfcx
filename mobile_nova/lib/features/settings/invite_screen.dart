@@ -13,7 +13,7 @@ import '../../design/widgets/states.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../profile/profile_repository.dart';
-import '../shop/store_policy.dart' show isAppStoreBuild, kShowSiteNotice;
+import '../shop/store_policy.dart' show kShowSiteNotice, showDigitalSiteHints;
 
 /// `GET /api/referrals/summary`.
 final referralSummaryProvider =
@@ -30,9 +30,10 @@ String inviteShareText(L l, String link) => l.inviteShareText(link);
 /// Shaxsiy havola (`https://nfcstore.uz/i/<kod>`), nusxa olish va
 /// ulashish, natija ("N do'st · +M oy Premium") va qanday ishlashi.
 ///
-/// iPHONE'DA chegirma yoki narx HAQIDA HECH NARSA YO'Q (Apple 3.1.1):
-/// saytdagi 10% chegirma faqat Android'da va faqat sayt yozuvlari
-/// yoqilgan bo'lsa (`kShowSiteNotice`) tilga olinadi.
+/// Chegirma yoki narx HAQIDA HECH NARSA YO'Q — iPhone'da (Apple 3.1.1)
+/// ham, Android'da ham (Google Play to'lov qoidasi, 2026-10-08):
+/// saytdagi 10% chegirma — ilovadan tashqaridagi xaridga undov. U faqat
+/// `showDigitalSiteHints` va `kShowSiteNotice` yoqilganda tilga olinadi.
 class InviteScreen extends ConsumerWidget {
   const InviteScreen({super.key});
 
@@ -66,7 +67,7 @@ class _InviteBody extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
     final text = Theme.of(context).textTheme;
-    final siteDiscount = !isAppStoreBuild && kShowSiteNotice;
+    final siteDiscount = showDigitalSiteHints && kShowSiteNotice;
 
     return NovaScroll(
       children: [

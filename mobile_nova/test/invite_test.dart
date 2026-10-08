@@ -76,7 +76,10 @@ void main() {
         ActivityKind.referral);
   });
 
-  testWidgets('Android: havola, nusxa/ulashish, natija, chegirma eslatmasi',
+  /// Saytdagi chegirma eslatmasi Android'da ham YO'Q (2026-10-08, Google
+  /// Play to'lov qoidasi: ilovadan tashqaridagi xaridga undov,
+  /// `showDigitalSiteHints`).
+  testWidgets('Android: havola, nusxa/ulashish, natija; chegirma eslatmasi yo‘q',
       (tester) async {
     final shared = <String>[];
     shareInvokerOverride = (text, _) async => shared.add(text);
@@ -85,7 +88,10 @@ void main() {
     final l = await _uz();
     expect(find.text('https://nfcstore.uz/i/ALI77'), findsOneWidget);
     expect(find.text(l.inviteStats(3, 2)), findsOneWidget);
-    expect(find.text('${l.inviteStep3} ${l.inviteSiteDiscount}'), findsOneWidget);
+    expect(find.text(l.inviteStep3), findsOneWidget);
+    expect(find.textContaining(l.inviteSiteDiscount), findsNothing);
+    expect(find.textContaining('chegirma'), findsNothing);
+    expect(find.textContaining("so'm"), findsNothing);
     expect(find.text(l.inviteTrialNote), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('invite-share')));

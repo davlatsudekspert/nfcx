@@ -66,20 +66,21 @@ String tierLabel(L l, String tier) => idTierLabel(l, tier);
 
 /// Kod holati bitta so'zda + rang.
 ///
-/// iPhone'da savdo so'zi yo'q: "Sotuvda"/"Sotilgan" o'rniga
-/// "Bo'sh"/"Egallangan" — ilovada sotilmaydigan raqamli mahsulotga
-/// ishora bo'lmasin (`store_policy.dart`). Holatning o'zi qoladi.
+/// Savdo so'zi yo'q (iPhone'da ham, 2026-10-08 dan Android'da ham):
+/// "Sotuvda"/"Sotilgan" o'rniga "Bo'sh"/"Egallangan" — ilovada
+/// sotilmaydigan raqamli mahsulotga ishora bo'lmasin
+/// (`showDigitalPrices`, `store_policy.dart`). Holatning o'zi qoladi.
 ({String text, Color color}) quoteState(L l, NfcTokens t, IdQuote q) {
   if (q.taken) {
     return (
-      text: isAppStoreBuild ? l.idStateTakenIos : l.idStateTaken,
+      text: showDigitalPrices ? l.idStateTaken : l.idStateTakenIos,
       color: t.text3
     );
   }
   if (q.reserved) return (text: l.idStateReserved, color: t.warn);
   if (q.purchasable) {
     return (
-      text: isAppStoreBuild ? l.idStateAvailableIos : l.idStateAvailable,
+      text: showDigitalPrices ? l.idStateAvailable : l.idStateAvailableIos,
       color: t.accent2
     );
   }

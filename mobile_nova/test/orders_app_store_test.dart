@@ -102,18 +102,21 @@ final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
 
 void main() {
   group('summa qoidasi (`showOrderAmount`)', () {
-    test('Android: hamma turda summa bor', () {
+    /// 2026-10-08: Google Play to'lov qoidasi — raqamli buyurtma summasi
+    /// Android'da ham yo'q (`showDigitalPrices`). Jismoniy karta — bor.
+    test('Android: raqamli va noma’lum tur — summa yo‘q; jismoniy karta — bor',
+        () {
       for (final k in [
         OrderKind.nfcId,
         OrderKind.premium,
         OrderKind.premiumFollow,
         OrderKind.auction,
         OrderKind.featured,
-        OrderKind.physicalCard,
         'yangi_tur',
       ]) {
-        expect(showOrderAmount(k), isTrue, reason: k);
+        expect(showOrderAmount(k), isFalse, reason: k);
       }
+      expect(showOrderAmount(OrderKind.physicalCard), isTrue);
       expect(showOrdersEntry, isTrue);
     });
 
@@ -175,10 +178,12 @@ void main() {
       final l = await _pumpOrders(tester, _orders);
       expect(tester.takeException(), isNull);
 
-      // Faollar — summasi va tarjima qilingan holati bilan.
+      // Faollar — tarjima qilingan holati bilan. Summa faqat JISMONIY
+      // kartada: raqamli (NFC ID) summa Android'da ham yo'q (Google
+      // Play to'lov qoidasi, `showDigitalPrices`).
       expect(_order(62), findsOneWidget);
       expect(_order(63), findsOneWidget);
-      expect(find.text(formatMoney(500000, 'UZS')), findsOneWidget);
+      expect(find.text(formatMoney(500000, 'UZS')), findsNothing);
       expect(find.text(formatMoney(120000, 'UZS')), findsOneWidget);
       expect(find.text(l.payStatusPaid), findsOneWidget);
       expect(find.text(l.payStatusPending), findsOneWidget);
@@ -202,7 +207,8 @@ void main() {
       expect(_order(61), findsOneWidget);
       expect(_order(64), findsOneWidget);
       expect(find.text(l.payStatusCancelled), findsNWidgets(2));
-      expect(find.text(formatMoney(149000, 'UZS')), findsOneWidget);
+      // Bekor qilingan NFC ID — raqamli: summa yo'q.
+      expect(find.text(formatMoney(149000, 'UZS')), findsNothing);
       expect(find.text(l.payKindPremium), findsOneWidget);
       // Faollar tepada qoladi.
       expect(tester.getTopLeft(_order(63)).dy,
@@ -367,13 +373,14 @@ void main() {
       }, variant: ios ? _ios : TargetPlatformVariant.only(TargetPlatform.android));
     }
 
-    test('ID holati: iPhone’da savdo so‘zi yo‘q', () {
+    test('ID holati: iPhone’da ham, Android’da ham savdo so‘zi yo‘q', () {
       final l = LUz();
       final t = NfcTokens.ivory;
       const free = IdQuote(code: 'VIP777', purchasable: true);
       const taken = IdQuote(code: 'VIP001', taken: true);
-      expect(quoteState(l, t, free).text, l.idStateAvailable);
-      expect(quoteState(l, t, taken).text, l.idStateTaken);
+      // Android (2026-10-08, Google Play to'lov qoidasi).
+      expect(quoteState(l, t, free).text, l.idStateAvailableIos);
+      expect(quoteState(l, t, taken).text, l.idStateTakenIos);
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         expect(quoteState(l, t, free).text, l.idStateAvailableIos);

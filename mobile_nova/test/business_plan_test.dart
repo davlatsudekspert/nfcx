@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,8 +26,9 @@ import 'helpers.dart';
 ///   o'z nomi — cheksiz. Mavjud tovarlar o'chmaydi.
 ///
 /// Ilova limitni OLDINDAN ko'rsatadi ("3 / 5"), limitda formani
-/// ochmaydi va keyingi qadamni aytadi. Play qoidasi: xarid tugmasi va
-/// saytga bosiladigan havola YO'Q — manzil faqat matn.
+/// ochmaydi. Xarid tugmasi, tarif nomi, "sotib oling" va sayt yozuvi
+/// YO'Q — iPhone'da ham, Android'da ham (Google Play to'lov qoidasi,
+/// 2026-10-08, `store_policy.dart`).
 class _Repo extends BusinessRepository {
   _Repo(this.n) : super(ApiClient());
   final int n;
@@ -73,6 +75,10 @@ Future<void> _pump(WidgetTester tester, Business b, int n) async {
   await settle(tester, frames: 8);
 }
 
+/// Android va iPhone — qoida ikkalasida bir xil.
+final _both = TargetPlatformVariant(
+    const {TargetPlatform.android, TargetPlatform.iOS});
+
 void main() {
   test('server tarifi o‘qiladi', () {
     final p = _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}).plan;
@@ -83,69 +89,69 @@ void main() {
     expect([legacy.limited, legacy.canPost], [false, true]);
   });
 
-  testWidgets('bepul: 3 / 5, Premium 25 ta va o‘z nomi haqida aytiladi',
+  // RAQAMLI TARIF (Premium, o'z nomi) HAQIDA XARID CHAQIRIG'I YO'Q —
+  // iPhone'da (egasi, 2026-09-27, Apple 3.1.1) va Android'da ham
+  // (2026-10-08, Google Play to'lov qoidasi, `store_policy.dart`).
+  // Limit va hisoblagich qoladi; "sotib oling / tarifni oshiring /
+  // saytda" — yo'q. Har test ikkala platformada.
+  testWidgets('bepul: 3 / 5 — hajm va hisoblagich, tarif nomi va xarid yo‘q',
       (tester) async {
     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
     final l = await L.delegate.load(const Locale('uz'));
     expect(tester.takeException(), isNull);
     expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
-    expect(find.text(l.bizPlanFreeTitle(5)), findsOneWidget);
-    expect(find.text(l.bizPlanFreeBody(25)), findsOneWidget);
-    expect(find.byType(StoreNotice), findsOneWidget);
+    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
+    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
+    expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
+    expect(find.text(l.bizPlanStoreNotice), findsNothing);
+    expect(find.text(kSiteHost), findsNothing);
+    expect(find.textContaining('Premium'), findsNothing);
+    expect(find.textContaining('istoriya'), findsNothing);
     expect(find.byKey(const ValueKey('plan-limit-reached')), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('catalog-add')));
     await settle(tester, frames: 8);
     expect(find.text('FORM'), findsOneWidget, reason: 'limit to‘lmagan — forma ochiladi');
-  });
+  }, variant: _both);
 
-  testWidgets('bepul: 5 / 5 — forma ochilmaydi, keyingi qadam aytiladi',
-      (tester) async {
-    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 5);
-    final l = await L.delegate.load(const Locale('uz'));
-    expect(find.text(l.bizPlanUsage(5, 5)), findsOneWidget);
-    expect(find.byKey(const ValueKey('plan-limit-reached')), findsOneWidget);
-    expect(find.text('Tovar 0'), findsOneWidget, reason: 'mavjudlari joyida');
-
-    await tester.tap(find.byKey(const ValueKey('catalog-add')));
-    await settle(tester, frames: 10);
-    expect(find.text('FORM'), findsNothing);
-    expect(find.byType(StoreNotice), findsNWidgets(2), reason: 'varaqda ham');
-    // Saytga BOSILADIGAN havola yo'q — faqat matn.
-    expect(find.widgetWithText(TextButton, kSiteHost), findsNothing);
-  });
-
-  // iPHONE (egasining qarori, 2026-09-27): limit va hisoblagich
-  // qoladi, "sotib oling / tarifni oshiring / saytda" — YO'Q
-  // (Apple 3.1.1, `store_policy.dart`). Android yuqoridagi testlarda.
-  testWidgets('iPhone: 5 / 5 — limit aytiladi, xarid chaqirig‘i yo‘q',
+  testWidgets('bepul: 5 / 5 — forma ochilmaydi, limit aytiladi, xarid chaqirig‘i yo‘q',
       (tester) async {
     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 5);
     final l = await L.delegate.load(const Locale('uz'));
     expect(tester.takeException(), isNull);
     expect(find.text(l.bizPlanUsage(5, 5)), findsOneWidget);
+    expect(find.byKey(const ValueKey('plan-limit-reached')), findsOneWidget);
     expect(find.text(l.bizPlanLimitReachedIos), findsOneWidget);
     expect(find.text(l.bizPlanLimitReached), findsNothing);
     expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
+    expect(find.text('Tovar 0'), findsOneWidget, reason: 'mavjudlari joyida');
+
+    await tester.tap(find.byKey(const ValueKey('catalog-add')));
+    await settle(tester, frames: 10);
+    expect(find.text('FORM'), findsNothing);
+    // Varaqda ham sayt yozuvi yo'q — na matn, na havola.
     expect(find.text(l.bizPlanStoreNotice), findsNothing);
     expect(find.text(kSiteHost), findsNothing);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    expect(find.widgetWithText(TextButton, kSiteHost), findsNothing);
+  }, variant: _both);
 
-  testWidgets('Premium: 25 ta, cheksiz uchun o‘z nomi', (tester) async {
+  testWidgets('Premium: 25 ta — tarif nomi va "o‘z nomini sotib oling" yo‘q',
+      (tester) async {
     await _pump(tester, _biz({'premium': true, 'itemLimit': 25, 'canPost': true}), 12);
     final l = await L.delegate.load(const Locale('uz'));
-    expect(find.text(l.bizPlanPremiumTitle(25)), findsOneWidget);
+    expect(find.text(l.bizPlanLimitTitle(25)), findsOneWidget);
+    expect(find.text(l.bizPlanPremiumTitle(25)), findsNothing);
     expect(find.text(l.bizPlanUsage(12, 25)), findsOneWidget);
-    expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
-  });
+    expect(find.text(l.bizPlanPremiumBody), findsNothing);
+  }, variant: _both);
 
   testWidgets('eski server Premium limitini aytmasa — va‘da berilmaydi',
       (tester) async {
     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'canPost': false}), 2);
     final l = await L.delegate.load(const Locale('uz'));
     expect(find.textContaining('25'), findsNothing);
-    expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
-  });
+    expect(find.text(l.bizPlanPremiumBody), findsNothing);
+  }, variant: _both);
 
   // Post va istoriya hammaga bepul (egasining qarori, 2026-10-04):
   // sinov davrida "Sinov davri: hozircha cheklov yo'q" degan yozuv
@@ -159,21 +165,21 @@ void main() {
     expect(find.textContaining('Sinov'), findsNothing);
   });
 
-  testWidgets('iPhone: sarlavhada tarif nomi yo‘q — faqat katalog hajmi',
-      (tester) async {
-    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
-    final l = await L.delegate.load(const Locale('uz'));
-    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
-    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
-    expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
-    expect(find.textContaining('Premium'), findsNothing);
-    expect(find.textContaining('istoriya'), findsNothing);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
-
   test('server xatolari tushunarli matnga aylanadi', () async {
     final l = await L.delegate.load(const Locale('uz'));
-    expect(describeError(l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached')),
-        l.errPlanLimit);
+    // "(sayt orqali)" yo'q — iPhone'da ham, Android'da ham (Google Play
+    // to'lov qoidasi): neytral matn ikkala platformada.
+    for (final p in [TargetPlatform.android, TargetPlatform.iOS]) {
+      debugDefaultTargetPlatformOverride = p;
+      try {
+        final msg = describeError(
+            l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached'));
+        expect(msg, l.errPlanLimitIos, reason: '$p');
+        expect(msg.toLowerCase(), isNot(contains('sayt')), reason: '$p');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    }
     // `plan_locked` — eski server qoidasi; post bepul, xato NEYTRAL.
     expect(describeError(l, const AppError(AppErrorKind.forbidden, code: 'plan_locked')),
         l.errPublishUnavailable);

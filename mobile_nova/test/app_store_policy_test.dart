@@ -19,27 +19,36 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 
 import 'helpers.dart';
 
-/// APP STORE (iPhone) — RAQAMLI XARIDGA ISHORA YO'Q.
+/// RAQAMLI XARIDGA ISHORA YO'Q — iPhone'da HAM, Android'da HAM.
 ///
 /// Egasining qarori (2026-09-27): iPhone versiyasida NFC ID,
 /// Premium, o'z nomi va FEATURED NARXI hamda "saytda oling" YOZUVI
-/// ko'rsatilmaydi (Apple 3.1.1 / 3.1.3(f)). ANDROID O'ZGARMAYDI —
-/// shuning uchun har tekshiruv ikki tomonlama: Android'da BOR,
-/// iPhone'da YO'Q. Bittasi yolg'iz sinalsa, "hammasi yashirildi" yoki
-/// "hech narsa o'zgarmadi" xatosi ko'rinmay qolardi.
+/// ko'rsatilmaydi (Apple 3.1.1 / 3.1.3(f)).
+///
+/// 2026-10-08: Android ham shunday — Google Play to'lov qoidasi
+/// raqamli xizmat uchun Play Billing'dan boshqa to'lov usuliga
+/// yo'naltirishni taqiqlaydi. Shuning uchun har tekshiruv IKKALA
+/// platformada: raqamli narx YO'Q, tashqi xaridga chaqiriq YO'Q.
+/// Jismoniy tovar (NFC karta) yozuvi va narxi ikkalasida QOLADI —
+/// busiz "hammasi yashirildi" xatosi ko'rinmay qolardi.
+final _both = TargetPlatformVariant(
+    const {TargetPlatform.android, TargetPlatform.iOS});
+
 void main() {
   group('platforma kaliti', () {
-    test('Android (standart): narx va yozuv bor', () {
+    test('Android (standart): raqamli narx va sayt yozuvi yo‘q', () {
       expect(isAppStoreBuild, isFalse);
-      expect(showDigitalPrices, isTrue);
+      expect(showDigitalPrices, isFalse);
+      expect(showDigitalSiteHints, isFalse);
     });
 
-    test('iPhone: raqamli narx yo‘q', () {
+    test('iPhone: raqamli narx va sayt yozuvi yo‘q', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         expect(isAppStoreBuild, isTrue);
         expect(showDigitalPrices, isFalse);
-      } finally {
+        expect(showDigitalSiteHints, isFalse);
+        } finally {
         debugDefaultTargetPlatformOverride = null;
       }
     });
@@ -52,24 +61,19 @@ void main() {
           home: Scaffold(body: child),
         ));
 
-    testWidgets('Android: raqamli xarid yozuvi ko‘rinadi', (tester) async {
-      await pump(tester, const StoreNotice(text: 'RAQAMLI'));
-      expect(find.text('RAQAMLI'), findsOneWidget);
-      expect(find.text(kSiteHost), findsOneWidget);
-    });
-
-    testWidgets('iPhone: raqamli xarid yozuvi YO‘Q', (tester) async {
+    testWidgets('raqamli xarid yozuvi YO‘Q (Android va iPhone)',
+        (tester) async {
       await pump(tester, const StoreNotice(text: 'RAQAMLI'));
       expect(find.text('RAQAMLI'), findsNothing);
       expect(find.text(kSiteHost), findsNothing);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    }, variant: _both);
 
-    testWidgets('iPhone: JISMONIY karta yozuvi qoladi (3.1.5(a))',
+    testWidgets('JISMONIY karta yozuvi qoladi (Android va iPhone)',
         (tester) async {
       await pump(tester, const StoreNotice(text: 'JISMONIY', physical: true));
       expect(find.text('JISMONIY'), findsOneWidget);
       expect(find.text(kSiteHost), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    }, variant: _both);
   });
 
   group('NFC ID darajalari', () {
@@ -108,15 +112,7 @@ void main() {
       return L.delegate.load(const Locale('uz'));
     }
 
-    testWidgets('Android: narxlar ko‘rinadi', (tester) async {
-      final l = await pump(tester);
-      expect(tester.takeException(), isNull);
-      expect(find.byKey(const ValueKey('tier-tile-gold')), findsOneWidget);
-      expect(find.text(formatMoney(500000, 'UZS')), findsOneWidget);
-      expect(find.textContaining(l.tierPriceFromSuffix), findsOneWidget);
-    });
-
-    testWidgets('iPhone: darajalar bor, narx YO‘Q, "Sotuvda emas" qoladi',
+    testWidgets('darajalar bor, narx YO‘Q, "Sotuvda emas" qoladi',
         (tester) async {
       final l = await pump(tester);
       expect(tester.takeException(), isNull);
@@ -124,14 +120,14 @@ void main() {
       expect(find.byKey(const ValueKey('tier-tile-exclusive')), findsOneWidget);
       expect(find.text(formatMoney(500000, 'UZS')), findsNothing);
       expect(find.textContaining(l.tierPriceFromSuffix), findsNothing);
-      // Narx emas, holat — iPhone'da ham ko'rinadi.
+      // Narx emas, holat — ikkala platformada ko'rinadi.
       expect(find.text(l.idStateNotForSale), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+    }, variant: _both);
   });
 
   /// Barcha raqamli narx joylari kalitdan o'tadi. Yangi narx qo'shilib,
-  /// kalit unutilsa — iPhone'da narx qaytib chiqadi va App Store rad
-  /// etadi. Widget testi har ekranni qamrab olmaydi, shuning uchun
+  /// kalit unutilsa — narx qaytib chiqadi va App Store ham, Google Play
+  /// ham rad etadi. Widget testi har ekranni qamrab olmaydi, shuning uchun
   /// manba tekshiriladi.
   group('manba qo‘riqchisi', () {
     String read(String p) => File(p).readAsStringSync();
@@ -162,7 +158,7 @@ void main() {
           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
         ],
         'lib/design/widgets/states.dart': [
-          '_appStore ? l.errPlanLimitIos : l.errPlanLimit',
+          "'plan_limit_reached' => l.errPlanLimitIos,",
           // `plan_locked` endi hamma platformada neytral (post bepul).
           'l.errPublishUnavailable',
         ],
@@ -187,7 +183,25 @@ void main() {
           reason: 'kalit aynan shu tugmadan oldin turishi kerak');
     });
 
-    test('iPhone matnlarida xarid va sayt ishorasi yo‘q', () {
+    /// Avval faqat Android'da chiziladigan "(sayt orqali)", "saytdagi
+    /// chegirma" va "o'z nomini sotib oling" matnlari endi ikkala
+    /// platformada ham kalit (`showDigitalPrices` / `showDigitalSiteHints`)
+    /// ortida — kalitsiz qaytsa Android'da yana chiqib qolardi.
+    test('xarid / sayt matnlari faqat kalit ortida', () {
+      expect(read('lib/design/widgets/states.dart'),
+          isNot(contains('l.errPlanLimit,')));
+      expect(read('lib/features/settings/invite_screen.dart'),
+          contains('showDigitalSiteHints && kShowSiteNotice'));
+      final forms = read('lib/features/business/business_forms.dart');
+      for (final k in ['l.bizPlanFreeBody', 'l.bizPlanPremiumBody']) {
+        final at = forms.indexOf(k);
+        expect(at, greaterThan(0), reason: k);
+        expect(forms.substring(0, at).lastIndexOf('if (showDigitalPrices) ...['),
+            greaterThan(0), reason: '$k kalitsiz');
+      }
+    });
+
+    test('neytral (iPhone va Android) matnlarda xarid va sayt ishorasi yo‘q', () {
       const keys = [
         'errPlanLimitIos',
         'errPublishUnavailable',

@@ -11,12 +11,6 @@ import 'buttons.dart';
 import 'surfaces.dart';
 import 'brand_icon.dart';
 
-/// iPhone (App Store) — raqamli xaridga ishora yo'q.
-///
-/// `shop/store_policy.dart` dagi `isAppStoreBuild` bilan AYNAN bir
-/// xil. Nusxa ataylab: dizayn qatlami `features/` ni import qilmaydi.
-bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
-
 /// Xato KALITINI joriy tildagi jumlaga aylantiradi.
 ///
 /// Server kalitiga aniq javob bo'lsa o'sha ishlatiladi; bo'lmasa xato
@@ -83,9 +77,11 @@ String describeError(L l, AppError e) => switch (e.code) {
       'video_uploads_disabled' => l.errVideoUploadsDisabled,
       // Avtomatik tekshiruv navbatga yozilmadi (503) — fayl saqlanmadi.
       'moderation_unavailable' => l.errModerationUnavailable,
-      // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
-      // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
-      'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,
+      // "(sayt orqali)" degan xarid ishorasi YO'Q — iPhone'da (Apple
+      // 3.1.1) ham, Android'da ham (Google Play to'lov qoidasi,
+      // 2026-10-08): `shop/store_policy.dart` dagi
+      // `showDigitalSiteHints` izohi. Neytral matn ikkala platformada.
+      'plan_limit_reached' => l.errPlanLimitIos,
       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
       'too_large' => l.errFileTooLarge,
       // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda

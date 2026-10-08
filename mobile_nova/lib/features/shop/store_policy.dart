@@ -22,7 +22,9 @@ import '../../l10n/gen/app_localizations.dart';
 //
 //   jismoniy karta   -> Payme/Click bemalol
 //   NFC ID, Premium,
-//   FEATURED         -> xarid tugmasi YO'Q
+//   FEATURED         -> xarid tugmasi YO'Q, narx YO'Q va "saytda
+//                       oling" yozuvi ham YO'Q (2026-10-08,
+//                       `showDigitalPrices` / `showDigitalSiteHints`)
 //
 // ANTI-STEERING. Xarid o'rnida saytga BOSILADIGAN HAVOLA ham
 // qo'yilmaydi — Google buni ham taqiqlaydi ("apps may not lead users
@@ -48,6 +50,11 @@ const kSiteHost = 'nfcstore.uz';
 /// Egasining qarori (2026-09): yozuv QOLSIN, chunki usiz mijoz
 /// NFC ID ni qayerdan olishini umuman bilmay qoladi. Play rad
 /// etsa — shu kalit `false` qilinadi va ilova qayta yig'iladi.
+///
+/// 2026-10-08: RAQAMLI mahsulot (NFC ID, Premium, o'z nomi, FEATURED)
+/// yozuvi Android'da ham olib tashlandi (`showDigitalSiteHints`).
+/// Kalit endi faqat JISMONIY tovar yozuvini (`physical: true`) va
+/// Sozlamalardagi sayt kartasini (jismoniy karta, katalog) boshqaradi.
 ///
 /// ## NIMA UCHUN KALIT, KODNI O'CHIRISH EMAS
 ///
@@ -75,7 +82,8 @@ const kShowSiteNotice = true;
 /// Egasining qarori (2026-09-27): iPhone versiyasida raqamli
 /// mahsulot (NFC ID, Premium, o'z nomi, FEATURED) NARXI va SAYT
 /// YOZUVI ko'rsatilmaydi. ID bo'sh yoki bandligi, sotib olingan
-/// narsaning holati ko'rinaveradi. ANDROID O'ZGARMAYDI.
+/// narsaning holati ko'rinaveradi. 2026-10-08 dan Android ham shunday
+/// (`showDigitalPrices`, Google Play to'lov qoidasi).
 ///
 /// Jismoniy tovar (NFC karta, katalogdagi mahsulotlar) bu qoidadan
 /// tashqarida — Apple 3.1.5(a) ularni tashqi to'lov bilan sotishni
@@ -85,9 +93,26 @@ const kShowSiteNotice = true;
 /// `debugDefaultTargetPlatformOverride` bilan iPhone sinaladi.
 bool get isAppStoreBuild => defaultTargetPlatform == TargetPlatform.iOS;
 
-/// Raqamli mahsulot narxi ko'rsatilsinmi. Android'da — ha,
-/// iPhone'da — yo'q (`isAppStoreBuild`).
-bool get showDigitalPrices => !isAppStoreBuild;
+/// Raqamli mahsulot narxi ko'rsatilsinmi — IKKALA PLATFORMADA YO'Q.
+///
+/// Ilgari Android'da narx ko'rinardi (iPhone'da — yo'q). 2026-10-08:
+/// Google Play to'lov qoidasi ("Payments" policy) ilova ichidagi
+/// raqamli xizmat uchun foydalanuvchini Play Billing'dan boshqa to'lov
+/// usuliga YO'NALTIRISHNI taqiqlaydi. Xarid ilovada yo'q, demak narx
+/// ham, "saytda rasmiylashtiriladi" yozuvi ham faqat tashqi to'lovga
+/// ishora bo'lib qoladi. Android endi iPhone kabi: NFC ID, Premium,
+/// o'z nomi va FEATURED (ko'tarish) narxi KO'RSATILMAYDI.
+///
+/// Jismoniy tovar (NFC karta, stiker, katalog) bu qoidadan tashqarida
+/// — uning narxi ikkala platformada ham ko'rinadi.
+bool get showDigitalPrices => false;
+
+/// RAQAMLI xaridni saytga yo'naltiruvchi yozuv bo'lsinmi —
+/// `StoreNotice` (jismoniy bo'lmasa), "to'lovni yakunlang", sayt
+/// chegirmasi, "(sayt orqali)". IKKALA PLATFORMADA YO'Q — sabab
+/// `showDigitalPrices` izohida. Jismoniy tovar yozuvi qoladi
+/// (`StoreNotice(physical: true)`, `kShowSiteNotice` bilan).
+bool get showDigitalSiteHints => false;
 
 /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
 class OrderKind {
@@ -235,8 +260,9 @@ class StoreNotice extends StatelessWidget {
     // qismi avvalgidek ishlaydi, chunki bu shunchaki izoh
     // kartasi edi.
     if (!kShowSiteNotice) return const SizedBox.shrink();
-    // iPhone'da raqamli xarid haqida yozuv YO'Q (`isAppStoreBuild`).
-    if (isAppStoreBuild && !physical) return const SizedBox.shrink();
+    // Raqamli xarid haqida yozuv YO'Q — iPhone'da ham, Android'da ham
+    // (`showDigitalSiteHints`, Google Play to'lov qoidasi).
+    if (!physical && !showDigitalSiteHints) return const SizedBox.shrink();
 
     final t = context.tokens;
     return Container(
