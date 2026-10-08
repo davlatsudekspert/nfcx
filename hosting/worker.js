@@ -1177,7 +1177,7 @@ async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
   // Karusel/reja ustunlari ham shu yerda (bu yo'l `ensureCoreSchema` ni
   // chaqirmaydi). Parallel va keshlanadi — keyingi so'rovlarga to'lqin qo'shmaydi.
-  await Promise.all([ensureCatalogListingColumns(env), ensurePostSocialColumnsD1(env)]);
+  await Promise.all([ensureCatalogListingColumns(env), ensurePostSocialColumnsD1(env), guard.ensureGuardSchema(env)]);
   const path = url.pathname;
 
   if (path === '/api/companies/check' && request.method === 'GET') {
@@ -1449,10 +1449,12 @@ async function companyApi(request, env, url) {
         `SELECT * FROM companies WHERE company_id = ?`
       ).bind(id).first(),
       env.DB.prepare(
-        `SELECT id, image_url, video_url, caption, created_at, publish_at, media_json
+        `SELECT id, image_url, video_url, caption, created_at, publish_at, media_json,
+                ${guard.pendingSql('company_post', 'cp.id')} AS pending
            FROM company_posts cp WHERE company_id = ? ORDER BY ${effectiveTimeSql('cp')} DESC LIMIT 60`
       ).bind(id).all(),
     ]);
+    const cpFlags = await getFlags(env);
     if (deletedOwner) return json({ posts: [] });
     const isOwner = !!(viewer && meta && String(meta.owner_user_id) === String(viewer.id));
     // YASHIRIN KOMPANIYA (faol emas: qoralama, to'xtatilgan, rad etilgan)
@@ -1460,7 +1462,10 @@ async function companyApi(request, env, url) {
     // (`not_active`) beradi, bu yo'l uni chetlab o'tmasin.
     if (!meta || (String(meta.status) !== 'active' && !isOwner)) return json({ posts: [] });
     const contact = String(meta.status) === 'active' ? companyContactOut(meta) : null;
-    const posts = (rows.results || []).filter((row) => isOwner || !scheduledForMs(row.publish_at));
+    // Rejadagi va tekshirilmagan medialisi (pending) — faqat egasiga;
+    // `videosHidden` kaliti — video post hech kimga.
+    const posts = (rows.results || []).filter((row) => (isOwner || (!scheduledForMs(row.publish_at) && !Number(row.pending)))
+      && !(cpFlags.videosHidden && row.video_url));
     const targets = posts.map((row) => ({ kind: 'company_post', id: Number(row.id) }));
     const shaped = posts.map((row) => {
       const scheduledFor = scheduledForMs(row.publish_at);
@@ -1470,7 +1475,9 @@ async function companyApi(request, env, url) {
         imageUrl: row.image_url || '', videoUrl: row.video_url || '',
         caption: row.caption || '', createdAt: row.publish_at || row.created_at,
         mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaUrls: mediaOut(row.media_json, row.image_url, row.video_url).map((m) => m.url),
         products: [],
+        pending: !!Number(row.pending || 0),
         ...(contact ? { contact } : null),
         ...(scheduledFor ? { scheduledFor } : null),
       };
@@ -2405,6 +2412,11 @@ async function ensureCoreSchema(env) {
     apiSaves.ensureTable(env),
     // Reels "qiziq emas" (api/reels.js) — hisob o'chirish batch'i unga yozadi.
     apiReels.ensureSchema(env),
+    // Moderatsiya qo'riqchisi (api/content-guard.js): `content_pending` — lenta
+    // UNIONi unga tayanadi; `deleted_uploads`, `consent_log`.
+    guard.ensureGuardSchema(env),
+    // Post qo'shimchalari (musiqa, reel, ko'rgazma) — ro'yxatlar ularni o'qiydi.
+    apiMusic.ensureExtras(env),
   ]);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
@@ -3240,6 +3252,10 @@ async function videoAttachGateD1(env, body) {
 
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const nowIso = new Date().toISOString();
+  // Tekshirilmagan medialisi (pending) — faqat egasiga (`pending: true`);
+  // `videosHidden` kaliti — video istoriya hech kimga.
+  const flags = await getFlags(env);
+  const viewerKey = viewerUserId || -1;
   // JAVOBLAR SONI (2026-10, api/story-replies.js) — FAQAT EGASIGA. Ikkinchi
   // so'rov shu to'lqinda, PARALLEL: u faqat tomoshabin egasi bo'lsa qator
   // qaytaradi (egalik sharti SQL ichida), aks holda bo'sh — begonaga
@@ -3249,10 +3265,16 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
       `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
               (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
               (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
-              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
+              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked,
+              ${guard.pendingSql('story', 's.id')} AS pending
          FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
+          AND (NOT ${guard.pendingSql('story', 's.id')}
+               OR (s.owner_kind = 'card' AND EXISTS (SELECT 1 FROM cards oc WHERE oc.code = s.owner_id AND oc.user_id = ?))
+               OR (s.owner_kind = 'company' AND EXISTS (SELECT 1 FROM companies oc WHERE oc.company_id = s.owner_id
+                                                          AND CAST(oc.owner_user_id AS TEXT) = CAST(? AS TEXT))))
+          ${flags.videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
         ORDER BY s.created_at`
-    ).bind(viewerUserId || -1, kind, ownerId, nowIso).all(),
+    ).bind(viewerKey, kind, ownerId, nowIso, viewerKey, viewerKey).all(),
     viewerUserId
       ? apiStoryReplies.ownerReplyCounts(env, kind, ownerId, viewerUserId, nowIso).catch(() => null)
       : Promise.resolve(null),
@@ -3262,6 +3284,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
     likeCount: Number(r.like_count || 0), liked: !!r.liked,
     viewCount: Number(r.view_count || 0),
+    ...(Number(r.pending) ? { pending: true } : null),
     ...(replies ? { replyCount: replies.get(Number(r.id)) || 0 } : null),
   }));
 }
@@ -7875,10 +7898,38 @@ function uploadVideoEdgeUrl(request, url) {
   return url.origin + url.pathname;
 }
 
+// KALIT `videosHidden`: video fayllar ham beriladi EMAS (havola orqali
+// ham). Audio yuklash yo'llarining fayllari (`aud_`, `music_`, eski
+// prefikssiz 20 hex `.webm`) — audio, ular qoladi.
+const UPLOAD_VIDEO_FILE_RE = /\.(mp4|webm|mov|m4v)$/i;
+const UPLOAD_AUDIO_FILE_RE = /^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i;
+
 async function serveUpload(request, env, url, ctx) {
   if (!env.UPLOADS) return null;
   const key = decodeURIComponent(url.pathname).replace(/^\//, '');
   if (!key.startsWith('uploads/') || key.includes('..')) return json({ error: 'bad_path' }, 400);
+  // CHEGARA KESHIDAN OLDIN (2026-10): o'chirilgan kontent fayli
+  // (`deleted_uploads`, api/content-guard.js) va yashirilgan videolar.
+  // Rasm keshda 1 yil turadi — busiz o'chirilgan rasm havola bilan
+  // ochilaverardi. Admin dalilni ko'ra oladi (keshsiz, no-store).
+  const pathOnly = `/${key}`;
+  if (UPLOAD_VIDEO_FILE_RE.test(pathOnly) && !UPLOAD_AUDIO_FILE_RE.test(pathOnly)
+    && (await getFlags(env)).videosHidden) {
+    return json({ error: 'not_found' }, 404, { 'cache-control': 'no-store' });
+  }
+  if (await guard.uploadDenied(env, pathOnly)) {
+    if (typeof caches !== 'undefined' && caches.default) {
+      const edge = new Request(url.origin + url.pathname, { method: 'GET' });
+      (ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : (p) => p)(caches.default.delete(edge).catch(() => {}));
+    }
+    const admin = await requireAdmin(request, env).catch(() => null);
+    if (!admin) return json({ error: 'not_found' }, 404, { 'cache-control': 'no-store' });
+    const obj = request.method === 'HEAD' ? await env.UPLOADS.head(key) : await env.UPLOADS.get(key);
+    if (!obj) return null;
+    const headers = buildUploadResponseHeaders(obj, key);
+    headers.set('cache-control', 'private, no-store');
+    return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+  }
   const videoEdgeUrl = uploadVideoEdgeUrl(request, url);
   if (videoEdgeUrl) {
     try {
@@ -8958,17 +9009,19 @@ export async function postPageResponse(env, url, id) {
                 co.display_name AS name, co.logo_url AS avatar_url
            FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
           WHERE cp.id = ? AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
-            AND ${companyPostLiveSql('cp')}`,
+            AND ${companyPostLiveSql('cp')} AND NOT ${guard.pendingSql('company_post', 'cp.id')}`,
       ).bind(pid).first()
       : await env.DB.prepare(
         `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
                 c.name AS name, c.avatar_url AS avatar_url
            FROM posts p JOIN cards c ON c.code = p.code
-          WHERE p.id = ? AND ${ownerAliveSql('c')} AND ${postLiveSql('p')}`,
+          WHERE p.id = ? AND ${ownerAliveSql('c')} AND ${postLiveSql('p')} AND NOT ${guard.pendingSql('post', 'p.id')}`,
       ).bind(pid).first();
   } catch (error) {
     console.error('post page', id, error?.message);
   }
+  // KALIT `videosHidden` — video post sahifasi ham 404.
+  if (row?.video_url && (await getFlags(env)).videosHidden) row = null;
   let views = 0;
   if (row) {
     const v = await apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null);
@@ -11336,7 +11389,9 @@ function postRowToJson(r, likeCount, liked) {
     createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
     likeCount: Number(likeCount || 0), liked: !!liked,
     mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
+    mediaUrls: mediaOut(r.media_json, r.image_url, r.video_url).map((m) => m.url),
     products: [],
+    pending: !!Number(r.pending || 0),
     ...(scheduledFor ? { scheduledFor } : null),
   };
 }
@@ -11344,12 +11399,19 @@ function postRowToJson(r, likeCount, liked) {
 async function listPostsD1(env, code, viewerUserId) {
   // REJADAGI POST faqat EGASIGA (profil kodi egasi) ko'rinadi — shart
   // SQL ichida, shu so'rovning o'zida (yangi to'lqin yo'q).
+  // TEKSHIRILMAGAN MEDIALI (pending, api/content-guard.js) post ham faqat
+  // egasiga — `pending: true` bilan. KALIT `videosHidden` — video postlar
+  // hech kimga (egasiga ham) chiqmaydi.
+  const flags = await getFlags(env);
   const rows = await env.DB.prepare(
     `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at, p.publish_at, p.media_json,
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
-            EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
+            EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked,
+            ${guard.pendingSql('post', 'p.id')} AS pending
      FROM posts p WHERE p.code = ?
-       AND (${postLiveSql('p')} OR EXISTS (SELECT 1 FROM cards oc WHERE oc.code = p.code AND oc.user_id = ?))
+       AND ((${postLiveSql('p')} AND NOT ${guard.pendingSql('post', 'p.id')})
+            OR EXISTS (SELECT 1 FROM cards oc WHERE oc.code = p.code AND oc.user_id = ?))
+       ${flags.videosHidden ? "AND COALESCE(p.video_url, '') = ''" : ''}
      ORDER BY ${effectiveTimeSql('p')} DESC, p.id DESC`
   ).bind(viewerUserId == null ? 0 : viewerUserId, code, viewerUserId == null ? 0 : viewerUserId).all();
   const list = rows.results || [];
@@ -11469,6 +11531,8 @@ async function storiesApi(request, env, url) {
         WHERE s.owner_kind = 'card' AND s.expires_at > ?
           AND ${ownerAliveSql('c')}
           AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
+          AND NOT ${guard.pendingSql('story', 's.id')}
+          ${(await getFlags(env)).videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
         ORDER BY s.created_at
         LIMIT 200`
     ).bind(user.id, new Date().toISOString(), user.id).all();
@@ -11651,6 +11715,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
          WHERE COALESCE(c.hidden_from_directory, 0) = 0
            AND ${ownerAliveSql('c')}
            AND ${postLiveSql('p')}
+           AND NOT ${guard.pendingSql('post', 'p.id')}
         UNION ALL
         SELECT 'post', cp.id, cp.company_id, 'company',
                co.display_name, co.logo_url,
@@ -11661,6 +11726,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
          WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
            AND ${companyPostLiveSql('cp')}
+           AND NOT ${guard.pendingSql('company_post', 'cp.id')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'card',
                c.name, c.avatar_url,
@@ -11672,6 +11738,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
          WHERE s.owner_kind = 'card' AND s.expires_at > ?
            AND COALESCE(c.hidden_from_directory, 0) = 0
            AND ${ownerAliveSql('c')}
+           AND NOT ${guard.pendingSql('story', 's.id')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'company',
                co.display_name, co.logo_url,
@@ -11682,7 +11749,20 @@ const FEED_UNION_SQL = `SELECT * FROM (
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
+           AND NOT ${guard.pendingSql('story', 's.id')}
 )`;
+
+/// KALITLARGA MOS UNION (api/flags.js). `videosHidden` — videoli qatorlar
+/// (post va istoriya) UMUMAN chiqmaydi: lenta, Reels, saqlanganlar va
+/// reklama (featured) — hammasi shu so'rovdan o'tadi. Kalit o'chiq bo'lsa
+/// AYNAN `FEED_UNION_SQL` ning o'zi (`?` tartibi ham bir xil).
+/// PENDING (tekshirilmagan media, api/content-guard.js) yuqoridagi UNION
+/// ichida — doimo.
+function feedUnionSqlFor(flags) {
+  return flags?.videosHidden
+    ? `SELECT * FROM (${FEED_UNION_SQL}) WHERE COALESCE(video_url, '') = ''`
+    : FEED_UNION_SQL;
+}
 
 /// Lenta qatorlarini o'qiladigan ko'rinishga keltiradi.
 ///
@@ -11755,6 +11835,8 @@ async function shapeFeedRows(env, rows, viewerId) {
       // va biznes kontakti. Faqat QO'SHILADI — eski maydonlar o'zgarmaydi.
       ...(String(r.kind) === 'post' ? {
         mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
+        mediaUrls: mediaOut(r.media_json, r.image_url, r.video_url).map((m) => m.url),
+        pending: false,
         products: target === 'company_post' ? (productTags.get(Number(r.id)) || []) : [],
         ...(target === 'company_post' ? {
           contact: companyContactOut({
@@ -11837,8 +11919,9 @@ async function feedApi(request, env, url) {
     const me = await getCurrentUser(request, env);
     if (!me) return json({ error: 'unauthorized' }, 401);
     apiComments.ensureSchema(env).catch(() => {});
+    const fUnion = feedUnionSqlFor(await getFlags(env));
     const fRes = await env.DB.prepare(
-      `${FEED_UNION_SQL}
+      `${fUnion}
        WHERE (author_kind = 'card' AND code IN (
                 SELECT fc.code FROM cards fc JOIN follows ff ON ff.followee_id = fc.user_id
                  WHERE ff.follower_id = ?))
@@ -11866,10 +11949,11 @@ async function feedApi(request, env, url) {
 
   const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
   apiComments.ensureSchema(env).catch(() => {});
+  const unionSql = feedUnionSqlFor(await getFlags(env));
   const [user, rows] = await Promise.all([
     getCurrentUser(request, env),
     env.DB.prepare(
-      `${FEED_UNION_SQL}
+      `${unionSql}
        ORDER BY created_at DESC, id DESC
        LIMIT ? OFFSET ?`
     ).bind(0, 0, now, 0, now, limit + 1, offset).all(),
@@ -11883,7 +11967,7 @@ async function feedApi(request, env, url) {
     if (!targets.length) return { targets, rows: [] };
     const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
     const fRows = await env.DB.prepare(
-      `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
+      `${unionSql} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
     ).bind(
       viewerId, viewerId, now, viewerId, now,
       // FEATURED `target_kind` izoh turlarini ishlatadi
@@ -12010,8 +12094,9 @@ async function postsByKeysD1(env, keys, viewerId) {
   const vid = Number(viewerId) || 0;
   const now = new Date().toISOString();
   const where = list.map(() => `(kind = 'post' AND author_kind = ? AND id = ?)`).join(' OR ');
+  const unionSql = feedUnionSqlFor(await getFlags(env));
   const [res, blockedList] = await Promise.all([
-    env.DB.prepare(`${FEED_UNION_SQL} WHERE ${where}`)
+    env.DB.prepare(`${unionSql} WHERE ${where}`)
       .bind(vid, vid, now, vid, now, ...list.flatMap((k) => [k.kind === 'company_post' ? 'company' : 'card', Number(k.id)]))
       .all(),
     vid ? apiModeration.blockedByUser(env, vid) : [],
@@ -12362,7 +12447,7 @@ const H = {
   postsByKeys: postsByKeysD1,
   // Reels "Siz uchun" (api/reels.js) — lentaning O'ZI: UNION (maxfiylik,
   // rejadagi post), shakl va `liked`. Ikkinchi nusxa yozilmaydi.
-  feedUnionSql: FEED_UNION_SQL, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
+  feedUnionSql: FEED_UNION_SQL, feedUnionSqlFor, getFlags, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
   // Ish vaqti → "hozir ochiqmi" (api/nearby.js) — kompaniya sahifasidagi
   // `openNow` bilan AYNAN bir qoida (Toshkent vaqti).
   companyOpenNow: (hoursJson) => companyOpenStateD1(normalizeHoursD1(parseJsonArray(hoursJson))),

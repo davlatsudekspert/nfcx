@@ -244,7 +244,10 @@ async function listReels(request, env, url, H) {
   // Sxemalar bir marta (isolate); 1-to'lqinni KUTTIRMAYDI. Nomzod so'rovi
   // jadval yo'qligidan yiqilsa — kutib, bir marta qayta urinadi.
   const schemas = Promise.all([ensureSchema(env), ensureExtras(env)]).catch(() => {});
-  const poolSql = `SELECT f.* FROM (${H.feedUnionSql}) f
+  // Kalitlar (api/flags.js): `videosHidden` — videoli kadrlar UNIONning
+  // o'zida chiqarib tashlanadi (reklama ham shu so'rovdan).
+  const unionSql = H.feedUnionSqlFor ? H.feedUnionSqlFor(await H.getFlags(env)) : H.feedUnionSql;
+  const poolSql = `SELECT f.* FROM (${unionSql}) f
      WHERE f.kind = 'post' AND ${REEL_SQL('f')} AND ${NORM('f.created_at')} <= ?
      ORDER BY ${NORM('f.created_at')} DESC, f.author_kind DESC, f.id DESC
      LIMIT ${POOL_SIZE}`;
@@ -343,7 +346,7 @@ async function listReels(request, env, url, H) {
   ).bind(viewerId).all()) : Promise.resolve([]);
   const blocksQ = viewerId ? blockedByUser(env, viewerId).catch(() => []) : Promise.resolve([]);
   const adsQ = adCand.length ? rowsOf(env.DB.prepare(
-    `SELECT f.* FROM (${H.feedUnionSql}) f
+    `SELECT f.* FROM (${unionSql}) f
       WHERE f.kind = 'post' AND ${REEL_SQL('f')}
         AND (${adCand.map(() => '(f.author_kind = ? AND f.id = ?)').join(' OR ')})`
   ).bind(0, 0, nowIso, 0, nowIso, ...adCand.flatMap((k) => {
@@ -494,6 +497,11 @@ export async function handle(request, env, url, H) {
   const path = url.pathname;
   if (path === '/api/reels') {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    // KALIT `reelsHidden` (api/flags.js): Reels lentasi bo'sh. Yangi ilova
+    // tabni o'zi yashiradi; eski ilova bo'sh lentani ko'radi.
+    if (H.getFlags && (await H.getFlags(env)).reelsHidden) {
+      return H.json({ items: [], nextCursor: null, hasMore: false, hidden: true });
+    }
     return listReels(request, env, url, H);
   }
   if (path === '/api/reels/hide') {

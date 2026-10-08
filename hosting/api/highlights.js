@@ -311,6 +311,9 @@ export async function handle(request, env, url, H) {
         `SELECT h.*, i.id AS item_id, i.story_id, i.image_url, i.video_url, i.caption,
                 i.story_created_at, i.created_at AS item_created_at
            FROM story_highlights h LEFT JOIN story_highlight_items i ON i.highlight_id = h.id
+                -- Tekshirilmagan medialisi (pending, api/content-guard.js)
+                -- istoriya nusxasi admin tasdig'igacha ko'rinmaydi.
+                AND NOT EXISTS (SELECT 1 FROM content_pending cpd WHERE cpd.kind = 'story' AND cpd.id = i.story_id)
           WHERE h.owner_kind = ? AND h.owner_id = ?
           ORDER BY h.sort ASC, h.id DESC, i.id ASC`
       ).bind(owner.kind, owner.id).all(),
