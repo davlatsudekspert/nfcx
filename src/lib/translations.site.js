@@ -3,6 +3,10 @@
 // katalog) va umumiy holat matnlari (xato / bo'sh / qayta urinish).
 export const DICT_SITE = {
   'Ilova': { ru: 'Приложение', en: 'App' },
+  // Ko'rgazma posti (ShowcaseInfo)
+  'Mahsulotni ko‘rish': { ru: 'Смотреть товар', en: 'View product' },
+  'Havolani ochish': { ru: 'Открыть ссылку', en: 'Open link' },
+  'Tekshiruvda — hozircha faqat sizga ko‘rinadi': { ru: 'На проверке — пока видно только вам', en: 'Under review — visible only to you for now' },
   'Ilovani yuklab olish': { ru: 'Скачать приложение', en: 'Download the app' },
   // ─────────────────────────── Umumiy holatlar ───────────────────────────
   "Server bilan aloqa yo'q": { ru: 'Нет связи с сервером', en: 'No connection to the server' },

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ShowcaseInfo from '../components/ShowcaseInfo.jsx';
 import CompanyMusicPlayer from '../components/CompanyMusicPlayer.jsx';
 import CompanyHours from '../components/CompanyHours.jsx';
 import CompanyOrderModal from '../components/CompanyOrderModal.jsx';
@@ -113,6 +114,7 @@ function CompanyPosts({ posts, t }) {
             {p.videoUrl
               ? <video src={p.videoUrl} controls playsInline preload="none" />
               : <img src={p.imageUrl} alt={p.caption || ''} loading="lazy" />}
+            <ShowcaseInfo post={p} className="px-3 pt-2" />
             {p.caption && <p>{p.caption}</p>}
             {/* IZOHLAR — biznes uchun ENG MUHIM joy.
                 Mijoz "narxi qancha?" degan savolni telefonda

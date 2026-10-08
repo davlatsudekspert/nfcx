@@ -14,6 +14,9 @@
 //        `items` — `/api/feed` kadrlari bilan AYNAN bir shakl
 //        (`shapeFeedRows` + `liked`), reklama qo'shimcha `featured: true`.
 //        `limit` 1..20 (standart 10).
+//   GET  /api/showcase?limit=10&cursor=…  — KO'RGAZMA (2026-10): xuddi shu
+//        tartib, faqat videosiz `showcase=1` yoki rasmli reel kadrlar;
+//        javob { items, hasMore, cursor, nextCursor }.
 //   POST /api/reels/hide  { kind: 'post'|'company_post', id }  (kirish shart)
 //        -> { ok: true }  — "Qiziq emas": shu reels bu odamga boshqa chiqmaydi.
 //        Idempotent. Kirmagan — 401, yomon nishon — 422 `bad_target`.
@@ -225,10 +228,18 @@ const REEL_SQL = (a) => `(COALESCE(${a}.video_url, '') <> '' OR EXISTS (SELECT 1
       WHERE e.post_kind = (CASE WHEN ${a}.author_kind = 'company' THEN 'company_post' ELSE 'post' END)
         AND e.post_id = ${a}.id AND e.reel = 1))`;
 
+// KO'RGAZMA (2026-10, api/showcase.js): videosiz post, `showcase = 1` YOKI
+// rasmli reel (`reel = 1`). GET /api/showcase — shu modul, AYNAN Reels
+// tartibi, kursori, reklamasi va "qiziq emas" (`reel_hidden`) bilan.
+const SHOWCASE_SQL = (a) => `(COALESCE(${a}.video_url, '') = '' AND EXISTS (SELECT 1 FROM post_extras e
+      WHERE e.post_kind = (CASE WHEN ${a}.author_kind = 'company' THEN 'company_post' ELSE 'post' END)
+        AND e.post_id = ${a}.id AND (e.showcase = 1 OR e.reel = 1)))`;
+
 const isMissingTable = (e) => /no such table/i.test(String(e?.message || e));
 
 // ── GET /api/reels ──────────────────────────────────────────────────
-async function listReels(request, env, url, H) {
+async function listReels(request, env, url, H, mode = 'reels') {
+  const FILTER_SQL = mode === 'showcase' ? SHOWCASE_SQL : REEL_SQL;
   const nowMs = Date.now();
   const rawLimit = url.searchParams.get('limit');
   const parsed = rawLimit == null || rawLimit === '' ? NaN : Math.floor(Number(rawLimit));
@@ -246,9 +257,9 @@ async function listReels(request, env, url, H) {
   const schemas = Promise.all([ensureSchema(env), ensureExtras(env)]).catch(() => {});
   // Kalitlar (api/flags.js): `videosHidden` — videoli kadrlar UNIONning
   // o'zida chiqarib tashlanadi (reklama ham shu so'rovdan).
-  const unionSql = H.feedUnionSqlFor ? H.feedUnionSqlFor(await H.getFlags(env)) : H.feedUnionSql;
+  const unionSql = H.feedUnionSqlFor ? H.feedUnionSqlFor(H.peekFlags(env) || await H.getFlags(env)) : H.feedUnionSql;
   const poolSql = `SELECT f.* FROM (${unionSql}) f
-     WHERE f.kind = 'post' AND ${REEL_SQL('f')} AND ${NORM('f.created_at')} <= ?
+     WHERE f.kind = 'post' AND ${FILTER_SQL('f')} AND ${NORM('f.created_at')} <= ?
      ORDER BY ${NORM('f.created_at')} DESC, f.author_kind DESC, f.id DESC
      LIMIT ${POOL_SIZE}`;
   const poolQuery = () => env.DB.prepare(poolSql).bind(0, 0, nowIso, 0, nowIso, snap).all();
@@ -347,7 +358,7 @@ async function listReels(request, env, url, H) {
   const blocksQ = viewerId ? blockedByUser(env, viewerId).catch(() => []) : Promise.resolve([]);
   const adsQ = adCand.length ? rowsOf(env.DB.prepare(
     `SELECT f.* FROM (${unionSql}) f
-      WHERE f.kind = 'post' AND ${REEL_SQL('f')}
+      WHERE f.kind = 'post' AND ${FILTER_SQL('f')}
         AND (${adCand.map(() => '(f.author_kind = ? AND f.id = ?)').join(' OR ')})`
   ).bind(0, 0, nowIso, 0, nowIso, ...adCand.flatMap((k) => {
     const [kind, id] = k.split(':');
@@ -470,7 +481,8 @@ async function listReels(request, env, url, H) {
     a: [...served, ...page.filter((p) => p.ad).map((p) => p.key)],
     x: xKeys,
   }) : null;
-  return H.json({ items, nextCursor, hasMore });
+  // Ko'rgazma javobida `cursor` ham (shartnoma §4) — `nextCursor` bilan bir xil.
+  return H.json(mode === 'showcase' ? { items, hasMore, cursor: nextCursor, nextCursor } : { items, nextCursor, hasMore });
 }
 
 // ── POST /api/reels/hide ────────────────────────────────────────────
@@ -499,10 +511,14 @@ export async function handle(request, env, url, H) {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
     // KALIT `reelsHidden` (api/flags.js): Reels lentasi bo'sh. Yangi ilova
     // tabni o'zi yashiradi; eski ilova bo'sh lentani ko'radi.
-    if (H.getFlags && (await H.getFlags(env)).reelsHidden) {
+    if (H.getFlags && (H.peekFlags(env) || await H.getFlags(env)).reelsHidden) {
       return H.json({ items: [], nextCursor: null, hasMore: false, hidden: true });
     }
     return listReels(request, env, url, H);
+  }
+  if (path === '/api/showcase') {
+    if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    return listReels(request, env, url, H, 'showcase');
   }
   if (path === '/api/reels/hide') {
     if (request.method !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);

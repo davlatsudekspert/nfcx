@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import ShowcaseInfo from '../components/ShowcaseInfo.jsx';
 import { directionsUrl, yandexDirectionsUrl } from '../lib/mapLink.js';
 import { isPreviewVisit } from '../lib/preview.js';
 import CloseButton from '../components/CloseButton.jsx';
@@ -904,6 +905,10 @@ function PostsFeed({ posts, onLike, t }) {
             </button>
           )}
           <div className="px-4 py-3">
+            {p.pending && (
+              <div className="mb-2 inline-block rounded-full border border-[color:var(--vz-line)] px-2.5 py-0.5 text-[13px] text-[color:var(--vz-ink-dim)]">{t('Tekshiruvda — hozircha faqat sizga ko‘rinadi')}</div>
+            )}
+            <ShowcaseInfo post={p} />
             {p.caption && <p className="whitespace-pre-wrap text-[16px] leading-relaxed text-[color:var(--vz-ink-dim)]">{p.caption}</p>}
             {kind === 'none' && !p.caption && (
               <p className="text-[15px] italic text-[color:var(--vz-ink-faint)]">{t('Bu postda matn ham, media ham yo‘q.')}</p>
