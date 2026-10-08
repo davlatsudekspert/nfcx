@@ -1461,6 +1461,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get quizOtherTopic => 'Другая тема';
 
   @override
+  String get quizTopicMistakes => 'Работа над ошибками';
+
+  @override
+  String quizMastered(int correct, int total) {
+    return 'верно в прошлый раз: $correct из $total';
+  }
+
+  @override
   String get examTitle => 'Режим экзамена';
 
   @override

@@ -429,6 +429,8 @@
   "quizTopicGeneral": "Laboratoriya hisoblari",
   "quizQuestionCount": "{count} ta savol",
   "quizOtherTopic": "Boshqa mavzu",
+  "quizTopicMistakes": "Xatolarim ustida ishlash",
+  "quizMastered": "{total} tadan {correct} tasi oxirgi safar to‘g‘ri",
   "examTitle": "Imtihon rejimi",
   "examBody": "Vaqtli imtihon va natijalar tarixi o‘rganish moduli bilan qo‘shiladi. Mashq savollari hozir ochiq.",
   "examOpenPractice": "Mashq savollarini ochish",

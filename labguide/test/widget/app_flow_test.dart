@@ -481,9 +481,25 @@ void main() {
     await tapText(tester, en.quizFinish);
     expect(find.text(en.quizScore(2, 3)), findsOneWidget);
     expect(find.text(en.quizMistakes), findsOneWidget);
-    // Boshqa mavzu — yana tanlov ro'yxati.
+    // Boshqa mavzu — yana tanlov ro'yxati; xato savol takrorlashga tushadi.
     await tapText(tester, en.quizOtherTopic);
     expect(find.text(en.quizChooseTopic), findsOneWidget);
+    expect(find.text(en.quizTopicMistakes), findsOneWidget);
+    expect(
+      find.text('${en.quizQuestionCount(3)} · ${en.quizMastered(2, 3)}'),
+      findsOneWidget,
+    );
+    await tapText(tester, en.quizTopicMistakes);
+    expect(find.text(en.quizProgress(1, 1).toUpperCase()), findsOneWidget);
+    // Endi to'g'ri javob — xatolar ro'yxatidan chiqadi.
+    final wrongId = s.quizProgress.mistakes([
+      for (final q in s.content.pack!.quiz) q.id,
+    ]).single;
+    final wrongQ = s.content.pack!.quiz.firstWhere((q) => q.id == wrongId);
+    await tapText(tester, wrongQ.options[wrongQ.correctIndex].text.of('en'));
+    await tapText(tester, en.quizFinish);
+    await tapText(tester, en.quizOtherTopic);
+    expect(find.text(en.quizTopicMistakes), findsNothing);
   });
 
   testWidgets('creatinine card links to the eGFR calculator', (tester) async {

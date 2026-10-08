@@ -10,6 +10,7 @@ import 'core/storage/kv_store.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/otp_auth.dart';
 import 'features/content/content_controller.dart';
+import 'features/learn/quiz_progress.dart';
 import 'features/qc/qc_controller.dart';
 import 'features/settings/settings_controller.dart';
 
@@ -45,5 +46,6 @@ AppServices createServices({
     content: ContentController(bundle: bundle),
     bookmarks: BookmarksController(store),
     qc: QcController(store),
+    quizProgress: QuizProgressController(store),
   );
 }

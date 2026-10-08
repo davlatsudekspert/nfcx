@@ -699,6 +699,18 @@
     }
   },
   "quizOtherTopic": "Another topic",
+  "quizTopicMistakes": "Review my mistakes",
+  "quizMastered": "{correct} of {total} correct last time",
+  "@quizMastered": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "examTitle": "Exam mode",
   "examBody": "Timed exams and result history come with the learning module. The practice questions are available now.",
   "examOpenPractice": "Open practice questions",

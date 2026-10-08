@@ -2674,6 +2674,18 @@ abstract class AppLocalizations {
   /// **'Another topic'**
   String get quizOtherTopic;
 
+  /// No description provided for @quizTopicMistakes.
+  ///
+  /// In en, this message translates to:
+  /// **'Review my mistakes'**
+  String get quizTopicMistakes;
+
+  /// No description provided for @quizMastered.
+  ///
+  /// In en, this message translates to:
+  /// **'{correct} of {total} correct last time'**
+  String quizMastered(int correct, int total);
+
   /// No description provided for @examTitle.
   ///
   /// In en, this message translates to:

@@ -23,7 +23,9 @@ kelmagan**.
   NHLBI — 52 manba; har da’vo manba va bo‘lim bilan; iqtiboslar sahifalarga qayta solishtirildi).
   Mustaqil review **yo‘q** — hammasi draft. Ochiq savollar: [CONTENT_REVIEW_NOTES.md](CONTENT_REVIEW_NOTES.md).
 - Mashq: 71 ta izohli savol (draft): mavzu bo‘yicha (guruh), har analit kartasidan (2 ta) yoki
-  aralash 10 ta; natija va xatolar tahlili haqiqiy javoblardan.
+  aralash 10 ta; natija va xatolar tahlili haqiqiy javoblardan. **Xatolar ustida ishlash:**
+  oxirgi javobi noto‘g‘ri savollar alohida mavzu; mavzu bo‘yicha “oxirgi safar to‘g‘ri” soni
+  (faqat qurilmada, `quiz.progress`).
 - Analit kartasidan tegishli kalkulyatorga o‘tish (kreatinin → eGFR, lipidlar → LDL va h.k.).
 - Tahlillar atlasi: sinonimli qidiruv, guruh filtri, bo‘sh holat; analit kartasi; xatcho‘p.
 - Lab: kalibrlash (IFU aniq moslik — katalog bo‘sh, parametr berilmaydi), preanalitika,
@@ -50,7 +52,7 @@ kelmagan**.
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **198 / 198 o‘tdi** (unit 126: auth/settings 14, content 36, core logic 25, klinik kalkulyatorlar 32, QC model 7, Westgard qoidalari 12; widget oqimlari 41 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
+| `flutter test` | **200 / 200 o‘tdi** (unit 128: auth/settings 14, content 36, core logic 25, mashq progressi 2, klinik kalkulyatorlar 32, QC model 7, Westgard qoidalari 12; widget oqimlari 41 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
 | Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 48 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
 | Tap target | iOS 44×44 va labeled tap target guideline’lari (Bosh, Tahlillar) — o‘tdi |
 | Kontrast | Palitra juftliklari ≥ 4.5:1 (light va dark) — o‘tdi |

@@ -1435,6 +1435,14 @@ class AppLocalizationsUz extends AppLocalizations {
   String get quizOtherTopic => 'Boshqa mavzu';
 
   @override
+  String get quizTopicMistakes => 'Xatolarim ustida ishlash';
+
+  @override
+  String quizMastered(int correct, int total) {
+    return '$total tadan $correct tasi oxirgi safar to‘g‘ri';
+  }
+
+  @override
   String get examTitle => 'Imtihon rejimi';
 
   @override

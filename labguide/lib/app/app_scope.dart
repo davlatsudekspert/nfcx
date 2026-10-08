@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../core/storage/kv_store.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/content/content_controller.dart';
+import '../features/learn/quiz_progress.dart';
 import '../features/qc/qc_controller.dart';
 import '../features/settings/settings_controller.dart';
 
@@ -36,6 +37,7 @@ class AppServices {
     required this.content,
     required this.bookmarks,
     required this.qc,
+    required this.quizProgress,
   });
 
   final AppConfig config;
@@ -45,6 +47,7 @@ class AppServices {
   final ContentController content;
   final BookmarksController bookmarks;
   final QcController qc;
+  final QuizProgressController quizProgress;
 
   /// "Lokal ma'lumotlarni o'chirish": omborni tozalaydi va xotiradagi
   /// holatni boshlang'ichga qaytaradi.
@@ -53,6 +56,7 @@ class AppServices {
     await auth.signOut();
     bookmarks.resetInMemory();
     qc.resetInMemory();
+    quizProgress.resetInMemory();
     settings.resetToDefaults(systemLocales);
   }
 }

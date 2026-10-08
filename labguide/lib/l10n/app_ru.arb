@@ -429,6 +429,8 @@
   "quizTopicGeneral": "Лабораторные расчёты",
   "quizQuestionCount": "{count, plural, one{{count} вопрос} few{{count} вопроса} many{{count} вопросов} other{{count} вопроса}}",
   "quizOtherTopic": "Другая тема",
+  "quizTopicMistakes": "Работа над ошибками",
+  "quizMastered": "верно в прошлый раз: {correct} из {total}",
   "examTitle": "Режим экзамена",
   "examBody": "Экзамены с таймером и история результатов появятся вместе с учебным модулем. Учебные вопросы доступны уже сейчас.",
   "examOpenPractice": "Открыть учебные вопросы",

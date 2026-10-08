@@ -30,6 +30,7 @@ abstract final class StoreKeys {
   static const lessonQuestion = 'lesson.question';
   static const lessonNotes = 'lesson.notes';
   static const qcData = 'qc.data';
+  static const quizProgress = 'quiz.progress';
 
   static const all = <String>{
     language,
@@ -43,6 +44,7 @@ abstract final class StoreKeys {
     lessonQuestion,
     lessonNotes,
     qcData,
+    quizProgress,
   };
 }
 

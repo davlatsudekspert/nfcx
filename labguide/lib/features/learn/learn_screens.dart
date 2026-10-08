@@ -232,6 +232,18 @@ class _TopicPicker extends StatelessWidget {
     final mixedSize = pack.quiz.length < kMixedQuizSize
         ? pack.quiz.length
         : kMixedQuizSize;
+    final progress = context.services.quizProgress;
+    String sub(List<QuizQuestion> qs) {
+      final n = qs.length;
+      final m = progress.mastered(qs.map((q) => q.id));
+      return m == 0
+          ? l.quizQuestionCount(n)
+          : '${l.quizQuestionCount(n)} · ${l.quizMastered(m, n)}';
+    }
+
+    final mistakes = {
+      ...progress.mistakes([for (final q in pack.quiz) q.id]),
+    };
     QuizScope mixed() => QuizScope(
       l.quizTopicMixed(mixedSize),
       (List.of(pack.quiz)..shuffle()).take(mixedSize).toList(),
@@ -241,6 +253,18 @@ class _TopicPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         LgSectionTitle(l.quizChooseTopic),
+        if (mistakes.isNotEmpty)
+          LgRow(
+            title: l.quizTopicMistakes,
+            subtitle: l.quizQuestionCount(mistakes.length),
+            icon: Icons.replay_rounded,
+            onTap: () => onPick(
+              QuizScope(l.quizTopicMistakes, [
+                for (final q in pack.quiz)
+                  if (mistakes.contains(q.id)) q,
+              ]),
+            ),
+          ),
         LgRow(
           title: l.quizTopicMixed(mixedSize),
           subtitle: l.quizQuestionCount(pack.quiz.length),
@@ -250,14 +274,14 @@ class _TopicPicker extends StatelessWidget {
         if (general.isNotEmpty)
           LgRow(
             title: l.quizTopicGeneral,
-            subtitle: l.quizQuestionCount(general.length),
+            subtitle: sub(general),
             icon: Icons.calculate_outlined,
             onTap: () => onPick(QuizScope(l.quizTopicGeneral, general)),
           ),
         for (final (i, (group, questions)) in groups.indexed)
           LgRow(
             title: group.names.of(lang),
-            subtitle: l.quizQuestionCount(questions.length),
+            subtitle: sub(questions),
             icon: groupIcon(group.id),
             onTap: () => onPick(QuizScope(group.names.of(lang), questions)),
             divider: i < groups.length - 1,
@@ -331,6 +355,11 @@ class _QuizQuestion extends StatelessWidget {
                   : () {
                       session.answer(i);
                       onChanged();
+                      // Natija faqat qurilmada — “xatolar ustida ishlash” uchun.
+                      context.services.quizProgress.record(
+                        q.id,
+                        correct: i == q.correctIndex,
+                      );
                     },
             ),
           ),

@@ -1447,6 +1447,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quizOtherTopic => 'Another topic';
 
   @override
+  String get quizTopicMistakes => 'Review my mistakes';
+
+  @override
+  String quizMastered(int correct, int total) {
+    return '$correct of $total correct last time';
+  }
+
+  @override
   String get examTitle => 'Exam mode';
 
   @override
