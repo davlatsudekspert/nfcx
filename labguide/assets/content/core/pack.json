@@ -1206,6 +1206,11 @@
     "uz": "Qon (zardob) va/yoki siydik",
     "ru": "Кровь (сыворотка) и/или моча",
     "en": "Blood (serum) and/or urine"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 113.12,
+    "basis": "C4H7N3O; IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "µmol/L"
    }
   },
   {
@@ -1919,6 +1924,11 @@
     "uz": "Qon yoki 24 soatlik siydik",
     "ru": "Кровь или суточная моча",
     "en": "Blood or 24-hour urine"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 168.112,
+    "basis": "C5H4N4O3; IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "µmol/L"
    }
   },
   {
@@ -2917,6 +2927,11 @@
     "uz": "Venoz qon; chaqaloqlarda tovondan olingan qon",
     "ru": "Венозная кровь; у новорождённых — кровь из пятки",
     "en": "Venous blood; heel-stick blood in newborns"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 584.673,
+    "basis": "C33H36N4O6 (bilirubin); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "µmol/L"
    }
   },
   {
@@ -3049,6 +3064,11 @@
     "uz": "Venoz qon",
     "ru": "Венозная кровь",
     "en": "Venous blood"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 584.673,
+    "basis": "C33H36N4O6 (bilirubin); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "µmol/L"
    }
   },
   {
@@ -3222,6 +3242,11 @@
     "uz": "Qon (venadan olingan namuna)",
     "ru": "Кровь (из вены)",
     "en": "Blood (venous sample)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 386.664,
+    "basis": "C27H46O (cholesterol); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -3395,6 +3420,11 @@
     "uz": "Qon (venadan olingan namuna)",
     "ru": "Кровь (из вены)",
     "en": "Blood (venous sample)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 386.664,
+    "basis": "C27H46O (cholesterol content of HDL); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -3583,6 +3613,11 @@
     "uz": "Qon (venadan olingan namuna)",
     "ru": "Кровь (из вены)",
     "en": "Blood (venous sample)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 386.664,
+    "basis": "C27H46O (cholesterol content of LDL); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -3763,6 +3798,11 @@
     "uz": "Qon (venadan olingan namuna)",
     "ru": "Кровь (из вены)",
     "en": "Blood (venous sample)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 885.453,
+    "basis": "C57H104O6 (triolein — conventional model triglyceride); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -3870,6 +3910,11 @@
     "uz": "Qon",
     "ru": "Кровь",
     "en": "Blood"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 386.664,
+    "basis": "C27H46O (cholesterol); IUPAC standard atomic weights (abridged): C 12.011, H 1.008, N 14.007, O 15.999",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -5111,6 +5156,11 @@
     "uz": "Venadan olingan qon",
     "ru": "Венозная кровь",
     "en": "Venous blood"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 40.078,
+    "basis": "Ca; IUPAC standard atomic weight (abridged)",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -5297,6 +5347,11 @@
     "uz": "Venadan olingan qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 24.305,
+    "basis": "Mg; IUPAC standard atomic weight (abridged)",
+    "si_unit": "mmol/L"
    }
   },
   {
@@ -5484,6 +5539,11 @@
     "uz": "Venadan olingan qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 30.974,
+    "basis": "P (reported as inorganic phosphorus); IUPAC standard atomic weight (abridged)",
+    "si_unit": "mmol/L"
    }
   },
   {

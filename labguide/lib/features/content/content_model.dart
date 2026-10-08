@@ -276,18 +276,35 @@ class ReferenceInterval {
 /// Moddaga xos birlik konversiyasi (mg/dL ↔ mmol/L).
 @immutable
 class UnitConversion {
-  const UnitConversion({required this.molarMass, required this.basis});
+  const UnitConversion({
+    required this.molarMass,
+    required this.basis,
+    this.siUnit = 'mmol/L',
+  });
 
-  factory UnitConversion.fromJson(Map<String, Object?> json) => UnitConversion(
-    molarMass: (json['molar_mass_g_per_mol']! as num).toDouble(),
-    basis: json['basis']! as String,
-  );
+  factory UnitConversion.fromJson(Map<String, Object?> json) {
+    final si = json['si_unit'] as String? ?? 'mmol/L';
+    if (si != 'mmol/L' && si != 'µmol/L') {
+      throw FormatException('unsupported si_unit: $si');
+    }
+    return UnitConversion(
+      molarMass: (json['molar_mass_g_per_mol']! as num).toDouble(),
+      basis: json['basis']! as String,
+      siUnit: si,
+    );
+  }
 
   /// g/mol.
   final double molarMass;
 
   /// Qiymat qayerdan olingani (masalan, standart atom massalaridan hisob).
   final String basis;
+
+  /// Laboratoriyalar odatda beradigan SI birlik: `mmol/L` yoki `µmol/L`.
+  final String siUnit;
+
+  /// 1 mmol/L necha [siUnit] ga teng.
+  double get siPerMmol => siUnit == 'µmol/L' ? 1000 : 1;
 }
 
 @immutable

@@ -307,6 +307,14 @@ void main() {
     // Mavzu tanlovi yo'q — to'g'ridan-to'g'ri shu analit savollari.
     expect(find.text(en.quizChooseTopic), findsNothing);
     expect(find.text('Creatinine'), findsWidgets);
+    // Boshqa analit testiga o'tilganda sessiya yangilanadi.
+    await goTo(tester, '/tests/analyte/urea/quiz');
+    expect(find.text('Urea'), findsWidgets);
+    final ureaPrompt = s.content.pack!.quiz
+        .firstWhere((q) => q.topicIds.contains('urea'))
+        .prompt
+        .of('en');
+    expect(find.text(ureaPrompt), findsOneWidget);
   });
 
   testWidgets('demo OTP flow with validation, attempts and success', (
@@ -437,6 +445,12 @@ void main() {
     await tapText(tester, en.ucConvert);
     expect(find.text('6.99 mmol/L'), findsOneWidget);
     expect(find.text(en.ucNote('180.156')), findsOneWidget);
+    // Kreatinin: laboratoriyalar µmol/L da beradi.
+    await goTo(tester, '/tests/analyte/creatinine/units');
+    await tester.enterText(find.byType(TextField), '1.2');
+    await tapText(tester, en.ucConvert);
+    await scrollTo(tester, find.text('106.1 µmol/L'));
+    expect(find.text('106.1 µmol/L'), findsOneWidget);
     // Molyar massasi yo'q analit uchun o'tkazish taklif qilinmaydi.
     await goTo(tester, '/tests/analyte/alt/units');
     expect(find.text(en.ucNotAvailable), findsOneWidget);

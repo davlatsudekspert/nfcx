@@ -186,3 +186,12 @@ bepul. Reja: `git subtree split -P labguide` bilan tarix saqlangan holda yangi
 oldingi `labguide-ios.yml` olib tashlandi. Litsenziya fayli qo‘shilmaydi (kod ko‘rinadi,
 huquqlar egada). Secretlar repo sozlamalarida — kodda yo‘q ([IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md)).
 Repo yaratish Claude integratsiyasiga ruxsat etilmagan (403) — egasi yaratadi.
+
+## D-22. Birlik konvertori 13 analitga kengaytirildi (2026-10-08)
+Molyar massa faqat formula + IUPAC qisqartirilgan standart atom massalaridan (C 12.011,
+H 1.008, N 14.007, O 15.999; Ca 40.078, Mg 24.305, P 30.974): kreatinin 113.120, siydik
+kislotasi 168.112, bilirubin 584.673 (µmol/L), xolesterin 386.664 (umumiy, HDL, LDL, non-HDL),
+triglitseridlar — triolein 885.453 (an’anaviy model), kalsiy, magniy, fosfor (mmol/L).
+SI birlik paketda (`si_unit`: mmol/L yoki µmol/L). Mochevina/BUN ataylab qo‘shilmadi: bir
+analitda ikki asos (butun molekula vs azot) — chalkashlik xavfi; osmolyallik kalkulyatori
+BUN’ni alohida qabul qiladi.

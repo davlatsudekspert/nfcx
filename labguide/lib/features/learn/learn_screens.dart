@@ -136,6 +136,17 @@ class _QuizScreenState extends State<QuizScreen> {
   QuizScope? _scope;
   QuizSession? _session;
 
+  // Bir analit testidan boshqasiga o'tilganda State qayta ishlatilishi
+  // mumkin — sessiya yangi analit uchun qaytadan yig'iladi.
+  @override
+  void didUpdateWidget(QuizScreen old) {
+    super.didUpdateWidget(old);
+    if (old.analyteId != widget.analyteId) {
+      _scope = null;
+      _session = null;
+    }
+  }
+
   void _start(QuizScope scope) => setState(() {
     _scope = scope;
     _session = QuizSession(scope.questions);

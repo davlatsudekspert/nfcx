@@ -87,15 +87,17 @@ class ConversionResult {
   bool get isOk => error == null;
 }
 
-/// Moddaga xos mg/dL ↔ mmol/L o'tkazish.
+/// Moddaga xos mg/dL ↔ mmol/L (yoki µmol/L) o'tkazish.
 ///
-/// mmol/L = mg/dL × 10 / M, bu yerda M — molyar massa (g/mol).
+/// mmol/L = mg/dL × 10 / M, bu yerda M — molyar massa (g/mol);
+/// µmol/L uchun [siPerMmol] = 1000.
 /// M berilmasa (moddaning tasdiqlangan molyar massasi yo'q) o'tkazish
 /// taklif qilinmaydi: bitta umumiy koeffitsiyent ishlatilmaydi.
 ConversionResult convertConcentration({
   required double? value,
   required MassUnit from,
   required double? molarMass,
+  double siPerMmol = 1,
 }) {
   final m = molarMass;
   if (m == null || !m.isFinite || m <= 0) {
@@ -112,8 +114,8 @@ ConversionResult convertConcentration({
     return const ConversionResult._(error: ConversionError.invalidInput);
   }
   final result = switch (from) {
-    MassUnit.mgPerDl => v * 10 / m,
-    MassUnit.mmolPerL => v * m / 10,
+    MassUnit.mgPerDl => v * 10 / m * siPerMmol,
+    MassUnit.mmolPerL => v / siPerMmol * m / 10,
   };
   if (!result.isFinite) {
     return const ConversionResult._(error: ConversionError.outOfRange);
