@@ -553,7 +553,8 @@ enum LibraryItemKind {
   method,
   ifu,
   article,
-  questionSet;
+  questionSet,
+  website;
 
   static LibraryItemKind parse(String raw) => switch (raw) {
     'book' => book,
@@ -562,6 +563,7 @@ enum LibraryItemKind {
     'ifu' => ifu,
     'article' => article,
     'question_set' => questionSet,
+    'website' => website,
     _ => throw FormatException('unknown library kind: $raw'),
   };
 }
@@ -599,6 +601,27 @@ enum DistributionRights {
   static DistributionRights parse(String raw) => values.firstWhere(
     (r) => r.key == raw,
     orElse: () => throw FormatException('unknown distribution: $raw'),
+  );
+}
+
+/// Material qanday olinadi (katalogda ko'rsatiladi).
+enum LibraryAccess {
+  /// Ochiq litsenziya (CC BY, CC BY-SA, CC BY-NC, jamoat mulki) — havola
+  /// orqali; to'liq matn paketi baribir alohida qayd talab qiladi.
+  openLicence('open_licence'),
+
+  /// Onlayn bepul o'qiladi, lekin ochiq litsenziya yo'q — faqat havola.
+  freeToRead('free_to_read'),
+
+  /// Erkin onlayn emas (bosma/pullik) — faqat bibliografik yozuv.
+  catalogOnly('catalog_only');
+
+  const LibraryAccess(this.key);
+  final String key;
+
+  static LibraryAccess parse(String raw) => values.firstWhere(
+    (a) => a.key == raw,
+    orElse: () => throw FormatException('unknown access: $raw'),
   );
 }
 
@@ -682,6 +705,11 @@ class LibraryItem {
     this.receivedAt,
     this.supersedes,
     this.filePack,
+    this.url,
+    this.licence,
+    this.access = LibraryAccess.catalogOnly,
+    this.accessed,
+    this.note,
   });
 
   factory LibraryItem.fromJson(Map<String, Object?> json) => LibraryItem(
@@ -711,6 +739,11 @@ class LibraryItem {
         : FilePackRef.fromJson(
             (json['file_pack']! as Map).cast<String, Object?>(),
           ),
+    url: json['url'] as String?,
+    licence: json['licence'] as String?,
+    access: LibraryAccess.parse(json['access'] as String? ?? 'catalog_only'),
+    accessed: json['accessed'] as String?,
+    note: json['note'] == null ? null : LocalizedText.fromJson(json['note']),
   );
 
   final String id;
@@ -741,6 +774,19 @@ class LibraryItem {
   /// To'liq matn alohida oflayn paket sifatida (faqat ruxsat qayd etilgan
   /// bo'lsa).
   final FilePackRef? filePack;
+
+  /// Rasmiy sahifa (o'qish yoki yozuvni ko'rish uchun).
+  final String? url;
+
+  /// Sahifada ko'rsatilgan litsenziya nomi (masalan, “CC BY 4.0”).
+  final String? licence;
+  final LibraryAccess access;
+
+  /// Sahifa va litsenziya tekshirilgan sana.
+  final String? accessed;
+
+  /// Nega foydali — qisqa izoh (3 tilda).
+  final LocalizedText? note;
 }
 
 /// Dars mavzusi: analitlar, savollar va manbalarni bog'laydi.
@@ -1045,6 +1091,15 @@ class ContentPack {
       }
       if (item.filePack != null && !item.importState.citable) {
         throw FormatException('${item.id}: file pack for unprocessed item');
+      }
+      // Ochiq litsenziya — litsenziya nomi va sahifa bilan; bepul o'qish —
+      // sahifa havolasi bilan.
+      if (item.access == LibraryAccess.openLicence &&
+          (item.licence == null || item.url == null || item.accessed == null)) {
+        throw FormatException('${item.id}: open licence without evidence');
+      }
+      if (item.access == LibraryAccess.freeToRead && item.url == null) {
+        throw FormatException('${item.id}: free-to-read item without url');
       }
     }
     for (final s in sources) {

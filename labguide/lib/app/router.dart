@@ -11,6 +11,7 @@ import '../features/lab/lab_screens.dart';
 import '../features/learn/learn_screens.dart';
 import '../features/library/library_screens.dart';
 import '../features/profile/profile_screens.dart';
+import '../features/qc/qc_screens.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/tools/calc_info.dart';
 import '../features/tools/clinical_calc_screens.dart';
@@ -148,6 +149,17 @@ GoRouter buildRouter(
                   GoRoute(
                     path: 'qc',
                     builder: (context, state) => const QcScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) => const QcNewSetScreen(),
+                      ),
+                      GoRoute(
+                        path: 'set/:id',
+                        builder: (context, state) =>
+                            QcSetScreen(setId: state.pathParameters['id']!),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'preanalytics',

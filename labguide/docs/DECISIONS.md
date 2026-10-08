@@ -156,3 +156,23 @@ shakli Lynd 2008), HbA1c NGSP↔IFCC (NGSP master tenglamasi) va eAG (ADAG, Nath
   [CONTENT_REVIEW_NOTES.md](CONTENT_REVIEW_NOTES.md).
 - Testlar: 68 ta yangi savol (har analitga 2 ta), hammasi draft, manba va mavzu (`topic_ids`)
   bilan. Mashq endi mavzu bo‘yicha: guruh, bitta analit (kartadan) yoki aralash 10 ta.
+
+## D-20. Ichki sifat nazorati: Levey–Jennings + Westgard qoidalari (2026-10-08)
+- Manba: Westgard JO, Barry PL, Hunt MR, Groth T. *A multi-rule Shewhart chart for quality
+  control in clinical chemistry.* Clin Chem 1981;27(3):493–501 (doi:10.1093/clinchem/27.3.493) —
+  to‘liq matn (arxivlangan PDF) o‘qib tekshirildi; Westgard sayti darslari qo‘shimcha.
+- Qoidalar maqoladagidek: 1-2s ogohlantirish; 1-3s; 2-2s (seriya ichida ikki material bo‘ylab
+  va bir material ketma-ket ikki seriyada); R-4s faqat seriya ichida; 4-1s va 10x bir material
+  ichida (4/10 seriya) yoki materiallar bo‘ylab (joriy + oldingi seriya / 5 seriya).
+  Chegara qat’iy: aynan ±2 SD buzilish emas (“exceeds”).
+- 1981 tartibida 1-2s “eshik” edi; Westgard sayti kompyuter tizimlari uchun bu shart emasligini
+  aytadi. Ilova har seriyada hamma rad qoidalarini tekshiradi, 1-2s ni ogohlantirish deb
+  ko‘rsatadi — shuning uchun 2s siz 4-1s ham rad deb belgilanadi (klassik qo‘lda tartibdan
+  qattiqroq; ekranda izohlangan).
+- Maqsadli o‘rtacha va SD ni ilova bermaydi: foydalanuvchi kiritadi va manbasini belgilaydi.
+  Maqola: laboratoriyaning o‘z ma’lumotidan (~20 o‘lchov, keyin qayta hisoblash); ishlab
+  chiqaruvchi qiymati tanlansa ogohlantirish ko‘rsatiladi (varaqadagi oraliqlar ko‘pincha keng).
+- Grafik: ±1s/±2s/±3s chiziqlari (W81 2-rasm), nuqta holati shakl bilan ham (doira/uchburchak/
+  kvadrat) — faqat rangga tayanmaydi; ±4 SD dan tashqarisi strelka bilan.
+- Ma’lumot faqat qurilmada (`qc.data`), buzilgan yozuv ustidan yozilmaydi; “lokal ma’lumotlarni
+  o‘chirish” QC ni ham o‘chiradi. Kuzatilgan n, x̄, SD (n−1), CV % ko‘rsatiladi.

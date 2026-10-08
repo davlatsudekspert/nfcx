@@ -332,6 +332,42 @@ void main() {
       'reuse_rights': 'personal_only',
     };
 
+    test('open-licence and free-to-read items need their evidence', () {
+      Map<String, Object?> open({
+        String? licence = 'CC BY 4.0',
+        String? url = 'https://openstax.org/details/books/biology-2e',
+        String? accessed = '2026-10-08',
+        String access = 'open_licence',
+      }) => {
+        ...book(id: 'open-1'),
+        'provided_by': null,
+        'access': access,
+        'licence': ?licence,
+        'url': ?url,
+        'accessed': ?accessed,
+      };
+      final ok = parse(withLibrary([open()])).libraryItem('open-1')!;
+      expect(ok.access, LibraryAccess.openLicence);
+      expect(ok.licence, 'CC BY 4.0');
+      expect(
+        () => parse(withLibrary([open(licence: null)])),
+        throwsFormatException,
+      );
+      expect(
+        () => parse(withLibrary([open(accessed: null)])),
+        throwsFormatException,
+      );
+      expect(
+        () => parse(withLibrary([open(access: 'free_to_read', url: null)])),
+        throwsFormatException,
+      );
+      // Eski yozuvlar (access yo'q) — katalog yozuvi deb o'qiladi.
+      expect(
+        parse(withLibrary([book()])).libraryItem('book-1')!.access,
+        LibraryAccess.catalogOnly,
+      );
+    });
+
     test('a catalogued book with page-level refs parses', () {
       final json = withLibrary([book()], extraSources: [bookSource]);
       final g = (json['analytes']! as List)

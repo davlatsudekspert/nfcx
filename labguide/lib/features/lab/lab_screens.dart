@@ -209,37 +209,6 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
   }
 }
 
-class QcScreen extends StatelessWidget {
-  const QcScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final text = Theme.of(context).textTheme;
-    return LgPage(
-      title: l.qcTitle,
-      children: [
-        LgPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.qcChartTitle, style: text.titleMedium),
-              const SizedBox(height: 6),
-              Text(l.qcChartBody, style: text.bodyMedium),
-            ],
-          ),
-        ),
-        LgStateView(
-          kind: StateKind.empty,
-          title: l.qcEmptyTitle,
-          message: l.qcEmptyBody,
-        ),
-        Center(child: LgTag(l.plannedStage('C'), tone: LgTone.neutral)),
-      ],
-    );
-  }
-}
-
 class PreanalyticsScreen extends StatelessWidget {
   const PreanalyticsScreen({super.key});
 

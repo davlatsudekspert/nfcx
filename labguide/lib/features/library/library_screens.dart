@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_scope.dart';
 import '../../app/widgets/lg_page.dart';
+import '../../app/widgets/links.dart';
 import '../../core/storage/kv_store.dart';
 import '../../design/tokens.dart';
 import '../../design/widgets/lg_widgets.dart';
@@ -228,6 +229,7 @@ String kindLabel(LibraryItemKind k, AppLocalizations l) => switch (k) {
   LibraryItemKind.ifu => l.kindIfu,
   LibraryItemKind.article => l.kindArticle,
   LibraryItemKind.questionSet => l.kindQuestionSet,
+  LibraryItemKind.website => l.kindWebsite,
 };
 
 /// Kitoblar, qo'llanmalar, metodikalar katalogi. Yangi adabiyot kontent
@@ -239,8 +241,16 @@ class BooksScreen extends StatefulWidget {
   State<BooksScreen> createState() => _BooksScreenState();
 }
 
+/// Katalog tillari — o'z nomi bilan (til tanlagichdagi kabi).
+const _catalogLanguages = [
+  ('uz', 'O‘zbekcha'),
+  ('ru', 'Русский'),
+  ('en', 'English'),
+];
+
 class _BooksScreenState extends State<BooksScreen> {
   LibraryCategory? _category;
+  String? _language;
 
   @override
   Widget build(BuildContext context) {
@@ -259,9 +269,12 @@ class _BooksScreenState extends State<BooksScreen> {
             }
             final items = pack.library
                 .where(
-                  (i) => _category == null || i.categories.contains(_category),
+                  (i) =>
+                      (_category == null || i.categories.contains(_category)) &&
+                      (_language == null || i.language == _language),
                 )
                 .toList();
+            final languages = {for (final i in pack.library) i.language};
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -288,6 +301,24 @@ class _BooksScreenState extends State<BooksScreen> {
                     ],
                   ),
                 ),
+                if (languages.length > 1) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final (code, name) in _catalogLanguages)
+                        if (languages.contains(code))
+                          LgChoiceChip(
+                            label: name,
+                            selected: _language == code,
+                            onTap: () => setState(
+                              () => _language = _language == code ? null : code,
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 if (items.isEmpty)
                   LgStateView(kind: StateKind.empty, title: l.testsEmptyTitle)
@@ -324,6 +355,11 @@ class LibraryItemCard extends StatelessWidget {
       item.language.toUpperCase(),
     ].join(' · ');
     final shared = item.filePack != null && item.rights.allowsSharedPack;
+    final lang = Localizations.localeOf(context).languageCode;
+    // Domla/foydalanuvchi bergan material — tarqatish huquqi va paket holati
+    // muhim; ochiq katalog yozuvida esa kirish turi va litsenziya.
+    final provided = item.providedBy != null || item.filePack != null;
+    final url = item.url;
     return LgPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,6 +367,13 @@ class LibraryItemCard extends StatelessWidget {
           Text(item.title, style: text.titleMedium),
           const SizedBox(height: 4),
           Text(meta, style: text.bodySmall),
+          if (item.publisher != null)
+            Text(item.publisher!, style: text.bodySmall),
+          if (item.note != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(item.note!.of(lang), style: text.bodyMedium),
+            ),
           if (older != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -346,25 +389,53 @@ class LibraryItemCard extends StatelessWidget {
             children: [
               for (final c in item.categories)
                 LgTag(categoryLabel(c, l), tone: LgTone.neutral),
-              LgTag(
-                rightsLabel(item.rights.distribution, l),
-                tone: item.rights.allowsSharedPack
-                    ? LgTone.brand
-                    : LgTone.warning,
-              ),
+              if (provided)
+                LgTag(
+                  rightsLabel(item.rights.distribution, l),
+                  tone: item.rights.allowsSharedPack
+                      ? LgTone.brand
+                      : LgTone.warning,
+                )
+              else
+                LgTag(
+                  switch (item.access) {
+                    LibraryAccess.openLicence => l.libAccessOpen(
+                      item.licence ?? '',
+                    ),
+                    LibraryAccess.freeToRead => l.libAccessFree,
+                    LibraryAccess.catalogOnly => l.libAccessCatalog,
+                  },
+                  tone: item.access == LibraryAccess.openLicence
+                      ? LgTone.brand
+                      : LgTone.neutral,
+                ),
             ],
           ),
+          if (item.accessed != null && !provided)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(l.libChecked(item.accessed!), style: text.bodySmall),
+            ),
           const SizedBox(height: 12),
-          // Paket yuklash infratuzilmasi (C bosqich) ulanmaguncha tugma
-          // o'chirilgan — muvaffaqiyat ko'rsatilmaydi.
-          LgButton.secondary(
-            label: shared
-                ? '${l.libItemPack(formatBytes(item.filePack!.size))} · '
-                      '${l.notAvailableYet}'
-                : l.libItemNoPack,
-            icon: Icons.download_rounded,
-            onPressed: null,
-          ),
+          if (url != null)
+            LgButton.secondary(
+              label: l.libOpenSource,
+              icon: Icons.open_in_new_rounded,
+              onPressed: () => openExternalLink(context, url),
+            ),
+          if (provided) ...[
+            if (url != null) const SizedBox(height: 8),
+            // Paket yuklash infratuzilmasi (C bosqich) ulanmaguncha tugma
+            // o'chirilgan — muvaffaqiyat ko'rsatilmaydi.
+            LgButton.secondary(
+              label: shared
+                  ? '${l.libItemPack(formatBytes(item.filePack!.size))} · '
+                        '${l.notAvailableYet}'
+                  : l.libItemNoPack,
+              icon: Icons.download_rounded,
+              onPressed: null,
+            ),
+          ],
         ],
       ),
     );

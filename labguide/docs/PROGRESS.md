@@ -26,8 +26,11 @@ kelmagan**.
   aralash 10 ta; natija va xatolar tahlili haqiqiy javoblardan.
 - Analit kartasidan tegishli kalkulyatorga o‘tish (kreatinin → eGFR, lipidlar → LDL va h.k.).
 - Tahlillar atlasi: sinonimli qidiruv, guruh filtri, bo‘sh holat; analit kartasi; xatcho‘p.
-- Lab: kalibrlash (IFU aniq moslik — katalog bo‘sh, parametr berilmaydi), QC, preanalitika,
+- Lab: kalibrlash (IFU aniq moslik — katalog bo‘sh, parametr berilmaydi), preanalitika,
   apparatlar, mikroskopiya (rasm huquqi kutilmoqda), suyultirish va birlik kalkulyatorlari.
+- **Ichki sifat nazorati (D-20):** test va 1–3 nazorat darajasi (lot, maqsadli x̄/SD, manbasi),
+  seriyalar, Levey–Jennings grafigi, Westgard 1-2s/1-3s/2-2s/R-4s/4-1s/10x (W81 bo‘yicha),
+  qabul/ogohlantirish/rad va sabab, kuzatilgan n/x̄/SD/CV, o‘chirish (tasdiq bilan).
 - Klinik kalkulyatorlar (D-18): eGFR CKD-EPI 2021 + KDIGO G, ACR + KDIGO A, anion farq
   (K va albumin tuzatishi bilan), tuzatilgan kalsiy (Payne), LDL (Friedewald, Sampson) va
   non-HDL, osmolyallik va osmolyal farq, HbA1c NGSP↔IFCC va eAG. Har birida formula,
@@ -46,8 +49,8 @@ kelmagan**.
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **175 / 175 o‘tdi** (unit 105: auth/settings 14, content 35, core logic 24, klinik kalkulyatorlar 32; widget oqimlari 39 (kalkulyatorlar 9); layout matritsa 31) |
-| Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 47 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
+| `flutter test` | **197 / 197 o‘tdi** (unit 125: auth/settings 14, content 36, core logic 24, klinik kalkulyatorlar 32, QC model 7, Westgard qoidalari 12; widget oqimlari 41 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
+| Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 48 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
 | Tap target | iOS 44×44 va labeled tap target guideline’lari (Bosh, Tahlillar) — o‘tdi |
 | Kontrast | Palitra juftliklari ≥ 4.5:1 (light va dark) — o‘tdi |
 | `flutter build apk --debug` | ✓ `app-debug.apk` |

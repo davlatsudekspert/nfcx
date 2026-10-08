@@ -24,6 +24,7 @@ const appRoutes = [
   '/lab',
   '/lab/calibration',
   '/lab/qc',
+  '/lab/qc/new',
   '/lab/preanalytics',
   '/lab/instruments',
   '/lab/microscopy',

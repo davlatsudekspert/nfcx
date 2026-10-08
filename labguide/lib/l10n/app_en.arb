@@ -269,7 +269,93 @@
   "qcChartTitle": "Levey–Jennings",
   "qcChartBody": "A chart needs the test, control lot, level, target mean and SD. No invented results are plotted.",
   "qcEmptyTitle": "No control records yet",
-  "qcEmptyBody": "Control logging and rule checks will be added together with sourced explanations.",
+  "qcEmptyBody": "Add a test with its control levels to start a Levey–Jennings chart. Data is stored only on this device.",
+  "qcIntro": "Enter each control level’s target mean and SD, then record every run. The app checks Westgard rules; it never invents target values or results.",
+  "qcLoadError": "Saved QC data could not be read. Nothing was overwritten.",
+  "qcAddSet": "Add test",
+  "qcSetName": "Test name",
+  "qcUnit": "Unit",
+  "qcTargetSource": "Source of the target mean and SD",
+  "qcSourceLab": "Our laboratory’s data",
+  "qcSourceManufacturer": "Manufacturer’s sheet",
+  "qcLevel": "Level {label}",
+  "@qcLevel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcLevelsCount": "{count, plural, =1{1 level} other{{count} levels}}",
+  "@qcLevelsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcRunsCount": "{count, plural, =0{no runs} =1{1 run} other{{count} runs}}",
+  "@qcRunsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcLot": "Lot",
+  "qcMean": "Target mean",
+  "qcSd": "Target SD",
+  "qcAddLevel": "Add level",
+  "qcRemoveLevel": "Remove level",
+  "qcSave": "Save",
+  "qcTargetNote": "Westgard et al. (1981) calculate the mean and SD from the laboratory’s own control measurements — initially about 20 (one run a day), then revised as more data accumulate. The app does not supply these values.",
+  "qcManufacturerWarning": "Manufacturer’s values are a guide only; Westgard’s lessons recommend limits calculated from your own control data — the assay sheet’s ranges are often too wide.",
+  "qcErrName": "Enter the test name.",
+  "qcErrLevel": "Level {label}: enter the mean and an SD greater than zero.",
+  "@qcErrLevel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcAccept": "Accepted",
+  "qcWarning": "Warning",
+  "qcReject": "Rejected",
+  "qcAcceptBody": "No rule violated.",
+  "qcLatestRun": "Latest run",
+  "qcNoRunsYet": "No runs yet — add the first one below.",
+  "qcAddRun": "Add run",
+  "qcNote": "Note (optional)",
+  "qcSaveRun": "Save run",
+  "qcErrRunEmpty": "Enter at least one control value.",
+  "qcErrRunInvalid": "Level {label}: not a number.",
+  "@qcErrRunInvalid": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcRunHistory": "Runs",
+  "qcStats": "Observed",
+  "qcChartLegend": "● in control   ▲ warning   ■ rejected",
+  "qcChartSemantics": "Levey–Jennings chart, level {label}: {count} values",
+  "@qcChartSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcDeleteRun": "Delete run",
+  "qcDeleteSet": "Delete test and all runs",
+  "qcConfirmDelete": "This can’t be undone.",
+  "qcSetMissing": "This test no longer exists.",
+  "qcRulesSource": "Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.",
   "preTitle": "Specimen journey",
   "preStep1": "Prepare for testing",
   "preStep2": "Select specimen and additive",
@@ -687,6 +773,26 @@
   "kindIfu": "IFU",
   "kindArticle": "Article",
   "kindQuestionSet": "Question set",
+  "kindWebsite": "Website",
+  "libAccessOpen": "Open licence · {licence}",
+  "@libAccessOpen": {
+    "placeholders": {
+      "licence": {
+        "type": "String"
+      }
+    }
+  },
+  "libAccessFree": "Free to read · link only",
+  "libAccessCatalog": "Catalogue record only",
+  "libOpenSource": "Open the official page",
+  "libChecked": "Page and licence checked: {date}",
+  "@libChecked": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "libItemPack": "Offline pack · {size}",
   "@libItemPack": {
     "placeholders": {

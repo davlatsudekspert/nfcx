@@ -191,6 +191,46 @@ final shots = <Shot>[
     size: const Size(390, 5200),
   ),
   shot(
+    '30_qc_levey_jennings',
+    '/lab/qc/new',
+    size: const Size(390, 2400),
+    act: (t) async {
+      var f = find.byType(TextField);
+      await t.enterText(f.at(0), 'Glyukoza');
+      await t.enterText(f.at(1), 'mmol/L');
+      await t.enterText(f.at(2), 'GL-2611');
+      await t.enterText(f.at(3), '5.5');
+      await t.enterText(f.at(4), '0.15');
+      await t.enterText(f.at(5), 'GH-2611');
+      await t.enterText(f.at(6), '16.0');
+      await t.enterText(f.at(7), '0.45');
+      await tapFirstText(t, 'Saqlash');
+      // Ko'rgazma uchun seriyalar: oxirgisi 2-2s bilan rad etiladi.
+      for (final (a, b) in [
+        ('5.52', '15.9'),
+        ('5.41', '16.3'),
+        ('5.60', '15.7'),
+        ('5.47', '16.1'),
+        ('5.58', '16.5'),
+        ('5.66', '16.2'),
+        ('5.83', '16.6'),
+        ('5.87', '16.95'),
+      ]) {
+        f = find.byType(TextField);
+        await t.enterText(f.at(0), a);
+        await t.enterText(f.at(1), b);
+        await t.ensureVisible(find.text('Seriyani saqlash'));
+        await t.pumpAndSettle();
+        await tapFirstText(t, 'Seriyani saqlash');
+      }
+      await t.drag(
+        find.byType(Scrollable).hitTestable().first,
+        const Offset(0, 4000),
+      );
+      await t.pumpAndSettle();
+    },
+  ),
+  shot(
     '29_calc_sources_en',
     '/lab/calculators/hba1c',
     lang: AppLanguage.en,

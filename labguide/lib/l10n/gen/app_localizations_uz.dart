@@ -659,7 +659,153 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get qcEmptyBody =>
-      'Nazorat qaydlari va qoidalarni tekshirish manbali izohlar bilan birga qo‘shiladi.';
+      'Levey–Jennings grafigini boshlash uchun nazorat darajalari bilan test qo‘shing. Ma’lumotlar faqat shu qurilmada saqlanadi.';
+
+  @override
+  String get qcIntro =>
+      'Har bir nazorat darajasining maqsadli o‘rtachasi va SD sini kiriting, so‘ng har bir seriyani qayd eting. Ilova Westgard qoidalarini tekshiradi; maqsadli qiymat yoki natija to‘qimaydi.';
+
+  @override
+  String get qcLoadError =>
+      'Saqlangan QC ma’lumotlarini o‘qib bo‘lmadi. Hech narsa ustidan yozilmadi.';
+
+  @override
+  String get qcAddSet => 'Test qo‘shish';
+
+  @override
+  String get qcSetName => 'Test nomi';
+
+  @override
+  String get qcUnit => 'Birlik';
+
+  @override
+  String get qcTargetSource => 'Maqsadli o‘rtacha va SD manbai';
+
+  @override
+  String get qcSourceLab => 'Laboratoriyamiz ma’lumotlari';
+
+  @override
+  String get qcSourceManufacturer => 'Ishlab chiqaruvchi varaqasi';
+
+  @override
+  String qcLevel(String label) {
+    return '$label-daraja';
+  }
+
+  @override
+  String qcLevelsCount(int count) {
+    return '$count ta daraja';
+  }
+
+  @override
+  String qcRunsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ta seriya',
+      zero: 'seriya yo‘q',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get qcLot => 'Lot';
+
+  @override
+  String get qcMean => 'Maqsadli o‘rtacha';
+
+  @override
+  String get qcSd => 'Maqsadli SD';
+
+  @override
+  String get qcAddLevel => 'Daraja qo‘shish';
+
+  @override
+  String get qcRemoveLevel => 'Darajani olib tashlash';
+
+  @override
+  String get qcSave => 'Saqlash';
+
+  @override
+  String get qcTargetNote =>
+      'Westgard va boshq. (1981) o‘rtacha va SD ni laboratoriyaning o‘z nazorat o‘lchovlaridan hisoblaydi — dastlab taxminan 20 ta (kuniga bitta seriya), so‘ng ma’lumot ko‘paygani sari qayta hisoblanadi. Ilova bu qiymatlarni bermaydi.';
+
+  @override
+  String get qcManufacturerWarning =>
+      'Ishlab chiqaruvchi qiymatlari faqat yo‘l-yo‘riq; Westgard darslari laboratoriyaning o‘z nazorat ma’lumotlaridan hisoblangan chegaralarni tavsiya qiladi — varaqadagi oraliqlar ko‘pincha juda keng.';
+
+  @override
+  String get qcErrName => 'Test nomini kiriting.';
+
+  @override
+  String qcErrLevel(String label) {
+    return '$label-daraja: o‘rtacha va noldan katta SD kiriting.';
+  }
+
+  @override
+  String get qcAccept => 'Qabul qilindi';
+
+  @override
+  String get qcWarning => 'Ogohlantirish';
+
+  @override
+  String get qcReject => 'Rad etildi';
+
+  @override
+  String get qcAcceptBody => 'Hech bir qoida buzilmagan.';
+
+  @override
+  String get qcLatestRun => 'Oxirgi seriya';
+
+  @override
+  String get qcNoRunsYet => 'Hali seriya yo‘q — birinchisini pastda qo‘shing.';
+
+  @override
+  String get qcAddRun => 'Seriya qo‘shish';
+
+  @override
+  String get qcNote => 'Izoh (ixtiyoriy)';
+
+  @override
+  String get qcSaveRun => 'Seriyani saqlash';
+
+  @override
+  String get qcErrRunEmpty => 'Kamida bitta nazorat qiymatini kiriting.';
+
+  @override
+  String qcErrRunInvalid(String label) {
+    return '$label-daraja: son emas.';
+  }
+
+  @override
+  String get qcRunHistory => 'Seriyalar';
+
+  @override
+  String get qcStats => 'Kuzatilgan';
+
+  @override
+  String get qcChartLegend => '● nazoratda   ▲ ogohlantirish   ■ rad etilgan';
+
+  @override
+  String qcChartSemantics(String label, int count) {
+    return 'Levey–Jennings grafigi, $label-daraja: $count ta qiymat';
+  }
+
+  @override
+  String get qcDeleteRun => 'Seriyani o‘chirish';
+
+  @override
+  String get qcDeleteSet => 'Testni va barcha seriyalarni o‘chirish';
+
+  @override
+  String get qcConfirmDelete => 'Buni qaytarib bo‘lmaydi.';
+
+  @override
+  String get qcSetMissing => 'Bu test endi mavjud emas.';
+
+  @override
+  String get qcRulesSource =>
+      'Qoidalar: Westgard ko‘p qoidali tartibi (Westgard JO va boshq., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). O‘rganish va tekshirish vositasi — laboratoriyangizning QC tartibini almashtirmaydi.';
 
   @override
   String get preTitle => 'Namuna yo‘li';
@@ -1480,6 +1626,28 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get kindQuestionSet => 'Savollar to‘plami';
+
+  @override
+  String get kindWebsite => 'Veb-resurs';
+
+  @override
+  String libAccessOpen(String licence) {
+    return 'Ochiq litsenziya · $licence';
+  }
+
+  @override
+  String get libAccessFree => 'Bepul o‘qish · faqat havola';
+
+  @override
+  String get libAccessCatalog => 'Faqat katalog yozuvi';
+
+  @override
+  String get libOpenSource => 'Rasmiy sahifani ochish';
+
+  @override
+  String libChecked(String date) {
+    return 'Sahifa va litsenziya tekshirilgan: $date';
+  }
 
   @override
   String libItemPack(String size) {
