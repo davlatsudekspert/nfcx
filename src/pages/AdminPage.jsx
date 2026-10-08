@@ -641,6 +641,50 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
   );
 }
 
+// KALITLAR (feature flags, 2026-10) — Reels/videoni vaqtincha yopish.
+// Server: GET/PUT /api/admin/flags (hosting/api/flags.js). Env orqali
+// qotirilgan kalit (`sources[k] === 'env'`) bu yerdan o'zgarmaydi.
+const FLAG_ITEMS = [
+  ['reelsHidden', 'Reels bo‘limini yashirish', 'Ilovadagi Reels lentasi bo‘sh qaytadi.'],
+  ['videoUploadsBlocked', 'Video yuklashni to‘xtatish', 'Yangi video yuklash va postga video ulash rad etiladi (rasm ishlaydi).'],
+  ['videosHidden', 'Mavjud videolarni yashirish', 'Mavjud videolarni yashirish: video reklama joylari ham yashiriladi.'],
+];
+
+function FlagsSection() {
+  const { t } = useLanguage();
+  const { isManager } = useAdmin();
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState('');
+  const load = () => { setErr(null); adminApi('/flags').then(setD).catch(setErr); };
+  useEffect(() => { load(); }, []);
+  const toggle = async (key, value) => {
+    setBusy(key);
+    try { setD(await adminApi('/flags', { method: 'PUT', body: JSON.stringify({ [key]: value }) })); }
+    catch (e) { setErr(e); } finally { setBusy(''); }
+  };
+  return (
+    <div className="vz-card mb-4 p-4" data-testid="admin-flags">
+      <div className="mb-2 font-display text-base font-semibold">{t('Kalitlar')}</div>
+      {err && <div className="mb-2 text-sm text-error">{t("Kalitlarni yuklab bo'lmadi.")}</div>}
+      {!d && !err && <div className="text-sm opacity-60">{t('Yuklanmoqda…')}</div>}
+      {d && FLAG_ITEMS.map(([key, label, warn]) => {
+        const locked = d.sources?.[key] === 'env';
+        return (
+          <label key={key} className="flex items-start gap-3 py-2">
+            <input type="checkbox" className="toggle toggle-sm mt-0.5" checked={!!d.flags?.[key]}
+              disabled={!isManager || locked || busy === key} onChange={(e) => toggle(key, e.target.checked)} />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{t(label)}</span>
+              <span className="block text-xs opacity-60">{t(warn)}{locked ? ` · ${t('Worker sozlamasida qotirilgan')}` : ''}</span>
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 function ReportsTab() {
   const { t } = useLanguage();
   const { confirm: ask, dialog } = useConfirm();
@@ -749,6 +793,7 @@ function ReportsTab() {
   return (
     <div>
       {dialog}
+      <FlagsSection />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {Object.entries(REPORT_STATUS_LABEL).map(([key, label]) => (
           <button

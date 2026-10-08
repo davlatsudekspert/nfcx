@@ -2,6 +2,18 @@
 // Admin panel (AdminPage / AdminUI / ConfirmDialog) va Yangiliklar sahifasi.
 export const DICT_ADMIN = {
   'Avtomatik tekshirilmagan': { ru: 'Не проверено автоматически', en: 'Not auto-checked' },
+  // ── Kalitlar (feature flags) va moderatsiya (2026-10) ──
+  'Kalitlar': { ru: 'Переключатели', en: 'Switches' },
+  "Kalitlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить переключатели.', en: 'Could not load switches.' },
+  'Reels bo‘limini yashirish': { ru: 'Скрыть раздел Reels', en: 'Hide the Reels section' },
+  'Ilovadagi Reels lentasi bo‘sh qaytadi.': { ru: 'Лента Reels в приложении вернётся пустой.', en: 'The Reels feed in the app returns empty.' },
+  'Video yuklashni to‘xtatish': { ru: 'Остановить загрузку видео', en: 'Stop video uploads' },
+  'Yangi video yuklash va postga video ulash rad etiladi (rasm ishlaydi).': { ru: 'Загрузка новых видео и прикрепление видео к постам отклоняются (фото работают).', en: 'New video uploads and attaching videos to posts are rejected (photos still work).' },
+  'Mavjud videolarni yashirish': { ru: 'Скрыть существующие видео', en: 'Hide existing videos' },
+  'Mavjud videolarni yashirish: video reklama joylari ham yashiriladi.': { ru: 'Скрыть существующие видео: видео-рекламные места тоже скрываются.', en: 'Hide existing videos: video ad placements are hidden too.' },
+  'Worker sozlamasida qotirilgan': { ru: 'Зафиксировано в настройках Worker', en: 'Pinned in Worker settings' },
+  'Matnda so‘kinish (avtomatik)': { ru: 'Брань в тексте (автоматически)', en: 'Profanity in text (automatic)' },
+  'Mahsulot (katalog)': { ru: 'Товар (каталог)', en: 'Product (catalog)' },
   // ── Umumiy holatlar ──
   "Ruxsat yo'q": { ru: 'Нет доступа', en: 'Access denied' },
   "Ma'lumotlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные.', en: 'Could not load data.' },

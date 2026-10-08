@@ -382,6 +382,9 @@ jobs:
       # Filtr ishlamay qolsa: fayl o'tadi, lekin admin navbatiga tushadi.
       - name: Tekshirilmagan yuklash — admin navbati
         run: node scripts/test-unchecked-queue.mjs
+      # Kalitlar (Reels/video): standart o'chiq, env override, admin toggle.
+      - name: Kalitlar (feature flags)
+        run: node scripts/test-flags.mjs
       - name: Ro'yxat — email imlosi, domen va telefon uzunligi
         run: node scripts/test-register-contact-check.mjs
       # App Store: /support, /contact, /terms haqiqiy sahifa (NFC ID emas),
