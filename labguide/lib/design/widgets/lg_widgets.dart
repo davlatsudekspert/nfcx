@@ -804,6 +804,7 @@ class LgMetric extends StatelessWidget {
     final p = LgPalette.of(context);
     final text = Theme.of(context).textTheme;
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         border: Border(

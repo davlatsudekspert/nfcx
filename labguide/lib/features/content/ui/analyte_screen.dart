@@ -123,7 +123,9 @@ class _AnalyteBody {
                 ? Icons.construction_rounded
                 : Icons.menu_book_rounded,
           ),
-          if (group != null) LgTag(group.names.of(lang), tone: LgTone.neutral),
+          // Subtitle allaqachon guruh nomi bo'lsa, takrorlanmaydi.
+          if (group != null && analyte.tagline != null)
+            LgTag(group.names.of(lang), tone: LgTone.neutral),
         ],
       ),
       const SizedBox(height: 12),

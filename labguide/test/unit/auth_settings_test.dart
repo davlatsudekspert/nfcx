@@ -85,15 +85,10 @@ void main() {
   });
 
   group('createOtpAdapter', () {
-    test('debug → demo; release and profile → unconfigured', () {
-      expect(
-        createOtpAdapter(debugBuild: true, releaseBuild: false).isDemo,
-        isTrue,
-      );
-      final release = createOtpAdapter(debugBuild: false, releaseBuild: true);
-      expect(release, isA<UnconfiguredOtpAdapter>());
-      final profile = createOtpAdapter(debugBuild: false, releaseBuild: false);
-      expect(profile, isA<UnconfiguredOtpAdapter>());
+    test('debug build (tests run in debug) → demo adapter', () {
+      expect(createOtpAdapter().isDemo, isTrue);
+      // Release buildda tekshiruv: PROGRESS.md — libapp.so da DemoOtpAdapter
+      // yo'qligi `strings` bilan tasdiqlangan.
     });
 
     test('release adapter never accepts the demo code', () async {

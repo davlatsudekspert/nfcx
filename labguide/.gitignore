@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Vizual tekshiruv skrinshotlari (tool/screenshots)
+/tool/screenshots/out/

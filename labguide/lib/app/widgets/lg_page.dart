@@ -199,9 +199,10 @@ class _LargeTitle extends StatelessWidget {
           ?leadingHero,
           Semantics(
             header: true,
-            child: Text(
+            child: FitLongWordText(
               title,
               textScaler: scaler,
+              minFontSize: 24,
               style: text.displaySmall!.copyWith(fontSize: narrow ? 33 : 39),
             ),
           ),
@@ -534,6 +535,61 @@ class _LanguageButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Katta sarlavha: eng uzun so'z bir qatorga sig'maydigan bo'lsa (masalan,
+/// "Аланинаминотрансфераза"), shrift [minFontSize] gacha kichrayadi — so'z
+/// o'rtasidan bo'linmaydi. Qisqa so'zli matnga ta'sir qilmaydi.
+class FitLongWordText extends StatelessWidget {
+  const FitLongWordText(
+    this.text, {
+    super.key,
+    required this.style,
+    required this.minFontSize,
+    this.textScaler,
+  });
+
+  final String text;
+  final TextStyle style;
+  final double minFontSize;
+  final TextScaler? textScaler;
+
+  @override
+  Widget build(BuildContext context) {
+    final scaler = textScaler ?? MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final base = style.fontSize!;
+        var widest = 0.0;
+        for (final word in text.split(RegExp(r'\s+'))) {
+          if (word.isEmpty) continue;
+          final painter = TextPainter(
+            text: TextSpan(text: word, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          if (painter.width > widest) widest = painter.width;
+          painter.dispose();
+        }
+        var size = base;
+        if (widest > constraints.maxWidth && widest > 0) {
+          size = (base * constraints.maxWidth / widest).floorToDouble();
+          if (size < minFontSize) size = minFontSize;
+        }
+        return Text(
+          text,
+          textScaler: scaler,
+          style: size == base
+              ? style
+              : style.copyWith(
+                  fontSize: size,
+                  letterSpacing: (style.letterSpacing ?? 0) * size / base,
+                ),
+        );
+      },
     );
   }
 }

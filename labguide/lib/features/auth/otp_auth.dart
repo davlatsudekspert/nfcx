@@ -180,14 +180,11 @@ class _DemoChallenge {
   bool consumed = false;
 }
 
-/// Buildga mos adapterni tanlaydi. Release va profile buildlarda demo
-/// adapter hech qachon qaytmaydi — demo kod qabul qilinmaydi.
-OtpAuthAdapter createOtpAdapter({
-  bool debugBuild = kDebugMode,
-  bool releaseBuild = kReleaseMode,
-}) {
-  if (debugBuild && !releaseBuild) {
-    return DemoOtpAdapter(releaseBuild: releaseBuild);
-  }
+/// Buildga mos adapterni tanlaydi. Shart kompilyatsiya vaqtidagi
+/// konstanta (`kDebugMode`) — release va profile buildda demo adapter
+/// kodi tree-shaking bilan binar fayldan butunlay chiqib ketadi, demo kod
+/// qabul qilinishining imkoni qolmaydi.
+OtpAuthAdapter createOtpAdapter() {
+  if (kDebugMode) return DemoOtpAdapter(releaseBuild: kReleaseMode);
   return const UnconfiguredOtpAdapter();
 }
