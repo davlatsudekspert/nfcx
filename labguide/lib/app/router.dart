@@ -146,7 +146,9 @@ GoRouter buildRouter(
                 routes: [
                   GoRoute(
                     path: 'calibration',
-                    builder: (context, state) => const CalibrationScreen(),
+                    builder: (context, state) => CalibrationScreen(
+                      initialManufacturer: state.uri.queryParameters['maker'],
+                    ),
                   ),
                   GoRoute(
                     path: 'qc',

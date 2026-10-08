@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_scope.dart';
+import '../../app/shell.dart';
 import '../../app/widgets/lg_page.dart';
 import '../../design/widgets/lg_widgets.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -9,7 +10,6 @@ import '../auth/ui/role_screen.dart';
 import '../auth/ui/welcome_screen.dart';
 import '../content/ui/content_widgets.dart';
 import '../settings/settings_controller.dart';
-import '../../app/shell.dart';
 
 /// Bosh sahifadagi bitta tezkor amal.
 class HomeAction {

@@ -455,6 +455,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Диагностические пороги — это не лабораторный референсный интервал.';
 
   @override
+  String analyteSiNote(String unit, String mass) {
+    return 'Значения в $unit в источнике не приводятся — они пересчитаны из пороговых значений источника в мг/дл по молярной массе ($mass г/моль) и округлены. Основной порог — значение источника в мг/дл.';
+  }
+
+  @override
+  String analyteSiApprox(String value) {
+    return '$value (расчётно)';
+  }
+
+  @override
   String get analyteNoInterpretation =>
       'LabGuide не интерпретирует отдельные результаты и не предлагает диагнозы или дозы.';
 
@@ -1408,6 +1418,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Книги добавляются только при подтверждённом праве распространения. PDF, добавленный вами, остаётся для личного изучения и не распространяется.';
 
   @override
+  String get booksCatalogNote =>
+      'Материалы каталога даны ссылками на официальные страницы. Полный текст добавляется в приложение только при открытой лицензии или подтверждённом праве на распространение.';
+
+  @override
+  String get booksResetFilters => 'Сбросить фильтры';
+
+  @override
   String get packsInstalled => 'Установлено';
 
   @override
@@ -1597,6 +1614,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String quizBasis(String basis) {
     return 'Основание: $basis';
   }
+
+  @override
+  String get quizSources => 'Источник';
 
   @override
   String get quizReviewNote => 'Учебные вопросы ожидают экспертной проверки.';
@@ -1843,7 +1863,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get catMethods => 'Методики';
 
   @override
-  String get catTests => 'Тестовые вопросы';
+  String get catTests => 'Лабораторные анализы';
 
   @override
   String get kindBook => 'Книга';

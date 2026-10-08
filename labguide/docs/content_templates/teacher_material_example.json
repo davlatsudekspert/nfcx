@@ -82,7 +82,7 @@
     {
       "id": "example-question-1",
       "review_state": "pending",
-      "topic_ids": ["example-lesson-carbs", "glucose-plasma-fasting"],
+      "topic_ids": ["carbohydrate", "glucose-plasma-fasting"],
       "refs": [{"source_id": "src-example-book-new", "pages": "115"}],
       "prompt": {"uz": "NAMUNA: <savol>", "ru": "ОБРАЗЕЦ: <вопрос>", "en": "EXAMPLE: <question>"},
       "basis": {"uz": "<manbadagi asos>", "ru": "<обоснование из источника>", "en": "<basis in the source>"},

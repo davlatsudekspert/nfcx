@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_scope.dart';
+import '../../app/shell.dart';
 import '../../app/widgets/lg_page.dart';
 import '../../app/widgets/links.dart';
 import '../../core/storage/kv_store.dart';
@@ -15,7 +16,6 @@ import '../content/ui/analyte_screen.dart' show SourceTile, rightsLabel;
 import '../content/ui/content_widgets.dart';
 import '../tools/calc_info.dart';
 import '../tools/clinical_calc_screens.dart';
-import '../../app/shell.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -332,10 +332,18 @@ class _BooksScreenState extends State<BooksScreen> {
                 ],
                 const SizedBox(height: 8),
                 if (items.isEmpty)
-                  LgStateView(kind: StateKind.empty, title: l.testsEmptyTitle)
+                  LgStateView(
+                    kind: StateKind.empty,
+                    title: l.testsEmptyTitle,
+                    actionLabel: l.booksResetFilters,
+                    onAction: () => setState(() {
+                      _category = null;
+                      _language = null;
+                    }),
+                  )
                 else
                   for (final item in ordered) LibraryItemCard(item: item),
-                LgNotice(l.booksEmptyBody, kind: NoticeKind.info),
+                LgNotice(l.booksCatalogNote, kind: NoticeKind.info),
               ],
             );
           },

@@ -22,7 +22,7 @@ keltirish mumkin — validator boshqasini rad etadi.
 ## 2. Saralash (kategoriyalar)
 
 `biochemistry` (biokimyo) · `clinical_lab` (klinik laboratoriya) · `instruments` (apparatlar) ·
-`methods` (metodikalar) · `tests` (test savollari). Bitta material bir nechta kategoriyada
+`methods` (metodikalar) · `tests` (laboratoriya tahlillari — test savollari emas; savollar `quiz` da). Bitta material bir nechta kategoriyada
 bo‘lishi mumkin. Turi (`kind`): `book`, `manual`, `method`, `ifu`, `article`, `question_set`.
 
 ## 3. Kartalar va darslarga bog‘lash (manba + sahifa)
@@ -62,7 +62,7 @@ Yangi nashr eskisini almashtirsa, `library[]` da `"supersedes": "<eski-id>"`.
 ## 5. Test savollari
 
 Har savol: `prompt`, `options[]` (har variantda `explanation` — nega to‘g‘ri/noto‘g‘ri),
-`correct_index`, `basis`, `refs` (manba + sahifa), `topic_ids`, `review_state`.
+`correct_index`, `basis`, `refs` (manba + sahifa), `topic_ids` (faqat analit yoki guruh id — mashq shular bo‘yicha tanlaydi), `review_state`. Kamida 2 ta variant; har bir matn uz, ru va en da bo‘sh bo‘lmasligi shart.
 Domla tasdiqlamagan savol `review_state: pending` — ilovada “Qoralama · tekshirilmagan”.
 `approved` savol manbasiz bo‘lsa paket rad etiladi. Savol matnini o‘zgartirmasdan kiritish;
 izohlarni domla bilan kelishish.

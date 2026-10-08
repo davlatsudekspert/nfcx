@@ -1,6 +1,6 @@
 {
   "pack_id": "core",
-  "version": "2026.10.08-dev.4",
+  "version": "2026.10.08-dev.5",
   "min_schema": 1,
   "languages": [
     "uz",
@@ -11,8 +11,8 @@
   "files": [
     {
       "path": "pack.json",
-      "size": 734700,
-      "sha256": "828333c972f313da8bcaa6a85f65a42cd46288ceae3399b251e1f9843cfdf6f4"
+      "size": 734808,
+      "sha256": "cbb9e869d32ab0a726b25aab32324647df57cda7040d8132b8af9ca24dec7ffa"
     }
   ]
 }

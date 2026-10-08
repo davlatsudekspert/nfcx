@@ -12,6 +12,67 @@ String normalizeForSearch(String input) {
   return s;
 }
 
+/// O'zbek kirill yozuvidagi so'rovni lotinga o'giradi (kartalar o'zbekcha
+/// lotin yozuvida): “сийдик” → “siydik”. Apostroflar [normalizeForSearch]
+/// da baribir olib tashlanadi (ғ → g, ў → o).
+String uzCyrillicToLatin(String input) {
+  const map = {
+    'а': 'a',
+    'б': 'b',
+    'в': 'v',
+    'г': 'g',
+    'ғ': 'g',
+    'д': 'd',
+    'е': 'e',
+    'ё': 'yo',
+    'ж': 'j',
+    'з': 'z',
+    'и': 'i',
+    'й': 'y',
+    'к': 'k',
+    'қ': 'q',
+    'л': 'l',
+    'м': 'm',
+    'н': 'n',
+    'о': 'o',
+    'ў': 'o',
+    'п': 'p',
+    'р': 'r',
+    'с': 's',
+    'т': 't',
+    'у': 'u',
+    'ф': 'f',
+    'х': 'x',
+    'ҳ': 'h',
+    'ц': 's',
+    'ч': 'ch',
+    'ш': 'sh',
+    'щ': 'sh',
+    'ъ': '',
+    'ы': 'i',
+    'ь': '',
+    'э': 'e',
+    'ю': 'yu',
+    'я': 'ya',
+  };
+  final out = StringBuffer();
+  final lower = input.toLowerCase();
+  for (var i = 0; i < lower.length; i++) {
+    final ch = lower[i];
+    final wordStart =
+        i == 0 || !RegExp(r'[\p{L}]', unicode: true).hasMatch(lower[i - 1]);
+    // So'z boshidagi “е” — “ye” (ер → yer).
+    if (ch == 'е' && wordStart) {
+      out.write('ye');
+    } else {
+      out.write(map[ch] ?? ch);
+    }
+  }
+  return out.toString();
+}
+
+final _cyrillic = RegExp('[а-яёўқғҳ]');
+
 class AnalyteSearch {
   AnalyteSearch(this.pack)
     : _index = {for (final a in pack.analytes) a.id: _Entry.of(a)};
@@ -29,12 +90,25 @@ class AnalyteSearch {
     );
     if (q.isEmpty) return candidates.toList();
 
-    final tokens = q.split(' ');
-    final compactQuery = q.replaceAll(' ', '');
+    // Kirillcha so'rov: ruscha nomlar bilan o'zicha, o'zbekcha (lotin)
+    // nomlar bilan esa lotinga o'girilgan holda solishtiriladi.
+    final queries = {
+      q,
+      if (_cyrillic.hasMatch(q)) normalizeForSearch(uzCyrillicToLatin(q)),
+    };
     final scored = <(Analyte, int)>[];
     for (final a in candidates) {
       final e = _index[a.id]!;
-      final score = e.score(q, compactQuery, tokens, lang);
+      var score = 0;
+      for (final query in queries) {
+        final s = e.score(
+          query,
+          query.replaceAll(' ', ''),
+          query.split(' '),
+          lang,
+        );
+        if (s > score) score = s;
+      }
       if (score > 0) scored.add((a, score));
     }
     scored.sort((x, y) {

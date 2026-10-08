@@ -183,6 +183,25 @@
   "analyteRefIntervalNone": "No reference interval is given here. Use the interval on your laboratory's report: it depends on the method, specimen and population.",
   "analyteDecisionLimits": "Diagnostic thresholds",
   "analyteDecisionNotRef": "Diagnostic thresholds are not laboratory reference intervals.",
+  "analyteSiNote": "{unit} values are not given by the source — they are converted from the source’s mg/dL thresholds using the molar mass ({mass} g/mol) and rounded. The source’s mg/dL value is the threshold.",
+  "@analyteSiNote": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      },
+      "mass": {
+        "type": "String"
+      }
+    }
+  },
+  "analyteSiApprox": "{value} (converted)",
+  "@analyteSiApprox": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "analyteNoInterpretation": "LabGuide doesn't interpret individual results or suggest diagnoses or doses.",
   "analyteSources": "Sources",
   "analyteSourceAccessed": "Accessed {date}",
@@ -723,6 +742,8 @@
   "libSourcesSub": "Review and reuse conditions",
   "booksEmptyTitle": "No books yet",
   "booksEmptyBody": "Books are added only with confirmed distribution rights. A PDF you add yourself stays for personal study and isn't shared.",
+  "booksCatalogNote": "Catalog items link to their official pages. Full text is added to the app only under an open licence or with confirmed distribution rights.",
+  "booksResetFilters": "Clear filters",
   "packsInstalled": "Installed",
   "packsCoreTitle": "Core content",
   "packsVersion": "Version {version}",
@@ -839,6 +860,7 @@
       }
     }
   },
+  "quizSources": "Source",
   "quizReviewNote": "Practice questions are pending expert review.",
   "quizMistakes": "Review your mistakes",
   "quizNoMistakes": "No mistakes — well done.",
@@ -946,7 +968,7 @@
   "catClinicalLab": "Clinical laboratory",
   "catInstruments": "Instruments",
   "catMethods": "Methods",
-  "catTests": "Test questions",
+  "catTests": "Laboratory tests",
   "kindBook": "Book",
   "kindManual": "Manual",
   "kindMethod": "Method",

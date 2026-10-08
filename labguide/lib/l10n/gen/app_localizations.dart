@@ -904,6 +904,18 @@ abstract class AppLocalizations {
   /// **'Diagnostic thresholds are not laboratory reference intervals.'**
   String get analyteDecisionNotRef;
 
+  /// No description provided for @analyteSiNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} values are not given by the source — they are converted from the source’s mg/dL thresholds using the molar mass ({mass} g/mol) and rounded. The source’s mg/dL value is the threshold.'**
+  String analyteSiNote(String unit, String mass);
+
+  /// No description provided for @analyteSiApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} (converted)'**
+  String analyteSiApprox(String value);
+
   /// No description provided for @analyteNoInterpretation.
   ///
   /// In en, this message translates to:
@@ -2572,6 +2584,18 @@ abstract class AppLocalizations {
   /// **'Books are added only with confirmed distribution rights. A PDF you add yourself stays for personal study and isn\'t shared.'**
   String get booksEmptyBody;
 
+  /// No description provided for @booksCatalogNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog items link to their official pages. Full text is added to the app only under an open licence or with confirmed distribution rights.'**
+  String get booksCatalogNote;
+
+  /// No description provided for @booksResetFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get booksResetFilters;
+
   /// No description provided for @packsInstalled.
   ///
   /// In en, this message translates to:
@@ -2895,6 +2919,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Basis: {basis}'**
   String quizBasis(String basis);
+
+  /// No description provided for @quizSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get quizSources;
 
   /// No description provided for @quizReviewNote.
   ///
@@ -3313,7 +3343,7 @@ abstract class AppLocalizations {
   /// No description provided for @catTests.
   ///
   /// In en, this message translates to:
-  /// **'Test questions'**
+  /// **'Laboratory tests'**
   String get catTests;
 
   /// No description provided for @kindBook.

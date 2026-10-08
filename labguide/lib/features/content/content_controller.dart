@@ -43,11 +43,9 @@ class ContentController extends ChangeNotifier {
       final files = <String, Uint8List>{
         for (final f in manifest.files) f.path: await _load('$base/${f.path}'),
       };
-      _verified = verifyPack(
-        manifestBytes: manifestBytes,
-        files: files,
-        expectedPackId: packId,
-      );
+      // ~0.7 MB JSON: hash, decode va tekshiruv fon isolate'da — ishga
+      // tushishda UI kadrlar tashlab yubormaydi.
+      _verified = await compute(_verifyBundled, (manifestBytes, files, packId));
       _state = ContentLoadState.ready;
     } on Object catch (e) {
       _verified = null;
@@ -66,6 +64,11 @@ class ContentController extends ChangeNotifier {
   static Map<String, Object?> _decodeMap(Uint8List bytes) =>
       (jsonDecode(utf8.decode(bytes)) as Map).cast<String, Object?>();
 }
+
+VerifiedPack _verifyBundled(
+  (Uint8List manifest, Map<String, Uint8List> files, String packId) args,
+) =>
+    verifyPack(manifestBytes: args.$1, files: args.$2, expectedPackId: args.$3);
 
 /// Saqlangan (xatcho'p) analitlar — qurilmada saqlanadi, qayta ochilganda
 /// tiklanadi.

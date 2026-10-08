@@ -448,6 +448,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Diagnostic thresholds are not laboratory reference intervals.';
 
   @override
+  String analyteSiNote(String unit, String mass) {
+    return '$unit values are not given by the source — they are converted from the source’s mg/dL thresholds using the molar mass ($mass g/mol) and rounded. The source’s mg/dL value is the threshold.';
+  }
+
+  @override
+  String analyteSiApprox(String value) {
+    return '$value (converted)';
+  }
+
+  @override
   String get analyteNoInterpretation =>
       'LabGuide doesn\'t interpret individual results or suggest diagnoses or doses.';
 
@@ -1397,6 +1407,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Books are added only with confirmed distribution rights. A PDF you add yourself stays for personal study and isn\'t shared.';
 
   @override
+  String get booksCatalogNote =>
+      'Catalog items link to their official pages. Full text is added to the app only under an open licence or with confirmed distribution rights.';
+
+  @override
+  String get booksResetFilters => 'Clear filters';
+
+  @override
   String get packsInstalled => 'Installed';
 
   @override
@@ -1583,6 +1600,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String quizBasis(String basis) {
     return 'Basis: $basis';
   }
+
+  @override
+  String get quizSources => 'Source';
 
   @override
   String get quizReviewNote => 'Practice questions are pending expert review.';
@@ -1824,7 +1844,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catMethods => 'Methods';
 
   @override
-  String get catTests => 'Test questions';
+  String get catTests => 'Laboratory tests';
 
   @override
   String get kindBook => 'Book';

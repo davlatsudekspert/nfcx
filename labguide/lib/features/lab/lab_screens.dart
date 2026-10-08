@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/shell.dart';
 import '../../app/widgets/lg_page.dart';
 import '../../design/tokens.dart';
 import '../../design/widgets/lg_widgets.dart';
@@ -11,7 +12,6 @@ import '../tools/calc_info.dart';
 import '../tools/clinical_calc_screens.dart';
 import 'ifu_matching.dart';
 import 'preanalytics_info.dart';
-import '../../app/shell.dart';
 
 class LabScreen extends StatelessWidget {
   const LabScreen({super.key});
@@ -72,16 +72,24 @@ class LabScreen extends StatelessWidget {
 class CalibrationScreen extends StatefulWidget {
   const CalibrationScreen({super.key, this.initialManufacturer});
 
+  /// `?maker=` qiymati: “Mindray”, “HUMAN” yoki “other” (boshqa ishlab
+  /// chiqaruvchi). Asboblar ro'yxatidan kelganda tanlov saqlanadi.
   final String? initialManufacturer;
+
+  static const makers = ['Mindray', 'HUMAN'];
 
   @override
   State<CalibrationScreen> createState() => _CalibrationScreenState();
 }
 
 class _CalibrationScreenState extends State<CalibrationScreen> {
-  static const _makers = ['Mindray', 'HUMAN'];
+  static const _makers = CalibrationScreen.makers;
 
-  late String? _maker = widget.initialManufacturer ?? _makers.first;
+  late String? _maker = switch (widget.initialManufacturer) {
+    'other' => null,
+    final m? when _makers.contains(m) => m,
+    _ => _makers.first,
+  };
   final _model = TextEditingController();
   final _ref = TextEditingController();
   final _ifu = TextEditingController();
@@ -95,6 +103,16 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// Maydon o'zgarsa eski moslik natijasi ko'rinib qolmasin.
+  void _invalidate(String _) {
+    if (_result != null || _error != null) {
+      setState(() {
+        _result = null;
+        _error = null;
+      });
+    }
   }
 
   void _check(ContentPack pack) {
@@ -152,24 +170,28 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
           controller: _model,
           hint: l.calModelHint,
           textInputAction: TextInputAction.next,
+          onChanged: _invalidate,
         ),
         LgField(
           label: l.calReagentRef,
           controller: _ref,
           hint: 'REF',
           textInputAction: TextInputAction.next,
+          onChanged: _invalidate,
         ),
         LgField(
           label: l.calIfuRevision,
           controller: _ifu,
           hint: 'IFU rev.',
           textInputAction: TextInputAction.next,
+          onChanged: _invalidate,
         ),
         LgField(
           label: l.calCalibratorLot,
           controller: _lot,
           hint: 'LOT',
           textInputAction: TextInputAction.done,
+          onChanged: _invalidate,
         ),
         if (_error != null) LgNotice(_error!, kind: NoticeKind.error),
         const SizedBox(height: 14),
@@ -346,19 +368,19 @@ class InstrumentsScreen extends StatelessWidget {
           title: 'Mindray',
           subtitle: l.insMindraySub,
           icon: Icons.precision_manufacturing_outlined,
-          onTap: () => context.push('/lab/calibration'),
+          onTap: () => context.push('/lab/calibration?maker=Mindray'),
         ),
         LgRow(
           title: 'HUMAN',
           subtitle: l.insHumanSub,
           icon: Icons.precision_manufacturing_outlined,
-          onTap: () => context.push('/lab/calibration'),
+          onTap: () => context.push('/lab/calibration?maker=HUMAN'),
         ),
         LgRow(
           title: l.insOther,
           subtitle: l.insOtherSub,
           icon: Icons.add_circle_outline_rounded,
-          onTap: () => context.push('/lab/calibration'),
+          onTap: () => context.push('/lab/calibration?maker=other'),
           divider: false,
         ),
         LgNotice(l.calBrandWarning, kind: NoticeKind.info),

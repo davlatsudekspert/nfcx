@@ -58,8 +58,9 @@ DESIGN_REQUIREMENTS 200 ms o‘tishni so‘raydi; iOS’da esa chetdan surib qay
 muhimroq, shuning uchun iOS’da `CupertinoPageTransitionsBuilder` qoldirildi.
 
 ## D-10. Kontent: tekshiriladigan JSON paket (hozircha), lokal DB keyinroq
-START_HERE “core matnlar lokal DB” deydi. Hozirgi hajm (35 karta tuzilmasi, 1 manbali karta,
-3 savol) uchun xotirada yuklanadigan, sha256 bilan tekshiriladigan paket yetarli va ishonchli.
+START_HERE “core matnlar lokal DB” deydi. Hozirgi hajm (35 ta manbali karta, 52 manba,
+71 savol, 25 kutubxona yozuvi; ~0,7 MB) uchun xotirada yuklanadigan, sha256 bilan
+tekshiriladigan paket yetarli va ishonchli; tekshiruv fon isolate’da (`compute`) bajariladi.
 Sxema DB jadvallariga to‘g‘ridan-to‘g‘ri mos (analytes/claims/sources/library/lessons/…).
 **Qayta ko‘rish:** yuzlab karta yoki to‘liq matnli qidiruv kerak bo‘lganda drift/SQLite + FTS.
 Atomar o‘rnatish (`PackInstaller`) va manifest formati yuklanadigan paketlar uchun tayyor.
@@ -68,13 +69,16 @@ Atomar o‘rnatish (`PackInstaller`) va manifest formati yuklanadigan paketlar u
 - Har da’vo manbaga (`refs`, sahifa bilan) bog‘langan; manbasiz da’vo, review’siz
   `published`/`reviewed`, struktura-kartada da’vo — paket rad etiladi.
 - Referens interval va diagnostik chegara alohida; glyukozada referens interval berilmagan
-  (laboratoriya blankidan), NIDDK chegaralari faqat mg/dL da, manbadagidek.
+  (laboratoriya blankidan), NIDDK chegaralari mg/dL da, manbadagidek. Molyar massasi bor
+  analitda mmol/L ekvivalenti ham ko‘rsatiladi, lekin “hisoblangan” deb belgilanadi va izohda
+  manbada yo‘qligi aytiladi (D-29).
 - Glyukoza matni 2026-10-08 da MedlinePlus va NIDDK sahifalari bilan qayta solishtirildi;
   MedlinePlus’dagi sabablar ro‘yxati to‘liqroq bo‘lgani uchun matn kengaytirildi.
   Mustaqil mutaxassis review’i **yo‘q** — karta “manbali o‘quv namuna, review kutilmoqda”.
-- Boshqa 34 analit “faqat tuzilma”: umumiy matn tayyor deb ko‘rsatilmaydi.
+- Boshqa 34 analit ham keyinchalik manbali o‘quv namunasiga aylantirildi (D-19); hech biri
+  mustaqil review’dan o‘tmagan. “Faqat tuzilma” holati yangi analit uchun saqlanadi.
 - Birlik konvertori faqat tasdiqlangan molyar massasi bor analit uchun (glyukoza 180,156
-  g/mol, IUPAC atom massalaridan); umumiy koeffitsiyent yo‘q.
+  g/mol, IUPAC atom massalaridan; hozir 13 analit — D-22); umumiy koeffitsiyent yo‘q.
 - Natijani avtomatik talqin qilish, tashxis yoki doza chiqarish yo‘q.
 
 ## D-12. Domla materiallari uchun kengaytiriladigan sxema (2026-10-08)
@@ -276,33 +280,55 @@ Mustaqil sharh (review A) topgan xatolar asosida:
 
 ## D-28. Qobiq, accessibility va platforma (2026-10-08)
 Mustaqil sharh (review D) natijasida:
-- **TalkBack:** tablar, “Orqaga” va profil tugmasida `excludeSemantics` ichki InkWell'ning tap
-  amalini ham olib tashlagan edi — Android'da ikki marta bosish hech narsa qilmasdi. `onTap`
-  Semantics'ga qaytarildi; test tuzatishsiz yiqiladi.
+- **TalkBack:** tablar, “Orqaga” va profil tugmasida `excludeSemantics` ichki InkWell’ning tap
+  amalini ham olib tashlagan edi — Android’da ikki marta bosish hech narsa qilmasdi. `onTap`
+  Semantics’ga qaytarildi; test tuzatishsiz yiqiladi.
 - **Profildan kirish:** OTP `context.go('/profile')` tablar va ularning steklarini tashlab
-  yuborardi (orqaga tugmasi yo'q, Android back ilovadan chiqardi). Endi OTP natija bilan
-  yopiladi, email ekrani profilga qaytaradi. Muvaffaqiyatdan keyin “faol kod yo'q” chaqnamaydi;
-  6 raqamda avtomatik tekshiradi (iOS raqam klaviaturasida Done yo'q); qayta yuborish taymeri
+  yuborardi (orqaga tugmasi yo‘q, Android back ilovadan chiqardi). Endi OTP natija bilan
+  yopiladi, email ekrani profilga qaytaradi. Muvaffaqiyatdan keyin “faol kod yo‘q” chaqnamaydi;
+  6 raqamda avtomatik tekshiradi (iOS raqam klaviaturasida Done yo‘q); qayta yuborish taymeri
   kod yuborilgan vaqtdan; xato matnlari til almashganda yangilanadi.
-- **Past ekran:** landshaft telefon yoki kichik telefon + katta shriftda katta sarlavha ro'yxatni
+- **Past ekran:** landshaft telefon yoki kichik telefon + katta shriftda katta sarlavha ro‘yxatni
   0 px gacha siqardi. Endi sarlavha ekran balandligining 40 % dan oshsa yoki joy 420 px dan kam
-  bo'lsa, ro'yxat ichiga o'tadi. Telefon portretga **qulflanmadi** (WCAG 1.3.4 — yo'nalishni
+  bo‘lsa, ro‘yxat ichiga o‘tadi. Telefon portretga **qulflanmadi** (WCAG 1.3.4 — yo‘nalishni
   cheklamaslik). Ixcham sarlavha kontent qisqarganda (natijasiz qidiruv) kengayadi.
-- **Tab xotirasi:** boshqa tabdagi bo'limga havola o'sha tab allaqachon shu bo'lim ichida bo'lsa
-  (ochiq QC to'plami, imtihon) stekni tashlab yubormaydi. Faol tab ildizida qayta bosilsa,
-  ro'yxat tepaga suriladi.
-- **Kontrast:** boshqaruv chegaralari uchun `outline` tokeni (yorug' 3.2:1, qorong'i 4.5:1;
+- **Tab xotirasi:** boshqa tabdagi bo‘limga havola o‘sha tab allaqachon shu bo‘lim ichida bo‘lsa
+  (ochiq QC to‘plami, imtihon) stekni tashlab yubormaydi. Faol tab ildizida qayta bosilsa,
+  ro‘yxat tepaga suriladi.
+- **Kontrast:** boshqaruv chegaralari uchun `outline` tokeni (yorug' 3.2:1, qorong‘i 4.5:1;
   WCAG 1.4.11 ≥ 3:1) — maydon, ikkinchi darajali tugma, tanlanmagan chip, rol radiosi.
-- **Brend:** “LabGuide” 200 % shriftda kesilmaydi (1.3 gacha, sig'masa kichrayadi) va sarlavha
+- **Brend:** “LabGuide” 200 % shriftda kesilmaydi (1.3 gacha, sig‘masa kichrayadi) va sarlavha
   emas — sahifada bitta sarlavha.
-- **Ma'lumotlar:** “Lokal ma'lumotlarni o'chirish” matni QC qaydlari va mashq natijalarini ham
-  aytadi, avval QC zaxirasini olishni eslatadi. “Faqat shu qurilmada” o'rniga: qurilmaning o'z
-  zaxira nusxasiga (iCloud/Google) kirishi mumkin — zaxira o'chirilmadi, chunki QC tarixi
-  telefon almashganda yo'qolmasligi muhimroq. Mehmon uchun “Chiqish” → “Sozlashni boshidan
-  boshlash”; hisobli foydalanuvchi chiqishda qurilmadagi ma'lumotni ham o'chirishni tanlaydi.
+- **Ma’lumotlar:** “Lokal ma’lumotlarni o‘chirish” matni QC qaydlari va mashq natijalarini ham
+  aytadi, avval QC zaxirasini olishni eslatadi. “Faqat shu qurilmada” o‘rniga: qurilmaning o‘z
+  zaxira nusxasiga (iCloud/Google) kirishi mumkin — zaxira o‘chirilmadi, chunki QC tarixi
+  telefon almashganda yo‘qolmasligi muhimroq. Mehmon uchun “Chiqish” → “Sozlashni boshidan
+  boshlash”; hisobli foydalanuvchi chiqishda qurilmadagi ma’lumotni ham o‘chirishni tanlaydi.
 - **Qoralamalar:** tadqiqot va dars eslatmalari yozish davomida (600 ms) va sahifadan chiqishda
   avtomatik saqlanadi.
 - **Android:** ishga tushgandan keyingi oyna foni ilova foniga mos; release imzo
-  `android/key.properties` orqali (bo'lmasa — debug kalit, faqat sinov APK); CI'da ixtiyoriy
+  `android/key.properties` orqali (bo‘lmasa — debug kalit, faqat sinov APK); CI’da ixtiyoriy
   `LABGUIDE_ANDROID_KEYSTORE_*` secretlari bilan release APK + AAB.
-- **Ruscha ko'plik:** `quizTopicMixed` ICU plural.
+- **Ruscha ko‘plik:** `quizTopicMixed` ICU plural.
+
+## D-29. Kontent yaxlitligi, qidiruv va mashq (2026-10-08)
+Mustaqil sharh (review B) asosida:
+- **Validator** endi rad etadi: kartadagi iqtibos `source_ids` da yo‘q bo‘lsa (avval “[0]”
+  chiqardi); `source_ids` dagi manba hech qayerda keltirilmasa (fruktozamin/ALT dagi ortiqcha
+  manbalar olib tashlandi); chegarasiz yoki low > high chegara/interval; mavjud bo‘lmagan
+  bo‘limdagi da’vo; o‘ziga yoki takroriy `related`; manfiy molyar massa; `reviewed_at` siz
+  tasdiqlangan review; 2 tadan kam variantli savol; analit/guruh bo‘lmagan `topic_ids`;
+  takroriy savol/manba/guruh/dars id; uz, ru yoki en bo‘sh yoki yo‘q matn (paketdagi 1084 ta
+  matn tekshirildi — hammasi to‘liq).
+- **Qaror chegaralari** har biri alohida blokda — o‘z aholisi, izohi va manbasi bilan (avval
+  aholilar umumiy ro‘yxatda edi). mg/dL chegaraning mmol/L ekvivalenti molyar massadan
+  hisoblanadi va “hisoblangan” deb belgilanadi; OGTT ga glyukoza molyar massasi qo‘shildi.
+  Bir chegarali referens interval “≥ a” / “≤ b” (avval “–5”).
+- **Qidiruv:** o‘zbek kirill yozuvidagi so‘rov lotinga o‘giriladi (“сийдик кислотаси”).
+- **Mashq:** sarlavha til almashganda yangilanadi; ikki marta bosish natijani bir marta yozadi;
+  Learn ekranidagi savollar soni paket yuklangach yangilanadi; javobdan keyin savol manbasi
+  (havola bilan) ko‘rsatiladi.
+- **Kutubxona:** `tests` turkumi “Laboratoriya tahlillari” (test savollari emas); kitoblar
+  ro‘yxati ostida katalog izohi, bo‘sh filtr natijasida “Filtrlarni tozalash”.
+- **Kalibrovka:** Asboblar ro‘yxatidan ishlab chiqaruvchi uzatiladi; maydon o‘zgarsa eski IFU
+  natijasi o‘chadi.

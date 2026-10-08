@@ -356,8 +356,8 @@ void main() {
       final s = QuizSession([q('1', 0), q('2', 1), q('3', 0)]);
       s.next(); // javobsiz o'tib bo'lmaydi
       expect(s.index, 0);
-      s.answer(0);
-      s.answer(1); // qayta javob e'tiborsiz
+      expect(s.answer(0), isTrue);
+      expect(s.answer(1), isFalse); // qayta javob e'tiborsiz
       s.next();
       s.answer(0); // noto'g'ri
       s.next();

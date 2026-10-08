@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/shell.dart';
 import '../../../app/widgets/lg_page.dart';
 import '../../../app/widgets/links.dart';
 import '../../../design/tokens.dart';
@@ -9,6 +11,8 @@ import '../../../design/widgets/lg_widgets.dart';
 import '../../../l10n/gen/app_localizations.dart';
 import '../../tools/calc_info.dart';
 import '../../tools/clinical_calc_screens.dart';
+import '../../tools/clinical_calculators.dart';
+import '../../tools/tool_screens.dart';
 import '../content_model.dart';
 import 'content_widgets.dart';
 
@@ -28,19 +32,36 @@ String sectionTitle(String id, AppLocalizations l) => switch (id) {
 String formatNumber(double v) =>
     v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
-String formatLimit(DecisionLimit d) {
-  final unit = d.unit;
+String formatLimit(DecisionLimit d) => formatLimitWith(d, formatNumber, d.unit);
+
+/// Chegarani [number] formatlovchi va [unit] bilan yozish (SI ekvivalenti
+/// uchun ham — belgilar va qamrov bir xil).
+String formatLimitWith(
+  DecisionLimit d,
+  String Function(double) number,
+  String unit,
+) {
   final lowSign = d.lowExclusive ? '>' : '≥';
   final highSign = d.highExclusive ? '<' : '≤';
   if (d.low != null && d.high != null) {
     if (!d.lowExclusive && !d.highExclusive) {
-      return '${formatNumber(d.low!)}–${formatNumber(d.high!)} $unit';
+      return '${number(d.low!)}–${number(d.high!)} $unit';
     }
-    return '$lowSign ${formatNumber(d.low!)}, $highSign '
-        '${formatNumber(d.high!)} $unit';
+    return '$lowSign ${number(d.low!)}, $highSign ${number(d.high!)} $unit';
   }
-  if (d.low != null) return '$lowSign ${formatNumber(d.low!)} $unit';
-  if (d.high != null) return '$highSign ${formatNumber(d.high!)} $unit';
+  if (d.low != null) return '$lowSign ${number(d.low!)} $unit';
+  if (d.high != null) return '$highSign ${number(d.high!)} $unit';
+  return unit;
+}
+
+/// Oraliq: ikkala chegara — “a–b”, bittasi — “≥ a” yoki “≤ b”
+/// (avval bir chegarali oraliq “–5” ko'rinishida chiqardi).
+String formatRange(double? low, double? high, String unit) {
+  if (low != null && high != null) {
+    return '${formatNumber(low)}–${formatNumber(high)} $unit';
+  }
+  if (low != null) return '≥ ${formatNumber(low)} $unit';
+  if (high != null) return '≤ ${formatNumber(high)} $unit';
   return unit;
 }
 
@@ -181,13 +202,13 @@ class _AnalyteBody {
           title: calcTitle(c, l),
           subtitle: l.analyteCalculatorSub,
           icon: calcIcon(c),
-          onTap: () => context.go('/lab/calculators/${calcRoute(c)}'),
+          onTap: () => openInTab(context, '/lab/calculators/${calcRoute(c)}'),
         ),
       LgRow(
         title: l.analyteMethodCalibration,
         subtitle: l.analyteMethodCalibrationSub,
         icon: Icons.tune_rounded,
-        onTap: () => context.go('/lab/calibration'),
+        onTap: () => openInTab(context, '/lab/calibration'),
       ),
       // Shu analit bo'yicha savollar bo'lsa — o'sha joyning o'zida (tab
       // stacki saqlanadi); bo'lmasa — umumiy mashq bo'limi.
@@ -205,7 +226,7 @@ class _AnalyteBody {
           title: l.analytePractice,
           subtitle: l.analytePracticeSub,
           icon: Icons.quiz_outlined,
-          onTap: () => context.go('/learn/quiz'),
+          onTap: () => openInTab(context, '/learn/quiz'),
           divider: false,
         ),
       if (analyte.sourceIds.isNotEmpty) _sources(context, l),
@@ -320,53 +341,103 @@ class _AnalyteBody {
               LgMetric(
                 label: '${r.population.of(lang)} · ${r.method}',
                 value:
-                    '${r.low == null ? '' : formatNumber(r.low!)}–'
-                    '${r.high == null ? '' : formatNumber(r.high!)} ${r.unit} '
-                    '${cite(r.refs, l)}',
+                    '${formatRange(r.low, r.high, r.unit)} ${cite(r.refs, l)}',
               ),
         ],
       ),
     );
   }
 
+  /// Har bir chegara alohida blokda: qiymat, nomi, qaysi aholiga tegishli,
+  /// izoh va o'z manbasi. (Avval aholi va izohlar umumiy ro'yxatda edi —
+  /// qaysi chegara qaysi aholiga tegishli ekani adashtirardi.)
   Widget _decisionLimits(BuildContext context, AppLocalizations l) {
     final text = Theme.of(context).textTheme;
-    final allRefs = {
-      for (final d in analyte.decisionLimits)
-        for (final r in d.refs) r.sourceId: r,
-    }.values.toList();
-    final populations = {
-      for (final d in analyte.decisionLimits) d.population.of(lang),
-    };
+    final p = LgPalette.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final limits = analyte.decisionLimits;
+    final conversion = analyte.conversion;
+    // mg/dL chegarasining SI ekvivalenti (O'zbekiston laboratoriyalari
+    // asosan mmol/L beradi). Manbada yo'q — hisoblangan, belgilanadi.
+    String? si(DecisionLimit d) {
+      if (conversion == null || d.unit != 'mg/dL') return null;
+      final micro = conversion.siUnit == 'µmol/L';
+      final factor = (micro ? 10000 : 10) / conversion.molarMass;
+      final digits = micro ? 0 : 1;
+      final f = NumberFormat.decimalPatternDigits(
+        locale: locale,
+        decimalDigits: digits,
+      );
+      String n(double v) => f.format(roundHalfUp(v * factor, digits));
+      return l.analyteSiApprox(formatLimitWith(d, n, conversion.siUnit));
+    }
+
+    final anySi = limits.any((d) => si(d) != null);
     return LgPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           LgTag(analyte.names.of(lang)),
           const SizedBox(height: 10),
-          Text(
-            '${l.analyteDecisionLimits} ${cite(allRefs, l)}',
-            style: text.titleMedium,
-          ),
-          for (final pop in populations)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(pop, style: text.bodyMedium),
-            ),
-          const SizedBox(height: 6),
-          for (final d in analyte.decisionLimits)
-            LgMetric(label: formatLimit(d), value: d.label.of(lang)),
-          for (final d in analyte.decisionLimits)
-            if (d.note != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  '${d.note!.of(lang)} ${cite(d.refs, l)}',
-                  style: text.bodySmall,
-                ),
+          Text(l.analyteDecisionLimits, style: text.titleMedium),
+          for (final (i, d) in limits.indexed)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                border: i == limits.length - 1
+                    ? null
+                    : Border(
+                        bottom: BorderSide(
+                          color: p.line.withValues(alpha: 0.7),
+                        ),
+                      ),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    spacing: 12,
+                    runSpacing: 2,
+                    children: [
+                      Text(d.label.of(lang), style: text.bodyMedium),
+                      Text(
+                        '${formatLimit(d)} ${cite(d.refs, l)}',
+                        style: text.titleSmall,
+                      ),
+                    ],
+                  ),
+                  if (si(d) case final siText?)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(siText, style: text.bodyMedium),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(d.population.of(lang), style: text.bodySmall),
+                  ),
+                  if (d.note != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(d.note!.of(lang), style: text.bodySmall),
+                    ),
+                ],
+              ),
+            ),
+          if (anySi)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                l.analyteSiNote(
+                  conversion!.siUnit,
+                  formatResult(conversion.molarMass, locale, maxDecimals: 3),
+                ),
+                style: text.bodySmall,
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
               l.analyteDecisionNotRef,
               style: text.bodySmall!.copyWith(fontWeight: FontWeight.w600),

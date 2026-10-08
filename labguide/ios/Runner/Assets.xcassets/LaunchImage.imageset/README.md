@@ -1,5 +1,5 @@
 # Launch Screen Assets
 
-You can customize the launch screen with your own desired assets by replacing the image files in this directory.
-
-You can also do it by opening your Flutter project's Xcode project with `open ios/Runner.xcworkspace`, selecting `Runner/Assets.xcassets` in the Project Navigator and dropping in the desired images.
+Ishga tushish ekranidagi belgi — Android `drawable-*/launch_icon.png` bilan bir xil
+(96 pt: 1x = mdpi 96 px, 2x = xhdpi 192 px, 3x = xxhdpi 288 px). Fon rangi
+`LaunchBackground.colorset` da (yorug‘/qorong‘i).

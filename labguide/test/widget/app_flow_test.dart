@@ -246,8 +246,12 @@ void main() {
     await goTo(tester, '/tests/analyte/glucose-plasma-fasting');
     expect(find.text(en.analyteSampleNotice), findsOneWidget);
     expect(find.text(en.analyteRefIntervalNone), findsOneWidget);
-    expect(find.text('100–125 mg/dL'), findsOneWidget);
-    expect(find.text('≥ 126 mg/dL'), findsOneWidget);
+    expect(find.textContaining('100–125 mg/dL'), findsOneWidget);
+    expect(find.textContaining('≥ 126 mg/dL'), findsOneWidget);
+    // SI ekvivalenti hisoblangan va shunday belgilangan (manbada yo'q).
+    expect(find.text(en.analyteSiApprox('5.6–6.9 mmol/L')), findsOneWidget);
+    expect(find.text(en.analyteSiApprox('≥ 7.0 mmol/L')), findsOneWidget);
+    expect(find.textContaining('180.156 g/mol'), findsOneWidget);
     expect(find.text(en.analyteDecisionNotRef), findsOneWidget);
     expect(find.textContaining('MedlinePlus'), findsWidgets);
     expect(find.textContaining('NIDDK'), findsWidgets);

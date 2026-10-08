@@ -10,17 +10,38 @@ const int kSupportedContentSchema = 1;
 class LocalizedText {
   const LocalizedText(this.values);
 
+  /// Paketdagi har bir matn uch tilda bo'lishi shart: bo'sh yoki yo'q til
+  /// foydalanuvchiga bo'sh joy bo'lib ko'rinardi.
   factory LocalizedText.fromJson(Object? json) {
     if (json is! Map) throw const FormatException('localized text expected');
-    return LocalizedText({
-      for (final e in json.entries) e.key as String: e.value as String,
-    });
+    final values = <String, String>{};
+    for (final e in json.entries) {
+      final v = e.value;
+      if (e.key is! String || v is! String) {
+        throw const FormatException('localized text: string values expected');
+      }
+      values[e.key as String] = v;
+    }
+    for (final lang in requiredLanguages) {
+      if ((values[lang] ?? '').trim().isEmpty) {
+        throw FormatException('localized text without "$lang": $values');
+      }
+    }
+    return LocalizedText(values);
   }
+
+  static const requiredLanguages = ['uz', 'ru', 'en'];
 
   final Map<String, String> values;
 
-  String of(String lang) =>
-      values[lang] ?? values['en'] ?? values.values.firstOrNull ?? '';
+  /// So'ralgan til, bo'lmasa (yoki bo'sh bo'lsa) inglizcha, keyin istalgani.
+  String of(String lang) {
+    String? usable(String? v) => v == null || v.trim().isEmpty ? null : v;
+    return usable(values[lang]) ??
+        usable(values['en']) ??
+        values.values.map(usable).nonNulls.firstOrNull ??
+        '';
+  }
 
   Iterable<String> get all => values.values;
 }
@@ -287,8 +308,12 @@ class UnitConversion {
     if (si != 'mmol/L' && si != 'µmol/L') {
       throw FormatException('unsupported si_unit: $si');
     }
+    final molarMass = (json['molar_mass_g_per_mol']! as num).toDouble();
+    if (!molarMass.isFinite || molarMass <= 0) {
+      throw FormatException('molar mass must be positive: $molarMass');
+    }
     return UnitConversion(
-      molarMass: (json['molar_mass_g_per_mol']! as num).toDouble(),
+      molarMass: molarMass,
       basis: json['basis']! as String,
       siUnit: si,
     );
@@ -1013,8 +1038,18 @@ class ContentPack {
   /// Kontent yaxlitligi: har bir da'vo mavjud manbaga, har bir analit
   /// mavjud guruhga bog'langan; tekshirilmagan karta "reviewed" emas.
   void _validateReferences() {
-    final sourceIds = {for (final s in sources) s.id};
-    final groupIds = {for (final g in groups) g.id};
+    Set<String> unique(Iterable<String> ids, String what) {
+      final seen = <String>{};
+      for (final id in ids) {
+        if (!seen.add(id)) throw FormatException('duplicate $what id $id');
+      }
+      return seen;
+    }
+
+    final sourceIds = unique(sources.map((s) => s.id), 'source');
+    final groupIds = unique(groups.map((g) => g.id), 'group');
+    unique(quiz.map((q) => q.id), 'quiz');
+    unique(lessons.map((l) => l.id), 'lesson');
     final analyteIds = <String>{};
     for (final a in analytes) {
       if (!analyteIds.add(a.id)) {
@@ -1023,20 +1058,55 @@ class ContentPack {
       if (!groupIds.contains(a.group)) {
         throw FormatException('${a.id}: unknown group ${a.group}');
       }
-      for (final c in a.claims) {
-        if (c.sourceIds.isEmpty) {
-          throw FormatException('${a.id}: claim without source');
+      // Kartadagi manbalar ro'yxati: har biri mavjud, takrorlanmaydi va
+      // kamida bitta da'vo/chegara/interval tomonidan keltiriladi; har bir
+      // iqtibos shu ro'yxatda (aks holda raqam “[0]” bo'lib chiqardi).
+      final listed = <String>{};
+      for (final id in a.sourceIds) {
+        if (!sourceIds.contains(id)) {
+          throw FormatException('${a.id}: unknown source $id');
         }
-        for (final id in c.sourceIds) {
-          if (!sourceIds.contains(id)) {
-            throw FormatException('${a.id}: unknown source $id');
+        if (!listed.add(id)) {
+          throw FormatException('${a.id}: duplicate source $id');
+        }
+      }
+      final cited = <String>{};
+      void cite(List<String> ids, String what) {
+        if (ids.isEmpty) throw FormatException('${a.id}: $what without source');
+        for (final id in ids) {
+          if (!listed.contains(id)) {
+            throw FormatException('${a.id}: $what cites unlisted source $id');
           }
+          cited.add(id);
+        }
+      }
+
+      for (final c in a.claims) {
+        cite(c.sourceIds, 'claim');
+        if (!a.sections.contains(c.section)) {
+          throw FormatException(
+            '${a.id}: claim in unknown section ${c.section}',
+          );
         }
       }
       for (final d in a.decisionLimits) {
-        if (d.sourceIds.isEmpty) {
-          throw FormatException('${a.id}: decision limit without source');
-        }
+        cite(d.sourceIds, 'decision limit');
+        _checkBounds(a.id, d.low, d.high);
+      }
+      for (final r in a.referenceIntervals) {
+        cite(r.sourceIds, 'reference interval');
+        _checkBounds(a.id, r.low, r.high);
+      }
+      final uncited = listed.difference(cited);
+      if (a.contentState != ContentState.structureOnly && uncited.isNotEmpty) {
+        throw FormatException('${a.id}: listed but never cited: $uncited');
+      }
+      if (a.related.contains(a.id) ||
+          a.related.toSet().length != a.related.length) {
+        throw FormatException('${a.id}: self or duplicate related');
+      }
+      if (a.reviewState == ReviewState.approved && a.reviewedAt == null) {
+        throw FormatException('${a.id}: approved without reviewed_at');
       }
       if (a.contentState == ContentState.structureOnly &&
           (a.claims.isNotEmpty || a.decisionLimits.isNotEmpty)) {
@@ -1065,12 +1135,30 @@ class ContentPack {
       if (!q.isDraft && q.refs.isEmpty) {
         throw FormatException('${q.id}: approved question without source');
       }
+      if (q.options.length < 2) {
+        throw FormatException('${q.id}: needs at least two options');
+      }
+      // Mavzu — analit yoki guruh (mashq shu bo'yicha tanlaydi).
+      for (final t in q.topicIds) {
+        if (!analyteIds.contains(t) && !groupIds.contains(t)) {
+          throw FormatException('${q.id}: topic $t is not an analyte or group');
+        }
+      }
     }
     _validateLibrary(
       sourceIds: sourceIds,
       groupIds: groupIds,
       analyteIds: analyteIds,
     );
+  }
+
+  static void _checkBounds(String id, double? low, double? high) {
+    if (low == null && high == null) {
+      throw FormatException('$id: limit without bounds');
+    }
+    if (low != null && high != null && low > high) {
+      throw FormatException('$id: low > high ($low > $high)');
+    }
   }
 
   void _validateLibrary({
@@ -1150,13 +1238,6 @@ class ContentPack {
       for (final r in lesson.refs) {
         if (!sourceIds.contains(r.sourceId)) {
           throw FormatException('${lesson.id}: unknown source ${r.sourceId}');
-        }
-      }
-    }
-    for (final q in quiz) {
-      for (final t in q.topicIds) {
-        if (!topicIds.contains(t)) {
-          throw FormatException('${q.id}: unknown topic $t');
         }
       }
     }

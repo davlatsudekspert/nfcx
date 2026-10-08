@@ -290,6 +290,95 @@ void main() {
       );
     });
 
+    group('stricter integrity (review B)', () {
+      Map<String, Object?> analyte(Map<String, Object?> json, String id) =>
+          (json['analytes']! as List).cast<Map<String, Object?>>().firstWhere(
+            (a) => a['id'] == id,
+          );
+      Map<String, Object?> question(Map<String, Object?> json) =>
+          (json['quiz']! as List).cast<Map<String, Object?>>().first;
+
+      final cases = <String, void Function(Map<String, Object?>)>{
+        'claim cites a source not in source_ids': (j) {
+          final alt = analyte(j, 'alt');
+          final claim = (alt['claims']! as List).first as Map;
+          claim['refs'] = [
+            {'source_id': 'niddk-diagnosis', 'locator': 'x'},
+          ];
+        },
+        'source listed but never cited': (j) {
+          (analyte(j, 'alt')['source_ids']! as List).add('niddk-diagnosis');
+        },
+        'unknown source in source_ids': (j) {
+          (analyte(j, 'alt')['source_ids']! as List).add('no-such-source');
+        },
+        'decision limit without bounds': (j) {
+          final l = (glucose(j)['decision_limits']! as List).first as Map;
+          l.remove('low');
+          l.remove('high');
+        },
+        'decision limit with low > high': (j) {
+          final l = (glucose(j)['decision_limits']! as List).first as Map;
+          l['low'] = 200;
+          l['high'] = 100;
+        },
+        'claim in a section the card does not have': (j) {
+          final c = (analyte(j, 'alt')['claims']! as List).first as Map;
+          c['section'] = 'no-such-section';
+        },
+        'card related to itself': (j) {
+          (analyte(j, 'alt')['related']! as List).add('alt');
+        },
+        'approved review without reviewed_at': (j) {
+          analyte(j, 'alt')['review'] = {
+            'state': 'approved',
+            'reviewer_id': 'r1',
+          };
+        },
+        'negative molar mass': (j) {
+          (glucose(j)['conversion']! as Map)['molar_mass_g_per_mol'] = -1;
+        },
+        'question with one option': (j) {
+          final q = question(j);
+          q['options'] = [(q['options']! as List).first];
+          q['correct_index'] = 0;
+        },
+        'question topic that is not an analyte or group': (j) {
+          question(j)['topic_ids'] = ['dilution-lesson'];
+        },
+        'duplicate question id': (j) {
+          final quiz = j['quiz']! as List;
+          quiz.add(jsonDecode(jsonEncode(quiz.first)));
+        },
+        'duplicate source id': (j) {
+          final sources = j['sources']! as List;
+          sources.add(jsonDecode(jsonEncode(sources.first)));
+        },
+        'text missing a language': (j) {
+          (analyte(j, 'alt')['names']! as Map).remove('ru');
+        },
+        'blank text in one language': (j) {
+          (analyte(j, 'alt')['names']! as Map)['uz'] = '   ';
+        },
+      };
+      for (final MapEntry(key: name, value: corrupt) in cases.entries) {
+        test('rejected: $name', () {
+          final json = base();
+          expect(parse(json).analytes, isNotEmpty); // asl paket to'g'ri
+          corrupt(json);
+          expect(() => parse(json), throwsFormatException, reason: name);
+        });
+      }
+    });
+
+    test('LocalizedText falls back when a language is blank', () {
+      const t = LocalizedText({'uz': ' ', 'ru': 'Привет', 'en': 'Hello'});
+      expect(t.of('uz'), 'Hello');
+      expect(t.of('ru'), 'Привет');
+      const onlyRu = LocalizedText({'uz': '', 'en': '', 'ru': 'Да'});
+      expect(onlyRu.of('en'), 'Да');
+    });
+
     test('approved quiz question must cite a source', () {
       final json = base();
       final q = (json['quiz']! as List).cast<Map<String, Object?>>().first;
@@ -641,7 +730,17 @@ void main() {
       expect(ids('креатинин', lang: 'ru').first, 'creatinine');
     });
 
-    test('ignores case, apostrophe variants, ё and hyphens', () {
+    test('Uzbek Cyrillic queries match Latin Uzbek names', () {
+      expect(uzCyrillicToLatin('Сийдик кислотаси'), 'siydik kislotasi');
+      expect(uzCyrillicToLatin('ер ғўза'), 'yer goza');
+      expect(ids('сийдик кислотаси').first, 'uric-acid');
+      expect(ids('бевосита билирубин').first, 'bilirubin-direct');
+      expect(ids('умумий билирубин').first, 'bilirubin-total');
+      // Ruscha so'rov avvalgidek ishlaydi.
+      expect(ids('мочевая кислота', lang: 'ru').first, 'uric-acid');
+    });
+
+        test('ignores case, apostrophe variants, ё and hyphens', () {
       expect(ids('To‘g‘ri bilirubin').first, 'bilirubin-direct');
       expect(ids("to'g'ri bilirubin").first, 'bilirubin-direct');
       expect(ids('togri bilirubin').first, 'bilirubin-direct');

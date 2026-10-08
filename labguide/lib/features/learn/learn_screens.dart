@@ -2,7 +2,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_scope.dart';
+import '../../app/shell.dart';
 import '../../app/widgets/lg_page.dart';
+import '../../app/widgets/links.dart';
 import '../../design/tokens.dart';
 import '../../design/widgets/lg_widgets.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -10,7 +12,6 @@ import '../auth/ui/welcome_screen.dart';
 import '../content/content_model.dart';
 import '../content/ui/content_widgets.dart';
 import 'quiz_session.dart';
-import '../../app/shell.dart';
 
 class LearnScreen extends StatelessWidget {
   const LearnScreen({super.key});
@@ -18,7 +19,16 @@ class LearnScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final quizCount = context.services.content.pack?.quiz.length ?? 0;
+    final content = context.services.content;
+    // Paket yuklangach savollar soni yangilanadi (avval 0 bo'lib qolardi).
+    return ListenableBuilder(
+      listenable: content,
+      builder: (context, _) =>
+          _page(context, l, content.pack?.quiz.length ?? 0),
+    );
+  }
+
+  Widget _page(BuildContext context, AppLocalizations l, int quizCount) {
     return LgPage(
       title: l.learnTitle,
       showBrand: true,
@@ -96,7 +106,9 @@ class LearnScreen extends StatelessWidget {
 class QuizScope {
   const QuizScope(this.title, this.questions, {this.redraw});
 
-  final String title;
+  /// Sarlavha har chizilishda joriy til bilan quriladi (til almashsa,
+  /// ochiq mashq sarlavhasi ham yangilanadi).
+  final String Function(AppLocalizations l, String lang) title;
   final List<QuizQuestion> questions;
 
   /// Qayta boshlashda yangi to'plam (aralash rejim — yangi tasodifiy savollar).
@@ -156,7 +168,6 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final lang = Localizations.localeOf(context).languageCode;
     final content = context.services.content;
     // Paket yuklanishi kutilsa ham sarlavha (analit nomi) yangilanadi.
     return ListenableBuilder(
@@ -166,7 +177,7 @@ class _QuizScreenState extends State<QuizScreen> {
         final loaded = content.pack;
         if (analyteId != null && _session == null && loaded != null) {
           _scope = QuizScope(
-            loaded.analyte(analyteId)?.names.of(lang) ?? analyteId,
+            (_, lang) => loaded.analyte(analyteId)?.names.of(lang) ?? analyteId,
             questionsForAnalyte(loaded, analyteId),
           );
           _session = QuizSession(_scope!.questions);
@@ -180,7 +191,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final analyteId = widget.analyteId;
     return LgPage(
       title: l.learnQuiz,
-      subtitle: _scope?.title,
+      subtitle: _scope?.title(l, Localizations.localeOf(context).languageCode),
       children: [
         ContentGate(
           builder: (context, pack) {
@@ -246,7 +257,7 @@ class _TopicPicker extends StatelessWidget {
       ...progress.mistakes([for (final q in pack.quiz) q.id]),
     };
     QuizScope mixed() => QuizScope(
-      l.quizTopicMixed(mixedSize),
+      (l, _) => l.quizTopicMixed(mixedSize),
       (List.of(pack.quiz)..shuffle()).take(mixedSize).toList(),
       redraw: mixed,
     );
@@ -260,7 +271,7 @@ class _TopicPicker extends StatelessWidget {
             subtitle: l.quizQuestionCount(mistakes.length),
             icon: Icons.replay_rounded,
             onTap: () => onPick(
-              QuizScope(l.quizTopicMistakes, [
+              QuizScope((l, _) => l.quizTopicMistakes, [
                 for (final q in pack.quiz)
                   if (mistakes.contains(q.id)) q,
               ]),
@@ -277,14 +288,16 @@ class _TopicPicker extends StatelessWidget {
             title: l.quizTopicGeneral,
             subtitle: sub(general),
             icon: Icons.calculate_outlined,
-            onTap: () => onPick(QuizScope(l.quizTopicGeneral, general)),
+            onTap: () =>
+                onPick(QuizScope((l, _) => l.quizTopicGeneral, general)),
           ),
         for (final (i, (group, questions)) in groups.indexed)
           LgRow(
             title: group.names.of(lang),
             subtitle: sub(questions),
             icon: groupIcon(group.id),
-            onTap: () => onPick(QuizScope(group.names.of(lang), questions)),
+            onTap: () =>
+                onPick(QuizScope((_, lang) => group.names.of(lang), questions)),
             divider: i < groups.length - 1,
           ),
         const SizedBox(height: 14),
@@ -354,7 +367,8 @@ class _QuizQuestion extends StatelessWidget {
               onTap: answered
                   ? null
                   : () {
-                      session.answer(i);
+                      // Ikki marta tez bosilsa ham natija bir marta yoziladi.
+                      if (!session.answer(i)) return;
                       onChanged();
                       // Natija faqat qurilmada — “xatolar ustida ishlash” uchun.
                       context.services.quizProgress.record(
@@ -380,6 +394,40 @@ class _QuizQuestion extends StatelessWidget {
             l.quizBasis(q.basis.of(lang)),
             style: text.bodySmall!.copyWith(color: p.sub),
           ),
+          // Savol qaysi manbaga tayanadi — ochib tekshirish mumkin.
+          for (final r in q.refs)
+            if (context.services.content.pack?.source(r.sourceId)
+                case final src?)
+              InkWell(
+                onTap: src.url == null
+                    ? null
+                    : () => openExternalLink(context, src.url!),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: kMinTap),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${l.quizSources}: ${src.publisher} — ${src.title}'
+                            '${r.locator == null ? '' : ' · ${r.locator}'}',
+                            style: text.bodySmall!.copyWith(color: p.brand),
+                          ),
+                        ),
+                        if (src.url != null) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.open_in_new_rounded,
+                            size: 16,
+                            color: p.brand,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           const SizedBox(height: 14),
           LgButton(
             label: session.isLast ? l.quizFinish : l.quizNext,

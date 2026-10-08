@@ -450,6 +450,16 @@ class AppLocalizationsUz extends AppLocalizations {
       'Diagnostik chegaralar laboratoriya referens intervali emas.';
 
   @override
+  String analyteSiNote(String unit, String mass) {
+    return '$unit qiymatlari manbada berilmagan — manbadagi mg/dL chegarasidan molyar massa ($mass g/mol) bo‘yicha hisoblangan va yaxlitlangan. Asosiy chegara — manbadagi mg/dL.';
+  }
+
+  @override
+  String analyteSiApprox(String value) {
+    return '$value (hisoblangan)';
+  }
+
+  @override
   String get analyteNoInterpretation =>
       'LabGuide alohida natijani talqin qilmaydi, tashxis yoki doza taklif qilmaydi.';
 
@@ -1391,6 +1401,13 @@ class AppLocalizationsUz extends AppLocalizations {
       'Kitoblar faqat tarqatish huquqi tasdiqlangandan keyin qo‘shiladi. O‘zingiz qo‘shgan PDF shaxsiy o‘rganish uchun qoladi va tarqatilmaydi.';
 
   @override
+  String get booksCatalogNote =>
+      'Katalogdagi materiallar rasmiy sahifaga havola sifatida beriladi. To‘liq matn ilovaga faqat ochiq litsenziya yoki tarqatish ruxsati tasdiqlangandan keyin qo‘shiladi.';
+
+  @override
+  String get booksResetFilters => 'Filtrlarni tozalash';
+
+  @override
   String get packsInstalled => 'O‘rnatilgan';
 
   @override
@@ -1577,6 +1594,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String quizBasis(String basis) {
     return 'Asos: $basis';
   }
+
+  @override
+  String get quizSources => 'Manba';
 
   @override
   String get quizReviewNote =>
@@ -1807,7 +1827,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get catMethods => 'Metodikalar';
 
   @override
-  String get catTests => 'Test savollari';
+  String get catTests => 'Laboratoriya tahlillari';
 
   @override
   String get kindBook => 'Kitob';

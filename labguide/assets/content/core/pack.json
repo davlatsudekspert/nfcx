@@ -1,7 +1,7 @@
 {
  "pack_id": "core",
  "schema_version": 1,
- "content_version": "2026.10.08-dev.4",
+ "content_version": "2026.10.08-dev.5",
  "groups": [
   {
    "id": "carbohydrate",
@@ -828,6 +828,10 @@
     "uz": "Venoz qon: och qoringa va glyukoza ichilgandan keyin",
     "ru": "Венозная кровь: натощак и после приёма глюкозы",
     "en": "Venous blood: fasting and after the glucose drink"
+   },
+   "conversion": {
+    "molar_mass_g_per_mol": 180.156,
+    "basis": "C6H12O6; IUPAC standard atomic weights C 12.011, H 1.008, O 15.999"
    }
   },
   {
@@ -940,8 +944,7 @@
    "source_ids": [
     "niddk-dict-fructosamine",
     "niddk-hemoglobinopathies",
-    "niddk-a1c-race",
-    "niddk-a1c"
+    "niddk-a1c-race"
    ],
    "related": [
     "hba1c",
@@ -2132,8 +2135,7 @@
    "decision_limits": [],
    "source_ids": [
     "medline-alt",
-    "medline-liver-function",
-    "medline-ast"
+    "medline-liver-function"
    ],
    "related": [
     "ast",

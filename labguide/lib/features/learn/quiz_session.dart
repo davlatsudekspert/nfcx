@@ -19,11 +19,13 @@ class QuizSession {
 
   int? answerFor(int i) => _answers[i];
 
-  /// Joriy savolga javob. Qayta javob berish e'tiborsiz qoldiriladi.
-  void answer(int option) {
-    if (_finished || _answers[_index] != null) return;
+  /// Joriy savolga javob. Qayta javob berish e'tiborsiz qoldiriladi —
+  /// shunda `false`; javob qabul qilinsa `true`.
+  bool answer(int option) {
+    if (_finished || _answers[_index] != null) return false;
     RangeError.checkValidIndex(option, current.options, 'option');
     _answers[_index] = option;
+    return true;
   }
 
   /// Javob berilmagan savoldan o'tib bo'lmaydi.
