@@ -12743,6 +12743,10 @@ export default {
       if (mr && !mr.skipped && mr.checked) {
         console.log('moderation_recheck', JSON.stringify({ checked: mr.checked, approved: mr.approved, blocked: mr.blocked, still: mr.still }));
       }
+      // Filtr o'chiq — admin ogohlantiriladi; navbatda tekshiruv kutayotgan
+      // narsa bo'lsa — kuniga bitta Telegram xulosasi (api/content-guard.js).
+      const ca = await guard.cronModerationAlerts(env, { moderationOn: moderationEnabled(env) }).catch(() => null);
+      if (ca?.digest || ca?.moderationOffAlert) console.log('moderation_alerts', JSON.stringify(ca));
     })());
   },
 };

@@ -38,6 +38,7 @@ import {
 } from '../hosting/api/account-purge.js';
 import { createFreeAutoId } from '../hosting/api/auth.js';
 import { applyLaunchTrialExtension } from '../hosting/api/trial-promo.js';
+import { cronModerationAlerts } from '../hosting/api/content-guard.js';
 import { ensureSchema as ensureNotifications } from '../hosting/api/notifications.js';
 import { ensureTable as ensureSaves } from '../hosting/api/saves.js';
 import { ensureSchema as ensureModeration } from '../hosting/api/moderation.js';
@@ -604,6 +605,9 @@ seedGone(38, 'self', (id) => run(`INSERT INTO web_orders (user_id, code, price, 
   // Bir martalik sinov uzaytirish (api/trial-promo.js) cron'da ham bor —
   // u bu yerda tekshirilmaydi; oldindan bajarib qo'yamiz.
   await applyLaunchTrialExtension(env);
+  // Moderatsiya ogohlantirishi (api/content-guard.js) ham cron'da — u faqat
+  // `admin_settings` belgisini yozadi; oldindan bajarib qo'yamiz.
+  await cronModerationAlerts(env, { moderationOn: false });
   env.ACCOUNT_PURGE_MODE = 'dry-run';
   const h0 = dbHash();
   const jobs = [];

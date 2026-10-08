@@ -475,3 +475,43 @@ export function alertModerationOff(env) {
     async () => "Avtomatik moderatsiya ishlamayapti (GEMINI_API_KEY yo'q yoki MODERATION_OFF=1). Yangi rasm/videolar admin tasdig'igacha yashirin turadi.")
     .catch(() => false);
 }
+
+// ═══ KUNLIK CRON XULOSASI (worker.js `scheduled`) ════════════════════
+//
+// Filtr o'chiq (kalit yo'q yoki MODERATION_OFF=1) bo'lsa — `alertModerationOff`
+// (yuklash bo'lmagan kunlarda ham admin bilsin). Navbatda tekshirilmagan
+// fayl yoki yashirin (pending) kontent bo'lsa — kuniga BITTA xulosa
+// ("Tekshiruv kutilmoqda: N ta"), `admin_settings.alert_daily_review_at`
+// belgisi bilan cheklangan. Hech qachon tashlamaydi.
+export const DAILY_REVIEW_ALERT_MS = 20 * 60 * 60_000;
+
+export async function openReviewCounts(env) {
+  const out = { unchecked: 0, pending: 0 };
+  try {
+    const r = await env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM content_reports WHERE target_kind = 'media' AND reason = 'unchecked' AND status = 'new'`
+    ).first();
+    out.unchecked = Number(r?.n) || 0;
+  } catch { /* jadval yo'q */ }
+  try {
+    const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM (SELECT DISTINCT kind, id FROM content_pending)`).first();
+    out.pending = Number(r?.n) || 0;
+  } catch { /* jadval yo'q */ }
+  return out;
+}
+
+export async function cronModerationAlerts(env, { moderationOn = true } = {}) {
+  const out = { moderationOffAlert: false, digest: false, unchecked: 0, pending: 0 };
+  try {
+    if (!moderationOn) out.moderationOffAlert = await alertModerationOff(env);
+    Object.assign(out, await openReviewCounts(env));
+    const n = Math.max(out.unchecked, out.pending);
+    if (n > 0) {
+      out.digest = await alertOnce(env, 'alert_daily_review_at', DAILY_REVIEW_ALERT_MS, async () =>
+        `Tekshiruv kutilmoqda: ${n} ta.\n`
+        + `Tekshirilmagan fayllar: ${out.unchecked} ta; yashirin kontent: ${out.pending} ta.\n`
+        + `Admin → Shikoyatlar ("Avtomatik tekshirilmagan").`).catch(() => false);
+    }
+  } catch { /* xulosa yuborilmasa ham cron davom etadi */ }
+  return out;
+}
