@@ -19,6 +19,7 @@ import * as apiMyAnalytics from './api/my-analytics.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import { applyLaunchTrialExtension } from './api/trial-promo.js';
+import { seedShowcaseSamples } from './api/showcase-samples.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
@@ -12686,6 +12687,13 @@ export default {
       // Aksiya (egasi, 2026-10-06): mavjud sinovlar BIR MARTA 90 kunga
       // uzaytiriladi (api/trial-promo.js). Eslatmadan OLDIN — aks holda
       // uzaytiriladigan odamga "sinov tugayapti" xabari ketardi.
+      // NFCSTORE Ko'rgazma namunalari — bir marta (api/showcase-samples.js).
+      try {
+        const sc = await seedShowcaseSamples(env);
+        if (sc?.applied) console.log('showcase_samples', JSON.stringify(sc));
+      } catch (e) {
+        console.error('showcase_samples', String(e?.message || e).slice(0, 160));
+      }
       try {
         const ext = await applyLaunchTrialExtension(env);
         if (ext?.applied) console.log('launch_trial_extended', JSON.stringify({ users: ext.users, companies: ext.companies }));

@@ -86,6 +86,7 @@
 // `reel_hidden` — `CREATE TABLE IF NOT EXISTS`; hisob o'chirilganda
 // (account-purge.js) tozalanadi.
 
+import { seedShowcaseSamples } from './showcase-samples.js';
 import { blockedByUser } from './moderation.js';
 import { activeTargets } from './featured.js';
 import { ensureExtras } from './music.js';
@@ -518,6 +519,9 @@ export async function handle(request, env, url, H) {
   }
   if (path === '/api/showcase') {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    // NFCSTORE'ning o'z namunalari — bir marta (api/showcase-samples.js).
+    // Xato lentani buzmaydi.
+    await seedShowcaseSamples(env).catch((e) => console.error('showcase_samples', String(e?.message || e).slice(0, 160)));
     return listReels(request, env, url, H, 'showcase');
   }
   if (path === '/api/reels/hide') {
