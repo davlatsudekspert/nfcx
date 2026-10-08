@@ -846,6 +846,27 @@ class AppLocalizationsRu extends AppLocalizations {
       'Цвет пробирки, время и температура привязаны к конкретной пробирке, методу и инструкции. Универсальные параметры не приводятся.';
 
   @override
+  String get preOrderTitle => 'Порядок взятия пробирок (венепункция)';
+
+  @override
+  String get preOrderSub =>
+      'ВОЗ 2010, табл. 2.3 (на основе консенсуса NCCLS 2003). Сверяйте с действующим порядком вашей лаборатории.';
+
+  @override
+  String preCap(String cap) {
+    return 'Крышка: $cap';
+  }
+
+  @override
+  String get preHaemolysisTitle => 'Причины гемолиза';
+
+  @override
+  String get preTourniquetTitle => 'Жгут';
+
+  @override
+  String get preIdTitle => 'Идентификация пациента и маркировка';
+
+  @override
   String get calcTitle => 'Калькуляторы';
 
   @override

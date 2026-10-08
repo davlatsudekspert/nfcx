@@ -231,6 +231,12 @@ final shots = <Shot>[
     },
   ),
   shot(
+    '31_preanalytics_ru',
+    '/lab/preanalytics',
+    lang: AppLanguage.ru,
+    size: const Size(390, 3400),
+  ),
+  shot(
     '29_calc_sources_en',
     '/lab/calculators/hba1c',
     lang: AppLanguage.en,

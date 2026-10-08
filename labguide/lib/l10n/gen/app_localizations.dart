@@ -1588,6 +1588,42 @@ abstract class AppLocalizations {
   /// **'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.'**
   String get preNotice;
 
+  /// No description provided for @preOrderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order of draw (venepuncture)'**
+  String get preOrderTitle;
+
+  /// No description provided for @preOrderSub.
+  ///
+  /// In en, this message translates to:
+  /// **'WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.'**
+  String get preOrderSub;
+
+  /// No description provided for @preCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Cap: {cap}'**
+  String preCap(String cap);
+
+  /// No description provided for @preHaemolysisTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Causes of haemolysis'**
+  String get preHaemolysisTitle;
+
+  /// No description provided for @preTourniquetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tourniquet'**
+  String get preTourniquetTitle;
+
+  /// No description provided for @preIdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient identification and labelling'**
+  String get preIdTitle;
+
   /// No description provided for @calcTitle.
   ///
   /// In en, this message translates to:

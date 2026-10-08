@@ -195,3 +195,15 @@ triglitseridlar — triolein 885.453 (an’anaviy model), kalsiy, magniy, fosfor
 SI birlik paketda (`si_unit`: mmol/L yoki µmol/L). Mochevina/BUN ataylab qo‘shilmadi: bir
 analitda ikki asos (butun molekula vs azot) — chalkashlik xavfi; osmolyallik kalkulyatori
 BUN’ni alohida qabul qiladi.
+
+## D-23. Preanalitika — WHO 2010 qon olish qo‘llanmasidan (2026-10-08)
+Manba: *WHO guidelines on drawing blood: best practices in phlebotomy*, WHO 2010 (ISBN 978 92
+4 159922 1; IRIS 10665/44294) — to‘liq PDF o‘qib tekshirildi. Kiritilganlar: probirkalar tartibi
+(2.2.3, 2.3-jadval; NCCLS 2003 konsensusi asosida), jadval izohlari (rang kodlari farq qiladi —
+laboratoriya bilan tekshirish; aralashtirish; faqat koagulogramma), kapillyar tartib (7.1.3),
+gemoliz sabablari (1.1.1), jgut (2 daqiqa — “ba’zi qo‘llanmalar” iborasi bilan, manbadagidek),
+bemorni aniqlash va yorliq. Manbada yo‘q narsalar yozilmadi: aylantirishlar soni (laboratoriya
+belgilaydi), och qoringa talab, “to‘shak yonida yorliqlash”. Nashr “© WHO 2010, all rights
+reserved” — jadval ko‘chirilmadi, faktlar o‘z so‘zlarimiz bilan, joyi ko‘rsatilgan. Qopqoq
+rangi doira bilan ham, matn bilan ham (faqat rangga tayanmaydi). Rus tilidagi nashri IRIS’da
+topilmadi.

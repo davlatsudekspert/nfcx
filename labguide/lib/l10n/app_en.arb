@@ -363,6 +363,19 @@
   "preStep4": "Separate and store",
   "preStep5": "Transport and receive",
   "preNotice": "Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.",
+  "preOrderTitle": "Order of draw (venepuncture)",
+  "preOrderSub": "WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.",
+  "preCap": "Cap: {cap}",
+  "@preCap": {
+    "placeholders": {
+      "cap": {
+        "type": "String"
+      }
+    }
+  },
+  "preHaemolysisTitle": "Causes of haemolysis",
+  "preTourniquetTitle": "Tourniquet",
+  "preIdTitle": "Patient identification and labelling",
   "calcTitle": "Calculators",
   "calcLearningTag": "Learning calculator",
   "calcDilution": "Dilution",

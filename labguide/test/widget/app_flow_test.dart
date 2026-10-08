@@ -502,6 +502,21 @@ void main() {
     expect(find.text(en.quizTopicMistakes), findsNothing);
   });
 
+  testWidgets('preanalytics shows the WHO order of draw with its source', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 4000));
+    await goTo(tester, '/lab/preanalytics');
+    expect(find.text(en.preOrderTitle), findsOneWidget);
+    expect(find.text('Blood culture bottle'), findsOneWidget);
+    expect(find.text(en.preCap('purple')), findsOneWidget);
+    expect(
+      find.textContaining('WHO guidelines on drawing blood'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('creatinine card links to the eGFR calculator', (tester) async {
     final s = await makeServices(tester, language: AppLanguage.en);
     await pumpApp(tester, s);

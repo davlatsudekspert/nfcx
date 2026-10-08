@@ -837,6 +837,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.';
 
   @override
+  String get preOrderTitle => 'Order of draw (venepuncture)';
+
+  @override
+  String get preOrderSub =>
+      'WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.';
+
+  @override
+  String preCap(String cap) {
+    return 'Cap: $cap';
+  }
+
+  @override
+  String get preHaemolysisTitle => 'Causes of haemolysis';
+
+  @override
+  String get preTourniquetTitle => 'Tourniquet';
+
+  @override
+  String get preIdTitle => 'Patient identification and labelling';
+
+  @override
   String get calcTitle => 'Calculators';
 
   @override

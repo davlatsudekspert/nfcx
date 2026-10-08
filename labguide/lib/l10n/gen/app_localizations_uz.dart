@@ -830,6 +830,27 @@ class AppLocalizationsUz extends AppLocalizations {
       'Probirka rangi, vaqt va harorat aniq probirka, metod va yo‘riqnomaga bog‘lanadi. Universal parametrlar berilmaydi.';
 
   @override
+  String get preOrderTitle => 'Probirkalar tartibi (venepunktsiya)';
+
+  @override
+  String get preOrderSub =>
+      'WHO 2010, 2.3-jadval (NCCLS 2003 konsensusi asosida). Laboratoriyangizning amaldagi tartibini tekshiring.';
+
+  @override
+  String preCap(String cap) {
+    return 'Qopqoq: $cap';
+  }
+
+  @override
+  String get preHaemolysisTitle => 'Gemolizga olib keluvchi omillar';
+
+  @override
+  String get preTourniquetTitle => 'Jgut';
+
+  @override
+  String get preIdTitle => 'Bemorni aniqlash va yorliq';
+
+  @override
   String get calcTitle => 'Kalkulyatorlar';
 
   @override
