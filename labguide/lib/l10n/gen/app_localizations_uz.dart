@@ -255,7 +255,7 @@ class AppLocalizationsUz extends AppLocalizations {
       'Namuna, metodika va sifat nazorati — bir joyda.';
 
   @override
-  String get homeHeroLabCta => 'Kalibrlash yo‘li';
+  String get homeHeroLabCta => 'Sifat nazoratini ochish';
 
   @override
   String get homeHeroStudentTitle => 'Biokimyoni tushunib o‘rganing';

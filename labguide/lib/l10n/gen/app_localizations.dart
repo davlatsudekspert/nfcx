@@ -547,7 +547,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeHeroLabCta.
   ///
   /// In en, this message translates to:
-  /// **'Calibration workflow'**
+  /// **'Open quality control'**
   String get homeHeroLabCta;
 
   /// No description provided for @homeHeroStudentTitle.

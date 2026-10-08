@@ -252,7 +252,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Samples, methods and quality control in one place.';
 
   @override
-  String get homeHeroLabCta => 'Calibration workflow';
+  String get homeHeroLabCta => 'Open quality control';
 
   @override
   String get homeHeroStudentTitle => 'Learn biochemistry with understanding';

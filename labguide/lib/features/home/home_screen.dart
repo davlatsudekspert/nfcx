@@ -66,14 +66,14 @@ class RoleHome {
       heroTitle: l.homeHeroLabTitle,
       heroBody: l.homeHeroLabBody,
       heroCta: l.homeHeroLabCta,
-      heroLocation: '/lab/calibration',
+      heroLocation: '/lab/qc',
       actions: [
+        HomeAction(l.featureQc, Icons.show_chart_rounded, '/lab/qc'),
         HomeAction(
           l.featureCalibration,
           Icons.tune_rounded,
           '/lab/calibration',
         ),
-        HomeAction(l.featureQc, Icons.show_chart_rounded, '/lab/qc'),
         HomeAction(
           l.featureCalculators,
           Icons.calculate_outlined,

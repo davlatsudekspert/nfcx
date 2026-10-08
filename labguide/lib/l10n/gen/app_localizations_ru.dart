@@ -255,7 +255,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Образцы, методики и контроль качества в одном месте.';
 
   @override
-  String get homeHeroLabCta => 'Путь калибровки';
+  String get homeHeroLabCta => 'Открыть контроль качества';
 
   @override
   String get homeHeroStudentTitle => 'Понимайте биохимию';
