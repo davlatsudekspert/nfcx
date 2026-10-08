@@ -3557,4 +3557,12 @@ class LEn extends L {
   @override
   String get activityReferralReward =>
       'joined with your invite — +1 month of Premium';
+
+  @override
+  String get errVideoUploadsDisabled =>
+      'Video uploads are temporarily disabled. You can upload photos.';
+
+  @override
+  String get errModerationUnavailable =>
+      'Review is temporarily unavailable. Please try again a bit later.';
 }

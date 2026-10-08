@@ -1229,5 +1229,7 @@
   "inviteStep3": "You get +1 month of Premium",
   "inviteSiteDiscount": "(and a discount on website purchases)",
   "inviteTrialNote": "The bonus month is added to your Premium time.",
-  "activityReferralReward": "joined with your invite — +1 month of Premium"
+  "activityReferralReward": "joined with your invite — +1 month of Premium",
+  "errVideoUploadsDisabled": "Video uploads are temporarily disabled. You can upload photos.",
+  "errModerationUnavailable": "Review is temporarily unavailable. Please try again a bit later."
 }

@@ -1229,5 +1229,7 @@
   "inviteStep3": "Вы получаете +1 месяц Premium",
   "inviteSiteDiscount": "(и скидку на покупки на сайте)",
   "inviteTrialNote": "Бонусный месяц добавится к вашему сроку Premium.",
-  "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium"
+  "activityReferralReward": "присоединился(ась) по вашему приглашению — +1 месяц Premium",
+  "errVideoUploadsDisabled": "Загрузка видео временно отключена. Вы можете загрузить фото.",
+  "errModerationUnavailable": "Проверка временно не работает. Попробуйте ещё раз чуть позже."
 }

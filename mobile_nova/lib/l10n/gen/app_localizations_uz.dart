@@ -3536,4 +3536,12 @@ class LUz extends L {
   @override
   String get activityReferralReward =>
       'sizning taklifingiz bilan qo‘shildi — +1 oy Premium';
+
+  @override
+  String get errVideoUploadsDisabled =>
+      'Video yuklash vaqtincha o‘chirilgan. Rasm yuklashingiz mumkin.';
+
+  @override
+  String get errModerationUnavailable =>
+      'Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.';
 }

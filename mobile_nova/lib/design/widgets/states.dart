@@ -78,6 +78,11 @@ String describeError(L l, AppError e) => switch (e.code) {
       'plan_locked' =>
         l.errPublishUnavailable,
       'rules_not_accepted' => l.rulesNotAccepted,
+      // Video yuklash serverda vaqtincha yopiq (kalit
+      // `videoUploadsBlocked`, 403) — odamga rasm yo'li aytiladi.
+      'video_uploads_disabled' => l.errVideoUploadsDisabled,
+      // Avtomatik tekshiruv navbatga yozilmadi (503) — fayl saqlanmadi.
+      'moderation_unavailable' => l.errModerationUnavailable,
       // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
       // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
       'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,

@@ -1384,5 +1384,9 @@
   "inviteStep3": "Siz +1 oy Premium olasiz",
   "inviteSiteDiscount": "(va saytdagi xaridlarga chegirma)",
   "inviteTrialNote": "Bonus oy Premium muddatingizga qo‘shiladi.",
-  "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium"
+  "activityReferralReward": "sizning taklifingiz bilan qo‘shildi — +1 oy Premium",
+  "errVideoUploadsDisabled": "Video yuklash vaqtincha o‘chirilgan. Rasm yuklashingiz mumkin.",
+  "@errVideoUploadsDisabled": {"description": "Server 403 video_uploads_disabled."},
+  "errModerationUnavailable": "Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.",
+  "@errModerationUnavailable": {"description": "Server 503 moderation_unavailable."}
 }

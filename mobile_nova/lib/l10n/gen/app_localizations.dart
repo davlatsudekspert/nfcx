@@ -6434,6 +6434,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'sizning taklifingiz bilan qo‘shildi — +1 oy Premium'**
   String get activityReferralReward;
+
+  /// Server 403 video_uploads_disabled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video yuklash vaqtincha o‘chirilgan. Rasm yuklashingiz mumkin.'**
+  String get errVideoUploadsDisabled;
+
+  /// Server 503 moderation_unavailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tekshiruv vaqtincha ishlamayapti. Birozdan keyin qayta urinib ko‘ring.'**
+  String get errModerationUnavailable;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

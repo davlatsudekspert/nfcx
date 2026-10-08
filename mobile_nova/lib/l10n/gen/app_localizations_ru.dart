@@ -3579,4 +3579,12 @@ class LRu extends L {
   @override
   String get activityReferralReward =>
       'присоединился(ась) по вашему приглашению — +1 месяц Premium';
+
+  @override
+  String get errVideoUploadsDisabled =>
+      'Загрузка видео временно отключена. Вы можете загрузить фото.';
+
+  @override
+  String get errModerationUnavailable =>
+      'Проверка временно не работает. Попробуйте ещё раз чуть позже.';
 }
