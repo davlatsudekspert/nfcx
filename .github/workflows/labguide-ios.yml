@@ -17,7 +17,10 @@
 #
 # Secretlar: avval LABGUIDE_*, bo'lmasa shu jamoaning mavjud NOVA_*
 # secretlari (Apple Distribution sertifikati va App Store Connect API
-# kaliti jamoa bo'yicha umumiy). Ilova profili secret emas — API'dan olinadi.
+# kaliti jamoa bo'yicha umumiy). API kalit uchun ASC_KEY_ID, ASC_ISSUER_ID,
+# ASC_KEY_P8_BASE64 nomlari ham qabul qilinadi; IOS_TEAM_ID berilsa,
+# sertifikat jamoasi bilan solishtiriladi. Ilova profili secret emas —
+# API'dan olinadi.
 name: LabGuide iOS
 
 on:
@@ -185,9 +188,10 @@ jobs:
         env:
           CERTIFICATE_BASE64: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_BASE64 || secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_PASSWORD || secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
-          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
-          API_PRIVATE_KEY: ${{ secrets.LABGUIDE_APPSTORE_PRIVATE_KEY || secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID || secrets.ASC_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.LABGUIDE_APPSTORE_PRIVATE_KEY || secrets.NOVA_APPSTORE_PRIVATE_KEY || secrets.ASC_KEY_P8_BASE64 }}
+          EXPECTED_TEAM: ${{ secrets.IOS_TEAM_ID }}
         run: |
           set -euo pipefail
           MISSING=""
@@ -196,7 +200,7 @@ jobs:
           [ -n "$API_KEY_ID" ]           || MISSING="$MISSING APPSTORE_KEY_ID"
           [ -n "$API_ISSUER_ID" ]        || MISSING="$MISSING APPSTORE_ISSUER_ID"
           [ -n "$API_PRIVATE_KEY" ]      || MISSING="$MISSING APPSTORE_PRIVATE_KEY"
-          [ -z "$MISSING" ] || { echo "::error::Yetishmayotgan secret(lar) (LABGUIDE_* yoki NOVA_*):$MISSING"; exit 1; }
+          [ -z "$MISSING" ] || { echo "::error::Yetishmayotgan secret(lar) (LABGUIDE_*, NOVA_* yoki ASC_*):$MISSING"; exit 1; }
 
           umask 077
           W="$RUNNER_TEMP/lg-signing"; mkdir -p "$W"
@@ -207,6 +211,9 @@ jobs:
           SERIAL=$(printf '%s' "$CERT_PEM" | openssl x509 -noout -serial | cut -d= -f2)
           TEAM=$(printf '%s' "$CERT_PEM" | openssl x509 -noout -subject -nameopt multiline | awk -F' = ' '/organizationalUnitName/{print $2; exit}')
           [ -n "$TEAM" ] || { echo "::error::Sertifikatdan Team ID o'qilmadi"; exit 1; }
+          if [ -n "${EXPECTED_TEAM:-}" ] && [ "$EXPECTED_TEAM" != "$TEAM" ]; then
+            echo "::error::Sertifikat jamoasi ($TEAM) IOS_TEAM_ID secret bilan mos emas"; exit 1
+          fi
           echo "CERT_SERIAL=$SERIAL" >> "$GITHUB_ENV"
           echo "IOS_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
           echo "Team: $TEAM"
@@ -346,15 +353,15 @@ jobs:
       - name: App Store Connect — sozlash (ixtiyoriy)
         if: env.MODE == 'testflight' && env.APPLE_SETUP == 'true'
         env:
-          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID || secrets.ASC_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
         run: '"$ASC_PY" "$ASC_SCRIPT" setup'
 
       - name: App Store Connect — tekshiruv va profil
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID || secrets.ASC_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           "$ASC_PY" "$ASC_SCRIPT" precheck
@@ -465,8 +472,8 @@ jobs:
       - name: TestFlight'ga yuklash
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID || secrets.ASC_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           xcrun altool --validate-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
@@ -476,8 +483,8 @@ jobs:
       - name: TestFlight processing holati
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID || secrets.ASC_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
         run: '"$ASC_PY" "$ASC_SCRIPT" status'
 
       - name: Tozalash

@@ -3,10 +3,12 @@
 Workflow: nfcx ildizidagi `.github/workflows/labguide-ios.yml` (“LabGuide iOS”). Faqat
 `labguide/` ilovasiga tegadi — NFCSTORE workflow’lariga ta’sir qilmaydi.
 
-**Holat (2026-10-08):** nfcx hisobida GitHub Actions to‘lov sababli to‘xtagan — har qanday
-ishga tushirish `startup_failure` bilan tugaydi. To‘lov tiklangach quyidagi tartib ishlaydi.
-Workflow hali bir marta ham haqiqiy runner’da ishlamagan — birinchi ishga tushirishda xato
-chiqsa, log bo‘yicha tuzatiladi.
+**Holat (2026-10-08, kechqurun):** GitHub Actions ishlayapti.
+- Run #2 (mode: build): testlar, Android sinov APK va imzosiz iOS release build — **o‘tdi**.
+- Run #3 (mode: testflight, apple_setup): mavjud NOVA_* secretlari bilan sertifikat va API kalit
+  o‘qildi (Team 5Z9CT2W378), bundle ID / App Store profili bosqichi o‘tdi. **To‘xtagan joy:**
+  App Store Connect’da `uz.labguide.app` uchun ilova yozuvi yo‘q — uni faqat egasi qo‘lda
+  yaratadi (pastda, 2-bo‘lim). Yozuv yaratilgach `mode: testflight` qayta ishga tushiriladi.
 
 ## 1. Imzosiz tekshiruv (secret kerak emas)
 
@@ -20,6 +22,9 @@ release build.
 Yangi secret shart emas: workflow avval `LABGUIDE_*`, bo‘lmasa NFCSTORE’ning mavjud `NOVA_*`
 secretlaridan foydalanadi (bir Apple jamoasi): `IOS_CERTIFICATE_BASE64`,
 `IOS_CERTIFICATE_PASSWORD`, `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID`, `APPSTORE_PRIVATE_KEY`.
+API kalit uchun `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64` (`.p8` fayl base64 yoki
+matn) nomlari ham qabul qilinadi (zaxira); `IOS_TEAM_ID` berilsa, sertifikat jamoasi bilan
+solishtiriladi. Distribution sertifikati (`*_IOS_CERTIFICATE_*`) baribir kerak — hozir NOVA_*.
 
 ### Bundle ID va profil
 **Run workflow → mode: testflight, apple_setup: ✓**. Workflow App Store Connect API orqali
