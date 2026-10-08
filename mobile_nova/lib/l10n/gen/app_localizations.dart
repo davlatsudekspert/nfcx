@@ -6632,6 +6632,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi'**
   String get errShowcaseBadLink;
+
+  /// O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi).
+  ///
+  /// In uz, this message translates to:
+  /// **'Tekshiruv kutilmoqda'**
+  String get pendingReview;
+
+  /// Chop etilgan post `pending: true` qaytganda.
+  ///
+  /// In uz, this message translates to:
+  /// **'Post tekshiruvdan so‘ng hammaga ko‘rinadi'**
+  String get pendingPublished;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

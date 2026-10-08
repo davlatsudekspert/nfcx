@@ -334,7 +334,12 @@ class _ShowcaseComposerScreenState
     if (!mounted) return;
     setState(() => _busy = false);
     res.when(
-      ok: (_) {
+      ok: (created) {
+        // Media hali tekshirilmagan — post faqat egasiga ko'rinadi.
+        if (created?.pending == true) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l.pendingPublished)));
+        }
         ref.invalidate(showcaseProvider);
         ref.invalidate(homeFeedProvider);
         ref.invalidate(

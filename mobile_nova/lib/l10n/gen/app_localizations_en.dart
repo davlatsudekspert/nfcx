@@ -3668,4 +3668,11 @@ class LEn extends L {
   @override
   String get errShowcaseBadLink =>
       'Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted';
+
+  @override
+  String get pendingReview => 'Pending review';
+
+  @override
+  String get pendingPublished =>
+      'Your post will be visible to everyone after review';
 }

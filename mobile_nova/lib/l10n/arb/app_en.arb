@@ -1262,5 +1262,7 @@
   "errShowcaseTitleLong": "Title must be 80 characters or less",
   "errShowcaseBadPrice": "Enter the price using digits only",
   "errShowcasePriceHigh": "The price is too high",
-  "errShowcaseBadLink": "Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted"
+  "errShowcaseBadLink": "Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted",
+  "pendingReview": "Pending review",
+  "pendingPublished": "Your post will be visible to everyone after review"
 }

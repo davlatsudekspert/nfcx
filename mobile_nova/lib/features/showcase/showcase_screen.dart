@@ -34,6 +34,7 @@ import '../social/media_carousel.dart';
 import '../social/media_frame.dart' show mediaImage;
 import '../social/moderation.dart';
 import '../social/music_picker.dart';
+import '../social/pending_badge.dart';
 import '../social/post_contact_bar.dart';
 import '../social/reels_screen.dart'
     show
@@ -821,6 +822,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                   if (e != null && mounted) _snack(describeError(l, e));
                 },
               ),
+              if (p.pending) ...[
+                const SizedBox(height: Gap.sm),
+                const PendingBadge(onDark: true),
+              ],
               if (p.featured) ...[
                 const SizedBox(height: Gap.sm),
                 _Pill(

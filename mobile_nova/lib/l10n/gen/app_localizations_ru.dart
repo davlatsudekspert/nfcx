@@ -3691,4 +3691,10 @@ class LRu extends L {
   @override
   String get errShowcaseBadLink =>
       'Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)';
+
+  @override
+  String get pendingReview => 'Ожидает проверки';
+
+  @override
+  String get pendingPublished => 'Пост станет виден всем после проверки';
 }

@@ -35,6 +35,7 @@ import 'profile_switcher.dart';
 import '../demo/demo_mode.dart';
 import '../demo/demo_mosaic.dart';
 import '../social/engagement.dart';
+import '../social/pending_badge.dart';
 import '../social/story_viewer.dart';
 import '../social/video_poster.dart';
 import '../social/media_frame.dart';
@@ -1728,7 +1729,10 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                 return PressableScale(
                   onTap: () => context.push(
                       Routes.post(p.id, code: code, company: company)),
-                  child: ClipRRect(
+                  child: Stack(
+                   fit: StackFit.expand,
+                   children: [
+                   ClipRRect(
                     borderRadius: R.tile,
                     // O'lchamni to'r katakchasi beradi.
                     child: SizedBox.expand(
@@ -1817,6 +1821,15 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                               ],
                             ),
                     ),
+                  ),
+                   // O'z postim hali tekshirilmagan — faqat menga.
+                   if (p.pending)
+                     const Positioned(
+                       left: 5,
+                       bottom: 5,
+                       child: PendingBadge(compact: true),
+                     ),
+                   ],
                   ),
                 );
               },

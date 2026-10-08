@@ -20,6 +20,7 @@ import 'media_carousel.dart';
 import 'media_frame.dart';
 import 'moderation.dart';
 import 'music_picker.dart' show MusicChip;
+import 'pending_badge.dart';
 import 'post_contact_bar.dart';
 import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
@@ -218,6 +219,14 @@ class FeedCard extends ConsumerWidget {
                 ),
             ],
           ),
+          // O'Z POSTIM HALI TEKSHIRILMAGAN — boshqalar uni ko'rmaydi.
+          if (post.pending) ...[
+            const SizedBox(height: Gap.sm),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: PendingBadge(),
+            ),
+          ],
           // KARUSEL — bir nechta RASM (ko'rgazma posti): yon tomonga
           // surish, ostida nuqtalar. Video post avvalgidek bitta media.
           if (media.isNotEmpty && !post.isVideo && post.mediaUrls.length > 1) ...[

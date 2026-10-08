@@ -3648,4 +3648,10 @@ class LUz extends L {
   @override
   String get errShowcaseBadLink =>
       'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi';
+
+  @override
+  String get pendingReview => 'Tekshiruv kutilmoqda';
+
+  @override
+  String get pendingPublished => 'Post tekshiruvdan so‘ng hammaga ko‘rinadi';
 }

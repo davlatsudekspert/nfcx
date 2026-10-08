@@ -1425,5 +1425,9 @@
   "errShowcaseTitleLong": "Sarlavha 80 belgidan oshmasin",
   "errShowcaseBadPrice": "Narxni faqat raqamlar bilan yozing",
   "errShowcasePriceHigh": "Narx juda katta",
-  "errShowcaseBadLink": "Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi"
+  "errShowcaseBadLink": "Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi",
+  "pendingReview": "Tekshiruv kutilmoqda",
+  "@pendingReview": {"description": "O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi)."},
+  "pendingPublished": "Post tekshiruvdan so‘ng hammaga ko‘rinadi",
+  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."}
 }

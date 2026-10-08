@@ -33,6 +33,7 @@ import 'comments.dart';
 import 'engagement.dart';
 import 'image_viewer.dart';
 import 'media_carousel.dart';
+import 'pending_badge.dart';
 import 'reels_screen.dart';
 import 'story_viewer.dart';
 import 'media_frame.dart';
@@ -342,6 +343,13 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     ),
                 ],
               ),
+              if (p.pending) ...[
+                const SizedBox(height: Gap.md),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: PendingBadge(),
+                ),
+              ],
               // KARUSEL — bir nechta rasm (ko'rgazma posti).
               if (!p.isVideo && p.mediaUrls.length > 1) ...[
                 const SizedBox(height: Gap.lg),
@@ -763,6 +771,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
     final social = ref.read(socialRepositoryProvider);
     final business = ref.read(businessRepositoryProvider);
 
+    // Post turlarida server qaytargan post (`pending` belgisi uchun),
+    // istoriyada — `null`.
     final res = switch ((widget.kind, profile.isBusiness)) {
       (ComposerKind.story, true) =>
         await business
@@ -772,7 +782,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               videoUrl: video,
               caption: caption,
             )
-            .then((r) => r.map((_) => null)),
+            .then((r) => r.map<Post?>((_) => null)),
       (ComposerKind.story, false) =>
         await social
             .createStory(
@@ -781,7 +791,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               videoUrl: video,
               caption: caption,
             )
-            .then((r) => r.map((_) => null)),
+            .then((r) => r.map<Post?>((_) => null)),
       (ComposerKind.post || ComposerKind.reel, true) =>
         await business
             .createPost(
@@ -791,8 +801,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               videoUrl: video,
               musicId: _music?.id,
               reel: _isReel && video.isEmpty,
-            )
-            .then((r) => r.map((_) => null)),
+            ),
       (ComposerKind.post || ComposerKind.reel, false) =>
         await social
             .createPost(
@@ -803,13 +812,18 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
               musicId: _music?.id,
               reel: _isReel && video.isEmpty,
             )
-            .then((r) => r.map((_) => null)),
+            .then((r) => r.map<Post?>((p) => p)),
     };
 
     if (!mounted) return;
     setState(() => _busy = false);
     res.when(
-      ok: (_) {
+      ok: (created) {
+        // Media hali tekshirilmagan — post faqat egasiga ko'rinadi.
+        if (created?.pending == true) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l.pendingPublished)));
+        }
         // YANGILANISH TURGA QARAB — ilgari ikkalasi ham har safar
         // qayta o'qilardi, ya'ni story joylansa postlar ro'yxati
         // ham "yangilanardi" va aksincha. Foydalanuvchi uchun bu

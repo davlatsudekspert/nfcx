@@ -236,7 +236,9 @@ class BusinessRepository {
   /// `caption`, `agreed`), lekin BOSHQA manzil. Ilgari biznes
   /// rejimida ham shaxsiy yo'l chaqirilardi — ya'ni biznes
   /// profilida turib yaratilgan post SHAXSIY profilga tushardi.
-  Future<Result<void>> createPost({
+  /// Javobda post bo'lsa u qaytadi (masalan `pending: true` — media
+  /// tekshiruv kutmoqda), bo'lmasa `null`.
+  Future<Result<Post?>> createPost({
     required String companyId,
     String caption = '',
     String imageUrl = '',
@@ -244,15 +246,16 @@ class BusinessRepository {
     int? musicId,
     int musicStart = 0,
     bool reel = false,
-  }) {
+  }) async {
     if (imageUrl.isEmpty && videoUrl.isEmpty) {
-      return Future.value(const Err(AppError(
+      return const Err(AppError(
         AppErrorKind.validation,
         code: 'bad_image',
         detail: 'post uchun rasm yoki video majburiy',
-      )));
+      ));
     }
-    return _api.post<void>('/api/companies/$companyId/posts', {
+    final res = await _api
+        .post<Map<String, dynamic>>('/api/companies/$companyId/posts', {
       if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
       if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
       'caption': caption,
@@ -260,6 +263,12 @@ class BusinessRepository {
       if (musicId != null && musicStart > 0) 'musicStart': musicStart,
       if (reel) 'reel': true,
       'agreed': true,
+    });
+    return res.map((j) {
+      final raw = j['post'];
+      if (raw is! Map) return null;
+      return Post.fromJson(raw.cast<String, dynamic>())
+          .copyWithKind(authorKind: 'company');
     });
   }
 
