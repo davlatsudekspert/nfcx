@@ -26,6 +26,7 @@ import {
 } from './content-guard.js';
 import { ensureSchema as ensureCommentsSchema, retireTargetStmts } from './comments.js';
 import { ensureSchema as ensureHighlightsSchema } from './highlights.js';
+import { retryOnAdminList } from './moderation-retry.js';
 
 // Shikoyat sabablari. Ro'yxat YOPIQ: erkin matn sabab bo'lsa,
 // adminda saralash imkonsiz bo'lardi va bir xil muammo o'nta xil
@@ -201,6 +202,9 @@ export async function handle(request, env, url, H) {
     const admin = await H.requireAdmin(request, env);
     if (!admin) return H.json({ error: 'unauthorized' }, 401);
     await ensureSchema(env);
+    // Tekshirilmagan fayllar — tez qayta tekshiruv (≤3 ta, ~20 s, 10 daqiqada
+    // bir marta; api/moderation-retry.js). Ro'yxatni hech qachon buzmaydi.
+    await retryOnAdminList(env, H).catch(() => null);
     const status = url.searchParams.get('status') || '';
     const limit = Math.min(Number(url.searchParams.get('limit') || 100) || 100, 300);
     const offset = Math.max(0, Number(url.searchParams.get('offset') || 0) || 0);

@@ -115,3 +115,43 @@ export async function retryUncheckedMedia(env, H, { limit = 20, budgetMs = 5 * 6
   }
   return stats;
 }
+
+// ═══ ADMIN RO'YXATINI OCHGANDA — TEZ QAYTA TEKSHIRUV ═══════════════════
+//
+// Kunlik cron'ni kutmasdan: admin `GET /api/admin/reports` ni ochganda eng
+// eski (kutilayotgan kontentga bog'langan birinchi) 3 ta tekshirilmagan
+// fayl qayta tekshiriladi. Umumiy vaqt ~20 s, 10 daqiqada bir martadan
+// ko'p emas (isolate xotirasi + `admin_settings.moderation_retry_list_at`).
+// Ro'yxat so'rovini HECH QACHON buzmaydi: xato yutiladi, muddat o'tsa
+// ro'yxat kutmasdan davom etadi.
+export const LIST_RETRY_LIMIT = 3;
+export const LIST_RETRY_BUDGET_MS = 20_000;
+export const LIST_RETRY_EVERY_MS = 10 * 60_000;
+const LIST_RETRY_KEY = 'moderation_retry_list_at';
+let listRetryAt = 0;
+export function __resetListRetry() { listRetryAt = 0; }
+
+export async function retryOnAdminList(env, H, { budgetMs = LIST_RETRY_BUDGET_MS, now = Date.now() } = {}) {
+  let timer = null;
+  try {
+    if (!moderationEnabled(env) || !env.UPLOADS) return { ran: false, reason: 'off' };
+    if (now - listRetryAt < LIST_RETRY_EVERY_MS) return { ran: false, reason: 'recent' };
+    listRetryAt = now;
+    try {
+      const row = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key = ?`).bind(LIST_RETRY_KEY).first();
+      const last = Date.parse(String(row?.value || ''));
+      if (Number.isFinite(last) && now - last < LIST_RETRY_EVERY_MS) { listRetryAt = last; return { ran: false, reason: 'recent' }; }
+      await env.DB.prepare(
+        `INSERT INTO admin_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      ).bind(LIST_RETRY_KEY, new Date(now).toISOString()).run();
+    } catch { /* belgi yozilmasa ham isolate oralig'i ishlaydi */ }
+    const TIMEOUT = Symbol('timeout');
+    const run = retryUncheckedMedia(env, H, { limit: LIST_RETRY_LIMIT, budgetMs }).catch(() => null);
+    const stats = await Promise.race([run, new Promise((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), budgetMs); })]);
+    return stats === TIMEOUT ? { ran: true, timedOut: true } : { ran: true, timedOut: false, stats };
+  } catch {
+    return { ran: false, reason: 'error' };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
