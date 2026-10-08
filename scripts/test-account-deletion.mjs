@@ -651,6 +651,8 @@ const PURGE_POLICY = {
   featured_waitlist: 'A',
   referral_rewards: 'B',
   content_archive: 'C', content_comment_archive: 'C', evidence_flags: 'C', post_likes_orphans: 'C', content_likes_orphans: 'C',
+  // consent_log (2026-10): "qoidalarga roziman" dalili — faqat user_id, versiya, manba (PII yo'q).
+  consent_log: 'C',
   content_scan_blocks: 'C', evidence_identity: 'C', evidence_owner_history: 'C', user_reports: 'C', content_reports: 'C',
   account_deletion_log: 'D', account_legal_holds: 'D', purge_media_queue: 'D', rate_limits: 'D', admin_activity_log: 'D',
   company_status_log: 'D', company_id_rules: 'N', auction_demand: 'N', admins: 'N', admin_sessions: 'N', admin_login_history: 'N',

@@ -51,6 +51,7 @@
 
 import { createNotification } from './notifications.js';
 import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
+import { flagText } from './content-guard.js';
 
 export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
@@ -1034,6 +1035,9 @@ export async function handle(request, env, url, H) {
       `INSERT INTO content_comments (target_kind, target_id, user_id, author_code, body, created_at, parent_id)
        VALUES (?,?,?,?,?,?,?) RETURNING id`
     ).bind(kind, id, user.id, author.code, body, now, parentId || null).first();
+    // MATNDA SO'KINISH (2026-10, content-guard.js) — bloklanmaydi, faqat
+    // admin "Shikoyatlar" navbatiga `text_flag`. Xatosi yutiladi.
+    if (ins?.id) await flagText(env, { kind: 'comment', id: Number(ins.id), text: body, ownerCode: author.code || '' });
 
     // Bildirishnoma — izoh YOZILGANDAN keyin, javobdan oldin.
     //

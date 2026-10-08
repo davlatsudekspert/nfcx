@@ -48,8 +48,9 @@ import * as apiNearby from './api/nearby.js';
 import * as apiProductTags from './api/product-tags.js';
 import * as apiReels from './api/reels.js';
 import * as apiFlags from './api/flags.js';
-import { getFlags, VIDEO_UPLOADS_DISABLED } from './api/flags.js';
+import { getFlags, peekFlags, VIDEO_UPLOADS_DISABLED } from './api/flags.js';
 import { parseMediaInput, mediaOut } from './api/carousel.js';
+import { wantsShowcase, readShowcase, catalogItemJson } from './api/showcase.js';
 import { companyContact as companyContactOut } from './api/post-contact.js';
 import {
   postLiveSql, companyPostLiveSql, effectiveTimeSql, parsePublishAt, scheduledForMs, postsTs, companyPostsTs,
@@ -64,6 +65,7 @@ import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag
 import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload, queueUncheckedUpload } from './api/image-moderation.js';
 import * as guard from './api/content-guard.js';
+import { retryUncheckedMedia } from './api/moderation-retry.js';
 import { MODERATION_UNAVAILABLE } from './api/content-guard.js';
 
 // API javoblari standart holda KESHLANMAYDI.
@@ -1454,7 +1456,7 @@ async function companyApi(request, env, url) {
            FROM company_posts cp WHERE company_id = ? ORDER BY ${effectiveTimeSql('cp')} DESC LIMIT 60`
       ).bind(id).all(),
     ]);
-    const cpFlags = await getFlags(env);
+    const cpFlags = peekFlags(env) || await getFlags(env);
     if (deletedOwner) return json({ posts: [] });
     const isOwner = !!(viewer && meta && String(meta.owner_user_id) === String(viewer.id));
     // YASHIRIN KOMPANIYA (faol emas: qoralama, to'xtatilgan, rad etilgan)
@@ -1553,7 +1555,14 @@ async function companyApi(request, env, url) {
 
     // KARUSEL (api/carousel.js) — `media` berilsa, birinchi rasm
     // `imageUrl` bo'ladi; berilmasa avvalgi `imageUrl`/`videoUrl` yo'li.
-    const mediaIn = parseMediaInput(body);
+    let mediaIn = parseMediaInput(body);
+    // KO'RGAZMA (api/showcase.js) — katalog mahsuloti faqat SHU kompaniyadan.
+    let showcaseIn = null;
+    if (wantsShowcase(body)) {
+      showcaseIn = await readShowcase(env, body, { companyId: id });
+      if (!showcaseIn.ok) return json({ error: showcaseIn.error, ...(showcaseIn.limit ? { limit: showcaseIn.limit } : {}) }, 422);
+      mediaIn = { ok: true, provided: true, imageUrl: showcaseIn.media.imageUrl, videoUrl: null, mediaJson: showcaseIn.media.mediaJson };
+    }
     if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
     const media = mediaIn.provided
       ? { ok: true, imageUrl: mediaIn.imageUrl, videoUrl: mediaIn.videoUrl }
@@ -1566,6 +1575,7 @@ async function companyApi(request, env, url) {
     if (Number(cnt?.n || 0) >= COMPANY_POST_MAX) return json({ error: 'limit_reached', limit: COMPANY_POST_MAX }, 409);
     const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: !!media.imageUrl && !media.videoUrl });
     if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
+    if (showcaseIn) extrasIn.extras.showcase = showcaseIn.showcase;
     // MAHSULOT BELGILARI (api/product-tags.js) — faqat SHU kompaniya
     // katalogidan, post yozilishidan OLDIN tekshiriladi.
     const tagsIn = await apiProductTags.readProductIds(env, body, id);
@@ -1582,11 +1592,18 @@ async function companyApi(request, env, url) {
       ? ((await apiProductTags.productsFor(env, [Number(row.id)])).get(Number(row.id)) || [])
       : [];
     const scheduledFor = scheduledForMs(row.publish_at);
+    const pending = await afterPublishD1(env, request, {
+      kind: 'company_post', id: Number(row.id), userId: owned.auth.user.id, body, ownerCode: id,
+      urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
+      texts: [row.caption, showcaseIn?.showcase?.title],
+    });
     return json({
       post: {
         id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '',
         createdAt: row.publish_at || row.created_at, ...extras,
         mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaUrls: mediaOut(row.media_json, row.image_url, row.video_url).map((m) => m.url),
+        pending,
         products,
         ...(scheduledFor ? { scheduledFor } : null),
       },
@@ -1595,12 +1612,16 @@ async function companyApi(request, env, url) {
 
   if (action === 'posts' && itemId && request.method === 'DELETE') {
     const postId = Number(itemId) || 0;
+    // Fayllar — o'chirishdan OLDIN (keyin `deleted_uploads` ga, content-guard.js).
+    const cpUrls = await guard.contentUrls(env, 'company_posts', 'id = ? AND company_id = ?', [postId, id]);
     // Avval dalil arxiviga nusxa, keyin o'chirish — bitta atomik batch.
     const [, res] = await env.DB.batch([
       archiveStmt(env, 'company_post', 'id = ? AND company_id = ?', [postId, id], { userId: owned.auth.user.id, reason: 'owner' }),
       env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id),
     ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    await guard.pendingDeleteStmt(env, 'company_post', postId).run().catch(() => {});
+    await guard.denyUploads(env, cpUrls, { onlyUnreferenced: true });
     await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
     // Mahsulot belgilari ham ketadi (yetim qolmasin).
     await apiProductTags.deleteTagsStmt(env, postId).run().catch(() => {});
@@ -1624,17 +1645,25 @@ async function companyApi(request, env, url) {
       caption: String(body?.caption || '').slice(0, 300),
     });
     if (res.error) return json(res, 409);
-    return json(res.story, 201);
+    const pending = await afterPublishD1(env, request, {
+      kind: 'story', reportKind: 'company_story', id: res.story.id, userId: owned.auth.user.id, body, ownerCode: id,
+      urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
+      texts: [res.story.caption],
+    });
+    return json(pending ? { ...res.story, pending: true } : res.story, 201);
   }
 
   if (action === 'stories' && itemId && request.method === 'DELETE') {
     const storyWhere = `id = ? AND owner_kind = 'company' AND owner_id = ?`;
     const storyBinds = [Number(itemId) || 0, id];
+    const csUrls = await guard.contentUrls(env, 'stories', storyWhere, storyBinds);
     const [, res] = await env.DB.batch([
       archiveStmt(env, 'story', storyWhere, storyBinds, { userId: owned.auth.user.id, reason: 'owner' }),
       env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
     ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    await guard.pendingDeleteStmt(env, 'story', Number(itemId) || 0).run().catch(() => {});
+    await guard.denyUploads(env, csUrls, { onlyUnreferenced: true });
     return json({ ok: true });
   }
 
@@ -3247,14 +3276,14 @@ function bodyHasVideoD1(body) {
 // ham yopiq — eski ilova va to'g'ridan-to'g'ri API ham shu yerdan o'tadi.
 async function videoAttachGateD1(env, body) {
   if (!bodyHasVideoD1(body)) return null;
-  return (await getFlags(env)).videoUploadsBlocked ? json(VIDEO_UPLOADS_DISABLED, 403) : null;
+  return (peekFlags(env) || await getFlags(env)).videoUploadsBlocked ? json(VIDEO_UPLOADS_DISABLED, 403) : null;
 }
 
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const nowIso = new Date().toISOString();
   // Tekshirilmagan medialisi (pending) — faqat egasiga (`pending: true`);
   // `videosHidden` kaliti — video istoriya hech kimga.
-  const flags = await getFlags(env);
+  const flags = peekFlags(env) || await getFlags(env);
   const viewerKey = viewerUserId || -1;
   // JAVOBLAR SONI (2026-10, api/story-replies.js) — FAQAT EGASIGA. Ikkinchi
   // so'rov shu to'lqinda, PARALLEL: u faqat tomoshabin egasi bo'lsa qator
@@ -6724,7 +6753,15 @@ async function recordsApi(request, env, url) {
       // KARUSEL (api/carousel.js): `media` berilsa, `imageUrl`/`videoUrl`
       // undan olinadi (birinchi rasm — eski ilovalar uchun). Berilmasa —
       // avvalgi yo'l, hech narsa o'zgarmaydi.
-      const mediaIn = parseMediaInput(body);
+      let mediaIn = parseMediaInput(body);
+      // KO'RGAZMA (api/showcase.js): 1..5 rasm, sarlavha, narx, havola.
+      // Shaxsiy postda katalog mahsuloti yo'q (`catalogItemId` e'tiborsiz).
+      let showcaseIn = null;
+      if (wantsShowcase(body)) {
+        showcaseIn = await readShowcase(env, body, {});
+        if (!showcaseIn.ok) return json({ error: showcaseIn.error, ...(showcaseIn.limit ? { limit: showcaseIn.limit } : {}) }, 422);
+        mediaIn = { ok: true, provided: true, imageUrl: showcaseIn.media.imageUrl, videoUrl: null, mediaJson: showcaseIn.media.mediaJson };
+      }
       if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
       // REJA (api/scheduled-posts.js): kelajakda, 30 kungacha.
       const plan = parsePublishAt(body?.publishAt);
@@ -6752,13 +6789,19 @@ async function recordsApi(request, env, url) {
       // OLDIN tekshiriladi: yomon musiqa bilan post yarim yozilib qolmasin.
       const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: okImg && !okVid });
       if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
+      if (showcaseIn) extrasIn.extras.showcase = showcaseIn.showcase;
       const row = await env.DB.prepare(
         `INSERT INTO posts (code, user_id, image_url, video_url, caption, media_json, publish_at) VALUES (?, ?, ?, ?, ?, ?, ?)
          RETURNING id, code, image_url, video_url, caption, created_at, media_json, publish_at`
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null,
         mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? postsTs(plan.ms) : null).first();
       const extras = await apiMusic.savePostExtras(env, 'post', Number(row.id), extrasIn.extras);
-      return json({ ...postRowToJson(row, 0, false), ...extras }, 201);
+      const pending = await afterPublishD1(env, request, {
+        kind: 'post', id: Number(row.id), userId: user.id, body, ownerCode: code,
+        urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
+        texts: [caption, showcaseIn?.showcase?.title],
+      });
+      return json({ ...postRowToJson(row, 0, false), ...extras, pending }, 201);
     }
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
@@ -6801,7 +6844,12 @@ async function recordsApi(request, env, url) {
         caption: String(body?.caption || '').slice(0, 300),
       });
       if (res.error) return json(res, 409);
-      return json(res.story, 201);
+      const pending = await afterPublishD1(env, request, {
+        kind: 'story', id: res.story.id, userId: user.id, body, ownerCode: code,
+        urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
+        texts: [res.story.caption],
+      });
+      return json(pending ? { ...res.story, pending: true } : res.story, 201);
     }
     return null;
   }
@@ -7635,7 +7683,7 @@ async function uploadApi(request, env, pathname) {
   // KALIT: video yuklash yopiq (admin yo'llari bundan mustasno). Mijoz
   // video deb e'lon qilgan bo'lsa — tana o'qilmasdan rad etiladi; aks
   // holda sehrli baytlar bo'yicha (`blockVideo`), saqlashdan OLDIN.
-  const blockVideo = !isAdmin && (await getFlags(env)).videoUploadsBlocked;
+  const blockVideo = !isAdmin && (peekFlags(env) || await getFlags(env)).videoUploadsBlocked;
   const declaredVideo = /^video\//i.test(String(request.headers.get('content-type') || '').trim());
   if (blockVideo && (pathname === '/api/upload-card-video'
     || (declaredVideo && ['/api/upload-media', '/api/upload-file', '/api/upload-profile-bg'].includes(pathname)))) {
@@ -7914,7 +7962,7 @@ async function serveUpload(request, env, url, ctx) {
   // ochilaverardi. Admin dalilni ko'ra oladi (keshsiz, no-store).
   const pathOnly = `/${key}`;
   if (UPLOAD_VIDEO_FILE_RE.test(pathOnly) && !UPLOAD_AUDIO_FILE_RE.test(pathOnly)
-    && (await getFlags(env)).videosHidden) {
+    && (peekFlags(env) || await getFlags(env)).videosHidden) {
     return json({ error: 'not_found' }, 404, { 'cache-control': 'no-store' });
   }
   if (await guard.uploadDenied(env, pathOnly)) {
@@ -9021,13 +9069,18 @@ export async function postPageResponse(env, url, id) {
     console.error('post page', id, error?.message);
   }
   // KALIT `videosHidden` — video post sahifasi ham 404.
-  if (row?.video_url && (await getFlags(env)).videosHidden) row = null;
+  if (row?.video_url && (peekFlags(env) || await getFlags(env)).videosHidden) row = null;
   let views = 0;
+  // Ko'rgazma maydonlari (sarlavha, narx, mahsulot, havola) — music.js.
+  const extra = {};
   if (row) {
-    const v = await apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null);
+    const [v] = await Promise.all([
+      apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null),
+      apiMusic.attachPostExtras(env, [{ kind: company ? 'company_post' : 'post', id: pid, obj: extra }]).catch(() => {}),
+    ]);
     views = v?.get(`${company ? 'company_post' : 'post'}:${pid}`) || 0;
   }
-  return new Response(postPageHtml(url.origin, row, { company, views }), {
+  return new Response(postPageHtml(url.origin, row, { company, views, extra }), {
     status: row ? 200 : 404,
     headers: {
       'content-type': 'text/html; charset=utf-8',
@@ -9058,7 +9111,10 @@ function openAppScript(origin, appPath) {
     + `if(!document.hidden&&Date.now()-t<3000){location.href='/app';}},1600);});}})();`;
 }
 
-function postPageHtml(origin, row, { company, views }) {
+// "125 000 so'm" — ko'rgazma narxi (oddiy bo'shliq bilan, sayt bilan bir xil).
+const uzsText = (n) => `${String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+
+function postPageHtml(origin, row, { company, views, extra = {} }) {
   const e = ogAttrEscape;
   const shell = (title, head, body) => `<!doctype html>
 <html lang="uz"><head><meta charset="utf-8">
@@ -9089,6 +9145,8 @@ ${head}
   .sec{border:1px solid #3a3630}
   .brand{margin-top:22px;text-align:center;font:700 12px/1 sans-serif;letter-spacing:.32em;color:#6f6a62}
   .nf{padding:30vh 8px 0;text-align:center}
+  .sc{margin:12px 2px 4px}.sc h2{font-size:18px;margin:0 0 2px}.sc .pr{font-weight:800;color:#c9a961;font-size:16px}
+  .sc .lk{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.sc .lk a{border:1px solid #3a3630;border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600;font-size:14px}
 </style></head><body><main>${body}<div class="brand">NFCSTORE</div></main></body></html>`;
 
   if (!row) {
@@ -9134,10 +9192,20 @@ ${head}
       ? `<div class="media img"><img src="${e(image)}" alt="${e(desc)}"></div>`
       : '';
 
+  // KO'RGAZMA (2026-10): sarlavha, narx, katalog mahsuloti va havola.
+  const scItem = extra.showcase ? extra.catalogItem : null;
+  const scPrice = extra.showcase ? (extra.priceUzs != null ? extra.priceUzs : scItem?.priceUzs ?? null) : null;
+  const scLink = extra.showcase && /^https:\/\//i.test(String(extra.linkUrl || '')) ? String(extra.linkUrl) : '';
+  const showcaseHtml = extra.showcase ? `<div class="sc">
+${extra.title ? `<h2>${e(extra.title)}</h2>` : ''}${scPrice != null ? `<div class="pr">${e(uzsText(scPrice))}</div>` : ''}
+${scItem || scLink ? `<div class="lk">${scItem?.companyId ? `<a href="/company/${e(encodeURIComponent(String(scItem.companyId).toLowerCase()))}">Mahsulot${scItem.name ? `: ${e(scItem.name)}` : ''}</a>` : ''}${scLink ? `<a href="${e(scLink)}" target="_blank" rel="noopener noreferrer nofollow">Havolani ochish ↗</a>` : ''}</div>` : ''}
+</div>` : '';
+
   const body = `<a class="top" href="${e(profile)}">
 ${avatar ? `<img class="av" src="${e(avatar)}" alt="">` : '<div class="av"></div>'}
 <div style="min-width:0"><div class="nm">${e(name)}</div><div class="cd">${e(code)}</div></div></a>
 ${media}
+${showcaseHtml}
 <div class="meta"><span>👁 ${Number(views) || 0}</span></div>
 ${caption ? `<div class="cap">${e(caption)}</div>` : ''}
 <div class="btns"><a id="open-app" class="btn pri" href="/app">Ilovada ochish</a><a class="btn sec" href="${e(profile)}">Profil</a></div>
@@ -11318,6 +11386,23 @@ const PUBLISH_PER_HOUR_D1 = 60;
 //     — izoh yo'li bilan bir xil, faqat rostlik tekshiriladi);
 //   • soatlik spam chegarasi.
 // `null` — ruxsat; aks holda tayyor javob.
+// CHOP ETILGANDAN KEYIN (2026-10, api/content-guard.js) — post, istoriya,
+// kompaniya posti/istoriyasi va ko'rgazma uchun BITTA joy:
+//   * tekshirilmagan media bo'lsa — `content_pending` (egasidan boshqaga
+//     ko'rinmaydi) → qaytadi `true`;
+//   * `agreed:true` dalili — `consent_log`;
+//   * matnda so'kinish bo'lsa — admin navbatiga `text_flag` (BLOKLAMAYDI).
+// `kind`: pending turi (post | company_post | story); `reportKind` —
+// shikoyat turi (story / company_story farqlanadi).
+async function afterPublishD1(env, request, { kind, reportKind = kind, id, userId, body, urls, texts = [], ownerCode = '' }) {
+  const pending = await guard.markPendingIfUnchecked(env, kind, id, urls);
+  await guard.logConsent(env, request, userId, body);
+  for (const text of texts) {
+    if (await guard.flagText(env, { kind: reportKind, id, text, ownerCode })) break;
+  }
+  return pending;
+}
+
 // Ban — yuklash paytida ham shu tekshiruv (uploadApi).
 function banGateD1(user) {
   return user?.bannedUntil ? json({ error: 'banned', bannedUntil: user.bannedUntil }, 403) : null;
@@ -11402,7 +11487,7 @@ async function listPostsD1(env, code, viewerUserId) {
   // TEKSHIRILMAGAN MEDIALI (pending, api/content-guard.js) post ham faqat
   // egasiga — `pending: true` bilan. KALIT `videosHidden` — video postlar
   // hech kimga (egasiga ham) chiqmaydi.
-  const flags = await getFlags(env);
+  const flags = peekFlags(env) || await getFlags(env);
   const rows = await env.DB.prepare(
     `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at, p.publish_at, p.media_json,
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
@@ -11463,6 +11548,7 @@ async function postsApi(request, env, url) {
     // `retireTargetStmts` izohiga qarang), OXIRIDA postning o'zi.
     // Hammasi egalik sharti bilan tanlanadi va bitta batch'da.
     await apiComments.ensureSchema(env);
+    const postUrls = await guard.contentUrls(env, 'posts', postWhere, postBinds);
     const ownedPost = `SELECT id FROM posts WHERE ${postWhere}`;
     const batch = [
       archiveStmt(env, 'post', postWhere, postBinds, { userId: user.id, reason: 'owner' }),
@@ -11474,6 +11560,9 @@ async function postsApi(request, env, url) {
     const res = results[results.length - 1];
     const changed = Number(res?.meta?.changes || 0);
     if (!changed) return json({ error: 'not_found' }, 404);
+    // Kutish qatori va fayllar (boshqa joyda ishlatilmasa) — content-guard.js.
+    await guard.pendingDeleteStmt(env, 'post', postId).run().catch(() => {});
+    await guard.denyUploads(env, postUrls, { onlyUnreferenced: true });
     return json({ ok: true });
   }
 
@@ -11532,7 +11621,7 @@ async function storiesApi(request, env, url) {
           AND ${ownerAliveSql('c')}
           AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
           AND NOT ${guard.pendingSql('story', 's.id')}
-          ${(await getFlags(env)).videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
+          ${(peekFlags(env) || await getFlags(env)).videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
         ORDER BY s.created_at
         LIMIT 200`
     ).bind(user.id, new Date().toISOString(), user.id).all();
@@ -11624,12 +11713,15 @@ async function storiesApi(request, env, url) {
            OR (owner_kind = 'company'
                AND owner_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)) )`;
   const storyBinds = [Number(m[1]), user.id, user.id, String(user.id)];
+  const storyUrls = await guard.contentUrls(env, 'stories', storyWhere, storyBinds);
   // Avval dalil arxiviga nusxa (content-archive.js), keyin o'chirish.
   const [, res] = await env.DB.batch([
     archiveStmt(env, 'story', storyWhere, storyBinds, { userId: user.id, reason: 'owner' }),
     env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
   ]);
   if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+  await guard.pendingDeleteStmt(env, 'story', Number(m[1])).run().catch(() => {});
+  await guard.denyUploads(env, storyUrls, { onlyUnreferenced: true });
   // Layk va ko'rishlar ham ketadi — aks holda ular yetim qoladi.
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM story_likes WHERE story_id = ?`).bind(Number(m[1])),
@@ -11919,7 +12011,7 @@ async function feedApi(request, env, url) {
     const me = await getCurrentUser(request, env);
     if (!me) return json({ error: 'unauthorized' }, 401);
     apiComments.ensureSchema(env).catch(() => {});
-    const fUnion = feedUnionSqlFor(await getFlags(env));
+    const fUnion = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
     const fRes = await env.DB.prepare(
       `${fUnion}
        WHERE (author_kind = 'card' AND code IN (
@@ -11949,7 +12041,7 @@ async function feedApi(request, env, url) {
 
   const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
   apiComments.ensureSchema(env).catch(() => {});
-  const unionSql = feedUnionSqlFor(await getFlags(env));
+  const unionSql = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
   const [user, rows] = await Promise.all([
     getCurrentUser(request, env),
     env.DB.prepare(
@@ -12094,7 +12186,7 @@ async function postsByKeysD1(env, keys, viewerId) {
   const vid = Number(viewerId) || 0;
   const now = new Date().toISOString();
   const where = list.map(() => `(kind = 'post' AND author_kind = ? AND id = ?)`).join(' OR ');
-  const unionSql = feedUnionSqlFor(await getFlags(env));
+  const unionSql = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
   const [res, blockedList] = await Promise.all([
     env.DB.prepare(`${unionSql} WHERE ${where}`)
       .bind(vid, vid, now, vid, now, ...list.flatMap((k) => [k.kind === 'company_post' ? 'company' : 'card', Number(k.id)]))
@@ -12447,7 +12539,7 @@ const H = {
   postsByKeys: postsByKeysD1,
   // Reels "Siz uchun" (api/reels.js) — lentaning O'ZI: UNION (maxfiylik,
   // rejadagi post), shakl va `liked`. Ikkinchi nusxa yozilmaydi.
-  feedUnionSql: FEED_UNION_SQL, feedUnionSqlFor, getFlags, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
+  feedUnionSql: FEED_UNION_SQL, feedUnionSqlFor, getFlags, peekFlags, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
   // Ish vaqti → "hozir ochiqmi" (api/nearby.js) — kompaniya sahifasidagi
   // `openNow` bilan AYNAN bir qoida (Toshkent vaqti).
   companyOpenNow: (hoursJson) => companyOpenStateD1(normalizeHoursD1(parseJsonArray(hoursJson))),
@@ -12612,6 +12704,13 @@ export default {
       const rr = await apiReferrals.processReferralRewards(env, H).catch(() => null);
       if (rr && !rr.disabled && (rr.granted || rr.expired || rr.rejected)) {
         console.log('referral_rewards', JSON.stringify({ granted: rr.granted, expired: rr.expired, rejected: rr.rejected }));
+      }
+      // TEKSHIRILMAGAN FAYLLAR — Gemini bilan QAYTA tekshiruv (api/moderation-retry.js):
+      // ruxsat — kontent ochiladi; bloklandi — admin o'chirishi kabi o'chiriladi.
+      // Filtr o'chiq bo'lsa hech narsa qilmaydi. Logga faqat sonlar.
+      const mr = await retryUncheckedMedia(env, H, { limit: 20 }).catch(() => null);
+      if (mr && !mr.skipped && mr.checked) {
+        console.log('moderation_recheck', JSON.stringify({ checked: mr.checked, approved: mr.approved, blocked: mr.blocked, still: mr.still }));
       }
     })());
   },

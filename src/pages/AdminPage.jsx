@@ -498,6 +498,7 @@ const REPORT_REASON_LABEL = {
   copyright: 'Mualliflik huquqi',
   other: 'Boshqa',
   unchecked: 'Avtomatik tekshirilmagan',
+  text_flag: 'Matnda so‘kinish (avtomatik)',
 };
 
 // Shikoyat qilingan kontentning qisqa ko'rinishi: rasm/video, matn, muallif.
@@ -550,7 +551,8 @@ function ReportPeople({ r, t }) {
 // DELETE /api/admin/content/:kind/:id — post|story|company_post|company_story;
 // izoh — /comments/:id; Aktual — DELETE /api/admin/highlights/:id {reason}).
 // `media` — avtomatik tekshirilmagan fayl (hech qaysi postga bog'lanmagan).
-const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight', 'media'];
+// `catalog_item` (2026-10) — katalog mahsuloti (DELETE /api/admin/content/catalog_item/:id, dalil arxivi bilan).
+const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight', 'media', 'catalog_item'];
 
 function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
   useEffect(() => {
@@ -628,6 +630,11 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
         <div className="mt-5 flex flex-wrap gap-2">
           {canDelete && (
             <button type="button" disabled={busy} onClick={onDelete} className="btn btn-error btn-sm">{t('Kontentni o‘chirish')}</button>
+          )}
+          {/* TEKSHIRILMAGAN FAYL — "Tasdiqlash": shu faylli post/istoriya
+              ommaga ochiladi (server: content_pending tozalanadi). */}
+          {r.reason === 'unchecked' && r.status === 'new' && (
+            <button type="button" disabled={busy} onClick={() => onStatus('resolved')} className="btn btn-gold btn-sm">{t('Tasdiqlash')}</button>
           )}
           {r.status !== 'resolved' && (
             <button type="button" disabled={busy} onClick={() => onStatus('resolved')} className="btn btn-success btn-sm">{t('Hal qilindi')}</button>
@@ -886,6 +893,16 @@ function ReportsTab() {
                         className="btn btn-error btn-xs mr-1 min-h-9"
                       >
                         {t('Kontentni o‘chirish')}
+                      </button>
+                    )}
+                    {r.reason === 'unchecked' && r.status === 'new' && (
+                      <button
+                        type="button"
+                        disabled={busy === r.id}
+                        onClick={() => setRowStatus(r.id, 'resolved')}
+                        className="btn btn-gold btn-xs mr-1 min-h-9"
+                      >
+                        {t('Tasdiqlash')}
                       </button>
                     )}
                     {r.status !== 'resolved' && (

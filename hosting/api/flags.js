@@ -81,6 +81,22 @@ export async function getFlags(env) {
   return out;
 }
 
+/// Keshdagi kalitlar — SINXRON (issiq yo'llar uchun): kesh iliq bo'lsa
+/// hech qanday `await` yo'q (UZ adapteri bir vaqtda kelgan so'rovlarni
+/// bitta HTTP ga birlashtiradi — ortiqcha mikrotask yangi "to'lqin"
+/// qo'shardi). Kesh sovuq/eskirgan bo'lsa — `null` (chaqiruvchi
+/// `await getFlags(env)` qiladi). Ishlatish: `peekFlags(env) || await getFlags(env)`.
+export function peekFlags(env, now = Date.now()) {
+  const hit = cache.get(cacheKey(env));
+  if (!hit || now - hit.at >= FLAGS_TTL_MS) return null;
+  const out = { ...hit.flags };
+  for (const n of NAMES) {
+    const ov = parseBool(env?.[FLAG_DEFS[n].env]);
+    if (ov !== null) out[n] = ov;
+  }
+  return out;
+}
+
 function envSources(env) {
   const src = {};
   for (const n of NAMES) src[n] = parseBool(env?.[FLAG_DEFS[n].env]) !== null ? 'env' : 'admin';

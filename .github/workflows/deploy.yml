@@ -97,7 +97,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost test-featured-sales test-referral-rewards test-admin-apple test-admin-audit test-phone-unchanged test-unchecked-queue; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost test-featured-sales test-referral-rewards test-admin-apple test-admin-audit test-phone-unchanged test-unchecked-queue test-flags test-video-guard test-showcase test-moderation-pending; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -385,6 +385,15 @@ jobs:
       # Kalitlar (Reels/video): standart o'chiq, env override, admin toggle.
       - name: Kalitlar (feature flags)
         run: node scripts/test-flags.mjs
+      # Video kaliti (yuklash/ulash 403, videosHidden, reelsHidden) va audio teshigi.
+      - name: Video kalitlari va audio yuklash himoyasi
+        run: node scripts/test-video-guard.mjs
+      # Ko'rgazma: tekshiruv, JSON maydonlari, /api/showcase, catalog_item shikoyati.
+      - name: Ko'rgazma (Showcase)
+        run: node scripts/test-showcase.mjs
+      # Pending, 503 moderation_unavailable, consent_log, deleted_uploads, text_flag, cron qayta tekshiruv.
+      - name: Moderatsiya — pending va qattiqlashtirish
+        run: node scripts/test-moderation-pending.mjs
       - name: Ro'yxat — email imlosi, domen va telefon uzunligi
         run: node scripts/test-register-contact-check.mjs
       # App Store: /support, /contact, /terms haqiqiy sahifa (NFC ID emas),

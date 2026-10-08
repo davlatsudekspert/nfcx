@@ -13,7 +13,6 @@ export const DICT_ADMIN = {
   'Mavjud videolarni yashirish: video reklama joylari ham yashiriladi.': { ru: 'Скрыть существующие видео: видео-рекламные места тоже скрываются.', en: 'Hide existing videos: video ad placements are hidden too.' },
   'Worker sozlamasida qotirilgan': { ru: 'Зафиксировано в настройках Worker', en: 'Pinned in Worker settings' },
   'Matnda so‘kinish (avtomatik)': { ru: 'Брань в тексте (автоматически)', en: 'Profanity in text (automatic)' },
-  'Mahsulot (katalog)': { ru: 'Товар (каталог)', en: 'Product (catalog)' },
   // ── Umumiy holatlar ──
   "Ruxsat yo'q": { ru: 'Нет доступа', en: 'Access denied' },
   "Ma'lumotlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные.', en: 'Could not load data.' },

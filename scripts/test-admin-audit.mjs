@@ -166,7 +166,7 @@ const users = (qs, who = cookie.admin) => call(`/api/admin/users?${qs}`, { cooki
 {
   const admin = readFileSync(new URL('../src/pages/AdminPage.jsx', import.meta.url), 'utf8');
   const nova = readFileSync(new URL('../src/components/admin/NovaTab.jsx', import.meta.url), 'utf8');
-  checkTrue('8) shikoyat: company_story va highlight o‘chiriladi', /REPORT_DELETABLE = \['post', 'story', 'company_post', 'company_story', 'comment', 'highlight'(, 'media')?\]/.test(admin)
+  checkTrue('8) shikoyat: company_story va highlight o‘chiriladi', /REPORT_DELETABLE = \['post', 'story', 'company_post', 'company_story', 'comment', 'highlight'(, 'media')?(, 'catalog_item')?\]/.test(admin)
     && /adminApi\(`\/highlights\/\$\{encodeURIComponent\(r\.targetId\)\}`/.test(admin));
   checkTrue('8) Namuna bizneslar va Apple — managerOnly', /index: 26, label: 'Namuna bizneslar'[^}]*managerOnly: true/.test(admin) && /index: 27, label: 'Apple \/ iOS'[^}]*managerOnly: true/.test(admin));
   checkTrue('8) nav filtri managerOnly ni hisobga oladi', /!n\.managerOnly \|\| isManager/.test(admin));

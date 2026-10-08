@@ -20,7 +20,7 @@
 //   GET    /api/admin/reports        (admin) ?status=&limit= → { reports }
 //   PATCH  /api/admin/reports/:id    (admin) { status } → { ok, report }
 
-import { archiveStmt } from './content-archive.js';
+import { archiveStmt, archiveMediaStmt } from './content-archive.js';
 import {
   REPORTS_TABLE_SQL, clearPendingUrl, denyUploads, contentUrls, pendingDeleteStmt, ensureGuardSchema,
 } from './content-guard.js';
@@ -51,7 +51,8 @@ export const REPORT_REASONS = [
 // va izoh ID'si post ID'si deb o'qilardi. `company_story` — biznes istoriyasi.
 // `highlight` (2026-10) — Aktual to'plami (highlights.js): istoriya 24
 // soatda yo'qoladi, Aktual esa doimiy — shikoyat qilinadigan bo'lishi shart.
-const REPORT_TARGETS = ['post', 'story', 'company_post', 'company_story', 'record', 'company', 'comment', 'highlight'];
+// `catalog_item` (2026-10) — kompaniya katalogidagi mahsulot (id — matn, UUID).
+const REPORT_TARGETS = ['post', 'story', 'company_post', 'company_story', 'record', 'company', 'comment', 'highlight', 'catalog_item'];
 
 // Nimani bloklash mumkin: PROFIL (shaxsiy yoki kompaniya).
 // Alohida postni bloklash emas — odam odatda muallifdan qutulmoqchi
@@ -263,6 +264,11 @@ export async function handle(request, env, url, H) {
     ).bind(status, done ? H.nowTs() : null, done ? `admin#${admin.adminId || ''}` : '', Number(one[1]))
       .first();
     if (!row) return H.json({ error: 'not_found' }, 404);
+    // TEKSHIRILMAGAN FAYL (`media`) — admin ko'rib chiqdi ("Tasdiqlash",
+    // "Hal qilindi" yoki "Rad etish"): shu faylli post/istoriyalar
+    // (`content_pending`, content-guard.js) ommaga ochiladi. Kontent
+    // o'chirilgan bo'lsa qator baribir yo'q — zarari yo'q.
+    if (done && row.target_kind === 'media') await clearPendingUrl(env, String(row.target_id));
     H.logAdminActivity?.(env, { action: 'report_status', details: `#${one[1]} → ${status}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json({ ok: true, report: reportRowToJson(row) });
   }
@@ -291,6 +297,24 @@ export async function handle(request, env, url, H) {
     const body = await request.json().catch(() => ({}));
     const url = str(body?.url, 300);
     if (!/^\/uploads\/[A-Za-z0-9._-]{1,200}$/.test(url) || url.includes('..')) return H.json({ error: 'bad_url' }, 422);
+    // DALIL ARXIVI — fayl o'chirilishidan OLDIN (2026-10): kim yuklagani
+    // (ombordagi `actor` metadata) va qaysi admin o'chirgani qoladi.
+    const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+    let actor = '';
+    try { actor = String((await env.UPLOADS?.head(url.slice(1)))?.customMetadata?.actor || ''); } catch { actor = ''; }
+    // Ombor metadata'si bo'lmasa — "tekshirilmagan" yozuvining izohidan (`manba · user:12`).
+    if (!actor) {
+      const note = await env.DB.prepare(`SELECT note FROM content_reports WHERE target_kind = 'media' AND target_id = ? ORDER BY id LIMIT 1`)
+        .bind(url).first().catch(() => null);
+      actor = String(note?.note || '').split(' · ')[1] || '';
+    }
+    try {
+      await archiveMediaStmt(env, url, { admin: adminLabel, reason: str(body?.reason, 40) || 'admin', actor }).run();
+    } catch (e) {
+      console.error('media archive', String(e?.message || e).slice(0, 120));
+      return H.json({ error: 'archive_failed' }, 503);
+    }
+    await denyUploads(env, [url]);
     await env.UPLOADS?.delete(url.slice(1)).catch(() => {});
     await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
         WHERE target_kind = 'media' AND target_id = ? AND status <> 'resolved'`)
@@ -303,96 +327,136 @@ export async function handle(request, env, url, H) {
   if (del && request.method === 'DELETE') {
     const admin = await H.requireAdmin(request, env);
     if (!admin) return H.json({ error: 'unauthorized' }, 401);
-    const reportKind = del[1];
-    const kind = reportKind === 'company_story' ? 'story' : reportKind;
-    const id = Number(del[2]);
-
-    // Har bir tur uchun O'ZINING jadvali va bog'liq yozuvlari.
-    // Layk va ko'rishlar asosiy qatordan OLDIN o'chadi.
-    const plan = {
-      post: [
-        `DELETE FROM post_likes WHERE post_id = ?`,
-        `DELETE FROM posts WHERE id = ?`,
-      ],
-      // `owner_kind` sharti ATAYLAB yo'q: `stories.id` yagona va
-      // admin uchun istorya kimniki ekani (shaxsiy yoki kompaniya)
-      // farq qilmaydi — u baribir o'chirishga haqli.
-      // AKTUAL NUSXALARI HAM (2026-10, highlights.js): istoriya Aktualga
-      // nusxa bo'lib saqlangan bo'lsa, admin o'chirgan kontent o'sha yerda
-      // yashab qolardi — moderatsiyani chetlab o'tish. Nusxalar ham dalil
-      // arxiviga yoziladi (pastda) va istoriyaning o'zidan OLDIN o'chadi.
-      story: [
-        `DELETE FROM story_likes WHERE story_id = ?`,
-        `DELETE FROM story_views WHERE story_id = ?`,
-        // Muqova shu istoriya rasmi bo'lsa — tozalanadi (nusxa o'chishidan
-        // OLDIN, rasm manzili hali o'qiladi). Aks holda muqova ko'rinmasa
-        // ham fayl "ishlatilmoqda" deb hisoblanib, ombordan hech qachon
-        // o'chmasdi.
-        `UPDATE story_highlights SET cover_url = NULL
-          WHERE cover_url IS NOT NULL
-            AND cover_url IN (SELECT image_url FROM story_highlight_items
-                               WHERE story_id = ? AND image_url IS NOT NULL)`,
-        `DELETE FROM story_highlight_items WHERE story_id = ?`,
-        `DELETE FROM stories WHERE id = ?`,
-      ],
-      company_post: [
-        `DELETE FROM company_posts WHERE id = ?`,
-      ],
-    }[kind];
-
-    // DALIL ARXIVI: o'chirishdan OLDIN, o'sha batch ichida nusxa
-    // (content-archive.js). Kim o'chirgani — admin raqami va roli
-    // (sessiya kaliti EMAS), izohlar arxividagi bilan bir xil.
     const body = await request.json().catch(() => ({}));
     const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
-    // Post raqami qayta ishlatiladi — izoh va layklari ham shu batch'da
-    // ketadi, aks holda keyingi yangi postga "yopishardi" (comments.js).
-    await ensureCommentsSchema(env);
-    const retire = kind === 'post'
-      ? retireTargetStmts(env, 'post', '?', [id], { byAdmin: adminLabel, reason: 'target_deleted' })
-      : [];
-    const by = { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' };
-    // Kontentning fayllari — "tekshirilmagan yuklash" shikoyatlarini ham yopish uchun.
-    const table = { post: 'posts', story: 'stories', company_post: 'company_posts' }[kind];
-    let mediaRow = null;
-    try { mediaRow = await env.DB.prepare(`SELECT image_url, video_url FROM ${table} WHERE id = ?`).bind(id).first(); } catch { mediaRow = null; }
-    const mediaUrls = [mediaRow?.image_url, mediaRow?.video_url].filter(Boolean);
-    if (kind === 'story') await ensureHighlightsSchema(env).catch(() => {});
-    const res = await env.DB.batch([
-      archiveStmt(env, kind, 'id = ?', [id], by),
-      ...(kind === 'story' ? [archiveStmt(env, 'highlight_item', 'story_id = ?', [id], by)] : []),
-      ...retire,
-      ...plan.map((sql) => env.DB.prepare(sql).bind(id)),
-    ]);
-    // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
-    // kontent umuman yo'q.
-    const changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+    const { changed, kind } = await deleteContentAsAdmin(env, H, del[1], Number(del[2]), {
+      adminLabel, resolvedBy: String(admin.username || admin.id || ''), reason: str(body?.reason, 40) || 'admin',
+    });
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${del[2]} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
+    return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
+  }
 
-    // Shu kontentga tegishli shikoyatlar avtomatik yopiladi —
-    // admin ularni qo'lda bosib chiqmasin.
-    //
-    // KONTENT ALLAQACHON YO'Q BO'LSA HAM (egasi, 2026-09-26: "o'chirib
-    // yuborsam yana paydo bo'lyapti"). Ilgari bu holatda 404 qaytarilib,
-    // shikoyat "Yangi" bo'lib qolaverardi — admin har safar o'chirishni
-    // bosar, lekin navbatdan hech narsa ketmasdi. Muallif o'zi o'chirgan
-    // yoki boshqa admin avval o'chirgan kontent uchun maqsad bajarilgan:
-    // shikoyatlar yopiladi va javob `alreadyGone: true`.
-    await env.DB.prepare(
-      `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
-        WHERE target_kind IN (?, ?) AND target_id = ? AND status <> 'resolved'`
-    ).bind(H.nowTs(), String(admin.username || admin.id || ''), kind, reportKind === 'story' ? 'company_story' : reportKind, String(id))
-      .run().catch(() => {});
-    for (const u of mediaUrls) {
-      await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
-          WHERE target_kind = 'media' AND target_id = ? AND status <> 'resolved'`)
-        .bind(H.nowTs(), String(admin.username || admin.id || ''), u).run().catch(() => {});
+  // KATALOG MAHSULOTI (2026-10, shikoyat turi `catalog_item`) — admin
+  // o'chiradi: avval dalil arxiviga (content-archive.js), keyin o'chirish;
+  // mahsulot rasmi `deleted_uploads` ga (chegara keshidan ham ketadi).
+  const delItem = path.match(/^\/api\/admin\/content\/catalog_item\/([A-Za-z0-9-]{1,64})$/);
+  if (delItem && request.method === 'DELETE') {
+    const admin = await H.requireAdmin(request, env);
+    if (!admin) return H.json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => ({}));
+    const itemId = delItem[1];
+    const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+    let row = null;
+    try { row = await env.DB.prepare(`SELECT image_url FROM company_catalog_items WHERE id = ?`).bind(itemId).first(); } catch { row = null; }
+    let changed = 0;
+    if (row) {
+      const res = await env.DB.batch([
+        archiveStmt(env, 'catalog_item', 'id = ?', [itemId], { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' }),
+        env.DB.prepare(`DELETE FROM post_products WHERE item_id = ?`).bind(itemId),
+        env.DB.prepare(`DELETE FROM company_catalog_items WHERE id = ?`).bind(itemId),
+      ]);
+      changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+      if (row.image_url) await denyUploads(env, [row.image_url]);
     }
-
-    H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${id} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
+    await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = 'catalog_item' AND target_id = ? AND status <> 'resolved'`)
+      .bind(H.nowTs(), String(admin.username || admin.id || ''), itemId).run().catch(() => {});
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `catalog_item#${itemId} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
   }
 
   return null;
+}
+
+/// ADMIN (yoki avtomatik qayta tekshiruv) KONTENTNI O'CHIRADI — dalil
+/// arxivi, layk/ko'rish/izohlar, Aktual nusxalari, shu kontent shikoyatlari
+/// va "tekshirilmagan" fayl shikoyatlari yopiladi. Fayllar ombordan
+/// o'chirilmaydi (dalil), lekin `deleted_uploads` ga yoziladi — chegara
+/// keshidan ham, havola orqali ham ochilmaydi.
+/// `reportKind`: post | story | company_post | company_story.
+export async function deleteContentAsAdmin(env, H, reportKind, id, { adminLabel = 'admin', resolvedBy = '', reason = 'admin' } = {}) {
+  const kind = reportKind === 'company_story' ? 'story' : reportKind;
+  // Har bir tur uchun O'ZINING jadvali va bog'liq yozuvlari.
+  // Layk va ko'rishlar asosiy qatordan OLDIN o'chadi.
+  const plan = {
+    post: [
+      `DELETE FROM post_likes WHERE post_id = ?`,
+      `DELETE FROM posts WHERE id = ?`,
+    ],
+    // `owner_kind` sharti ATAYLAB yo'q: `stories.id` yagona va
+    // admin uchun istorya kimniki ekani (shaxsiy yoki kompaniya)
+    // farq qilmaydi — u baribir o'chirishga haqli.
+    // AKTUAL NUSXALARI HAM (2026-10, highlights.js): istoriya Aktualga
+    // nusxa bo'lib saqlangan bo'lsa, admin o'chirgan kontent o'sha yerda
+    // yashab qolardi — moderatsiyani chetlab o'tish. Nusxalar ham dalil
+    // arxiviga yoziladi (pastda) va istoriyaning o'zidan OLDIN o'chadi.
+    story: [
+      `DELETE FROM story_likes WHERE story_id = ?`,
+      `DELETE FROM story_views WHERE story_id = ?`,
+      // Muqova shu istoriya rasmi bo'lsa — tozalanadi (nusxa o'chishidan
+      // OLDIN, rasm manzili hali o'qiladi). Aks holda muqova ko'rinmasa
+      // ham fayl "ishlatilmoqda" deb hisoblanib, ombordan hech qachon
+      // o'chmasdi.
+      `UPDATE story_highlights SET cover_url = NULL
+        WHERE cover_url IS NOT NULL
+          AND cover_url IN (SELECT image_url FROM story_highlight_items
+                             WHERE story_id = ? AND image_url IS NOT NULL)`,
+      `DELETE FROM story_highlight_items WHERE story_id = ?`,
+      `DELETE FROM stories WHERE id = ?`,
+    ],
+    company_post: [
+      `DELETE FROM company_posts WHERE id = ?`,
+    ],
+  }[kind];
+
+  // DALIL ARXIVI: o'chirishdan OLDIN, o'sha batch ichida nusxa
+  // (content-archive.js). Kim o'chirgani — admin raqami va roli
+  // (sessiya kaliti EMAS), izohlar arxividagi bilan bir xil.
+  // Post raqami qayta ishlatiladi — izoh va layklari ham shu batch'da
+  // ketadi, aks holda keyingi yangi postga "yopishardi" (comments.js).
+  await ensureCommentsSchema(env);
+  await ensureGuardSchema(env).catch(() => {});
+  const retire = kind === 'post'
+    ? retireTargetStmts(env, 'post', '?', [id], { byAdmin: adminLabel, reason: 'target_deleted' })
+    : [];
+  const by = { admin: adminLabel, reason };
+  // Kontentning fayllari — "tekshirilmagan yuklash" shikoyatlarini yopish va
+  // `deleted_uploads` uchun (karusel rasmlari ham).
+  const table = { post: 'posts', story: 'stories', company_post: 'company_posts' }[kind];
+  const mediaUrls = await contentUrls(env, table, 'id = ?', [id]);
+  if (kind === 'story') await ensureHighlightsSchema(env).catch(() => {});
+  const res = await env.DB.batch([
+    archiveStmt(env, kind, 'id = ?', [id], by),
+    ...(kind === 'story' ? [archiveStmt(env, 'highlight_item', 'story_id = ?', [id], by)] : []),
+    ...retire,
+    pendingDeleteStmt(env, kind, id),
+    ...plan.map((sql) => env.DB.prepare(sql).bind(id)),
+  ]);
+  // Oxirgi so'rov — asosiy qatorniki. O'zgarish bo'lmasa, bunday
+  // kontent umuman yo'q.
+  const changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+  if (changed && mediaUrls.length) await denyUploads(env, mediaUrls);
+
+  // Shu kontentga tegishli shikoyatlar avtomatik yopiladi —
+  // admin ularni qo'lda bosib chiqmasin.
+  //
+  // KONTENT ALLAQACHON YO'Q BO'LSA HAM (egasi, 2026-09-26: "o'chirib
+  // yuborsam yana paydo bo'lyapti"). Ilgari bu holatda 404 qaytarilib,
+  // shikoyat "Yangi" bo'lib qolaverardi — admin har safar o'chirishni
+  // bosar, lekin navbatdan hech narsa ketmasdi. Muallif o'zi o'chirgan
+  // yoki boshqa admin avval o'chirgan kontent uchun maqsad bajarilgan:
+  // shikoyatlar yopiladi va javob `alreadyGone: true`.
+  await env.DB.prepare(
+    `UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+      WHERE target_kind IN (?, ?) AND target_id = ? AND status <> 'resolved'`
+  ).bind(H.nowTs(), resolvedBy, kind, reportKind === 'story' ? 'company_story' : reportKind, String(id))
+    .run().catch(() => {});
+  for (const u of mediaUrls) {
+    await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = 'media' AND target_id = ? AND status <> 'resolved'`)
+      .bind(H.nowTs(), resolvedBy, u).run().catch(() => {});
+  }
+  return { changed, kind };
 }
 
 // SHIKOYAT QILINGAN KONTENTNING O'ZI (egasi, 2026-09-25: "kontentni
@@ -420,6 +484,12 @@ async function linkMediaReports(env, reports) {
       }
     } catch { /* jadval/ustun yo'q — bog'lanmaydi */ }
   };
+  // Avval `content_pending` (karusel rasmlari ham shu yerda): fayl qaysi
+  // kutilayotgan kontentga tegishli — aniq bog'lanish.
+  try {
+    const rows = await env.DB.prepare(`SELECT kind, id, url FROM content_pending WHERE url IN (${ph})`).bind(...urls).all();
+    for (const row of rows.results || []) if (!owner.has(row.url)) owner.set(row.url, { kind: row.kind, id: String(row.id) });
+  } catch { /* jadval yo'q */ }
   await look('post', `SELECT id, image_url, video_url FROM posts WHERE image_url IN (?) OR video_url IN (?)`);
   await look('story', `SELECT id, image_url, video_url FROM stories WHERE image_url IN (?) OR video_url IN (?)`);
   await look('company_post', `SELECT id, image_url, video_url FROM company_posts WHERE image_url IN (?) OR video_url IN (?)`);
@@ -470,6 +540,9 @@ async function attachPreviews(env, reports) {
         FROM story_highlights h WHERE CAST(h.id AS TEXT) IN (?)`,
     byKind.highlight, (r) => ({ text: r.title || '', author: r.owner_id || '', ownerKind: r.owner_kind || '', createdAt: r.created_at || '',
       imageUrl: r.cover_url || r.first_image || '', videoUrl: '' }));
+  await q('catalog_item', `SELECT id AS k, company_id, name, description, image_url, created_at FROM company_catalog_items WHERE id IN (?)`,
+    byKind.catalog_item, (r) => ({ text: [r.name, r.description].filter(Boolean).join(' — '), author: r.company_id || '',
+      createdAt: r.created_at || '', imageUrl: r.image_url || '', videoUrl: '' }));
   await q('record', `SELECT UPPER(code) AS k, name, avatar_url FROM cards WHERE UPPER(code) IN (?)`,
     new Set([...(byKind.record || [])].map((x) => x.toUpperCase())),
     (r) => ({ text: r.name || '', author: r.k, imageUrl: r.avatar_url || '', videoUrl: '' }));
@@ -512,7 +585,7 @@ async function attachPeople(env, reports) {
   }
 
   const authorOf = (r) => String(r.preview?.author || r.ownerCode || '').trim();
-  const companyKinds = new Set(['company', 'company_post', 'company_story']);
+  const companyKinds = new Set(['company', 'company_post', 'company_story', 'catalog_item']);
   // Aktual kimniki — shaxsiy profil yoki kompaniya (ko'rinishdan).
   const isCompany = (r) => companyKinds.has(r.targetKind) || (r.targetKind === 'highlight' && r.preview?.ownerKind === 'company');
   const codes = [...new Set(reports.filter((r) => !isCompany(r)).map(authorOf).filter(Boolean).map((c) => c.toUpperCase()))].slice(0, 300);
