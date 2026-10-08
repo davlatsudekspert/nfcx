@@ -158,7 +158,16 @@ void main() {
 
     test('teacher materials are not marked as received or imported', () {
       final pack = parse(packJson());
-      expect(pack.library, isEmpty);
+      // Katalogda faqat ochiq manbalardan tekshirilgan bibliografik yozuvlar:
+      // domla bergan material yo'q, to'liq matn paketi yo'q.
+      for (final item in pack.library) {
+        expect(item.providedBy, isNull, reason: item.id);
+        expect(item.filePack, isNull, reason: item.id);
+        expect(item.importState, ImportState.cataloged, reason: item.id);
+        expect(item.url, isNotNull, reason: item.id);
+        expect(item.accessed, isNotNull, reason: item.id);
+        expect(item.note?.values.keys, containsAll(['uz', 'ru', 'en']));
+      }
       expect(pack.lessons, isEmpty);
       expect(pack.discrepancies, isEmpty);
       expect(pack.sources.every((s) => s.kind == 'web'), isTrue);

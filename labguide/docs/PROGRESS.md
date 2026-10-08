@@ -40,6 +40,9 @@ kelmagan**.
   (K va albumin tuzatishi bilan), tuzatilgan kalsiy (Payne), LDL (Friedewald, Sampson) va
   non-HDL, osmolyallik va osmolyal farq, HbA1c NGSP↔IFCC va eAG. Har birida formula,
   cheklovlar va DOI havolali manbalar; SI birliklar birinchi.
+- Kutubxona katalogi (D-24): 25 ta tekshirilgan yozuv — OpenStax, LibreTexts, WHO (en/ru),
+  MedlinePlus, ZiyoNET va SamMU o‘zbek/rus darsliklari, lex.uz hujjatlari, Tietz, Henry;
+  litsenziya/kirish turi, til filtri, rasmiy sahifaga havola. Fayl tarqatilmaydi.
 - Kutubxona: katalog, oflayn paketlar (o‘rnatilgan asosiy paket haqiqiy manifest bilan),
   saqlanganlar, manbalar, ilmiy ish qoralamasi, **Tekshiruv navbati**.
 - O‘rganish: izohli test (har variant izohi, natija haqiqiy javobdan), imtihon/guruhlar —
@@ -54,7 +57,7 @@ kelmagan**.
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **203 / 203 o‘tdi** (unit 130: auth/settings 14, content 36, core logic 25, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 32, QC model 7, Westgard qoidalari 12; widget oqimlari 42 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
+| `flutter test` | **204 / 204 o‘tdi** (unit 130: auth/settings 14, content 36, core logic 25, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 32, QC model 7, Westgard qoidalari 12; widget oqimlari 43 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
 | Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 48 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
 | Tap target | iOS 44×44 va labeled tap target guideline’lari (Bosh, Tahlillar) — o‘tdi |
 | Kontrast | Palitra juftliklari ≥ 4.5:1 (light va dark) — o‘tdi |

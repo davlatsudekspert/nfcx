@@ -274,6 +274,12 @@ class _BooksScreenState extends State<BooksScreen> {
                       (_language == null || i.language == _language),
                 )
                 .toList();
+            // Interfeys tilidagi materiallar birinchi (tartib saqlanadi).
+            final lang = Localizations.localeOf(context).languageCode;
+            final ordered = [
+              ...items.where((i) => i.language == lang),
+              ...items.where((i) => i.language != lang),
+            ];
             final languages = {for (final i in pack.library) i.language};
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -323,7 +329,7 @@ class _BooksScreenState extends State<BooksScreen> {
                 if (items.isEmpty)
                   LgStateView(kind: StateKind.empty, title: l.testsEmptyTitle)
                 else
-                  for (final item in items) LibraryItemCard(item: item),
+                  for (final item in ordered) LibraryItemCard(item: item),
                 LgNotice(l.booksEmptyBody, kind: NoticeKind.info),
               ],
             );

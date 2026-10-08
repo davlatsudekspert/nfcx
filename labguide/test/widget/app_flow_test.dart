@@ -6,6 +6,7 @@ import 'package:labguide/app/widgets/lg_page.dart';
 import 'package:labguide/core/storage/kv_store.dart';
 import 'package:labguide/design/tokens.dart';
 import 'package:labguide/features/auth/otp_auth.dart';
+import 'package:labguide/features/library/library_screens.dart';
 import 'package:labguide/features/settings/settings_controller.dart';
 import 'package:labguide/l10n/gen/app_localizations.dart';
 import 'package:labguide/l10n/gen/app_localizations_en.dart';
@@ -557,16 +558,39 @@ void main() {
     expect(find.text('Och qoringa plazma glyukozasi'), findsNothing);
   });
 
-  testWidgets('library catalog and review queue have honest empty states', (
+  testWidgets('library catalog: licence-aware records, language filter', (
     tester,
   ) async {
     final s = await makeServices(tester);
-    await pumpApp(tester, s);
+    await pumpApp(tester, s, size: const Size(390, 30000));
     await goTo(tester, '/library/books');
-    expect(find.text(uz.booksEmptyTitle), findsOneWidget);
+    final library = s.content.pack!.library;
+    expect(library, isNotEmpty);
+    expect(find.text(uz.booksEmptyTitle), findsNothing);
+    // Har yozuvda rasmiy sahifa havolasi; ochiq litsenziya nomi bilan.
+    expect(
+      find.text(uz.libOpenSource),
+      findsNWidgets(library.where((i) => i.url != null).length),
+    );
+    expect(find.text(uz.libAccessOpen('CC BY-NC-SA 4.0')), findsWidgets);
+    // Til filtri: faqat o'zbekcha yozuvlar.
+    await tester.tap(find.text('O‘zbekcha'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(LibraryItemCard),
+      findsNWidgets(library.where((i) => i.language == 'uz').length),
+    );
+  });
+
+  testWidgets('review queue has honest counts', (tester) async {
+    final s = await makeServices(tester);
+    await pumpApp(tester, s);
     await goTo(tester, '/library/review');
     expect(find.text(uz.reviewNoDiscrepancies), findsOneWidget);
-    expect(find.text(uz.reviewCatalog(0)), findsOneWidget);
+    expect(
+      find.text(uz.reviewCatalog(s.content.pack!.library.length)),
+      findsOneWidget,
+    );
     expect(
       find.text(uz.reviewDraftQuestions(s.content.pack!.quiz.length)),
       findsOneWidget,

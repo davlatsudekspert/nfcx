@@ -236,6 +236,7 @@ final shots = <Shot>[
     lang: AppLanguage.ru,
     size: const Size(390, 3400),
   ),
+  shot('32_library_books', '/library/books', size: const Size(390, 2600)),
   shot(
     '29_calc_sources_en',
     '/lab/calculators/hba1c',

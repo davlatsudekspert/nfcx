@@ -207,3 +207,24 @@ belgilaydi), och qoringa talab, “to‘shak yonida yorliqlash”. Nashr “© W
 reserved” — jadval ko‘chirilmadi, faktlar o‘z so‘zlarimiz bilan, joyi ko‘rsatilgan. Qopqoq
 rangi doira bilan ham, matn bilan ham (faqat rangga tayanmaydi). Rus tilidagi nashri IRIS’da
 topilmadi.
+
+## D-24. Kutubxona katalogi: 25 ta tekshirilgan yozuv, faqat havola (2026-10-08)
+Har yozuvning rasmiy sahifasi yuklab ko‘rildi, litsenziya iborasi so‘zma-so‘z saqlandi
+(`licence_quote`, ilovada ko‘rsatilmaydi). Kirish turi: ochiq litsenziya (OpenStax,
+LibreTexts — CC BY-NC-SA 4.0; WHO biologik xavfsizlik 4-nashr en/ru — CC BY-NC-SA 3.0 IGO;
+MedlinePlus — AQSh davlat ishi), bepul o‘qish (WHO sifat menejmenti en/ru, flebotomiya,
+WHO/IDF diabet hisoboti en/ru, ZiyoNET darsliklari, lex.uz hujjatlari) va faqat katalog
+(SamMU e-kutubxonasi — HEMIS login; Tietz, Henry — pullik).
+- Hech bir fayl yuklanmadi/tarqatilmadi — faqat bibliografik yozuv va rasmiy havola.
+- **NC litsenziyalar** notijorat tarqatishga ruxsat beradi; ilovada pullik obuna rejasi bor,
+  shuning uchun ularning matni paketga kiritilmaydi (faqat havola).
+- **OpenStax** sahifasi kitobni LLM o‘qitish yoki generativ AI mahsulotlariga kiritishni
+  yozma ruxsatsiz taqiqlaydi — matni ilovaning hech bir AI funksiyasiga berilmaydi
+  (`review_note`).
+- WHO “Manual of basic techniques” (2003): who.int’da CC BY-NC-SA 3.0 IGO, IRIS’da huquq
+  maydoni yo‘q — tasdiqlanguncha “bepul o‘qish” deb belgilandi.
+- ZiyoNET: foydalanuvchilar yuklagan fayllar, sayt “Barcha huquqlar himoyalangan” — faqat havola.
+- Izohlar (nega foydali) uch tilda qayta yozildi; agent izohidagi tekshirilmagan iboralar
+  (masalan, “ISO 15189 asosida”) olib tashlandi. Interfeys tilidagi materiallar birinchi.
+- Topilmadi/kiritilmadi: NCBI “Clinical Methods” (sahifa reCAPTCHA bilan yopiq), TMA
+  kutubxonasi (sahifalar ishlamaydi), GEOTAR-Media katalogi.

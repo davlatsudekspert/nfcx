@@ -1,7 +1,7 @@
 {
  "pack_id": "core",
  "schema_version": 1,
- "content_version": "2026.10.08-dev.2",
+ "content_version": "2026.10.08-dev.3",
  "groups": [
   {
    "id": "carbohydrate",
@@ -12334,7 +12334,842 @@
   }
  ],
  "ifu_records": [],
- "library": [],
+ "library": [
+  {
+   "id": "lib-openstax-biology-2e",
+   "kind": "book",
+   "title": "Biology 2e",
+   "authors": [
+    "Mary Ann Clark",
+    "Matthew Douglas",
+    "Jung Choi"
+   ],
+   "year": 2018,
+   "edition": "2e",
+   "publisher": "OpenStax",
+   "isbn": "978-1-947172-52-4",
+   "language": "en",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [
+    "carbohydrate",
+    "lipids",
+    "proteins"
+   ],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 4.0",
+   "url": "https://openstax.org/details/books/biology-2e",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Ochiq kirish biologiya darsligi; biologik makromolekulalar (uglevodlar, lipidlar, oqsillar) boblari klinik biokimyo uchun asos.",
+    "ru": "Открытый вводный учебник биологии; главы о биомакромолекулах (углеводы, липиды, белки) — база для клинической биохимии.",
+    "en": "Open introductory biology textbook; the chapters on biological macromolecules (carbohydrates, lipids, proteins) lay the ground for clinical biochemistry."
+   },
+   "licence_quote": [
+    "Biology 2e is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA) license",
+    "This book may not be used in the training of large language models or otherwise be ingested into large language models or generative AI offerings without OpenStax's prior written permission."
+   ],
+   "review_note": "OpenStax licence page: the book may not be used in training of large language models or ingested into generative AI offerings without prior written permission — link only; do not feed its text into AI features."
+  },
+  {
+   "id": "lib-openstax-chemistry-2e",
+   "kind": "book",
+   "title": "Chemistry 2e",
+   "authors": [
+    "Paul Flowers",
+    "Klaus Theopold",
+    "Richard Langley",
+    "William R. Robinson, PhD"
+   ],
+   "year": 2019,
+   "edition": "2e",
+   "publisher": "OpenStax",
+   "isbn": "978-1-947172-61-6",
+   "language": "en",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 4.0",
+   "url": "https://openstax.org/details/books/chemistry-2e",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Ochiq umumiy kimyo darsligi: konsentratsiya birliklari, muvozanat, kislota, asos va buferlar — reagent tayyorlash va hisoblar uchun.",
+    "ru": "Открытый учебник общей химии: единицы концентрации, равновесия, кислоты, основания и буферы — для приготовления реагентов и расчётов.",
+    "en": "Open general chemistry textbook: concentration units, equilibria, acids, bases and buffers — for reagent preparation and calculations."
+   },
+   "licence_quote": [
+    "Chemistry 2e is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA) license",
+    "This book may not be used in the training of large language models or otherwise be ingested into large language models or generative AI offerings without OpenStax's prior written permission."
+   ],
+   "review_note": "OpenStax licence page: the book may not be used in training of large language models or ingested into generative AI offerings without prior written permission — link only; do not feed its text into AI features."
+  },
+  {
+   "id": "lib-openstax-anatomy-physiology-2e",
+   "kind": "book",
+   "title": "Anatomy and Physiology 2e",
+   "authors": [
+    "J. Gordon Betts",
+    "Kelly A. Young",
+    "James A. Wise",
+    "Eddie Johnson",
+    "Brandon Poe",
+    "Dean H. Kruse",
+    "Oksana Korol",
+    "Jody E. Johnson",
+    "Mark Womble",
+    "Peter DeSaix"
+   ],
+   "year": 2022,
+   "edition": "2e",
+   "publisher": "OpenStax",
+   "isbn": "978-1-951693-42-8",
+   "language": "en",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [
+    "kidney",
+    "urine",
+    "electrolytes"
+   ],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 4.0",
+   "url": "https://openstax.org/details/books/anatomy-and-physiology-2e",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Ochiq fiziologiya darsligi; siydik tizimi hamda suv-elektrolit va kislota-asos muvozanati boblari buyrak va elektrolit tahlillariga asos.",
+    "ru": "Открытый учебник физиологии; главы о мочевыделительной системе и водно-электролитном и кислотно-основном балансе — основа почечных и электролитных тестов.",
+    "en": "Open physiology textbook; the urinary system and fluid, electrolyte and acid-base balance chapters underpin kidney and electrolyte tests."
+   },
+   "licence_quote": [
+    "Anatomy and Physiology 2e is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA) license",
+    "This book may not be used in the training of large language models or otherwise be ingested into large language models or generative AI offerings without OpenStax's prior written permission."
+   ],
+   "review_note": "OpenStax licence page: the book may not be used in training of large language models or ingested into generative AI offerings without prior written permission — link only; do not feed its text into AI features."
+  },
+  {
+   "id": "lib-openstax-microbiology",
+   "kind": "book",
+   "title": "Microbiology",
+   "authors": [
+    "Nina Parker",
+    "Mark Schneegurt",
+    "Anh-Hue Thi Tu",
+    "Philip Lister",
+    "Brian M. Forster"
+   ],
+   "year": 2016,
+   "publisher": "OpenStax",
+   "isbn": "978-1-947172-23-4",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 4.0",
+   "url": "https://openstax.org/details/books/microbiology",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Tibbiyot yo‘nalishi talabalari uchun ochiq mikrobiologiya darsligi, immun javobni laboratoriyada tahlil qilish bobi bilan.",
+    "ru": "Открытый учебник микробиологии для студентов медицинских специальностей, включая лабораторный анализ иммунного ответа.",
+    "en": "Open microbiology textbook for health-science students, including laboratory analysis of the immune response."
+   },
+   "licence_quote": [
+    "Microbiology is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA) license",
+    "This book may not be used in the training of large language models or otherwise be ingested into large language models or generative AI offerings without OpenStax's prior written permission."
+   ],
+   "review_note": "OpenStax licence page: the book may not be used in training of large language models or ingested into generative AI offerings without prior written permission — link only; do not feed its text into AI features."
+  },
+  {
+   "id": "lib-libretexts-fundamentals-biochemistry",
+   "kind": "book",
+   "title": "Fundamentals of Biochemistry (Jakubowski and Flatt)",
+   "authors": [
+    "Henry Jakubowski",
+    "Patricia Flatt"
+   ],
+   "publisher": "LibreTexts",
+   "language": "en",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [
+    "proteins",
+    "enzymes",
+    "carbohydrate",
+    "lipids"
+   ],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 4.0",
+   "url": "https://bio.libretexts.org/Bookshelves/Biochemistry/Fundamentals_of_Biochemistry_(Jakubowski_and_Flatt)",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Ochiq universitet biokimyo kursi: oqsillar, fermentlar, uglevodlar, lipidlar va moddalar almashinuvi.",
+    "ru": "Открытый университетский курс биохимии: белки, ферменты, углеводы, липиды и обмен веществ.",
+    "en": "Open university biochemistry course: proteins, enzymes, carbohydrates, lipids and metabolism."
+   },
+   "licence_quote": [
+    "is shared under a CC BY-NC-SA 4.0 license and was authored, remixed, and/or curated by Henry Jakubowski and Patricia Flatt"
+   ]
+  },
+  {
+   "id": "lib-who-lqms-handbook-en",
+   "kind": "manual",
+   "title": "Laboratory quality management system: handbook",
+   "authors": [
+    "World Health Organization"
+   ],
+   "year": 2011,
+   "publisher": "World Health Organization",
+   "isbn": "9789241548274",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://www.who.int/publications/i/item/9789241548274",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Laboratoriya sifat menejmenti tizimi bo‘yicha WHO qo‘llanmasi — laboratoriya rahbarlari va xodimlari uchun.",
+    "ru": "Пособие ВОЗ по системе управления качеством в лаборатории — для руководителей и сотрудников лабораторий.",
+    "en": "WHO handbook on laboratory quality management systems for laboratory managers and staff."
+   },
+   "licence_quote": [
+    "Copyright World Health Organization 2011",
+    "Download (5.9 MB)"
+   ]
+  },
+  {
+   "id": "lib-who-lqms-handbook-ru",
+   "kind": "manual",
+   "title": "Система управления качеством в лабораториях Пособие",
+   "authors": [
+    "World Health Organization"
+   ],
+   "year": 2011,
+   "publisher": "World Health Organization",
+   "isbn": "9789244548271",
+   "language": "ru",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://www.who.int/ru/publications/i/item/9789241548274",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "WHO laboratoriya sifat menejmenti qo‘llanmasining rasmiy ruscha nashri.",
+    "ru": "Официальное русское издание пособия ВОЗ по управлению качеством в лаборатории.",
+    "en": "Official Russian edition of the WHO laboratory quality management handbook."
+   },
+   "licence_quote": [
+    "Скачать (5,3 MB)"
+   ]
+  },
+  {
+   "id": "lib-who-phlebotomy-2010",
+   "kind": "manual",
+   "title": "WHO guidelines on drawing blood: best practices in phlebotomy",
+   "authors": [
+    "World Health Organization"
+   ],
+   "year": 2010,
+   "publisher": "World Health Organization",
+   "isbn": "9789241599221",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://www.who.int/publications/i/item/9789241599221",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Venoz, arterial va kapillyar qon olish bo‘yicha WHO qo‘llanmasi; ilovadagi probirkalar tartibi shunga asoslangan.",
+    "ru": "Руководство ВОЗ по взятию венозной, артериальной и капиллярной крови; раздел о порядке пробирок основан на нём.",
+    "en": "WHO guidance on venous, arterial and capillary blood sampling; the app’s order-of-draw section is based on it."
+   },
+   "licence_quote": [
+    "Copyright World Health Organization",
+    "Download (2.6 MB)"
+   ]
+  },
+  {
+   "id": "lib-who-biosafety-manual-4-en",
+   "kind": "manual",
+   "title": "Laboratory biosafety manual",
+   "authors": [
+    "World Health Organization"
+   ],
+   "year": 2020,
+   "edition": "4th ed",
+   "publisher": "World Health Organization",
+   "isbn": "9789240011311",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 3.0 IGO",
+   "url": "https://iris.who.int/handle/10665/337956",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "WHO laboratoriya biologik xavfsizligi qo‘llanmasi, 4-nashr: klinik va sog‘liqni saqlash laboratoriyalari uchun xavfga asoslangan yondashuv.",
+    "ru": "Руководство ВОЗ по биобезопасности в лаборатории, 4-е изд.: риск-ориентированный подход для клинических и санитарных лабораторий.",
+    "en": "WHO Laboratory biosafety manual, 4th edition: a risk-based approach for clinical and public-health laboratories."
+   },
+   "licence_quote": [
+    "CC BY-NC-SA 3.0 IGO",
+    "https://creativecommons.org/licenses/by-nc-sa/3.0/igo"
+   ]
+  },
+  {
+   "id": "lib-who-biosafety-manual-4-ru",
+   "kind": "manual",
+   "title": "Практическое руководство по биологической безопасности в лабораторных условиях",
+   "authors": [
+    "Всемирная организация здравоохранения"
+   ],
+   "year": 2023,
+   "edition": "4-е изд",
+   "publisher": "Всемирная организация здравоохранения",
+   "isbn": "9789240059283",
+   "language": "ru",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "CC BY-NC-SA 3.0 IGO",
+   "url": "https://iris.who.int/handle/10665/365602",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "WHO laboratoriya biologik xavfsizligi qo‘llanmasi 4-nashrining rasmiy ruscha tarjimasi.",
+    "ru": "Официальный русский перевод руководства ВОЗ по лабораторной биобезопасности, 4-е изд.",
+    "en": "Official Russian translation of the WHO Laboratory biosafety manual, 4th edition."
+   },
+   "licence_quote": [
+    "CC BY-NC-SA 3.0 IGO",
+    "https://creativecommons.org/licenses/by-nc-sa/3.0/igo"
+   ]
+  },
+  {
+   "id": "lib-who-basic-lab-techniques-2",
+   "kind": "manual",
+   "title": "Manual of basic techniques for a health laboratory, 2nd ed",
+   "authors": [
+    "World Health Organization"
+   ],
+   "year": 2003,
+   "edition": "2nd ed",
+   "publisher": "World Health Organization",
+   "isbn": "9241545305",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "methods",
+    "tests"
+   ],
+   "topics": [
+    "urine",
+    "carbohydrate"
+   ],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://www.who.int/publications/i/item/9241545305",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Kichik va tuman laboratoriyalari uchun asosiy usullar bo‘yicha WHO qo‘llanmasi (siydik, qonda glyukoza, gematologiya, mikroskopiya). 2003-yil nashri — amaldagi usullar bilan solishtiring.",
+    "ru": "Руководство ВОЗ по основным методикам для небольших и районных лабораторий (моча, глюкоза крови, гематология, микроскопия). Издание 2003 г. — сверяйте с действующими методиками.",
+    "en": "WHO manual of basic bench techniques for small and district laboratories (urine, blood glucose, haematology, microscopy). 2003 edition — check against current methods."
+   },
+   "licence_quote": [
+    "Copyright CC BY-NC-SA 3.0 IGO",
+    "Download (7.4 MB)"
+   ],
+   "review_note": "who.int page shows \"Copyright CC BY-NC-SA 3.0 IGO\" but the IRIS record has no rights field — treated as link-only until confirmed."
+  },
+  {
+   "id": "lib-who-diabetes-diagnosis-2006-en",
+   "kind": "article",
+   "title": "Definition and diagnosis of diabetes mellitus and intermediate hyperglycaemia: Report of a WHO/IDF consultation",
+   "authors": [
+    "WHO",
+    "International Diabetes Federation"
+   ],
+   "year": 2006,
+   "publisher": "World Health Organization",
+   "isbn": "9241594934",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "tests"
+   ],
+   "topics": [
+    "carbohydrate"
+   ],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://www.who.int/publications/i/item/definition-and-diagnosis-of-diabetes-mellitus-and-intermediate-hyperglycaemia",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Qandli diabet va oraliq giperglikemiya ta’rifi hamda tashxisi bo‘yicha WHO/IDF maslahat hisoboti (2006).",
+    "ru": "Отчёт консультации ВОЗ/МФД (2006) об определении и диагностике сахарного диабета и промежуточной гипергликемии.",
+    "en": "WHO/IDF consultation report (2006) on the definition and diagnosis of diabetes and intermediate hyperglycaemia."
+   },
+   "licence_quote": [
+    "Download (1.5 MB)"
+   ]
+  },
+  {
+   "id": "lib-who-diabetes-diagnosis-2006-ru",
+   "kind": "article",
+   "title": "Определение и диагностика сахарного диабета и промежуточных гипергликемий. Отчет совета ВОЗ/МФД.",
+   "authors": [
+    "Всемирная организация здравоохранения"
+   ],
+   "year": 2007,
+   "publisher": "Всемирная организация здравоохранения",
+   "language": "ru",
+   "categories": [
+    "clinical_lab",
+    "tests"
+   ],
+   "topics": [
+    "carbohydrate"
+   ],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://iris.who.int/handle/10665/85476",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "WHO/IDF diabet ta’rifi va tashxisi hisobotining ruscha nashri.",
+    "ru": "Русское издание отчёта ВОЗ/МФД об определении и диагностике диабета.",
+    "en": "Russian edition of the WHO/IDF report on the definition and diagnosis of diabetes."
+   },
+   "licence_quote": [
+    "9241594934_rus.pdf"
+   ]
+  },
+  {
+   "id": "lib-medlineplus-lab-tests",
+   "kind": "website",
+   "title": "Medical Tests",
+   "authors": [
+    "National Library of Medicine"
+   ],
+   "publisher": "National Library of Medicine",
+   "language": "en",
+   "categories": [
+    "tests",
+    "clinical_lab"
+   ],
+   "topics": [
+    "carbohydrate",
+    "kidney",
+    "liver",
+    "lipids",
+    "proteins",
+    "electrolytes",
+    "enzymes",
+    "urine"
+   ],
+   "import_state": "cataloged",
+   "access": "open_licence",
+   "licence": "Public domain (U.S. Government work)",
+   "url": "https://medlineplus.gov/lab-tests/",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "AQSh Milliy tibbiyot kutubxonasining laboratoriya tahlillari haqidagi sodda tildagi sahifalari; ilovadagi analit kartalarining asosiy manbai.",
+    "ru": "Страницы Национальной медицинской библиотеки США о лабораторных тестах простым языком; основной источник карточек приложения.",
+    "en": "Plain-language laboratory test pages from the U.S. National Library of Medicine; the main source of the app’s analyte cards."
+   },
+   "licence_quote": [
+    "Works produced by the federal government are not copyrighted under U.S. law. You may reproduce, redistribute, and link freely to non-copyrighted content, including on social media.",
+    "MedlinePlus information that is in the public domain includes the following areas, in both English and Spanish: MedlinePlus homepage Summaries on health topic pages Medical test information"
+   ]
+  },
+  {
+   "id": "lib-ziyonet-klinik-laborator-tashxislash",
+   "kind": "book",
+   "title": "Klinik laborator tashxislash va tekshiruv usullari",
+   "authors": [
+    "Agzamxodjaev T.S.",
+    "Xaydarov М.В.",
+    "Ismailova M.U.",
+    "Tolipov M.G.",
+    "Babaniyazov K.K."
+   ],
+   "year": 2018,
+   "publisher": "Navro‘z",
+   "language": "uz",
+   "categories": [
+    "clinical_lab",
+    "methods"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://library.ziyonet.uz/book/105417",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Tibbiyot talabalari uchun klinik laborator tashxislash va tekshiruv usullari bo‘yicha o‘zbekcha darslik.",
+    "ru": "Учебник на узбекском языке по клинической лабораторной диагностике и методам исследования для студентов-медиков.",
+    "en": "Uzbek-language textbook on clinical laboratory diagnosis and examination methods for medical students."
+   },
+   "licence_quote": [
+    "Materialdan foydalanilgandan so‘ng www.ziyonet.uz havolasi ko‘rsatilishi shart",
+    "© Barcha huquqlar himoyalangan 2006 - 2026"
+   ]
+  },
+  {
+   "id": "lib-ziyonet-meditsinskaya-biokhimiya",
+   "kind": "book",
+   "title": "Медицинская биохимия",
+   "authors": [
+    "Р.А. Сабирова",
+    "Н.М. Юлдашев"
+   ],
+   "year": 2020,
+   "publisher": "O'zkitobsavdonashriyoti",
+   "language": "ru",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://library.ziyonet.uz/book/121459",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "R.A. Sabirova va N.M. Yuldashevning tibbiy biokimyo darsligi (rus tilida), O‘zbekistonda nashr etilgan.",
+    "ru": "Учебник медицинской биохимии Р.А. Сабировой и Н.М. Юлдашева, изданный в Узбекистане.",
+    "en": "Medical biochemistry textbook (in Russian) by R.A. Sabirova and N.M. Yuldashev, published in Uzbekistan."
+   },
+   "licence_quote": [
+    "Materialdan foydalanilgandan so‘ng www.ziyonet.uz havolasi ko‘rsatilishi shart",
+    "© Barcha huquqlar himoyalangan 2006 - 2026"
+   ]
+  },
+  {
+   "id": "lib-ziyonet-kld-boltaev",
+   "kind": "manual",
+   "title": "Клиническая лабораторная диагностика",
+   "authors": [
+    "Болтаев К.Ж",
+    "Сулаймонова Г.Т"
+   ],
+   "year": 2020,
+   "publisher": "Бухарского государственного медицинского института",
+   "language": "ru",
+   "categories": [
+    "clinical_lab"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://library.ziyonet.uz/book/113853",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Buxoro davlat tibbiyot institutining klinik laborator diagnostika o‘quv majmuasi (rus tilida).",
+    "ru": "Учебный комплекс Бухарского государственного медицинского института по клинической лабораторной диагностике.",
+    "en": "Teaching complex on clinical laboratory diagnostics (in Russian) from Bukhara State Medical Institute."
+   },
+   "licence_quote": [
+    "Materialdan foydalanilgandan so‘ng www.ziyonet.uz havolasi ko‘rsatilishi shart",
+    "© Barcha huquqlar himoyalangan 2006 - 2026"
+   ]
+  },
+  {
+   "id": "lib-ziyonet-siydik-chokmasi",
+   "kind": "book",
+   "title": "Ambulator-poliklinik terapiyada patologik siydik cho’kmasini qiyosiy tashxislash",
+   "authors": [
+    "Nurillayeva N.M.",
+    "Nuritdinova N.B.",
+    "Abdumalikova F.B.",
+    "Salyamova F.E."
+   ],
+   "language": "uz",
+   "categories": [
+    "clinical_lab",
+    "tests"
+   ],
+   "topics": [
+    "urine"
+   ],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://library.ziyonet.uz/book/137054",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Ambulator amaliyotda patologik siydik cho‘kmasini qiyosiy tashxislash bo‘yicha o‘quv qo‘llanma.",
+    "ru": "Учебное пособие (на узбекском) по дифференциальной диагностике патологического осадка мочи в амбулаторной практике.",
+    "en": "Study guide (in Uzbek) on the differential diagnosis of pathological urine sediment in outpatient practice."
+   },
+   "licence_quote": [
+    "Materialdan foydalanilgandan so‘ng www.ziyonet.uz havolasi ko‘rsatilishi shart",
+    "© Barcha huquqlar himoyalangan 2006 - 2026"
+   ]
+  },
+  {
+   "id": "lib-ziyonet-buyrak-disfunksiyasi",
+   "kind": "manual",
+   "title": "BUYRAKLAR DISFUNKTSIYASINI ERTA TASHXISLASHNI KLINIK LABORATOR USULLARI",
+   "authors": [
+    "TURSUNOVA LAYLO DILSHATOVNA",
+    "JABBAROV OZIMBAY OTAXANOVICH"
+   ],
+   "language": "uz",
+   "categories": [
+    "clinical_lab",
+    "tests"
+   ],
+   "topics": [
+    "kidney"
+   ],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://library.ziyonet.uz/book/136026",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Buyrak disfunksiyasini erta aniqlashning laboratoriya usullari bo‘yicha uslubiy tavsiyalar.",
+    "ru": "Методические рекомендации (на узбекском) по лабораторным методам ранней диагностики дисфункции почек.",
+    "en": "Methodological recommendations (in Uzbek) on laboratory methods for the early detection of kidney dysfunction."
+   },
+   "licence_quote": [
+    "Materialdan foydalanilgandan so‘ng www.ziyonet.uz havolasi ko‘rsatilishi shart",
+    "© Barcha huquqlar himoyalangan 2006 - 2026"
+   ]
+  },
+  {
+   "id": "lib-sammu-biokimyo-baykulov",
+   "kind": "book",
+   "title": "Biokimyo fanidan o'quv qo'llanma",
+   "authors": [
+    "A.K. Baykulov"
+   ],
+   "year": 2023,
+   "publisher": "Bilig-ilmiy faoliyat",
+   "isbn": "978-9910-9974-7-1",
+   "language": "uz",
+   "categories": [
+    "biochemistry"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "catalog_only",
+   "url": "https://e-library.sammu.uz/en/book/3555",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Samarqand davlat tibbiyot universitetining biokimyo o‘quv qo‘llanmasi; to‘liq matn universitet foydalanuvchilari uchun.",
+    "ru": "Учебное пособие по биохимии (на узбекском) Самаркандского государственного медицинского университета; полный текст — для пользователей вуза.",
+    "en": "Biochemistry study guide (in Uzbek) from Samarkand State Medical University; full text for registered university users."
+   },
+   "licence_quote": [
+    "Hemis orqali ro'yxatdan o'ting",
+    "All rights reserved. All rights on the site are protected in accordance with the laws of the Republic of Uzbekistan, including copyright and related rights."
+   ]
+  },
+  {
+   "id": "lib-sammu-kld-lelevich",
+   "kind": "book",
+   "title": "КЛИНИЧЕСКАЯ ЛАБОРАТОРНАЯ ДИАГНОСТИКА",
+   "authors": [
+    "Лелевич, С.В."
+   ],
+   "year": 2011,
+   "publisher": "ГЭОТАР-Медиа",
+   "language": "ru",
+   "categories": [
+    "clinical_lab",
+    "tests"
+   ],
+   "topics": [
+    "proteins",
+    "carbohydrate",
+    "electrolytes",
+    "kidney"
+   ],
+   "import_state": "cataloged",
+   "access": "catalog_only",
+   "url": "https://e-library.sammu.uz/en/book/2014",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Oqsil, uglevod va suv-elektrolit almashinuvi, kislota-asos holati va buyrak faoliyatini laboratoriyada baholash bo‘yicha qo‘llanma (rus tilida).",
+    "ru": "Учебное пособие по лабораторной оценке белкового, углеводного и водно-электролитного обмена, кислотно-основного состояния и функции почек.",
+    "en": "Study guide (in Russian) on the laboratory assessment of protein, carbohydrate and water-electrolyte metabolism, acid-base status and kidney function."
+   },
+   "licence_quote": [
+    "Hemis orqali ro'yxatdan o'ting",
+    "All rights reserved. All rights on the site are protected in accordance with the laws of the Republic of Uzbekistan, including copyright and related rights."
+   ]
+  },
+  {
+   "id": "lib-lexuz-kdl-mehnat-muhofazasi-2059",
+   "kind": "manual",
+   "title": "Клиник-диагностика лабораторияларида ишлашда меҳнатни муҳофаза қилиш қоидаларини тасдиқлаш ҳақида — Ўзбекистон Республикаси меҳнат ва аҳолини ижтимоий муҳофаза қилиш вазирининг буйруғи, 2009 йил 28 декабрь, 81-Б-сон; 07.01.2010 йилда рўйхатдан ўтган, рўйхат рақами 2059",
+   "authors": [
+    "Ўзбекистон Республикаси меҳнат ва аҳолини ижтимоий муҳофаза қилиш вазири"
+   ],
+   "year": 2009,
+   "publisher": "Ўзбекистон Республикаси қонун ҳужжатлари тўплами",
+   "language": "uz",
+   "categories": [
+    "clinical_lab"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://lex.uz/uz/docs/1571806",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Klinik-diagnostika laboratoriyalarida mehnatni muhofaza qilish bo‘yicha rasmiy qoidalar (O‘zbekiston).",
+    "ru": "Официальные правила охраны труда при работе в клинико-диагностических лабораториях (Узбекистан).",
+    "en": "Official occupational-safety rules for work in clinical diagnostic laboratories (Uzbekistan)."
+   },
+   "licence_quote": [
+    "© O‘zbekiston Respublikasi Adliya vazirligi qoshidagi “Adolat” milliy huquqiy axborot markazi davlat muassasasi",
+    "Ushbu axborot resursidan olgan axborotni faqat shaxsiy maqsadlarda foydalanishingiz mumkin."
+   ]
+  },
+  {
+   "id": "lib-lexuz-vm-112-metrologiya",
+   "kind": "manual",
+   "title": "Тиббиётда қўлланадиган лаборатория ва диагностика ускуналарининг метрологик назоратини такомиллаштириш чора-тадбирлари тўғрисида — Ўзбекистон Республикаси Вазирлар Маҳкамасининг қарори, 15.02.2018 йилдаги 112-сон",
+   "authors": [
+    "Ўзбекистон Республикаси Вазирлар Маҳкамаси"
+   ],
+   "year": 2018,
+   "publisher": "Қонун ҳужжатлари маълумотлари миллий базаси",
+   "language": "uz",
+   "categories": [
+    "instruments",
+    "clinical_lab"
+   ],
+   "topics": [],
+   "import_state": "cataloged",
+   "access": "free_to_read",
+   "url": "https://lex.uz/uz/docs/3560526",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Tibbiyot laboratoriya va diagnostika uskunalarining metrologik nazorati bo‘yicha Vazirlar Mahkamasining 112-son qarori.",
+    "ru": "Постановление Кабинета Министров № 112 о метрологическом контроле медицинского лабораторного и диагностического оборудования (Узбекистан).",
+    "en": "Cabinet of Ministers resolution No. 112 on the metrological control of medical laboratory and diagnostic equipment (Uzbekistan)."
+   },
+   "licence_quote": [
+    "© O‘zbekiston Respublikasi Adliya vazirligi qoshidagi “Adolat” milliy huquqiy axborot markazi davlat muassasasi",
+    "Ushbu axborot resursidan olgan axborotni faqat shaxsiy maqsadlarda foydalanishingiz mumkin."
+   ]
+  },
+  {
+   "id": "lib-tietz-textbook-lab-medicine-7",
+   "kind": "book",
+   "title": "Tietz Textbook of Laboratory Medicine, 7th Edition",
+   "authors": [
+    "Nader Rifai"
+   ],
+   "year": 2022,
+   "edition": "7th",
+   "publisher": "Elsevier (imprint: Saunders)",
+   "isbn": "9780323775724",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "biochemistry",
+    "methods",
+    "instruments"
+   ],
+   "topics": [
+    "proteins",
+    "enzymes",
+    "kidney",
+    "carbohydrate",
+    "lipids",
+    "electrolytes",
+    "liver"
+   ],
+   "import_state": "cataloged",
+   "access": "catalog_only",
+   "url": "https://www.eu.elsevierhealth.com/tietz-textbook-of-laboratory-medicine-9780323775724.html",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Klinik kimyo va laboratoriya tibbiyoti bo‘yicha keng qamrovli ma’lumotnoma (pullik).",
+    "ru": "Фундаментальный справочник по клинической химии и лабораторной медицине (платный).",
+    "en": "Comprehensive reference on clinical chemistry and laboratory medicine (paid)."
+   },
+   "licence_quote": [
+    "Original Price €290.99",
+    "Stock Status IN STOCK"
+   ]
+  },
+  {
+   "id": "lib-henry-clinical-diagnosis-24",
+   "kind": "book",
+   "title": "Henry's Clinical Diagnosis and Management by Laboratory Methods, 24th Edition",
+   "authors": [
+    "Richard A. McPherson",
+    "Matthew R. Pincus"
+   ],
+   "year": 2021,
+   "edition": "24th",
+   "publisher": "Elsevier",
+   "isbn": "9780323673204",
+   "language": "en",
+   "categories": [
+    "clinical_lab",
+    "biochemistry",
+    "methods",
+    "instruments",
+    "tests"
+   ],
+   "topics": [
+    "kidney",
+    "electrolytes",
+    "carbohydrate",
+    "lipids",
+    "proteins",
+    "enzymes",
+    "liver",
+    "urine"
+   ],
+   "import_state": "cataloged",
+   "access": "catalog_only",
+   "url": "https://www.eu.elsevierhealth.com/henrys-clinical-diagnosis-and-management-by-laboratory-methods-9780323673204.html",
+   "accessed": "2026-10-08",
+   "note": {
+    "uz": "Klinik patologiya bo‘yicha klassik darslik: biokimyo, siydik tahlili, gematologiya, laboratoriya boshqaruvi (pullik).",
+    "ru": "Классический учебник клинической патологии: биохимия, анализ мочи, гематология, управление лабораторией (платный).",
+    "en": "Classic clinical pathology textbook: chemistry, urinalysis, haematology and laboratory management (paid)."
+   },
+   "licence_quote": [
+    "Original Price €157.99",
+    "Stock Status IN STOCK"
+   ]
+  }
+ ],
  "lessons": [],
  "discrepancies": []
 }
