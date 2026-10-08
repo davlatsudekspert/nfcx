@@ -538,7 +538,7 @@ class ProfileScreen extends ConsumerWidget {
             // KATALOG — rasmli toifalar + 4 ta tovar + "Barchasini
             // ko'rish" (to'liq ro'yxat alohida sahifada).
             if (biz != null) StoreCatalogPreview(business: biz),
-            // Sarlavha o'rniga "Postlar | Reels" tablari — ular
+            // Sarlavha o'rniga "Postlar | Ko'rgazma" tablari — ular
             // `_PostsGrid` ichida (shaxsiy profilda). Kompaniyada
             // oddiy sarlavha qoladi.
             if (active == null || active.isBusiness)
@@ -1555,12 +1555,11 @@ class _PostsGrid extends ConsumerStatefulWidget {
   ConsumerState<_PostsGrid> createState() => _PostsGridState();
 }
 
-/// POSTLAR | REELS.
+/// POSTLAR | KO'RGAZMA.
 ///
-/// Reels alohida API emas: Reels bo'limi ham aynan shu postlarning
-/// VIDEOLILARIDAN quriladi (`reelsProvider`). Shuning uchun tab
-/// yangi so'rov yubormaydi — bitta ro'yxat ikkiga ajratiladi va
-/// sonlar profildagi "Postlar" soni bilan doim mos keladi.
+/// Ko'rgazma alohida API emas: tab yangi so'rov yubormaydi — bitta
+/// ro'yxat ikkiga ajratiladi ([Post.inShowcase]) va sonlar profildagi
+/// "Postlar" soni bilan doim mos keladi.
 ///
 /// "Saqlangan" tabi ATAYLAB yo'q: serverda saqlash API'si yo'q,
 /// bo'sh yoki soxta tab ko'rsatilmaydi.
@@ -1620,24 +1619,47 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
       data: (all) {
         // Kompaniyada tab yo'q — hammasi bitta to'rda.
         final tabs = !company;
-        final photos = all.where((p) => !p.isVideo).toList();
-        final reels = all.where((p) => p.isVideo).toList();
-        final items = !tabs ? all : (_tab == 0 ? photos : reels);
+        // POSTLAR | KO'RGAZMA (2026-10). Ko'rgazma — ko'rgazma postlari
+        // va rasmli reel'lar; qolgani (VIDEO postlar ham) "Postlar" da —
+        // egasi ularni ko'ra va o'chira olishi uchun.
+        final posts = all.where((p) => !p.inShowcase).toList();
+        final showcase = all.where((p) => p.inShowcase).toList();
+        final items = !tabs ? all : (_tab == 0 ? posts : showcase);
         final bar = tabs
             ? _GridTabs(
                 index: _tab,
                 labels: [
-                  '${l.profilePosts} · ${photos.length}',
-                  '${l.navReels} · ${reels.length}',
+                  '${l.profilePosts} · ${posts.length}',
+                  '${l.navShowcase} · ${showcase.length}',
                 ],
                 onChanged: (i) => setState(() => _tab = i),
               )
             : const SizedBox.shrink();
+        // O'z profilim, Ko'rgazma tabi — yaratish tugmasi.
+        final createShowcase = tabs &&
+            _tab == 1 &&
+            ref.watch(isMineProvider(code))
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    Gap.screenX, 0, Gap.screenX, Gap.md),
+                child: NovaButton(
+                  key: const ValueKey('profile-showcase-create'),
+                  label: l.showcaseCreate,
+                  icon: Icons.add_rounded,
+                  tone: ButtonTone.quiet,
+                  onPressed: () => context.push(Routes.showcaseCreate),
+                ),
+              )
+            : null;
         // Tab paneli HAR DOIM guruhning birinchi bolasi: bo'sh va
         // to'la tab orasida o'tganda u qayta yaratilmaydi (chiziq
         // animatsiyasi sakramaydi, ekran o'quvchi fokusi yo'qolmaydi).
-        Widget withBar(Widget body) => SliverMainAxisGroup(
-            slivers: [SliverToBoxAdapter(child: bar), body]);
+        Widget withBar(Widget body) => SliverMainAxisGroup(slivers: [
+              SliverToBoxAdapter(child: bar),
+              if (createShowcase != null)
+                SliverToBoxAdapter(child: createShowcase),
+              body,
+            ]);
         if (items.isEmpty) {
           return withBar(SliverToBoxAdapter(child: Column(children: [
             Padding(
@@ -1648,7 +1670,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                 children: [
                   Icon(
                       _tab == 1 && tabs
-                          ? Icons.slow_motion_video_rounded
+                          ? Icons.collections_outlined
                           : Icons.photo_library_outlined,
                       size: 27,
                       color: t.text3),
@@ -1676,7 +1698,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
         }
         final side =
             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;
-        // Reels — vertikal (4:5) katakchalar, postlar — kvadrat.
+        // Ko'rgazma — vertikal (4:5) katakchalar, postlar — kvadrat.
         final tall = tabs && _tab == 1;
         // DANGASA TO'R: faqat ekranga yaqin katakchalar quriladi.
         //
@@ -1776,14 +1798,20 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
                               children: [
                                 mediaImage(context, p.mediaUrls.first,
                                     fit: BoxFit.cover),
-                                if (p.isVideo)
+                                // Bir nechta rasm (karusel) — burchakda belgi.
+                                if (p.mediaUrls.length > 1)
                                   const Positioned(
                                     right: 5,
                                     top: 5,
                                     child: Icon(
-                                      Icons.play_circle_fill_rounded,
+                                      Icons.collections_rounded,
                                       size: 15,
                                       color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                            color: Colors.black45,
+                                            blurRadius: 6),
+                                      ],
                                     ),
                                   ),
                               ],
@@ -1800,7 +1828,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
   }
 }
 
-/// Postlar | Reels — ingichka tagchiziqli matn tablari.
+/// Postlar | Ko'rgazma — ingichka tagchiziqli matn tablari.
 ///
 /// Soft editorial: to'ldirilgan segment emas, faqat faol yozuv ostida
 /// qora chiziq; almashuv 200ms.
@@ -1826,8 +1854,10 @@ class _GridTabs extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Tor ekran / katta shrift — yorliq qisqaradi, toshmaydi.
             for (var i = 0; i < labels.length; i++)
-              Semantics(
+              Flexible(
+                child: Semantics(
                 button: true,
                 selected: i == index,
                 child: GestureDetector(
@@ -1850,6 +1880,8 @@ class _GridTabs extends StatelessWidget {
                       ),
                       child: Text(
                         labels[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AppType.sans,
                           fontSize: 14,
@@ -1861,6 +1893,7 @@ class _GridTabs extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
               ),
           ],
         ),

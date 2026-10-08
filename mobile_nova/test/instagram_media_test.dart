@@ -14,6 +14,7 @@ import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
 import 'package:nfcstore_nova/features/discover/catalog_view.dart';
+import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
 import 'package:nfcstore_nova/features/social/feed_card.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
@@ -28,9 +29,9 @@ import 'support/rich_fakes.dart';
 
 /// INSTAGRAM USLUBIDAGI MEDIA (egasi, 2026-09-24):
 ///
-/// * Reels'da aylantirish chizig'i va NFC ID pastki panel ostida
-///   qolib ketardi (3 tugmali Android). Endi panelning O'LCHANGAN
-///   balandligidan yuqorida; panel video ustida qora shisha.
+/// * Reels'da (endi Ko'rgazmada) amallar va muallif pastki panel
+///   ostida qolib ketardi (3 tugmali Android). Endi panelning
+///   O'LCHANGAN balandligidan yuqorida; panel qora fon ustida shisha.
 /// * Video bosilsa — belgilarsiz to'liq ekran (Reels va lentada).
 /// * Tovar rasmi bosilsa — kattalashtirib ko'riladi.
 class _Biz extends BusinessRepository {
@@ -39,22 +40,24 @@ class _Biz extends BusinessRepository {
   Future<Result<List<Business>>> mine() async => const Ok([]);
 }
 
-final _reels = [
-  Post(
+// Ko'rgazma (2026-10: Reels o'rnida) — rasmli, musiqali sahifa.
+final _showcase = [
+  const Post(
     id: 7,
     code: 'PPP777',
     authorName: 'Mashrabboy',
-    text: 'Toshkent kechasi',
-    mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
-    isVideo: true,
+    showcase: true,
+    title: 'Toshkent kechasi',
+    mediaUrls: ['assets/demo/z_post_cafe.jpg', 'assets/demo/z_post_cafe.jpg'],
     likes: 42,
+    music: MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3'),
   ),
-  Post(
+  const Post(
     id: 9,
     code: 'ALI000',
     authorName: 'Aliyorbek',
-    mediaUrls: const ['https://nfcstore.uz/uploads/c.mp4'],
-    isVideo: true,
+    reel: true,
+    mediaUrls: ['assets/demo/z_post_cafe.jpg'],
   ),
 ];
 
@@ -82,11 +85,16 @@ List<String> _captureSystemUi() {
 }
 
 void main() {
-  group('Reels — Instagram uslubi', () {
+  // REELS PASTKI MENYUDAN OLINDI (2026-10) — o'rnida Ko'rgazma. Shu
+  // guruh avval Reels'ni sinardi; niyat (panel ustida tugmalar, qora
+  // shisha panel, "orqaga", tabdan chiqqanda ovoz to'xtashi) endi
+  // Ko'rgazma tabida tekshiriladi.
+  group('Ko‘rgazma tabi — Instagram uslubi (Reels o‘rnida)', () {
     late ProviderContainer c;
     late FakeVideoPlatform video;
 
-    Future<void> boot(WidgetTester tester, {double inset = 48}) async {
+    Future<void> boot(WidgetTester tester,
+        {double inset = 48, String go = Routes.showcase}) async {
       video = FakeVideoPlatform();
       VideoPlayerPlatform.instance = video;
       tester.view.physicalSize = const Size(390 * 3, 844 * 3);
@@ -98,13 +106,13 @@ void main() {
       c = ProviderContainer(overrides: [
         ...await testOverrides(),
         businessRepositoryProvider.overrideWithValue(_Biz()),
-        reelsProvider.overrideWith((ref) async => _reels),
+        showcaseProvider.overrideWith((ref) async => _showcase),
       ]);
       addTearDown(c.dispose);
       await tester.pumpWidget(
           UncontrolledProviderScope(container: c, child: const NovaApp()));
       await settle(tester, frames: 10);
-      c.read(routerProvider).go(Routes.reels);
+      c.read(routerProvider).go(go);
       await settle(tester, frames: 12);
       await _flush(tester);
     }
@@ -123,94 +131,47 @@ void main() {
 
     for (final inset in const [0.0, 24.0, 48.0]) {
       testWidgets(
-          'inset ${inset.toInt()}: progress va NFC ID pastki panel USTIDA',
+          'inset ${inset.toInt()}: amallar va muallif pastki panel USTIDA',
           (tester) async {
         await boot(tester, inset: inset);
         expect(tester.takeException(), isNull);
         final nav = find.byType(NovaBottomNav);
         expect(nav, findsOneWidget);
         expect(tester.widget<NovaBottomNav>(nav).onVideo, isTrue,
-            reason: 'Reels’da panel video ustidagi qora shisha');
+            reason: 'Ko‘rgazmada panel qora fon ustidagi shisha');
         final navTop = tester.getRect(nav).top;
-
-        final progress = onScreen(tester, const ValueKey('reel-progress'));
-        final chip = onScreen(tester, const ValueKey('reel-id-chip'));
-        final like = onScreen(tester, const ValueKey('reel-like'));
-        expect(progress.bottom, lessThanOrEqualTo(navTop - 6),
-            reason: 'aylantirish chizig‘i panel ostida qolmasin');
-        expect(chip.bottom, lessThan(progress.top),
-            reason: 'NFC ID chizig‘i ustida turadi');
+        final author = onScreen(tester, const ValueKey('showcase-author'));
+        final like = onScreen(tester, const ValueKey('showcase-like'));
+        expect(author.bottom, lessThanOrEqualTo(navTop - 6));
         expect(like.bottom, lessThan(navTop));
       });
     }
 
-    testWidgets('bosish — toza to‘liq ekran, yana bosish — qaytadi',
+    testWidgets('eski /reels havolasi — Ko‘rgazma, Reels qurilmaydi',
         (tester) async {
-      final modes = _captureSystemUi();
-      await boot(tester);
-      await tester.tapAt(const Offset(195, 380));
-      // Ikki marta bosishni kutish oralig'i.
-      await tester.pump(const Duration(milliseconds: 350));
-      await settle(tester, frames: 6);
-      expect(c.read(reelsCleanProvider), isTrue);
-      expect(find.byType(NovaBottomNav), findsNothing,
-          reason: 'toza rejimda pastki panel yo‘q');
-      // Tizim panellari TEGILMAYDI: immersive'dan qaytish Android'da
-      // oynani boshqa rejimga o'tkazardi (egasining telefoni, 2026-09-24).
-      expect(modes, isEmpty, reason: 'tizim panellari rejimi o‘zgarmaydi');
-      final chip = find.byKey(const ValueKey('reel-id-chip')).first;
-      final ignoring = tester
-          .widgetList<IgnorePointer>(
-              find.ancestor(of: chip, matching: find.byType(IgnorePointer)))
-          .any((w) => w.ignoring);
-      expect(ignoring, isTrue, reason: 'belgilar yashirin va bosilmaydi');
-      expect(video.playing, isNotEmpty, reason: 'video to‘xtamaydi');
-
-      await tester.tapAt(const Offset(195, 380));
-      await tester.pump(const Duration(milliseconds: 350));
-      await settle(tester, frames: 6);
-      expect(c.read(reelsCleanProvider), isFalse);
-      expect(find.byType(NovaBottomNav), findsOneWidget);
-      expect(modes, isEmpty);
-      expect(tester.takeException(), isNull);
+      await boot(tester, go: Routes.reels);
+      expect(find.byType(ShowcaseScreen), findsOneWidget);
+      expect(find.byType(ReelsScreen, skipOffstage: false), findsNothing);
+      expect(c.read(activeTabProvider), kShowcaseTab);
     });
 
-    testWidgets('"orqaga" avval toza rejimdan chiqaradi', (tester) async {
+    testWidgets('"orqaga" — Asosiy tabga, ilova yopilmaydi', (tester) async {
       await boot(tester);
-      c.read(reelsCleanProvider.notifier).state = true;
-      await settle(tester, frames: 4);
       await tester.binding.handlePopRoute();
-      await settle(tester, frames: 6);
-      expect(c.read(reelsCleanProvider), isFalse);
-      expect(find.byType(ReelsScreen), findsOneWidget,
-          reason: 'Reels’dan chiqib ketmaydi');
+      await settle(tester, frames: 8);
+      expect(c.read(activeTabProvider), 0);
     });
 
-    testWidgets('boshqa tabga o‘tilsa toza rejim tugaydi', (tester) async {
+    testWidgets('boshqa tabga o‘tilsa musiqa to‘xtaydi, panel oddiy',
+        (tester) async {
       await boot(tester);
-      c.read(reelsCleanProvider.notifier).state = true;
-      await settle(tester, frames: 4);
+      expect(video.playing, hasLength(1), reason: 'Ko‘rgazma musiqasi');
       c.read(routerProvider).go(Routes.home);
       await settle(tester, frames: 10);
-      expect(c.read(reelsCleanProvider), isFalse);
-      expect(find.byType(NovaBottomNav), findsOneWidget);
+      await _flush(tester);
+      expect(video.playing, isEmpty);
       expect(tester.widget<NovaBottomNav>(find.byType(NovaBottomNav)).onVideo,
           isFalse);
-    });
-
-    testWidgets('bosib turish — pauza, qo‘yib yuborish — davom', (tester) async {
-      await boot(tester);
-      expect(video.playing, hasLength(1));
-      final g = await tester.startGesture(const Offset(195, 380));
-      await tester.pump(const Duration(milliseconds: 650));
-      await _flush(tester);
-      expect(video.playing, isEmpty, reason: 'bosib turilganda pauza');
-      await g.up();
-      await settle(tester, frames: 4);
-      await _flush(tester);
-      expect(video.playing, hasLength(1), reason: 'qo‘yib yuborilsa davom');
-      expect(c.read(reelsCleanProvider), isFalse,
-          reason: 'bosib turish toza rejimni almashtirmaydi');
     });
   });
 

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
 import 'package:nfcstore_nova/routing/shell.dart';
 
+import 'package:nfcstore_nova/routing/routes.dart';
+
 import 'helpers.dart';
 
 /// TAB ALMASHGANDA OVOZ TO'XTASIN.
@@ -20,12 +22,14 @@ void main() {
     expect(c.read(activeTabProvider), 0);
   });
 
-  test('Reels tabining raqami 3 — ekran shunga qaraydi', () {
-    // `_ReelsScreenState` da `activeTabProvider == 3` deb yozilgan.
-    // Tartib o'zgarsa Reels ovozi yana boshqa bo'limda eshitilardi.
-    expect(HomeShell.tabRoutes.indexOf('/reels'), 3,
-        reason: 'tab tartibi o‘zgardi — Reels ekranidagi raqam ham '
+  test('Ko‘rgazma tabining raqami — ekran shunga qaraydi', () {
+    // `ShowcaseScreen` ko'rinishni `activeTabProvider == kShowcaseTab`
+    // dan biladi. Tartib o'zgarsa musiqa boshqa bo'limda eshitilardi.
+    expect(HomeShell.tabRoutes.indexOf(Routes.showcase), kShowcaseTab,
+        reason: 'tab tartibi o‘zgardi — kShowcaseTab ham '
             'yangilanishi kerak');
+    // Reels pastki menyuda YO'Q.
+    expect(HomeShell.tabRoutes, isNot(contains(Routes.reels)));
   });
 
   test('`stopAll` ro‘yxatdagi HAMMA manbani to‘xtatadi', () async {

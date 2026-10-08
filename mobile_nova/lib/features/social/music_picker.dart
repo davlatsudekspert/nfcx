@@ -30,8 +30,8 @@ final musicLibraryProvider = FutureProvider.autoDispose<MusicLibrary>((ref) asyn
   return res.when(ok: (v) => v, err: (e) => throw e);
 });
 
-/// «Shu musiqani ishlatish» — Reel yaratish ekraniga oldindan tanlangan
-/// trek. Ekran uni o'qiydi va darhol tozalaydi.
+/// «Shu musiqani ishlatish» — Ko'rgazma yaratish ekraniga oldindan
+/// tanlangan trek. Ekran uni o'qiydi va darhol tozalaydi.
 final pendingComposerMusicProvider = StateProvider<MusicTrack?>((ref) => null);
 
 String _mmss(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
@@ -373,7 +373,7 @@ class MusicChip extends StatelessWidget {
 }
 
 /// «Shu musiqani ishlatish» — trekni tinglash va shu trek bilan yangi
-/// Reel yaratish.
+/// Ko'rgazma yaratish.
 Future<void> showMusicUseSheet(BuildContext context, MusicTrack track) {
   return showModalBottomSheet<void>(
     context: context,
@@ -444,7 +444,9 @@ class _MusicUseSheetState extends ConsumerState<_MusicUseSheet> {
               onPressed: () {
                 ref.read(pendingComposerMusicProvider.notifier).state = tr;
                 Navigator.of(context).pop();
-                context.push(Routes.reelCreate);
+                // Reel yaratish endi yo'q — Ko'rgazma yaratish, trek
+                // oldindan tanlangan holda.
+                context.push(Routes.showcaseCreate);
               },
             ),
           ],

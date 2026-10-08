@@ -47,8 +47,8 @@ import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
     show isAppStoreBuild, showNewsEntry, showNotificationSettings;
 import '../features/showcase/showcase_composer.dart';
+import '../features/showcase/showcase_screen.dart';
 import '../features/social/post_screens.dart';
-import '../features/social/reels_screen.dart';
 import '../features/social/story_viewer.dart';
 import 'routes.dart';
 import 'shell.dart';
@@ -227,15 +227,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           // `StatefulShellRoute` tabni BIRINCHI bosilganda qurardi: ekran
           // noldan yig'ilar va o'sha paytda API so'rovlari boshlanardi —
           // odam har tabga birinchi kirishda spinner/kechikish ko'rardi.
-          // `preload` bilan Tanlov, Reels va Profil shell ochilganda
+          // `preload` bilan Tanlov, Ko'rgazma va Profil shell ochilganda
           // yashirin (`Offstage`, `TickerMode` o'chiq) quriladi va o'z
           // ma'lumotini oldindan yuklaydi; bosilganda tayyor turadi.
           // Holat saqlanadi, qayta yuklash yo'q (tablar yopilmaydi).
           //
           // NFC tabi OLDINDAN QURILMAYDI: u ochilishi bilan NFC
           // sessiyasini boshlashi mumkin — iPhone'da tizim oynasi chiqadi.
-          // Reels yashirin holda pleyer ochmaydi (`visible` faqat Reels
-          // tabida) — faqat ro'yxat yuklanadi.
+          // Ko'rgazma yashirin holda pleyer ochmaydi (`visible` faqat
+          // o'z tabida) — faqat ro'yxat yuklanadi.
           StatefulShellBranch(preload: true, routes: [
             GoRoute(
                 path: Routes.discover, builder: (_, __) => const DiscoverScreen()),
@@ -243,8 +243,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(path: Routes.nfc, builder: (_, __) => const NfcCenterScreen()),
           ]),
+          // KO'RGAZMA — Reels o'rnida (2026-10). Yashirin holda faqat
+          // ro'yxat yuklanadi; karusel va musiqa tab ochilganda.
           StatefulShellBranch(preload: true, routes: [
-            GoRoute(path: Routes.reels, builder: (_, __) => const ReelsScreen()),
+            GoRoute(
+                path: Routes.showcase,
+                builder: (_, __) => const ShowcaseScreen()),
           ]),
           StatefulShellBranch(preload: true, routes: [
             GoRoute(path: Routes.profile, builder: (_, __) => const ProfileScreen()),
@@ -373,9 +377,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.storyCreate,
         builder: (_, __) => const ComposerScreen(kind: ComposerKind.story),
       ),
+      // REELS VA VIDEO YUKLASH BU BUILD'DA YO'Q: eski manzillar
+      // (bildirishnoma, havola, eski ilova ichidagi tugma) Ko'rgazmaga
+      // buriladi. `ReelsScreen` va reel yaratish kodi saqlangan, lekin
+      // ularga yo'l yo'q.
+      GoRoute(path: Routes.reels, redirect: (_, __) => Routes.showcase),
+      GoRoute(path: Routes.reelCreate, redirect: (_, __) => Routes.showcase),
+      // `/reel/<id>` havolasi — o'sha post (PostScreen), ilova yiqilmaydi.
       GoRoute(
-        path: Routes.reelCreate,
-        builder: (_, __) => const ComposerScreen(kind: ComposerKind.reel),
+        path: '/reel/:id',
+        builder: (_, s) {
+          final code = s.uri.queryParameters['code'] ?? '';
+          return demoWrap(
+            code,
+            PostScreen(
+              id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
+              code: code,
+              company: s.uri.queryParameters['company'] == '1',
+            ),
+          );
+        },
       ),
       // KO'RGAZMA YARATISH — faqat rasm (1–5), video tanlab bo'lmaydi.
       GoRoute(

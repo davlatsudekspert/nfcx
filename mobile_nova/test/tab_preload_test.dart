@@ -6,6 +6,7 @@ import 'package:nfcstore_nova/app/app.dart';
 import 'package:nfcstore_nova/features/discover/discover_screen.dart';
 import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
 import 'package:nfcstore_nova/features/profile/profile_screen.dart';
+import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
 import 'package:nfcstore_nova/features/social/reels_screen.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
@@ -16,11 +17,11 @@ import 'support/fake_video_platform.dart';
 
 /// TABLAR OLDINDAN TAYYOR (egasi, 2026-10, iPhone TestFlight 303).
 ///
-/// Tanlov, Reels va Profil shell ochilganda yashirin quriladi —
+/// Tanlov, Ko'rgazma va Profil shell ochilganda yashirin quriladi —
 /// birinchi bosishda spinner/kechikish yo'q. Asosiy — boshlang'ich
 /// tab. NFC oldindan QURILMAYDI: u NFC sessiyasini boshlashi mumkin.
 void main() {
-  test('Tanlov, Reels, Profil — preload; NFC — yo‘q', () async {
+  test('Tanlov, Ko‘rgazma, Profil — preload; NFC — yo‘q', () async {
     final c = ProviderContainer(overrides: [...await testOverrides()]);
     addTearDown(c.dispose);
     final router = c.read(routerProvider);
@@ -35,13 +36,13 @@ void main() {
       Routes.home: false,
       Routes.discover: true,
       Routes.nfc: false,
-      Routes.reels: true,
+      Routes.showcase: true,
       Routes.profile: true,
     });
   });
 
-  testWidgets('ilovada: Asosiyda turganda Tanlov/Reels/Profil tayyor, '
-      'NFC qurilmagan, Reels pleyer ochmagan; tab almashganda qayta '
+  testWidgets('ilovada: Asosiyda turganda Tanlov/Ko‘rgazma/Profil tayyor, '
+      'NFC qurilmagan, Ko‘rgazma pleyer ochmagan; tab almashganda qayta '
       'qurilmaydi', (tester) async {
     final video = FakeVideoPlatform();
     VideoPlayerPlatform.instance = video;
@@ -66,12 +67,14 @@ void main() {
 
     Finder hidden(Type t) => find.byType(t, skipOffstage: false);
     expect(hidden(DiscoverScreen), findsOneWidget);
-    expect(hidden(ReelsScreen), findsOneWidget);
+    expect(hidden(ShowcaseScreen), findsOneWidget);
+    expect(hidden(ReelsScreen), findsNothing,
+        reason: 'Reels endi pastki menyuda yo‘q');
     expect(hidden(ProfileScreen), findsOneWidget);
     expect(hidden(NfcCenterScreen), findsNothing,
         reason: 'NFC oldindan qurilmasligi kerak');
     expect(video.created, isEmpty,
-        reason: 'yashirin Reels video pleyer ochmasligi kerak');
+        reason: 'yashirin Ko‘rgazma pleyer ochmasligi kerak');
 
     // Profil tabiga o'tish — o'sha tayyor ekran (yangi nusxa emas).
     final before = tester.element(hidden(ProfileScreen));

@@ -32,11 +32,13 @@ class _Social extends FakeSocialRepository {
   @override
   Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async => Ok([
         for (var i = 0; i < 30; i++)
+          // Ko'rgazma posti (2026-10: "Postlar | Ko'rgazma" tablari).
           Post(
             id: i + 1,
             code: code,
             text: 'Rasm $i',
             mediaUrls: const [_photo],
+            showcase: true,
             createdAt: DateTime(2026),
           ),
         for (var i = 0; i < 30; i++)
@@ -91,27 +93,33 @@ void main() {
     // bitta qator ko'p. `Wrap` da har doim 30 tadan 30 tasi qurilardi.
     const few = 21;
 
-    // ── Postlar tabi: 30 ta rasm ───────────────────────────────
+    // ── Postlar tabi: 30 ta video (video postlar shu yerda qoladi) ──
+    final posters = _posters().evaluate().length;
+    expect(posters, greaterThan(0), reason: 'to‘r umuman chizilmadi');
+    // Kvadrat video katakchalar (8 qatorgacha kesh bilan) — baribir
+    // 30 tadan ancha kam.
+    expect(posters, lessThanOrEqualTo(few + 3),
+        reason: '$posters/30 video muqovasi navbatga qo‘yilgan — har biri '
+            'pleer ochadi');
+    final video = tester.getSize(find.byKey(const ValueKey('tile-31')));
+    expect(video.width, closeTo(side, .5));
+    expect(video.height, closeTo(side, .5));
+
+    // ── Ko'rgazma tabi: 30 ta rasm, vertikal (4:5) ──────────────
+    await tester.tap(find.text('${l.navShowcase} · 30'));
+    await settle(tester, frames: 6);
     final photos = _photoTiles().evaluate().length;
-    expect(photos, greaterThan(0), reason: 'to‘r umuman chizilmadi');
+    expect(photos, greaterThan(0));
     expect(photos, lessThanOrEqualTo(few),
         reason: 'ekranda ~1 qator ko‘rinadi, lekin $photos/30 rasm '
             'katakchasi qurilgan — to‘r dangasa emas');
     final photo = tester.getSize(_photoTiles().first);
     expect(photo.width, closeTo(side, .5));
-    expect(photo.height, closeTo(side, .5));
+    expect(photo.height, closeTo(side * 1.25, .5));
 
-    // ── Reels tabi: 30 ta video ────────────────────────────────
-    await tester.tap(find.text('${l.navReels} · 30'));
+    // Postlarga qaytamiz — video to'r bilan davom.
+    await tester.tap(find.text('${l.profilePosts} · 30'));
     await settle(tester, frames: 6);
-    final posters = _posters().evaluate().length;
-    expect(posters, greaterThan(0));
-    expect(posters, lessThanOrEqualTo(few),
-        reason: '$posters/30 video muqovasi navbatga qo‘yilgan — har biri '
-            'pleer ochadi');
-    final reel = tester.getSize(find.byKey(const ValueKey('tile-31')));
-    expect(reel.width, closeTo(side, .5));
-    expect(reel.height, closeTo(side * 1.25, .5));
 
     // ── Pastga aylantirganda keyingilari quriladi ──────────────
     final scroll = find
@@ -136,7 +144,7 @@ void main() {
     expect(find.byKey(const ValueKey('tile-31'), skipOffstage: false),
         findsNothing,
         reason: 'ekrandan chiqqan katakcha xotirada qolib ketdi');
-    expect(_posters().evaluate().length, lessThanOrEqualTo(few));
+    expect(_posters().evaluate().length, lessThanOrEqualTo(few + 3));
     expect(tester.takeException(), isNull);
 
     // Review: to'r TEPASIDA ham kesh zonasi bor (SliverMainAxisGroup
@@ -157,8 +165,8 @@ void main() {
             (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy - top)
         .toList();
     expect(tops, isNotEmpty);
-    // Reels qatori: side * 1.25 baland + 6 oraliq.
-    expect(tops.reduce((a, b) => a < b ? a : b), lessThan(-(side * 1.25 + 6)),
+    // Postlar qatori: side baland + 6 oraliq.
+    expect(tops.reduce((a, b) => a < b ? a : b), lessThan(-(side + 6)),
         reason: 'ekran ustida zaxira qator yo‘q — to‘r keshi faqat pastda');
 
     // Muqova navbatidagi taymerlar tugasin.
@@ -166,7 +174,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
-  testWidgets('bo‘sh va to‘la tab orasida Postlar/Reels paneli qayta yaratilmaydi',
+  testWidgets('bo‘sh va to‘la tab orasida Postlar/Ko‘rgazma paneli qayta yaratilmaydi',
       (tester) async {
     VideoPoster.clearCache();
     VideoPlayerPlatform.instance = FakeVideoPlatform();
@@ -188,10 +196,10 @@ void main() {
         skipOffstage: false);
     expect(tabs, findsOneWidget);
     final before = tester.element(tabs);
-    // Reels tabi bo'sh — ilgari panel boshqa daraxtga o'tib qayta
+    // Ko'rgazma tabi bo'sh — ilgari panel boshqa daraxtga o'tib qayta
     // yaratilardi (chiziq animatsiyasi sakrardi, fokus yo'qolardi).
-    await tester.ensureVisible(find.text('${l.navReels} · 0'));
-    await tester.tap(find.text('${l.navReels} · 0'));
+    await tester.ensureVisible(find.text('${l.navShowcase} · 0'));
+    await tester.tap(find.text('${l.navShowcase} · 0'));
     await tester.pump(const Duration(milliseconds: 60));
     expect(identical(tester.element(tabs), before), isTrue,
         reason: 'panel qayta yaratildi');

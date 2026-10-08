@@ -15,7 +15,7 @@ Future<void> _frames(WidgetTester tester, [int n = 30]) async {
 }
 
 /// PASTKI NAVIGATSIYA HECH QACHON YO'QOLMASIN (egasi, 2026-09:
-/// "Asosiy – Tanlov – NFC – Reels – Profil bottom navigation yo'qolib
+/// "Asosiy – Tanlov – NFC – Ko'rgazma (avval Reels) – Profil bottom navigation yo'qolib
 /// qolmasin ... scroll qilganda ham").
 ///
 /// Beshala asosiy ekranda panel ko'rinadi va bosiladi; uzun ekranni
@@ -49,7 +49,7 @@ void main() {
       Routes.home,
       Routes.discover,
       Routes.nfc,
-      Routes.reels,
+      Routes.showcase,
       Routes.profile,
     ]) {
       c.read(routerProvider).go(r);

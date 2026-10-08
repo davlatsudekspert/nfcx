@@ -32,11 +32,16 @@ final activeTabProvider = StateProvider<int>((_) => 0);
 /// Yana bosilsa yoki "orqaga" — qaytadi.
 final reelsCleanProvider = StateProvider<bool>((_) => false);
 
-/// Reels tabining raqami (`HomeShell.tabRoutes`).
-const kReelsTab = 3;
-
-/// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`).
+/// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`) — qora, butun
+/// ekranli bo'lim (pastki panel video ustidagi uslubda).
 const kShowcaseTab = 3;
+
+/// REELS ENDI PASTKI MENYUDA YO'Q (2026-10: o'rnida Ko'rgazma).
+/// `ReelsScreen` kodi saqlangan, lekin hech qayerdan ochilmaydi
+/// (`/reels` -> `/showcase`). U o'z videosini faqat shu raqamli tab
+/// faol bo'lganda o'ynatadi — u yerda endi Ko'rgazma turadi va
+/// `ReelsScreen` umuman qurilmaydi.
+const kReelsTab = kShowcaseTab;
 
 /// "Asosiy" tugmasi Home'da turib qayta bosilgan — har bosishda
 /// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
@@ -58,11 +63,12 @@ List<NavItem> navItems(L l) {
         label: l.navDiscover,
         route: Routes.discover),
     NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
+    // KO'RGAZMA (Reels o'rnida) — rasmlar to'plami belgisi.
     NavItem(
-        icon: Icons.play_circle_outline_rounded,
-        activeIcon: Icons.play_circle_rounded,
-        label: l.navReels,
-        route: Routes.reels),
+        icon: Icons.collections_outlined,
+        activeIcon: Icons.collections_rounded,
+        label: l.navShowcase,
+        route: Routes.showcase),
     NavItem(
         icon: Icons.person_outline_rounded,
         activeIcon: Icons.person_rounded,
@@ -83,7 +89,7 @@ class HomeShell extends ConsumerStatefulWidget {
     Routes.home,
     Routes.discover,
     Routes.nfc,
-    Routes.reels,
+    Routes.showcase,
     Routes.profile,
   ];
 
@@ -126,7 +132,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       }
     });
     final items = navItems(l);
-    final onReels = shell.currentIndex == kReelsTab;
+    // Ko'rgazma — qora, butun ekranli bo'lim: panel video uslubida
+    // va kichraymaydi (vertikal sahifalar).
+    final onReels = shell.currentIndex == kShowcaseTab;
     final clean = onReels && ref.watch(reelsCleanProvider);
 
     // ANDROID "ORQAGA" (audit 2026-10-06): Asosiy bo'lmagan tab ildizida

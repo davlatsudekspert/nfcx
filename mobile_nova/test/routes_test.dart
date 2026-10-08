@@ -30,12 +30,15 @@ void main() {
     Routes.profileSetup,
     Routes.home,
     Routes.discover,
+    // Eski manzil — Ko'rgazmaga buriladi (2026-10).
     Routes.reels,
+    Routes.showcase,
     Routes.nfc,
     Routes.profile,
     Routes.postCreate,
     Routes.storyCreate,
     Routes.reelCreate,
+    Routes.showcaseCreate,
     Routes.nfcIds,
     Routes.nfcMarket,
     Routes.nfcScan,
@@ -82,6 +85,8 @@ void main() {
   /// Parametrli yo'llar — namunaviy qiymat bilan.
   final dynamicPaths = <String>[
     Routes.post(1),
+    // Eski reel havolasi — o'sha post ochiladi.
+    '/reel/5',
     Routes.story('48210377'),
     Routes.user('48210377'),
     Routes.nfcId('48210377'),

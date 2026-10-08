@@ -193,7 +193,8 @@ void main() {
       return out;
     }
 
-    final tab = find.text('${l.navReels} · 24');
+    // Video postlar "Postlar" tabida (2026-10: ikkinchi tab — Ko'rgazma).
+    final tab = find.text('${l.profilePosts} · 24');
     await tester.ensureVisible(tab);
     await settle(tester, frames: 2);
     await tester.tap(tab);
