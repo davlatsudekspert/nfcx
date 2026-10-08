@@ -128,7 +128,8 @@ env `FLAG_*` → `admin_settings.flag_*`, 60 s isolate keshi, hammasi standart
 o'chiq. Issiq yo'llar `peekFlags(env) || await getFlags(env)` (to'lqin qo'shmaydi).
 `videoUploadsBlocked` — yuklash/ulash 403 `video_uploads_disabled` (admin
 mustasno); `videosHidden` — UNION (`feedUnionSqlFor`), profil/kompaniya/
-istoriya ro'yxatlari, post sahifasi, `/uploads/*.mp4|webm|mov` 404;
+istoriya ro'yxatlari, Aktual (`highlights.js`) video elementlari, post sahifasi,
+`/uploads/*.mp4|webm|mov` 404;
 `reelsHidden` — `/api/reels` → `{items:[],hasMore:false,hidden:true}`.
 
 KO'RGAZMA (`showcase.js` + `post_extras`): `showcase:true` bilan post —

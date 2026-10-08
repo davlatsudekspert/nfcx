@@ -127,6 +127,16 @@ r = await post({ imageUrl: img, caption: 'image post' });
 const imagePostId = r.body.id;
 r = await call('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { agreed: true, videoUrl: storyVideo } });
 check('4) video story', r.status, 201);
+const videoStoryId = r.body.id;
+r = await call('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: img } });
+const imageStoryId = r.body.id;
+// Aktual (api/highlights.js): video va rasm istoriya nusxalari.
+r = await call('/api/highlights', { method: 'POST', cookie: cookie.user, json: { code: 'VIP001', title: 'Video', storyIds: [videoStoryId, imageStoryId] } });
+check('4) highlight with video + image', [r.status, r.body?.highlight?.itemCount], [201, 2]);
+const hlId = r.body.highlight.id;
+const hlItems = async (ck) => ((await call('/api/highlights?code=VIP001', { cookie: ck })).body?.highlights || [])
+  .find((h) => h.id === hlId)?.items || [];
+check('4) off: highlight shows video item', (await hlItems(cookie.other)).some((i) => i.videoUrl === storyVideo), true);
 r = await call('/api/companies/ACMEUZ/posts', { method: 'POST', cookie: cookie.user, json: { agreed: true, videoUrl: storyVideo } });
 const coVideoId = r.body?.post?.id;
 check('4) company video post', r.status, 201);
@@ -153,6 +163,12 @@ for (const [label, ck] of [['other', cookie.other], ['owner', cookie.user]]) {
 }
 r = await call('/api/records/VIP001/stories', { cookie: cookie.other });
 checkTrue('4) stories: no video', !(r.body?.stories || []).some((x) => x.videoUrl));
+for (const [label, ck] of [['other', cookie.other], ['owner', cookie.user], ['anon', undefined]]) {
+  const items = await hlItems(ck);
+  check(`4) highlight (${label}): video item hidden, image kept`, [items.some((i) => i.videoUrl), items.map((i) => i.storyId)], [false, [imageStoryId]]);
+}
+r = await call(`/api/highlights/${hlId}`, { method: 'PATCH', cookie: cookie.user, json: { title: 'Video2' } });
+check('4) highlight PATCH response hides video', [r.status, r.body?.highlight?.itemCount, (r.body?.highlight?.items || []).some((i) => i.videoUrl)], [200, 1, false]);
 r = await call('/api/companies/ACMEUZ/posts', { cookie: cookie.other });
 checkTrue('4) company posts: no video', !(r.body?.posts || []).some((x) => x.id === coVideoId));
 r = await call('/api/saves?kind=post', { cookie: cookie.other });
@@ -172,6 +188,7 @@ check('4) card videos list empty', r.body?.videos, []);
 await setFlags({ videosHidden: false });
 r = await call(storyVideo);
 check('4) off again: video served', r.status, 200);
+check('4) off again: highlight video item back', (await hlItems(cookie.other)).length, 2);
 
 // ═══ 5. reelsHidden ═══
 await setFlags({ reelsHidden: true });
