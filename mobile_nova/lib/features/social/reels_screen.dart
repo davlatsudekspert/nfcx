@@ -975,7 +975,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
     if (have != null) return _musicReady ? have : null;
     final c = VideoPlayerController.networkUrl(
       Uri.parse(m.playUrl),
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      // BOSHQA ILOVA OVOZI TO'XTAYDI (audio fokus): `true` bo'lsa
+      // Spotify/YouTube ham davom etib, ikki ovoz ustma-ust chiqardi.
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
     );
     _music = c;
     try {
@@ -1162,7 +1164,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
       _failed = false;
       c = VideoPlayerController.networkUrl(
         Uri.parse(widget.post.mediaUrls.first),
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+        // Audio fokus olinadi — boshqa ilova ovozi bilan aralashmaydi.
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
       );
       _controller = c;
       try {

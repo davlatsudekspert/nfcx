@@ -83,7 +83,12 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   Future<Duration> getPosition(int playerId) async =>
       positions[playerId] ?? Duration.zero;
   @override
-  Future<void> setMixWithOthers(bool mixWithOthers) async {}
+  Future<void> setMixWithOthers(bool mixWithOthers) async =>
+      mixCalls.add(mixWithOthers);
+
+  /// `setMixWithOthers` chaqiruvlari (pleer ochilganda) — audio fokus
+  /// sinovlari uchun.
+  final mixCalls = <bool>[];
 
   @override
   Widget buildView(int playerId) => _frame(playerId);
