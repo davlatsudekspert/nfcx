@@ -1,0 +1,88 @@
+From b98bc818fb723fca628ea0b4281821774db9c9d6 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 16:36:08 +0000
+Subject: [PATCH 61/69] =?UTF-8?q?Nova:=20Reels=20pleyerlari=20mixWithOther?=
+ =?UTF-8?q?s:=20false=20=E2=80=94=20boshqa=20ilova=20ovozi=20to'xtaydi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Reel videosi va kutubxona musiqasi kontrollerlari endi audio fokusni
+oladi: Spotify/YouTube ovozi Reels bilan ustma-ust chiqmaydi.
+(Ovozsiz muqova pleyeri — video_poster — o'zgarmagan.)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/lib/features/social/reels_screen.dart |  7 +++++--
+ mobile_nova/test/audio_focus_test.dart            | 15 +++++++++++++++
+ mobile_nova/test/support/fake_video_platform.dart |  7 ++++++-
+ 3 files changed, 26 insertions(+), 3 deletions(-)
+ create mode 100644 mobile_nova/test/audio_focus_test.dart
+
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index 4d249e0..356bfd7 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -975,7 +975,9 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+     if (have != null) return _musicReady ? have : null;
+     final c = VideoPlayerController.networkUrl(
+       Uri.parse(m.playUrl),
+-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
++      // BOSHQA ILOVA OVOZI TO'XTAYDI (audio fokus): `true` bo'lsa
++      // Spotify/YouTube ham davom etib, ikki ovoz ustma-ust chiqardi.
++      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+     );
+     _music = c;
+     try {
+@@ -1162,7 +1164,8 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+       _failed = false;
+       c = VideoPlayerController.networkUrl(
+         Uri.parse(widget.post.mediaUrls.first),
+-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
++        // Audio fokus olinadi — boshqa ilova ovozi bilan aralashmaydi.
++        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+       );
+       _controller = c;
+       try {
+diff --git a/mobile_nova/test/audio_focus_test.dart b/mobile_nova/test/audio_focus_test.dart
+new file mode 100644
+index 0000000..e2fa6e1
+--- /dev/null
++++ b/mobile_nova/test/audio_focus_test.dart
+@@ -0,0 +1,15 @@
++import 'dart:io';
++
++import 'package:flutter_test/flutter_test.dart';
++
++/// AUDIO FOKUS — ovozli pleyerlar boshqa ilova ovozi bilan
++/// aralashmaydi (`mixWithOthers: false`): Spotify/YouTube to'xtaydi,
++/// ikki ovoz ustma-ust chiqmaydi.
++void main() {
++  test('Reels pleyerlari mixWithOthers: false', () {
++    final src = File('lib/features/social/reels_screen.dart').readAsStringSync();
++    expect(src, isNot(contains('mixWithOthers: true')));
++    expect('mixWithOthers: false'.allMatches(src).length, 2,
++        reason: 'video va musiqa kontrollerlari');
++  });
++}
+diff --git a/mobile_nova/test/support/fake_video_platform.dart b/mobile_nova/test/support/fake_video_platform.dart
+index 68171a0..1cf7fc6 100644
+--- a/mobile_nova/test/support/fake_video_platform.dart
++++ b/mobile_nova/test/support/fake_video_platform.dart
+@@ -83,7 +83,12 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+   Future<Duration> getPosition(int playerId) async =>
+       positions[playerId] ?? Duration.zero;
+   @override
+-  Future<void> setMixWithOthers(bool mixWithOthers) async {}
++  Future<void> setMixWithOthers(bool mixWithOthers) async =>
++      mixCalls.add(mixWithOthers);
++
++  /// `setMixWithOthers` chaqiruvlari (pleer ochilganda) — audio fokus
++  /// sinovlari uchun.
++  final mixCalls = <bool>[];
+ 
+   @override
+   Widget buildView(int playerId) => _frame(playerId);
+-- 
+2.43.0
+

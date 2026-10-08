@@ -1,0 +1,99 @@
+From 617775d2bd11e64f53d696eaba2f71a08c235068 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 16:36:45 +0000
+Subject: [PATCH 62/69] =?UTF-8?q?Nova:=20profil=20musiqasi=20=E2=80=94=20y?=
+ =?UTF-8?q?uklashdan=20oldin=20kontent=20qoidalari=20(ensureContentRules)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Audio ham serverda avtomatik tekshiriladi: "Musiqa qo'shish" endi rasm
+yuklash kabi avval qoidalar va aniq rozilik varag'ini ochadi; rozilik
+bo'lmasa fayl tanlash oynasi ochilmaydi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../features/profile/profile_edit_screen.dart |  4 ++
+ .../test/profile_music_rules_test.dart        | 55 +++++++++++++++++++
+ 2 files changed, 59 insertions(+)
+ create mode 100644 mobile_nova/test/profile_music_rules_test.dart
+
+diff --git a/mobile_nova/lib/features/profile/profile_edit_screen.dart b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+index 92cb3cd..7e57fc2 100644
+--- a/mobile_nova/lib/features/profile/profile_edit_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_edit_screen.dart
+@@ -135,6 +135,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+   /// qarab — [musicPickerSpec] izohiga qarang.
+   Future<void> _pickMusic() async {
+     final l = L.of(context);
++    // Audio ham serverda avtomatik tekshiriladi — rasm kabi avval
++    // kontent qoidalari va ANIQ rozilik (`ensureContentRules`). Rozilik
++    // bo'lmasa fayl tanlash oynasi ham ochilmaydi.
++    if (!await ensureContentRules(context, ref) || !mounted) return;
+     final spec = musicPickerSpec();
+     final picked = await FilePicker.pickFiles(
+       type: spec.type,
+diff --git a/mobile_nova/test/profile_music_rules_test.dart b/mobile_nova/test/profile_music_rules_test.dart
+new file mode 100644
+index 0000000..e35363f
+--- /dev/null
++++ b/mobile_nova/test/profile_music_rules_test.dart
+@@ -0,0 +1,55 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/features/profile/profile_edit_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// PROFIL MUSIQASI — yuklashdan OLDIN kontent qoidalari darvozasi
++/// (audio ham serverda avtomatik tekshiriladi).
++void main() {
++  testWidgets('rozilik yo‘q — "Musiqa qo‘shish" avval qoidalarni ochadi',
++      (tester) async {
++    tester.view.physicalSize = const Size(393 * 3, 2400 * 3);
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    await tester.pumpWidget(ProviderScope(
++      overrides: await testOverrides(),
++      child: MaterialApp.router(
++        routerConfig: GoRouter(initialLocation: '/edit', routes: [
++          GoRoute(
++            path: '/',
++            builder: (_, __) => const SizedBox.shrink(),
++            routes: [
++              GoRoute(
++                  path: 'edit',
++                  builder: (_, __) => const ProfileEditScreen()),
++            ],
++          ),
++        ]),
++        locale: const Locale('uz'),
++        supportedLocales: L.supportedLocales,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ));
++    await settle(tester, frames: 20);
++    final l = LUz();
++    final add = find.text(l.profileMusicAdd);
++    await tester.scrollUntilVisible(add, 300,
++        scrollable: find.byType(Scrollable).first);
++    await settle(tester, frames: 4);
++    await tester.tap(add);
++    await settle(tester, frames: 8);
++    expect(find.byKey(const ValueKey('rules-accept')), findsOneWidget,
++        reason: 'qoidalar varag‘i fayl tanlashdan oldin');
++  });
++}
+-- 
+2.43.0
+

@@ -1,0 +1,685 @@
+From 214bacaa695ee15250ada2c80e0a27f9e50dab70 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 17:27:43 +0000
+Subject: [PATCH 69/69] =?UTF-8?q?Nova:=20"Tekshiruv=20kutilmoqda"=20?=
+ =?UTF-8?q?=E2=80=94=20pending=20postlar=20belgisi=20va=20chop=20etilganda?=
+ =?UTF-8?q?gi=20xabar?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- PendingBadge (uz "Tekshiruv kutilmoqda", ru "Ожидает проверки",
+  en "Pending review"): profil to'ri katakchasida (ixcham), lenta
+  kartasida, post tafsilotida va Ko'rgazma sahifasida — server
+  `pending: true` ni faqat egasiga beradi.
+- Chop etilgan post `pending: true` bilan qaytsa snackbar: "Post
+  tekshiruvdan so'ng hammaga ko'rinadi" (Ko'rgazma va post yaratish).
+- BusinessRepository.createPost endi javobdagi postni qaytaradi
+  (bo'lmasa null) — kompaniya posti uchun ham pending bilinadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../repositories/business_repository.dart     |  19 +-
+ .../lib/features/profile/profile_screen.dart  |  15 +-
+ .../features/showcase/showcase_composer.dart  |   7 +-
+ .../features/showcase/showcase_screen.dart    |   5 +
+ .../lib/features/social/feed_card.dart        |   9 +
+ .../lib/features/social/pending_badge.dart    |  66 ++++++
+ .../lib/features/social/post_screens.dart     |  26 ++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   4 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   4 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   6 +-
+ .../lib/l10n/gen/app_localizations.dart       |  12 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   7 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   6 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   6 +
+ mobile_nova/test/pending_review_test.dart     | 213 ++++++++++++++++++
+ 15 files changed, 389 insertions(+), 16 deletions(-)
+ create mode 100644 mobile_nova/lib/features/social/pending_badge.dart
+ create mode 100644 mobile_nova/test/pending_review_test.dart
+
+diff --git a/mobile_nova/lib/data/repositories/business_repository.dart b/mobile_nova/lib/data/repositories/business_repository.dart
+index f56a836..b1842b3 100644
+--- a/mobile_nova/lib/data/repositories/business_repository.dart
++++ b/mobile_nova/lib/data/repositories/business_repository.dart
+@@ -236,7 +236,9 @@ class BusinessRepository {
+   /// `caption`, `agreed`), lekin BOSHQA manzil. Ilgari biznes
+   /// rejimida ham shaxsiy yo'l chaqirilardi — ya'ni biznes
+   /// profilida turib yaratilgan post SHAXSIY profilga tushardi.
+-  Future<Result<void>> createPost({
++  /// Javobda post bo'lsa u qaytadi (masalan `pending: true` — media
++  /// tekshiruv kutmoqda), bo'lmasa `null`.
++  Future<Result<Post?>> createPost({
+     required String companyId,
+     String caption = '',
+     String imageUrl = '',
+@@ -244,15 +246,16 @@ class BusinessRepository {
+     int? musicId,
+     int musicStart = 0,
+     bool reel = false,
+-  }) {
++  }) async {
+     if (imageUrl.isEmpty && videoUrl.isEmpty) {
+-      return Future.value(const Err(AppError(
++      return const Err(AppError(
+         AppErrorKind.validation,
+         code: 'bad_image',
+         detail: 'post uchun rasm yoki video majburiy',
+-      )));
++      ));
+     }
+-    return _api.post<void>('/api/companies/$companyId/posts', {
++    final res = await _api
++        .post<Map<String, dynamic>>('/api/companies/$companyId/posts', {
+       if (imageUrl.isNotEmpty) 'imageUrl': imageUrl,
+       if (videoUrl.isNotEmpty) 'videoUrl': videoUrl,
+       'caption': caption,
+@@ -261,6 +264,12 @@ class BusinessRepository {
+       if (reel) 'reel': true,
+       'agreed': true,
+     });
++    return res.map((j) {
++      final raw = j['post'];
++      if (raw is! Map) return null;
++      return Post.fromJson(raw.cast<String, dynamic>())
++          .copyWithKind(authorKind: 'company');
++    });
+   }
+ 
+   /// Kompaniya postini o'chirish — `DELETE /api/companies/:id/posts/:postId`.
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index 722a4d4..9b35bd2 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -35,6 +35,7 @@ import 'profile_switcher.dart';
+ import '../demo/demo_mode.dart';
+ import '../demo/demo_mosaic.dart';
+ import '../social/engagement.dart';
++import '../social/pending_badge.dart';
+ import '../social/story_viewer.dart';
+ import '../social/video_poster.dart';
+ import '../social/media_frame.dart';
+@@ -1728,7 +1729,10 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+                 return PressableScale(
+                   onTap: () => context.push(
+                       Routes.post(p.id, code: code, company: company)),
+-                  child: ClipRRect(
++                  child: Stack(
++                   fit: StackFit.expand,
++                   children: [
++                   ClipRRect(
+                     borderRadius: R.tile,
+                     // O'lchamni to'r katakchasi beradi.
+                     child: SizedBox.expand(
+@@ -1818,6 +1822,15 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+                             ),
+                     ),
+                   ),
++                   // O'z postim hali tekshirilmagan — faqat menga.
++                   if (p.pending)
++                     const Positioned(
++                       left: 5,
++                       bottom: 5,
++                       child: PendingBadge(compact: true),
++                     ),
++                   ],
++                  ),
+                 );
+               },
+             ),
+diff --git a/mobile_nova/lib/features/showcase/showcase_composer.dart b/mobile_nova/lib/features/showcase/showcase_composer.dart
+index 6e40255..b4f22b3 100644
+--- a/mobile_nova/lib/features/showcase/showcase_composer.dart
++++ b/mobile_nova/lib/features/showcase/showcase_composer.dart
+@@ -334,7 +334,12 @@ class _ShowcaseComposerScreenState
+     if (!mounted) return;
+     setState(() => _busy = false);
+     res.when(
+-      ok: (_) {
++      ok: (created) {
++        // Media hali tekshirilmagan — post faqat egasiga ko'rinadi.
++        if (created?.pending == true) {
++          ScaffoldMessenger.of(context)
++              .showSnackBar(SnackBar(content: Text(l.pendingPublished)));
++        }
+         ref.invalidate(showcaseProvider);
+         ref.invalidate(homeFeedProvider);
+         ref.invalidate(
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 1654612..cd98649 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -34,6 +34,7 @@ import '../social/media_carousel.dart';
+ import '../social/media_frame.dart' show mediaImage;
+ import '../social/moderation.dart';
+ import '../social/music_picker.dart';
++import '../social/pending_badge.dart';
+ import '../social/post_contact_bar.dart';
+ import '../social/reels_screen.dart'
+     show
+@@ -821,6 +822,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                   if (e != null && mounted) _snack(describeError(l, e));
+                 },
+               ),
++              if (p.pending) ...[
++                const SizedBox(height: Gap.sm),
++                const PendingBadge(onDark: true),
++              ],
+               if (p.featured) ...[
+                 const SizedBox(height: Gap.sm),
+                 _Pill(
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index 0958b5b..8a76e06 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -20,6 +20,7 @@ import 'media_carousel.dart';
+ import 'media_frame.dart';
+ import 'moderation.dart';
+ import 'music_picker.dart' show MusicChip;
++import 'pending_badge.dart';
+ import 'post_contact_bar.dart';
+ import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+@@ -218,6 +219,14 @@ class FeedCard extends ConsumerWidget {
+                 ),
+             ],
+           ),
++          // O'Z POSTIM HALI TEKSHIRILMAGAN — boshqalar uni ko'rmaydi.
++          if (post.pending) ...[
++            const SizedBox(height: Gap.sm),
++            const Align(
++              alignment: Alignment.centerLeft,
++              child: PendingBadge(),
++            ),
++          ],
+           // KARUSEL — bir nechta RASM (ko'rgazma posti): yon tomonga
+           // surish, ostida nuqtalar. Video post avvalgidek bitta media.
+           if (media.isNotEmpty && !post.isVideo && post.mediaUrls.length > 1) ...[
+diff --git a/mobile_nova/lib/features/social/pending_badge.dart b/mobile_nova/lib/features/social/pending_badge.dart
+new file mode 100644
+index 0000000..e342b54
+--- /dev/null
++++ b/mobile_nova/lib/features/social/pending_badge.dart
+@@ -0,0 +1,66 @@
++import 'package:flutter/material.dart';
++
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../l10n/gen/app_localizations.dart';
++
++/// "TEKSHIRUV KUTILMOQDA" — o'z postim, media hali avtomatik
++/// tekshirilmagan (server `pending: true` faqat EGASIGA beradi;
++/// boshqalar bu postni umuman ko'rmaydi).
++///
++/// [compact] — profil to'ri katakchasi: faqat belgi, yozuv ekran
++/// o'quvchi uchun.
++class PendingBadge extends StatelessWidget {
++  const PendingBadge({super.key, this.compact = false, this.onDark = false});
++
++  final bool compact;
++
++  /// Qora fon (Ko'rgazma) ustida.
++  final bool onDark;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final l = L.of(context);
++    final bg = onDark || compact
++        ? Colors.black.withValues(alpha: .6)
++        : t.warn.withValues(alpha: .14);
++    final fg = onDark || compact ? Colors.white : t.warn;
++    return Semantics(
++      key: const ValueKey('pending-badge'),
++      label: l.pendingReview,
++      excludeSemantics: true,
++      child: Container(
++        padding: EdgeInsets.symmetric(horizontal: compact ? 5 : 8, vertical: 3),
++        decoration: BoxDecoration(color: bg, borderRadius: R.pill),
++        child: Row(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            Icon(
++              Icons.hourglass_top_rounded,
++              size: compact ? 12 : 13,
++              color: fg,
++            ),
++            if (!compact) ...[
++              const SizedBox(width: 4),
++              Flexible(
++                child: Text(
++                  l.pendingReview,
++                  maxLines: 1,
++                  overflow: TextOverflow.ellipsis,
++                  style: TextStyle(
++                    fontFamily: AppType.sans,
++                    fontSize: 11,
++                    fontWeight: FontWeight.w700,
++                    color: fg,
++                  ),
++                ),
++              ),
++            ],
++          ],
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index ab75557..c3038f4 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -33,6 +33,7 @@ import 'comments.dart';
+ import 'engagement.dart';
+ import 'image_viewer.dart';
+ import 'media_carousel.dart';
++import 'pending_badge.dart';
+ import 'reels_screen.dart';
+ import 'story_viewer.dart';
+ import 'media_frame.dart';
+@@ -342,6 +343,13 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     ),
+                 ],
+               ),
++              if (p.pending) ...[
++                const SizedBox(height: Gap.md),
++                const Align(
++                  alignment: Alignment.centerLeft,
++                  child: PendingBadge(),
++                ),
++              ],
+               // KARUSEL — bir nechta rasm (ko'rgazma posti).
+               if (!p.isVideo && p.mediaUrls.length > 1) ...[
+                 const SizedBox(height: Gap.lg),
+@@ -763,6 +771,8 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+     final social = ref.read(socialRepositoryProvider);
+     final business = ref.read(businessRepositoryProvider);
+ 
++    // Post turlarida server qaytargan post (`pending` belgisi uchun),
++    // istoriyada — `null`.
+     final res = switch ((widget.kind, profile.isBusiness)) {
+       (ComposerKind.story, true) =>
+         await business
+@@ -772,7 +782,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+               videoUrl: video,
+               caption: caption,
+             )
+-            .then((r) => r.map((_) => null)),
++            .then((r) => r.map<Post?>((_) => null)),
+       (ComposerKind.story, false) =>
+         await social
+             .createStory(
+@@ -781,7 +791,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+               videoUrl: video,
+               caption: caption,
+             )
+-            .then((r) => r.map((_) => null)),
++            .then((r) => r.map<Post?>((_) => null)),
+       (ComposerKind.post || ComposerKind.reel, true) =>
+         await business
+             .createPost(
+@@ -791,8 +801,7 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+               videoUrl: video,
+               musicId: _music?.id,
+               reel: _isReel && video.isEmpty,
+-            )
+-            .then((r) => r.map((_) => null)),
++            ),
+       (ComposerKind.post || ComposerKind.reel, false) =>
+         await social
+             .createPost(
+@@ -803,13 +812,18 @@ class _ComposerScreenState extends ConsumerState<ComposerScreen> {
+               musicId: _music?.id,
+               reel: _isReel && video.isEmpty,
+             )
+-            .then((r) => r.map((_) => null)),
++            .then((r) => r.map<Post?>((p) => p)),
+     };
+ 
+     if (!mounted) return;
+     setState(() => _busy = false);
+     res.when(
+-      ok: (_) {
++      ok: (created) {
++        // Media hali tekshirilmagan — post faqat egasiga ko'rinadi.
++        if (created?.pending == true) {
++          ScaffoldMessenger.of(context)
++              .showSnackBar(SnackBar(content: Text(l.pendingPublished)));
++        }
+         // YANGILANISH TURGA QARAB — ilgari ikkalasi ham har safar
+         // qayta o'qilardi, ya'ni story joylansa postlar ro'yxati
+         // ham "yangilanardi" va aksincha. Foydalanuvchi uchun bu
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 906271e..9efd016 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1262,5 +1262,7 @@
+   "errShowcaseTitleLong": "Title must be 80 characters or less",
+   "errShowcaseBadPrice": "Enter the price using digits only",
+   "errShowcasePriceHigh": "The price is too high",
+-  "errShowcaseBadLink": "Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted"
++  "errShowcaseBadLink": "Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted",
++  "pendingReview": "Pending review",
++  "pendingPublished": "Your post will be visible to everyone after review"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 9913c98..95677f0 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1262,5 +1262,7 @@
+   "errShowcaseTitleLong": "Заголовок — не длиннее 80 символов",
+   "errShowcaseBadPrice": "Укажите цену только цифрами",
+   "errShowcasePriceHigh": "Слишком большая цена",
+-  "errShowcaseBadLink": "Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)"
++  "errShowcaseBadLink": "Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)",
++  "pendingReview": "Ожидает проверки",
++  "pendingPublished": "Пост станет виден всем после проверки"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 2ec65c9..d7f2ec6 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1425,5 +1425,9 @@
+   "errShowcaseTitleLong": "Sarlavha 80 belgidan oshmasin",
+   "errShowcaseBadPrice": "Narxni faqat raqamlar bilan yozing",
+   "errShowcasePriceHigh": "Narx juda katta",
+-  "errShowcaseBadLink": "Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi"
++  "errShowcaseBadLink": "Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi",
++  "pendingReview": "Tekshiruv kutilmoqda",
++  "@pendingReview": {"description": "O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi)."},
++  "pendingPublished": "Post tekshiruvdan so‘ng hammaga ko‘rinadi",
++  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 4f9339b..2402a4c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6632,6 +6632,18 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi'**
+   String get errShowcaseBadLink;
++
++  /// O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi).
++  ///
++  /// In uz, this message translates to:
++  /// **'Tekshiruv kutilmoqda'**
++  String get pendingReview;
++
++  /// Chop etilgan post `pending: true` qaytganda.
++  ///
++  /// In uz, this message translates to:
++  /// **'Post tekshiruvdan so‘ng hammaga ko‘rinadi'**
++  String get pendingPublished;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index d7b3f75..157ef94 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3668,4 +3668,11 @@ class LEn extends L {
+   @override
+   String get errShowcaseBadLink =>
+       'Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted';
++
++  @override
++  String get pendingReview => 'Pending review';
++
++  @override
++  String get pendingPublished =>
++      'Your post will be visible to everyone after review';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index bea8019..2a3fd19 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3691,4 +3691,10 @@ class LRu extends L {
+   @override
+   String get errShowcaseBadLink =>
+       'Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)';
++
++  @override
++  String get pendingReview => 'Ожидает проверки';
++
++  @override
++  String get pendingPublished => 'Пост станет виден всем после проверки';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 66cc6ec..ddecbdb 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3648,4 +3648,10 @@ class LUz extends L {
+   @override
+   String get errShowcaseBadLink =>
+       'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi';
++
++  @override
++  String get pendingReview => 'Tekshiruv kutilmoqda';
++
++  @override
++  String get pendingPublished => 'Post tekshiruvdan so‘ng hammaga ko‘rinadi';
+ }
+diff --git a/mobile_nova/test/pending_review_test.dart b/mobile_nova/test/pending_review_test.dart
+new file mode 100644
+index 0000000..1863bf4
+--- /dev/null
++++ b/mobile_nova/test/pending_review_test.dart
+@@ -0,0 +1,213 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/profile/profile_screen.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_composer.dart';
++import 'package:nfcstore_nova/features/social/feed_card.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++const _photo = 'assets/demo/z_post_cafe.jpg';
++final _me = testIds.first.code;
++
++final _pending = Post(
++  id: 41,
++  code: _me,
++  authorName: 'Men',
++  text: 'Tekshirilmagan',
++  mediaUrls: const [_photo],
++  pending: true,
++);
++
++class _Social extends FakeSocialRepository {
++  _Social({this.created});
++  final Post? created;
++
++  @override
++  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
++      Ok([if (code == _me) _pending]);
++
++  @override
++  Future<Result<Post?>> createShowcase({
++    required String code,
++    required bool company,
++    required ShowcaseDraft draft,
++  }) async => Ok(created);
++}
++
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++  @override
++  Future<Result<String>> uploadImage(
++    String filePath, {
++    String? kind,
++    void Function(int, int)? onProgress,
++  }) async => const Ok('/uploads/a.jpg');
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++class _Source implements ShowcaseImageSource {
++  @override
++  Future<List<String>> gallery(int limit) async => ['/tmp/a.jpg'];
++  @override
++  Future<String?> camera() async => null;
++}
++
++Future<void> _pump(
++  WidgetTester tester,
++  Widget child, {
++  _Social? social,
++  String? push,
++}) async {
++  tester.view.physicalSize = const Size(390 * 3, 1800 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final base = await testOverrides();
++  await acceptContentRules();
++  final router = GoRouter(
++    routes: [
++      GoRoute(
++        path: '/',
++        builder: (_, __) => child,
++        routes: [
++          GoRoute(
++            path: 'create',
++            builder: (_, __) => const ShowcaseComposerScreen(),
++          ),
++        ],
++      ),
++    ],
++  );
++  await tester.pumpWidget(
++    ProviderScope(
++      overrides: [
++        ...base.where((o) => !identical(o, base[2])),
++        socialRepositoryProvider.overrideWithValue(social ?? _Social()),
++        profileRepositoryProvider.overrideWithValue(_Profile()),
++        businessRepositoryProvider.overrideWithValue(_Biz()),
++        showcaseImageSourceProvider.overrideWithValue(_Source()),
++      ],
++      child: MaterialApp.router(
++        routerConfig: router,
++        theme: buildTheme(NfcTokens.ivory),
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ),
++  );
++  await settle(tester, frames: 10);
++  if (push != null) {
++    router.push(push);
++    await settle(tester, frames: 10);
++  }
++}
++
++void main() {
++  test('yozuv uch tilda', () {
++    expect(LUz().pendingReview, 'Tekshiruv kutilmoqda');
++    expect(LRu().pendingReview, 'Ожидает проверки');
++    expect(LEn().pendingReview, 'Pending review');
++    expect(LUz().pendingPublished, 'Post tekshiruvdan so‘ng hammaga ko‘rinadi');
++  });
++
++  testWidgets('profil to‘ri: o‘z pending postimda belgi', (tester) async {
++    await _pump(tester, const ProfileScreen());
++    expect(find.byKey(const ValueKey('pending-badge')), findsOneWidget);
++  });
++
++  testWidgets('lenta kartasi: pending — belgi', (tester) async {
++    await _pump(
++      tester,
++      Scaffold(
++        body: ListView(children: [FeedCard(post: _pending)]),
++      ),
++    );
++    expect(find.text(LUz().pendingReview), findsOneWidget);
++  });
++
++  testWidgets('lenta kartasi: oddiy post — belgi yo‘q', (tester) async {
++    await _pump(
++      tester,
++      Scaffold(
++        body: ListView(
++          children: [
++            FeedCard(
++              post: Post(id: 1, code: _me, mediaUrls: const [_photo]),
++            ),
++          ],
++        ),
++      ),
++    );
++    expect(find.byKey(const ValueKey('pending-badge')), findsNothing);
++  });
++
++  testWidgets('post tafsiloti: pending — belgi', (tester) async {
++    await _pump(tester, PostScreen(id: _pending.id, code: _me));
++    expect(find.text(LUz().pendingReview), findsOneWidget);
++  });
++
++  testWidgets('chop etilgan post pending — snackbar', (tester) async {
++    await _pump(
++      tester,
++      const Scaffold(body: Text('HOME')),
++      social: _Social(created: _pending),
++      push: '/create',
++    );
++    await tester.tap(find.byKey(const ValueKey('showcase-add-image')));
++    await settle(tester, frames: 6);
++    await tester.tap(find.byKey(const ValueKey('showcase-pick-gallery')));
++    await settle(tester, frames: 6);
++    final btn = find.byKey(const ValueKey('showcase-publish'));
++    await tester.ensureVisible(btn);
++    await tester.tap(btn);
++    await settle(tester, frames: 10);
++    expect(find.text('HOME'), findsOneWidget);
++    expect(find.text(LUz().pendingPublished), findsOneWidget);
++  });
++
++  testWidgets('chop etilgan post tekshirilgan — snackbar yo‘q', (tester) async {
++    await _pump(
++      tester,
++      const Scaffold(body: Text('HOME')),
++      social: _Social(created: const Post(id: 9, showcase: true)),
++      push: '/create',
++    );
++    await tester.tap(find.byKey(const ValueKey('showcase-add-image')));
++    await settle(tester, frames: 6);
++    await tester.tap(find.byKey(const ValueKey('showcase-pick-gallery')));
++    await settle(tester, frames: 6);
++    final btn = find.byKey(const ValueKey('showcase-publish'));
++    await tester.ensureVisible(btn);
++    await tester.tap(btn);
++    await settle(tester, frames: 10);
++    expect(find.text('HOME'), findsOneWidget);
++    expect(find.text(LUz().pendingPublished), findsNothing);
++  });
++}
+-- 
+2.43.0
+

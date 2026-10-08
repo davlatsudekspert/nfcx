@@ -1,0 +1,197 @@
+From 85256af250af2afc90dd12bebf0793c8eeac5b4e Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 16:37:53 +0000
+Subject: [PATCH 63/69] =?UTF-8?q?Nova:=20katalog=20tovariga=20shikoyat=20?=
+ =?UTF-8?q?=E2=80=94=20catalog=5Fitem?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- ReportTarget.catalogItem ('catalog_item', shartnoma §5).
+- Tovar sahifasida (CatalogProductScreen) "⋯" menyu: shikoyat (mavjud
+  shikoyat varag'i, targetId — tovarning satr id'si) va sotuvchini
+  bloklash; o'z kompaniyamning tovarida menyu yo'q.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../lib/features/discover/catalog_view.dart   | 27 +++++-
+ .../lib/features/social/moderation.dart       |  6 +-
+ mobile_nova/test/catalog_report_test.dart     | 93 +++++++++++++++++++
+ 3 files changed, 124 insertions(+), 2 deletions(-)
+ create mode 100644 mobile_nova/test/catalog_report_test.dart
+
+diff --git a/mobile_nova/lib/features/discover/catalog_view.dart b/mobile_nova/lib/features/discover/catalog_view.dart
+index 833775c..b863570 100644
+--- a/mobile_nova/lib/features/discover/catalog_view.dart
++++ b/mobile_nova/lib/features/discover/catalog_view.dart
+@@ -21,11 +21,13 @@ import '../../design/widgets/contact_buttons.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+-import '../business/business_providers.dart' show storefrontProvider;
++import '../business/business_providers.dart'
++    show myBusinessesProvider, storefrontProvider;
+ import '../business/business_screens.dart' show formatMoney;
+ import '../business/store_catalog.dart' show showOrderSheet;
+ import '../social/image_viewer.dart';
+ import '../social/media_frame.dart' show mediaImage;
++import '../social/moderation.dart';
+ import 'listing_labels.dart';
+ 
+ // ═══════════════════════════════════════════════════════════════════
+@@ -1137,6 +1139,11 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
+         ).actions();
+     final canOrder = seller?.ordersEnabled ?? false;
+ 
++    // O'z kompaniyamning tovari — shikoyat/bloklash menyusi yo'q.
++    final mine = ref.watch(myBusinessesProvider).valueOrNull?.any(
++            (c) => c.companyId == p.companyId) ??
++        false;
++
+     return NovaScaffold(
+       showBack: true,
+       actions: [
+@@ -1146,6 +1153,24 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
+           onPressed: () =>
+               ref.read(catalogFavoritesProvider.notifier).toggle(p.key),
+         ),
++        // SHIKOYAT (UGC talabi) — tovarning o'zi `catalog_item` sifatida;
++        // sotuvchini bloklash ham shu menyuda.
++        if (!mine)
++          NovaIconButton(
++            key: const ValueKey('listing-more'),
++            icon: Icons.more_horiz_rounded,
++            tooltip: l.reportTitle,
++            onPressed: () => showContentActions(
++              context,
++              ref,
++              target: ReportTarget.catalogItem,
++              targetId: p.id,
++              ownerCode: p.companyId,
++              blockKind: BlockKind.company,
++              blockId: p.companyId,
++              keyPrefix: 'listing',
++            ),
++          ),
+       ],
+       body: NovaScroll(
+         children: [
+diff --git a/mobile_nova/lib/features/social/moderation.dart b/mobile_nova/lib/features/social/moderation.dart
+index 71641df..b624994 100644
+--- a/mobile_nova/lib/features/social/moderation.dart
++++ b/mobile_nova/lib/features/social/moderation.dart
+@@ -68,7 +68,11 @@ enum ReportTarget {
+ 
+   /// Izoh — alohida tur. Ilgari izoh shikoyati `post` bo'lib ketardi va
+   /// izoh ID'si post ID'si deb o'qilardi: shikoyat BOSHQA postga tushardi.
+-  comment('comment');
++  comment('comment'),
++
++  /// Katalog tovari (kompaniya katalogi, `targetId` — tovarning satr
++  /// id'si). Shartnoma §5: serverga 2026-10 da qo'shilgan.
++  catalogItem('catalog_item');
+ 
+   const ReportTarget(this.wire);
+   final String wire;
+diff --git a/mobile_nova/test/catalog_report_test.dart b/mobile_nova/test/catalog_report_test.dart
+new file mode 100644
+index 0000000..382848a
+--- /dev/null
++++ b/mobile_nova/test/catalog_report_test.dart
+@@ -0,0 +1,93 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/business/business_providers.dart';
++import 'package:nfcstore_nova/features/discover/catalog_view.dart';
++import 'package:nfcstore_nova/features/social/moderation.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++
++import 'helpers.dart';
++import 'support/rich_fakes.dart';
++
++class _Mod extends ModerationRepository {
++  _Mod() : super(ApiClient());
++  final reports = <(ReportTarget, String, ReportReason, String)>[];
++
++  @override
++  Future<Result<void>> report({
++    required ReportTarget target,
++    required String targetId,
++    required ReportReason reason,
++    String note = '',
++    String ownerCode = '',
++  }) async {
++    reports.add((target, targetId, reason, ownerCode));
++    return const Ok(null);
++  }
++}
++
++/// Shartnoma §5: katalog tovariga shikoyat — `catalog_item`.
++void main() {
++  test('yangi shikoyat turi serverdagi nom bilan', () {
++    expect(ReportTarget.catalogItem.wire, 'catalog_item');
++  });
++
++  testWidgets('tovar sahifasi ⋯ → Shikoyat → catalog_item yuboriladi',
++      (tester) async {
++    tester.view.physicalSize = const Size(390, 1500) * 3;
++    tester.view.devicePixelRatio = 3;
++    addTearDown(tester.view.reset);
++    final p = richProducts.first;
++    final mod = _Mod();
++    await tester.pumpWidget(ProviderScope(
++      overrides: [
++        ...await testOverrides(),
++        moderationRepositoryProvider.overrideWithValue(mod),
++        myBusinessesProvider.overrideWith((_) async => const <Business>[]),
++      ],
++      child: MaterialApp.router(
++        routerConfig: GoRouter(routes: [
++          GoRoute(
++              path: '/',
++              builder: (_, __) => CatalogProductScreen(
++                  companyId: p.companyId, itemId: p.id, initial: p)),
++        ]),
++        theme: buildTheme(NfcTokens.ivory),
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ));
++    await settle(tester, frames: 8);
++    final l = await L.delegate.load(const Locale('uz'));
++
++    await tester.tap(find.byKey(const ValueKey('listing-more')));
++    await settle(tester, frames: 8);
++    expect(find.byKey(const ValueKey('listing-block')), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('listing-report')));
++    await settle(tester, frames: 8);
++    await tester.tap(find.text(ReportReason.spam.label(l)));
++    await settle(tester, frames: 2);
++    await tester.tap(find.text(l.reportTitle).last);
++    await settle(tester, frames: 8);
++
++    expect(mod.reports, hasLength(1));
++    expect(mod.reports.single.$1, ReportTarget.catalogItem);
++    expect(mod.reports.single.$2, p.id);
++    expect(mod.reports.single.$3, ReportReason.spam);
++    expect(mod.reports.single.$4, p.companyId);
++  });
++}
+-- 
+2.43.0
+

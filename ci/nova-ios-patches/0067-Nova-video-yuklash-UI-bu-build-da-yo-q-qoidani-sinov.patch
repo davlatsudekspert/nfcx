@@ -1,0 +1,73 @@
+From f4ee8fa1389a23a7c6d8e5ce474d7831cded138c Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 17:08:37 +0000
+Subject: [PATCH 67/69] =?UTF-8?q?Nova:=20video=20yuklash=20UI=20bu=20build?=
+ =?UTF-8?q?'da=20yo'q=20=E2=80=94=20qoidani=20sinov=20bilan=20mustahkamlas?=
+ =?UTF-8?q?h?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Reel (video) yaratish ekraniga yo'l yo'q (router'da ComposerKind.reel
+qurilmaydi, /reel/create Ko'rgazmaga buriladi); post va istoriya
+yaratishning manba varag'ida faqat rasm; Ko'rgazma yaratishda video
+tanlash/yuklash chaqiruvi yo'q. Kod o'zgarmagan — faqat sinov.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/test/video_upload_off_test.dart | 43 +++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+ create mode 100644 mobile_nova/test/video_upload_off_test.dart
+
+diff --git a/mobile_nova/test/video_upload_off_test.dart b/mobile_nova/test/video_upload_off_test.dart
+new file mode 100644
+index 0000000..2cfe57f
+--- /dev/null
++++ b/mobile_nova/test/video_upload_off_test.dart
+@@ -0,0 +1,43 @@
++import 'dart:io';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// BU BUILD'DA VIDEO YUKLASH UI YO'Q (2026-10): reel (video) yaratish
++/// ekraniga yo'l yo'q, post va istoriya — faqat rasm, Ko'rgazma — faqat
++/// rasm.
++void main() {
++  test('router reel composer qurmaydi', () {
++    final router = File('lib/routing/router.dart').readAsStringSync();
++    expect(router, isNot(contains('ComposerKind.reel')));
++    final showcase =
++        File('lib/features/showcase/showcase_composer.dart').readAsStringSync();
++    expect(showcase, isNot(contains('pickVideo')));
++    expect(showcase, isNot(contains('pickMultipleMedia')));
++    expect(showcase, isNot(contains('uploadVideo')));
++  });
++
++  for (final kind in [ComposerKind.post, ComposerKind.story]) {
++    testWidgets('${kind.name}: manba varag‘ida video yo‘q', (tester) async {
++      tester.view.physicalSize = const Size(1170, 3600);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      await tester.pumpWidget(ProviderScope(
++        overrides: await testOverrides(),
++        child: wrapScreen(ComposerScreen(kind: kind)),
++      ));
++      await settle(tester);
++      final l = LUz();
++      await tester.tap(find.text(l.mediaPickPhoto));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('pick-gallery-photo')), findsOneWidget);
++      expect(find.byKey(const ValueKey('pick-gallery-video')), findsNothing);
++      expect(find.text(l.mediaPickVideo), findsNothing);
++    });
++  }
++}
+-- 
+2.43.0
+

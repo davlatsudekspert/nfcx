@@ -1,0 +1,512 @@
+From 263edef487b69994e99223cb2f3e9a149b8fde02 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 16:33:17 +0000
+Subject: [PATCH 58/69] =?UTF-8?q?Nova:=20server=20kalitlari=20=E2=80=94=20?=
+ =?UTF-8?q?GET=20/api/app/config=20va=20appFlagsProvider?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- AppConfigRepository + AppFlags (reelsHidden, videoUploadsBlocked,
+  videosHidden, showcase); noma'lum/buzuq qiymat — o'chiq.
+- AppFlagsController: oxirgi javob prefs'da keshlanadi, ochilishda va
+  fondan qaytganda (>=60 s) yangilanadi; xatoda kesh yoki hammasi o'chiq.
+- Sessiyaning fondan qaytish kuzatuvchisi umumiy ResumeRefresher'ga
+  ko'chirildi (xulq o'zgarmagan).
+- Testlar: FakeAppConfigRepository, app_flags_test.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/lib/app/app.dart                  |   4 +
+ mobile_nova/lib/app/app_flags.dart            |  67 +++++++++++
+ .../lib/core/storage/secure_store.dart        |   7 ++
+ .../lib/core/utils/resume_refresher.dart      |  37 ++++++
+ .../repositories/app_config_repository.dart   |  99 ++++++++++++++++
+ mobile_nova/lib/features/auth/session.dart    |  24 ++--
+ mobile_nova/test/app_flags_test.dart          | 112 ++++++++++++++++++
+ mobile_nova/test/helpers.dart                 |  21 ++++
+ 8 files changed, 354 insertions(+), 17 deletions(-)
+ create mode 100644 mobile_nova/lib/app/app_flags.dart
+ create mode 100644 mobile_nova/lib/core/utils/resume_refresher.dart
+ create mode 100644 mobile_nova/lib/data/repositories/app_config_repository.dart
+ create mode 100644 mobile_nova/test/app_flags_test.dart
+
+diff --git a/mobile_nova/lib/app/app.dart b/mobile_nova/lib/app/app.dart
+index 655e952..a89d634 100644
+--- a/mobile_nova/lib/app/app.dart
++++ b/mobile_nova/lib/app/app.dart
+@@ -6,6 +6,7 @@ import '../design/motion/motion.dart';
+ import '../design/theme/app_theme.dart';
+ import '../l10n/gen/app_localizations.dart';
+ import '../routing/router.dart';
++import 'app_flags.dart';
+ import 'providers.dart';
+ import '../features/settings/app_lock.dart';
+ import '../features/auth/session.dart';
+@@ -27,6 +28,9 @@ class NovaApp extends ConsumerWidget {
+     ref.watch(appLockSessionGuardProvider);
+     // Fondan qaytganda sessiya (NFC ID, Premium) yangilanadi, ≥60 s.
+     ref.watch(sessionResumeRefreshProvider);
++    // Server kalitlari (`/api/app/config`) — ochilishda va fondan
++    // qaytganda; xato bo'lsa hammasi o'chiq (yoki oxirgi saqlangani).
++    ref.watch(appFlagsWatcherProvider);
+     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
+     // tranzaksiyalari ilova ochilishidanoq tinglanadi
+     // (`features/premium/iap_controller.dart`). Android'da hech narsa.
+diff --git a/mobile_nova/lib/app/app_flags.dart b/mobile_nova/lib/app/app_flags.dart
+new file mode 100644
+index 0000000..564007b
+--- /dev/null
++++ b/mobile_nova/lib/app/app_flags.dart
+@@ -0,0 +1,67 @@
++import 'package:flutter/widgets.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../core/storage/secure_store.dart';
++import '../core/utils/resume_refresher.dart';
++import '../data/repositories/app_config_repository.dart';
++import 'providers.dart';
++
++export '../data/repositories/app_config_repository.dart' show AppFlags;
++
++/// Server kalitlari ilova fondan qaytganda shundan tez-tez so'ralmaydi
++/// (server o'zi ham ~60 s keshlaydi).
++const kAppFlagsResumeGap = Duration(seconds: 60);
++
++@visibleForTesting
++DateTime Function() appFlagsResumeClock = DateTime.now;
++
++/// SERVER KALITLARI — ilova bo'ylab bitta holat.
++///
++/// * Boshlanishda — telefonda saqlangan oxirgi javob (bo'lmasa hammasi
++///   o'chiq, [AppFlags.off]).
++/// * [refresh] muvaffaqiyatli bo'lsa — yangi qiymat va u saqlanadi.
++/// * Xato (tarmoq yo'q, eski server 404, buzuq javob) — holat
++///   O'ZGARMAYDI: keshdagisi yoki hammasi o'chiq. Xato hech qachon
++///   kalitni yoqmaydi.
++class AppFlagsController extends StateNotifier<AppFlags> {
++  AppFlagsController(this._repo, this._prefs)
++      : super(AppFlags.tryDecode(_prefs.appFlagsJson) ?? AppFlags.off);
++
++  final AppConfigRepository _repo;
++  final Prefs _prefs;
++  Future<void>? _running;
++
++  /// Bir vaqtda bittadan ortiq so'rov ketmaydi.
++  Future<void> refresh() => _running ??= _fetch().whenComplete(() => _running = null);
++
++  Future<void> _fetch() async {
++    final res = await _repo.config();
++    if (!mounted) return;
++    final flags = res.valueOrNull;
++    if (flags == null) return;
++    state = flags;
++    await _prefs.setAppFlagsJson(flags.encode());
++  }
++}
++
++final appFlagsProvider =
++    StateNotifierProvider<AppFlagsController, AppFlags>((ref) {
++  return AppFlagsController(
++    ref.watch(appConfigRepositoryProvider),
++    ref.watch(prefsProvider),
++  );
++});
++
++/// Ilova ochilganda va fondan qaytganda (≥ [kAppFlagsResumeGap])
++/// kalitlarni yangilaydi. `NovaApp` kuzatadi.
++final appFlagsWatcherProvider = Provider<void>((ref) {
++  final c = ref.read(appFlagsProvider.notifier);
++  c.refresh().ignore();
++  final obs = ResumeRefresher(
++    gap: kAppFlagsResumeGap,
++    clock: () => appFlagsResumeClock(),
++    onResume: () => c.refresh().ignore(),
++  );
++  WidgetsBinding.instance.addObserver(obs);
++  ref.onDispose(() => WidgetsBinding.instance.removeObserver(obs));
++});
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index 62e147b..d300ea0 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -121,6 +121,7 @@ class Prefs {
+   static const _kNotif = 'nova.notif.';
+   static const _kCatalogFav = 'nova.catalogFavorites';
+   static const _kSavedReels = 'nova.savedReels';
++  static const _kAppFlags = 'nova.appFlags';
+ 
+   String? get themeId => _p.getString(_kTheme);
+   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
+@@ -243,4 +244,10 @@ class Prefs {
+   List<String> get savedReels => _p.getStringList(_kSavedReels) ?? const [];
+   Future<void> setSavedReels(List<String> keys) =>
+       _p.setStringList(_kSavedReels, keys);
++
++  /// Server kalitlarining (`/api/app/config`) oxirgi muvaffaqiyatli
++  /// javobi — JSON. Ilova tarmoqsiz ochilsa ham oxirgi holat bilan
++  /// boshlanadi.
++  String? get appFlagsJson => _p.getString(_kAppFlags);
++  Future<void> setAppFlagsJson(String v) => _p.setString(_kAppFlags, v);
+ }
+diff --git a/mobile_nova/lib/core/utils/resume_refresher.dart b/mobile_nova/lib/core/utils/resume_refresher.dart
+new file mode 100644
+index 0000000..af5296d
+--- /dev/null
++++ b/mobile_nova/lib/core/utils/resume_refresher.dart
+@@ -0,0 +1,37 @@
++import 'package:flutter/widgets.dart';
++
++/// ILOVA FONDAN QAYTGANDA YANGILASH — umumiy kuzatuvchi.
++///
++/// `resumed` kelganda [onResume] chaqiriladi, lekin [gap] dan tez-tez
++/// emas (ilova almashtirib turish serverni bezovta qilmasin). [when]
++/// `false` qaytarsa (masalan, sessiya faol emas) o'tkazib yuboriladi va
++/// vaqt belgisi o'zgarmaydi.
++///
++/// Sessiya (`sessionResumeRefreshProvider`) va server kalitlari
++/// (`appFlagsProvider`) shu bitta qoidadan foydalanadi.
++class ResumeRefresher with WidgetsBindingObserver {
++  ResumeRefresher({
++    required this.gap,
++    required this.onResume,
++    required DateTime Function() clock,
++    bool Function()? when,
++  })  : _clock = clock,
++        _when = when,
++        _last = clock();
++
++  final Duration gap;
++  final VoidCallback onResume;
++  final DateTime Function() _clock;
++  final bool Function()? _when;
++  DateTime _last;
++
++  @override
++  void didChangeAppLifecycleState(AppLifecycleState state) {
++    if (state != AppLifecycleState.resumed) return;
++    if (!(_when?.call() ?? true)) return;
++    final now = _clock();
++    if (now.difference(_last) < gap) return;
++    _last = now;
++    onResume();
++  }
++}
+diff --git a/mobile_nova/lib/data/repositories/app_config_repository.dart b/mobile_nova/lib/data/repositories/app_config_repository.dart
+new file mode 100644
+index 0000000..5f59bbb
+--- /dev/null
++++ b/mobile_nova/lib/data/repositories/app_config_repository.dart
+@@ -0,0 +1,99 @@
++import 'dart:convert';
++
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../app/providers.dart';
++import '../../core/network/api_client.dart';
++import '../../core/utils/result.dart';
++
++/// SERVER KALITLARI (feature flags) — `GET /api/app/config`.
++///
++///     { "flags": { "reelsHidden": false, "videoUploadsBlocked": false,
++///                  "videosHidden": false, "showcase": true } }
++///
++/// HAMMASI SUKUT BO'YICHA O'CHIQ (`false`): javob kelmasa, buzuq
++/// kelsa yoki maydon yo'q bo'lsa — ilova bugungi xulqida qoladi.
++/// Faqat aniq `true` (yoki "1"/"true") yoqadi.
++class AppFlags {
++  const AppFlags({
++    this.reelsHidden = false,
++    this.videoUploadsBlocked = false,
++    this.videosHidden = false,
++    this.showcase = false,
++  });
++
++  /// Hammasi o'chiq — xato yoki birinchi ochilish.
++  static const off = AppFlags();
++
++  final bool reelsHidden;
++  final bool videoUploadsBlocked;
++  final bool videosHidden;
++  final bool showcase;
++
++  static bool _flag(Object? v) =>
++      v == true || v == 1 || v == '1' || v == 'true';
++
++  /// `{flags: {...}}` yoki to'g'ridan-to'g'ri `{...}`.
++  factory AppFlags.fromJson(Map<String, dynamic> j) {
++    final raw = j['flags'];
++    final f = raw is Map ? raw : j;
++    return AppFlags(
++      reelsHidden: _flag(f['reelsHidden']),
++      videoUploadsBlocked: _flag(f['videoUploadsBlocked']),
++      videosHidden: _flag(f['videosHidden']),
++      showcase: _flag(f['showcase']),
++    );
++  }
++
++  Map<String, dynamic> toJson() => {
++        'flags': {
++          'reelsHidden': reelsHidden,
++          'videoUploadsBlocked': videoUploadsBlocked,
++          'videosHidden': videosHidden,
++          'showcase': showcase,
++        },
++      };
++
++  /// Prefs keshidan. Buzuq yoki yo'q — `null`.
++  static AppFlags? tryDecode(String? s) {
++    if (s == null || s.isEmpty) return null;
++    try {
++      final j = jsonDecode(s);
++      return j is Map ? AppFlags.fromJson(j.cast<String, dynamic>()) : null;
++    } catch (_) {
++      return null;
++    }
++  }
++
++  String encode() => jsonEncode(toJson());
++
++  @override
++  bool operator ==(Object other) =>
++      other is AppFlags &&
++      other.reelsHidden == reelsHidden &&
++      other.videoUploadsBlocked == videoUploadsBlocked &&
++      other.videosHidden == videosHidden &&
++      other.showcase == showcase;
++
++  @override
++  int get hashCode =>
++      Object.hash(reelsHidden, videoUploadsBlocked, videosHidden, showcase);
++
++  @override
++  String toString() => 'AppFlags(${toJson()['flags']})';
++}
++
++class AppConfigRepository {
++  AppConfigRepository(this._api);
++  final ApiClient _api;
++
++  /// Ochiq manzil — kirish shart emas.
++  Future<Result<AppFlags>> config() async {
++    final res = await _api.get<Map<String, dynamic>>('/api/app/config');
++    return res.map(AppFlags.fromJson);
++  }
++}
++
++final appConfigRepositoryProvider = Provider<AppConfigRepository>(
++  (ref) => AppConfigRepository(ref.watch(apiProvider)),
++);
+diff --git a/mobile_nova/lib/features/auth/session.dart b/mobile_nova/lib/features/auth/session.dart
+index 65dff01..3c87490 100644
+--- a/mobile_nova/lib/features/auth/session.dart
++++ b/mobile_nova/lib/features/auth/session.dart
+@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../app/providers.dart';
+ import '../../core/errors/app_error.dart';
++import '../../core/utils/resume_refresher.dart';
+ import '../../data/models/models.dart';
+ import '../../data/repositories/auth_repository.dart';
+ 
+@@ -200,27 +201,16 @@ const kSessionResumeGap = Duration(seconds: 60);
+ DateTime Function() sessionResumeClock = DateTime.now;
+ 
+ final sessionResumeRefreshProvider = Provider<void>((ref) {
+-  final obs = _ResumeRefresher(ref);
++  final obs = ResumeRefresher(
++    gap: kSessionResumeGap,
++    clock: () => sessionResumeClock(),
++    when: () => ref.read(sessionProvider) is SessionActive,
++    onResume: () => ref.read(sessionProvider.notifier).refresh(),
++  );
+   WidgetsBinding.instance.addObserver(obs);
+   ref.onDispose(() => WidgetsBinding.instance.removeObserver(obs));
+ });
+ 
+-class _ResumeRefresher with WidgetsBindingObserver {
+-  _ResumeRefresher(this._ref) : _last = sessionResumeClock();
+-  final Ref _ref;
+-  DateTime _last;
+-
+-  @override
+-  void didChangeAppLifecycleState(AppLifecycleState state) {
+-    if (state != AppLifecycleState.resumed) return;
+-    if (_ref.read(sessionProvider) is! SessionActive) return;
+-    final now = sessionResumeClock();
+-    if (now.difference(_last) < kSessionResumeGap) return;
+-    _last = now;
+-    _ref.read(sessionProvider.notifier).refresh();
+-  }
+-}
+-
+ /// Qulaylik: joriy foydalanuvchi yoki `null`.
+ final currentUserProvider = Provider<User?>((ref) {
+   final s = ref.watch(sessionProvider);
+diff --git a/mobile_nova/test/app_flags_test.dart b/mobile_nova/test/app_flags_test.dart
+new file mode 100644
+index 0000000..44289e0
+--- /dev/null
++++ b/mobile_nova/test/app_flags_test.dart
+@@ -0,0 +1,112 @@
++import 'package:flutter/widgets.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/app_flags.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/data/repositories/app_config_repository.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'helpers.dart';
++
++/// SERVER KALITLARI (`GET /api/app/config`, shartnoma §1).
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  Future<(ProviderContainer, FakeAppConfigRepository, Prefs)> make({
++    Map<String, Object> stored = const {},
++    AppFlags flags = const AppFlags(showcase: true),
++    bool fail = false,
++  }) async {
++    SharedPreferences.setMockInitialValues(stored);
++    final prefs = await Prefs.open();
++    final repo = FakeAppConfigRepository(flags: flags, fail: fail);
++    final c = ProviderContainer(overrides: [
++      prefsProvider.overrideWithValue(prefs),
++      appConfigRepositoryProvider.overrideWithValue(repo),
++    ]);
++    addTearDown(c.dispose);
++    return (c, repo, prefs);
++  }
++
++  group('AppFlags.fromJson', () {
++    test('shartnomadagi shakl o‘qiladi', () {
++      final f = AppFlags.fromJson({
++        'flags': {
++          'reelsHidden': true,
++          'videoUploadsBlocked': false,
++          'videosHidden': true,
++          'showcase': true,
++        }
++      });
++      expect(f.reelsHidden, isTrue);
++      expect(f.videoUploadsBlocked, isFalse);
++      expect(f.videosHidden, isTrue);
++      expect(f.showcase, isTrue);
++    });
++
++    test('yo‘q, null yoki buzuq qiymat — o‘chiq', () {
++      final f = AppFlags.fromJson({
++        'flags': {'reelsHidden': null, 'videosHidden': 'yes'}
++      });
++      expect(f, AppFlags.off);
++      expect(AppFlags.fromJson(const {}), AppFlags.off);
++      expect(AppFlags.tryDecode('{buzuq'), isNull);
++    });
++  });
++
++  test('sukut bo‘yicha (kesh yo‘q) hammasi o‘chiq', () async {
++    final (c, _, _) = await make();
++    expect(c.read(appFlagsProvider), AppFlags.off);
++  });
++
++  test('muvaffaqiyatli javob holatga tushadi va keshga yoziladi', () async {
++    const on = AppFlags(reelsHidden: true, videosHidden: true, showcase: true);
++    final (c, repo, prefs) = await make(flags: on);
++    await c.read(appFlagsProvider.notifier).refresh();
++    expect(c.read(appFlagsProvider), on);
++    expect(repo.calls, 1);
++    expect(AppFlags.tryDecode(prefs.appFlagsJson), on);
++  });
++
++  test('keyingi ochilish keshdan boshlanadi', () async {
++    const on = AppFlags(videoUploadsBlocked: true, showcase: true);
++    final (c, _, _) = await make(
++      stored: {'nova.appFlags': on.encode()},
++      fail: true,
++    );
++    expect(c.read(appFlagsProvider), on);
++    // Xato keshni buzmaydi.
++    await c.read(appFlagsProvider.notifier).refresh();
++    expect(c.read(appFlagsProvider), on);
++  });
++
++  test('xato va kesh yo‘q — hammasi o‘chiq', () async {
++    final (c, repo, _) = await make(fail: true);
++    await c.read(appFlagsProvider.notifier).refresh();
++    expect(repo.calls, 1);
++    expect(c.read(appFlagsProvider), AppFlags.off);
++  });
++
++  test('ochilishda va fondan qaytganda (≥60 s) so‘raladi', () async {
++    var now = DateTime(2026, 10, 8, 12);
++    appFlagsResumeClock = () => now;
++    addTearDown(() => appFlagsResumeClock = DateTime.now);
++    final (c, repo, _) = await make();
++    c.listen(appFlagsWatcherProvider, (_, __) {});
++    await Future<void>.delayed(Duration.zero);
++    expect(repo.calls, 1, reason: 'ilova ochilganda');
++
++    final binding = TestWidgetsFlutterBinding.instance;
++    now = now.add(const Duration(seconds: 10));
++    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++    await Future<void>.delayed(Duration.zero);
++    expect(repo.calls, 1, reason: '60 s o‘tmagan');
++
++    now = now.add(const Duration(seconds: 61));
++    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++    await Future<void>.delayed(Duration.zero);
++    expect(repo.calls, 2, reason: 'fondan qaytdi');
++  });
++}
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 778ee6d..e1e9d31 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -9,6 +9,7 @@ import 'package:nfcstore_nova/core/network/api_client.dart';
+ import 'package:nfcstore_nova/core/storage/secure_store.dart';
+ import 'package:nfcstore_nova/core/utils/result.dart';
+ import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/app_config_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
+ import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
+@@ -188,6 +189,25 @@ class FakeIapRepository extends IapRepository {
+   Future<Result<IapConfig>> config() async => Ok(cfg);
+ }
+ 
++/// Server kalitlari — tarmoqqa chiqmaydi. Sukut bo'yicha hammasi o'chiq
++/// (`showcase` serverdagidek yoqiq); [fail] — server javob bermaydi.
++class FakeAppConfigRepository extends AppConfigRepository {
++  FakeAppConfigRepository({
++    this.flags = const AppFlags(showcase: true),
++    this.fail = false,
++  }) : super(ApiClient());
++
++  AppFlags flags;
++  bool fail;
++  int calls = 0;
++
++  @override
++  Future<Result<AppFlags>> config() async {
++    calls++;
++    return fail ? const Err(AppError(AppErrorKind.offline)) : Ok(flags);
++  }
++}
++
+ /// Test uchun tayyor `ProviderContainer` overridelari.
+ Future<List<Override>> testOverrides({bool signedIn = true}) async {
+   SharedPreferences.setMockInitialValues({});
+@@ -200,6 +220,7 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
+     savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
+     // Oxirida: ba'zi sinovlar ro'yxatni INDEKS bo'yicha almashtiradi.
+     iapRepositoryProvider.overrideWithValue(FakeIapRepository()),
++    appConfigRepositoryProvider.overrideWithValue(FakeAppConfigRepository()),
+   ];
+ }
+ 
+-- 
+2.43.0
+

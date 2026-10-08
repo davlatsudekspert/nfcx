@@ -1,0 +1,1109 @@
+From f49c051174c68305f9e5e7d57a25e6340e3ef4b1 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 17:08:02 +0000
+Subject: [PATCH 66/69] =?UTF-8?q?Nova:=20pastki=20menyu=20=E2=80=94=20Reel?=
+ =?UTF-8?q?s=20o'rnida=20"Ko'rgazma";=20/reels=20va=20/reel/create=20yo'na?=
+ =?UTF-8?q?ltiriladi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- 4-tab endi Ko'rgazma (uz "Ko'rgazma", ru "Витрина", en "Showcase"),
+  collections belgisi; kompilyatsiya paytida, server kalitiga bog'liq
+  emas. Shell'da qora fon/panel mantig'i kShowcaseTab ga ulandi,
+  ReelsScreen'dagi qattiq "== 3" kReelsTab nomli doimiyga almashdi.
+- /reels va /reel/create -> /showcase; /reel/<id> havolasi o'sha
+  postni (PostScreen) ochadi. ReelsScreen va reel yaratish kodi
+  repoda qoldi, lekin ularga yo'l yo'q.
+- «Shu musiqani ishlatish» endi Ko'rgazma yaratishni trek tanlangan
+  holda ochadi.
+- Profil to'ri: "Postlar | Ko'rgazma" (ko'rgazma postlari va rasmli
+  reel'lar ikkinchi tabda; video postlar "Postlar" da qoladi), o'z
+  profilimda "Ko'rgazma yaratish" tugmasi, ko'p rasmli katakchada
+  belgi; tab yorliqlari tor ekranda toshmaydi.
+- Reels tabiga tayangan testlar shu niyat bilan Ko'rgazmaga
+  moslashtirildi; showcase_nav_test qo'shildi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../lib/features/profile/profile_screen.dart  |  71 +++++---
+ .../lib/features/social/music_picker.dart     |  10 +-
+ .../lib/features/social/reels_screen.dart     |   3 +-
+ mobile_nova/lib/routing/router.dart           |  37 +++-
+ mobile_nova/lib/routing/shell.dart            |  28 +--
+ mobile_nova/test/bottom_nav_persist_test.dart |   4 +-
+ mobile_nova/test/instagram_media_test.dart    | 121 +++++--------
+ mobile_nova/test/profile_grid_lazy_test.dart  |  48 +++---
+ mobile_nova/test/profile_tabs_test.dart       |  35 ++--
+ .../test/release_audit_fixes_test.dart        |   3 +-
+ mobile_nova/test/routes_test.dart             |   5 +
+ mobile_nova/test/showcase_nav_test.dart       | 161 ++++++++++++++++++
+ mobile_nova/test/tab_audio_test.dart          |  14 +-
+ mobile_nova/test/tab_preload_test.dart        |  17 +-
+ 14 files changed, 389 insertions(+), 168 deletions(-)
+ create mode 100644 mobile_nova/test/showcase_nav_test.dart
+
+diff --git a/mobile_nova/lib/features/profile/profile_screen.dart b/mobile_nova/lib/features/profile/profile_screen.dart
+index ec03b89..722a4d4 100644
+--- a/mobile_nova/lib/features/profile/profile_screen.dart
++++ b/mobile_nova/lib/features/profile/profile_screen.dart
+@@ -538,7 +538,7 @@ class ProfileScreen extends ConsumerWidget {
+             // KATALOG — rasmli toifalar + 4 ta tovar + "Barchasini
+             // ko'rish" (to'liq ro'yxat alohida sahifada).
+             if (biz != null) StoreCatalogPreview(business: biz),
+-            // Sarlavha o'rniga "Postlar | Reels" tablari — ular
++            // Sarlavha o'rniga "Postlar | Ko'rgazma" tablari — ular
+             // `_PostsGrid` ichida (shaxsiy profilda). Kompaniyada
+             // oddiy sarlavha qoladi.
+             if (active == null || active.isBusiness)
+@@ -1555,12 +1555,11 @@ class _PostsGrid extends ConsumerStatefulWidget {
+   ConsumerState<_PostsGrid> createState() => _PostsGridState();
+ }
+ 
+-/// POSTLAR | REELS.
++/// POSTLAR | KO'RGAZMA.
+ ///
+-/// Reels alohida API emas: Reels bo'limi ham aynan shu postlarning
+-/// VIDEOLILARIDAN quriladi (`reelsProvider`). Shuning uchun tab
+-/// yangi so'rov yubormaydi — bitta ro'yxat ikkiga ajratiladi va
+-/// sonlar profildagi "Postlar" soni bilan doim mos keladi.
++/// Ko'rgazma alohida API emas: tab yangi so'rov yubormaydi — bitta
++/// ro'yxat ikkiga ajratiladi ([Post.inShowcase]) va sonlar profildagi
++/// "Postlar" soni bilan doim mos keladi.
+ ///
+ /// "Saqlangan" tabi ATAYLAB yo'q: serverda saqlash API'si yo'q,
+ /// bo'sh yoki soxta tab ko'rsatilmaydi.
+@@ -1620,24 +1619,47 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+       data: (all) {
+         // Kompaniyada tab yo'q — hammasi bitta to'rda.
+         final tabs = !company;
+-        final photos = all.where((p) => !p.isVideo).toList();
+-        final reels = all.where((p) => p.isVideo).toList();
+-        final items = !tabs ? all : (_tab == 0 ? photos : reels);
++        // POSTLAR | KO'RGAZMA (2026-10). Ko'rgazma — ko'rgazma postlari
++        // va rasmli reel'lar; qolgani (VIDEO postlar ham) "Postlar" da —
++        // egasi ularni ko'ra va o'chira olishi uchun.
++        final posts = all.where((p) => !p.inShowcase).toList();
++        final showcase = all.where((p) => p.inShowcase).toList();
++        final items = !tabs ? all : (_tab == 0 ? posts : showcase);
+         final bar = tabs
+             ? _GridTabs(
+                 index: _tab,
+                 labels: [
+-                  '${l.profilePosts} · ${photos.length}',
+-                  '${l.navReels} · ${reels.length}',
++                  '${l.profilePosts} · ${posts.length}',
++                  '${l.navShowcase} · ${showcase.length}',
+                 ],
+                 onChanged: (i) => setState(() => _tab = i),
+               )
+             : const SizedBox.shrink();
++        // O'z profilim, Ko'rgazma tabi — yaratish tugmasi.
++        final createShowcase = tabs &&
++            _tab == 1 &&
++            ref.watch(isMineProvider(code))
++            ? Padding(
++                padding: const EdgeInsets.fromLTRB(
++                    Gap.screenX, 0, Gap.screenX, Gap.md),
++                child: NovaButton(
++                  key: const ValueKey('profile-showcase-create'),
++                  label: l.showcaseCreate,
++                  icon: Icons.add_rounded,
++                  tone: ButtonTone.quiet,
++                  onPressed: () => context.push(Routes.showcaseCreate),
++                ),
++              )
++            : null;
+         // Tab paneli HAR DOIM guruhning birinchi bolasi: bo'sh va
+         // to'la tab orasida o'tganda u qayta yaratilmaydi (chiziq
+         // animatsiyasi sakramaydi, ekran o'quvchi fokusi yo'qolmaydi).
+-        Widget withBar(Widget body) => SliverMainAxisGroup(
+-            slivers: [SliverToBoxAdapter(child: bar), body]);
++        Widget withBar(Widget body) => SliverMainAxisGroup(slivers: [
++              SliverToBoxAdapter(child: bar),
++              if (createShowcase != null)
++                SliverToBoxAdapter(child: createShowcase),
++              body,
++            ]);
+         if (items.isEmpty) {
+           return withBar(SliverToBoxAdapter(child: Column(children: [
+             Padding(
+@@ -1648,7 +1670,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+                 children: [
+                   Icon(
+                       _tab == 1 && tabs
+-                          ? Icons.slow_motion_video_rounded
++                          ? Icons.collections_outlined
+                           : Icons.photo_library_outlined,
+                       size: 27,
+                       color: t.text3),
+@@ -1676,7 +1698,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+         }
+         final side =
+             (MediaQuery.sizeOf(context).width - Gap.screenX * 2 - 12) / 3;
+-        // Reels — vertikal (4:5) katakchalar, postlar — kvadrat.
++        // Ko'rgazma — vertikal (4:5) katakchalar, postlar — kvadrat.
+         final tall = tabs && _tab == 1;
+         // DANGASA TO'R: faqat ekranga yaqin katakchalar quriladi.
+         //
+@@ -1776,14 +1798,20 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+                               children: [
+                                 mediaImage(context, p.mediaUrls.first,
+                                     fit: BoxFit.cover),
+-                                if (p.isVideo)
++                                // Bir nechta rasm (karusel) — burchakda belgi.
++                                if (p.mediaUrls.length > 1)
+                                   const Positioned(
+                                     right: 5,
+                                     top: 5,
+                                     child: Icon(
+-                                      Icons.play_circle_fill_rounded,
++                                      Icons.collections_rounded,
+                                       size: 15,
+                                       color: Colors.white,
++                                      shadows: [
++                                        Shadow(
++                                            color: Colors.black45,
++                                            blurRadius: 6),
++                                      ],
+                                     ),
+                                   ),
+                               ],
+@@ -1800,7 +1828,7 @@ class _PostsGridState extends ConsumerState<_PostsGrid> {
+   }
+ }
+ 
+-/// Postlar | Reels — ingichka tagchiziqli matn tablari.
++/// Postlar | Ko'rgazma — ingichka tagchiziqli matn tablari.
+ ///
+ /// Soft editorial: to'ldirilgan segment emas, faqat faol yozuv ostida
+ /// qora chiziq; almashuv 200ms.
+@@ -1826,8 +1854,10 @@ class _GridTabs extends StatelessWidget {
+         ),
+         child: Row(
+           children: [
++            // Tor ekran / katta shrift — yorliq qisqaradi, toshmaydi.
+             for (var i = 0; i < labels.length; i++)
+-              Semantics(
++              Flexible(
++                child: Semantics(
+                 button: true,
+                 selected: i == index,
+                 child: GestureDetector(
+@@ -1850,6 +1880,8 @@ class _GridTabs extends StatelessWidget {
+                       ),
+                       child: Text(
+                         labels[i],
++                        maxLines: 1,
++                        overflow: TextOverflow.ellipsis,
+                         style: TextStyle(
+                           fontFamily: AppType.sans,
+                           fontSize: 14,
+@@ -1862,6 +1894,7 @@ class _GridTabs extends StatelessWidget {
+                   ),
+                 ),
+               ),
++              ),
+           ],
+         ),
+       ),
+diff --git a/mobile_nova/lib/features/social/music_picker.dart b/mobile_nova/lib/features/social/music_picker.dart
+index 966dbfd..ae314ed 100644
+--- a/mobile_nova/lib/features/social/music_picker.dart
++++ b/mobile_nova/lib/features/social/music_picker.dart
+@@ -30,8 +30,8 @@ final musicLibraryProvider = FutureProvider.autoDispose<MusicLibrary>((ref) asyn
+   return res.when(ok: (v) => v, err: (e) => throw e);
+ });
+ 
+-/// «Shu musiqani ishlatish» — Reel yaratish ekraniga oldindan tanlangan
+-/// trek. Ekran uni o'qiydi va darhol tozalaydi.
++/// «Shu musiqani ishlatish» — Ko'rgazma yaratish ekraniga oldindan
++/// tanlangan trek. Ekran uni o'qiydi va darhol tozalaydi.
+ final pendingComposerMusicProvider = StateProvider<MusicTrack?>((ref) => null);
+ 
+ String _mmss(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+@@ -373,7 +373,7 @@ class MusicChip extends StatelessWidget {
+ }
+ 
+ /// «Shu musiqani ishlatish» — trekni tinglash va shu trek bilan yangi
+-/// Reel yaratish.
++/// Ko'rgazma yaratish.
+ Future<void> showMusicUseSheet(BuildContext context, MusicTrack track) {
+   return showModalBottomSheet<void>(
+     context: context,
+@@ -444,7 +444,9 @@ class _MusicUseSheetState extends ConsumerState<_MusicUseSheet> {
+               onPressed: () {
+                 ref.read(pendingComposerMusicProvider.notifier).state = tr;
+                 Navigator.of(context).pop();
+-                context.push(Routes.reelCreate);
++                // Reel yaratish endi yo'q — Ko'rgazma yaratish, trek
++                // oldindan tanlangan holda.
++                context.push(Routes.showcaseCreate);
+               },
+             ),
+           ],
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index a8a4ad3..f73e4a6 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -506,7 +506,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+     // `select`: faqat Reels'ga kirish/chiqishda qayta quriladi — ilgari
+     // HAR tab almashishida (Profil -> Asosiy ham) yashirin Reels va
+     // uning 2-3 sahifasi behuda qayta qurilardi.
+-    final onReelsTab = ref.watch(activeTabProvider.select((i) => i == 3));
++    final onReelsTab =
++        ref.watch(activeTabProvider.select((i) => i == kReelsTab));
+     // Tabdan chiqilganda kontrollerlar yo'q qilinadi — qaytganda
+     // ko'rinayotgani yana birinchi bo'lib ochiladi.
+     if (!onReelsTab) _started = -1;
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index 8197e83..be642fe 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -47,8 +47,8 @@ import '../features/shop/shop_screens.dart';
+ import '../features/shop/store_policy.dart'
+     show isAppStoreBuild, showNewsEntry, showNotificationSettings;
+ import '../features/showcase/showcase_composer.dart';
++import '../features/showcase/showcase_screen.dart';
+ import '../features/social/post_screens.dart';
+-import '../features/social/reels_screen.dart';
+ import '../features/social/story_viewer.dart';
+ import 'routes.dart';
+ import 'shell.dart';
+@@ -227,15 +227,15 @@ final routerProvider = Provider<GoRouter>((ref) {
+           // `StatefulShellRoute` tabni BIRINCHI bosilganda qurardi: ekran
+           // noldan yig'ilar va o'sha paytda API so'rovlari boshlanardi —
+           // odam har tabga birinchi kirishda spinner/kechikish ko'rardi.
+-          // `preload` bilan Tanlov, Reels va Profil shell ochilganda
++          // `preload` bilan Tanlov, Ko'rgazma va Profil shell ochilganda
+           // yashirin (`Offstage`, `TickerMode` o'chiq) quriladi va o'z
+           // ma'lumotini oldindan yuklaydi; bosilganda tayyor turadi.
+           // Holat saqlanadi, qayta yuklash yo'q (tablar yopilmaydi).
+           //
+           // NFC tabi OLDINDAN QURILMAYDI: u ochilishi bilan NFC
+           // sessiyasini boshlashi mumkin — iPhone'da tizim oynasi chiqadi.
+-          // Reels yashirin holda pleyer ochmaydi (`visible` faqat Reels
+-          // tabida) — faqat ro'yxat yuklanadi.
++          // Ko'rgazma yashirin holda pleyer ochmaydi (`visible` faqat
++          // o'z tabida) — faqat ro'yxat yuklanadi.
+           StatefulShellBranch(preload: true, routes: [
+             GoRoute(
+                 path: Routes.discover, builder: (_, __) => const DiscoverScreen()),
+@@ -243,8 +243,12 @@ final routerProvider = Provider<GoRouter>((ref) {
+           StatefulShellBranch(routes: [
+             GoRoute(path: Routes.nfc, builder: (_, __) => const NfcCenterScreen()),
+           ]),
++          // KO'RGAZMA — Reels o'rnida (2026-10). Yashirin holda faqat
++          // ro'yxat yuklanadi; karusel va musiqa tab ochilganda.
+           StatefulShellBranch(preload: true, routes: [
+-            GoRoute(path: Routes.reels, builder: (_, __) => const ReelsScreen()),
++            GoRoute(
++                path: Routes.showcase,
++                builder: (_, __) => const ShowcaseScreen()),
+           ]),
+           StatefulShellBranch(preload: true, routes: [
+             GoRoute(path: Routes.profile, builder: (_, __) => const ProfileScreen()),
+@@ -373,9 +377,26 @@ final routerProvider = Provider<GoRouter>((ref) {
+         path: Routes.storyCreate,
+         builder: (_, __) => const ComposerScreen(kind: ComposerKind.story),
+       ),
+-      GoRoute(
+-        path: Routes.reelCreate,
+-        builder: (_, __) => const ComposerScreen(kind: ComposerKind.reel),
++      // REELS VA VIDEO YUKLASH BU BUILD'DA YO'Q: eski manzillar
++      // (bildirishnoma, havola, eski ilova ichidagi tugma) Ko'rgazmaga
++      // buriladi. `ReelsScreen` va reel yaratish kodi saqlangan, lekin
++      // ularga yo'l yo'q.
++      GoRoute(path: Routes.reels, redirect: (_, __) => Routes.showcase),
++      GoRoute(path: Routes.reelCreate, redirect: (_, __) => Routes.showcase),
++      // `/reel/<id>` havolasi — o'sha post (PostScreen), ilova yiqilmaydi.
++      GoRoute(
++        path: '/reel/:id',
++        builder: (_, s) {
++          final code = s.uri.queryParameters['code'] ?? '';
++          return demoWrap(
++            code,
++            PostScreen(
++              id: int.tryParse(s.pathParameters['id'] ?? '') ?? 0,
++              code: code,
++              company: s.uri.queryParameters['company'] == '1',
++            ),
++          );
++        },
+       ),
+       // KO'RGAZMA YARATISH — faqat rasm (1–5), video tanlab bo'lmaydi.
+       GoRoute(
+diff --git a/mobile_nova/lib/routing/shell.dart b/mobile_nova/lib/routing/shell.dart
+index 5d70f81..d158f35 100644
+--- a/mobile_nova/lib/routing/shell.dart
++++ b/mobile_nova/lib/routing/shell.dart
+@@ -32,12 +32,17 @@ final activeTabProvider = StateProvider<int>((_) => 0);
+ /// Yana bosilsa yoki "orqaga" — qaytadi.
+ final reelsCleanProvider = StateProvider<bool>((_) => false);
+ 
+-/// Reels tabining raqami (`HomeShell.tabRoutes`).
+-const kReelsTab = 3;
+-
+-/// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`).
++/// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`) — qora, butun
++/// ekranli bo'lim (pastki panel video ustidagi uslubda).
+ const kShowcaseTab = 3;
+ 
++/// REELS ENDI PASTKI MENYUDA YO'Q (2026-10: o'rnida Ko'rgazma).
++/// `ReelsScreen` kodi saqlangan, lekin hech qayerdan ochilmaydi
++/// (`/reels` -> `/showcase`). U o'z videosini faqat shu raqamli tab
++/// faol bo'lganda o'ynatadi — u yerda endi Ko'rgazma turadi va
++/// `ReelsScreen` umuman qurilmaydi.
++const kReelsTab = kShowcaseTab;
++
+ /// "Asosiy" tugmasi Home'da turib qayta bosilgan — har bosishda
+ /// oshadi. Bosh sahifa buni eshitadi va tepaga suriladi.
+ final homeReselectProvider = StateProvider<int>((_) => 0);
+@@ -58,11 +63,12 @@ List<NavItem> navItems(L l) {
+         label: l.navDiscover,
+         route: Routes.discover),
+     NavItem(icon: Icons.nfc_rounded, label: l.navNfc, route: Routes.nfc),
++    // KO'RGAZMA (Reels o'rnida) — rasmlar to'plami belgisi.
+     NavItem(
+-        icon: Icons.play_circle_outline_rounded,
+-        activeIcon: Icons.play_circle_rounded,
+-        label: l.navReels,
+-        route: Routes.reels),
++        icon: Icons.collections_outlined,
++        activeIcon: Icons.collections_rounded,
++        label: l.navShowcase,
++        route: Routes.showcase),
+     NavItem(
+         icon: Icons.person_outline_rounded,
+         activeIcon: Icons.person_rounded,
+@@ -83,7 +89,7 @@ class HomeShell extends ConsumerStatefulWidget {
+     Routes.home,
+     Routes.discover,
+     Routes.nfc,
+-    Routes.reels,
++    Routes.showcase,
+     Routes.profile,
+   ];
+ 
+@@ -126,7 +132,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
+       }
+     });
+     final items = navItems(l);
+-    final onReels = shell.currentIndex == kReelsTab;
++    // Ko'rgazma — qora, butun ekranli bo'lim: panel video uslubida
++    // va kichraymaydi (vertikal sahifalar).
++    final onReels = shell.currentIndex == kShowcaseTab;
+     final clean = onReels && ref.watch(reelsCleanProvider);
+ 
+     // ANDROID "ORQAGA" (audit 2026-10-06): Asosiy bo'lmagan tab ildizida
+diff --git a/mobile_nova/test/bottom_nav_persist_test.dart b/mobile_nova/test/bottom_nav_persist_test.dart
+index 54284af..50f51f2 100644
+--- a/mobile_nova/test/bottom_nav_persist_test.dart
++++ b/mobile_nova/test/bottom_nav_persist_test.dart
+@@ -15,7 +15,7 @@ Future<void> _frames(WidgetTester tester, [int n = 30]) async {
+ }
+ 
+ /// PASTKI NAVIGATSIYA HECH QACHON YO'QOLMASIN (egasi, 2026-09:
+-/// "Asosiy – Tanlov – NFC – Reels – Profil bottom navigation yo'qolib
++/// "Asosiy – Tanlov – NFC – Ko'rgazma (avval Reels) – Profil bottom navigation yo'qolib
+ /// qolmasin ... scroll qilganda ham").
+ ///
+ /// Beshala asosiy ekranda panel ko'rinadi va bosiladi; uzun ekranni
+@@ -49,7 +49,7 @@ void main() {
+       Routes.home,
+       Routes.discover,
+       Routes.nfc,
+-      Routes.reels,
++      Routes.showcase,
+       Routes.profile,
+     ]) {
+       c.read(routerProvider).go(r);
+diff --git a/mobile_nova/test/instagram_media_test.dart b/mobile_nova/test/instagram_media_test.dart
+index 210573a..f02cd7f 100644
+--- a/mobile_nova/test/instagram_media_test.dart
++++ b/mobile_nova/test/instagram_media_test.dart
+@@ -14,6 +14,7 @@ import 'package:nfcstore_nova/design/theme/app_theme.dart';
+ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+ import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
+ import 'package:nfcstore_nova/features/discover/catalog_view.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
+ import 'package:nfcstore_nova/features/social/feed_card.dart';
+ import 'package:nfcstore_nova/features/social/reels_screen.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+@@ -28,9 +29,9 @@ import 'support/rich_fakes.dart';
+ 
+ /// INSTAGRAM USLUBIDAGI MEDIA (egasi, 2026-09-24):
+ ///
+-/// * Reels'da aylantirish chizig'i va NFC ID pastki panel ostida
+-///   qolib ketardi (3 tugmali Android). Endi panelning O'LCHANGAN
+-///   balandligidan yuqorida; panel video ustida qora shisha.
++/// * Reels'da (endi Ko'rgazmada) amallar va muallif pastki panel
++///   ostida qolib ketardi (3 tugmali Android). Endi panelning
++///   O'LCHANGAN balandligidan yuqorida; panel qora fon ustida shisha.
+ /// * Video bosilsa — belgilarsiz to'liq ekran (Reels va lentada).
+ /// * Tovar rasmi bosilsa — kattalashtirib ko'riladi.
+ class _Biz extends BusinessRepository {
+@@ -39,22 +40,24 @@ class _Biz extends BusinessRepository {
+   Future<Result<List<Business>>> mine() async => const Ok([]);
+ }
+ 
+-final _reels = [
+-  Post(
++// Ko'rgazma (2026-10: Reels o'rnida) — rasmli, musiqali sahifa.
++final _showcase = [
++  const Post(
+     id: 7,
+     code: 'PPP777',
+     authorName: 'Mashrabboy',
+-    text: 'Toshkent kechasi',
+-    mediaUrls: const ['https://nfcstore.uz/uploads/a.mp4'],
+-    isVideo: true,
++    showcase: true,
++    title: 'Toshkent kechasi',
++    mediaUrls: ['assets/demo/z_post_cafe.jpg', 'assets/demo/z_post_cafe.jpg'],
+     likes: 42,
++    music: MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3'),
+   ),
+-  Post(
++  const Post(
+     id: 9,
+     code: 'ALI000',
+     authorName: 'Aliyorbek',
+-    mediaUrls: const ['https://nfcstore.uz/uploads/c.mp4'],
+-    isVideo: true,
++    reel: true,
++    mediaUrls: ['assets/demo/z_post_cafe.jpg'],
+   ),
+ ];
+ 
+@@ -82,11 +85,16 @@ List<String> _captureSystemUi() {
+ }
+ 
+ void main() {
+-  group('Reels — Instagram uslubi', () {
++  // REELS PASTKI MENYUDAN OLINDI (2026-10) — o'rnida Ko'rgazma. Shu
++  // guruh avval Reels'ni sinardi; niyat (panel ustida tugmalar, qora
++  // shisha panel, "orqaga", tabdan chiqqanda ovoz to'xtashi) endi
++  // Ko'rgazma tabida tekshiriladi.
++  group('Ko‘rgazma tabi — Instagram uslubi (Reels o‘rnida)', () {
+     late ProviderContainer c;
+     late FakeVideoPlatform video;
+ 
+-    Future<void> boot(WidgetTester tester, {double inset = 48}) async {
++    Future<void> boot(WidgetTester tester,
++        {double inset = 48, String go = Routes.showcase}) async {
+       video = FakeVideoPlatform();
+       VideoPlayerPlatform.instance = video;
+       tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+@@ -98,13 +106,13 @@ void main() {
+       c = ProviderContainer(overrides: [
+         ...await testOverrides(),
+         businessRepositoryProvider.overrideWithValue(_Biz()),
+-        reelsProvider.overrideWith((ref) async => _reels),
++        showcaseProvider.overrideWith((ref) async => _showcase),
+       ]);
+       addTearDown(c.dispose);
+       await tester.pumpWidget(
+           UncontrolledProviderScope(container: c, child: const NovaApp()));
+       await settle(tester, frames: 10);
+-      c.read(routerProvider).go(Routes.reels);
++      c.read(routerProvider).go(go);
+       await settle(tester, frames: 12);
+       await _flush(tester);
+     }
+@@ -123,95 +131,48 @@ void main() {
+ 
+     for (final inset in const [0.0, 24.0, 48.0]) {
+       testWidgets(
+-          'inset ${inset.toInt()}: progress va NFC ID pastki panel USTIDA',
++          'inset ${inset.toInt()}: amallar va muallif pastki panel USTIDA',
+           (tester) async {
+         await boot(tester, inset: inset);
+         expect(tester.takeException(), isNull);
+         final nav = find.byType(NovaBottomNav);
+         expect(nav, findsOneWidget);
+         expect(tester.widget<NovaBottomNav>(nav).onVideo, isTrue,
+-            reason: 'Reels’da panel video ustidagi qora shisha');
++            reason: 'Ko‘rgazmada panel qora fon ustidagi shisha');
+         final navTop = tester.getRect(nav).top;
+-
+-        final progress = onScreen(tester, const ValueKey('reel-progress'));
+-        final chip = onScreen(tester, const ValueKey('reel-id-chip'));
+-        final like = onScreen(tester, const ValueKey('reel-like'));
+-        expect(progress.bottom, lessThanOrEqualTo(navTop - 6),
+-            reason: 'aylantirish chizig‘i panel ostida qolmasin');
+-        expect(chip.bottom, lessThan(progress.top),
+-            reason: 'NFC ID chizig‘i ustida turadi');
++        final author = onScreen(tester, const ValueKey('showcase-author'));
++        final like = onScreen(tester, const ValueKey('showcase-like'));
++        expect(author.bottom, lessThanOrEqualTo(navTop - 6));
+         expect(like.bottom, lessThan(navTop));
+       });
+     }
+ 
+-    testWidgets('bosish — toza to‘liq ekran, yana bosish — qaytadi',
++    testWidgets('eski /reels havolasi — Ko‘rgazma, Reels qurilmaydi',
+         (tester) async {
+-      final modes = _captureSystemUi();
+-      await boot(tester);
+-      await tester.tapAt(const Offset(195, 380));
+-      // Ikki marta bosishni kutish oralig'i.
+-      await tester.pump(const Duration(milliseconds: 350));
+-      await settle(tester, frames: 6);
+-      expect(c.read(reelsCleanProvider), isTrue);
+-      expect(find.byType(NovaBottomNav), findsNothing,
+-          reason: 'toza rejimda pastki panel yo‘q');
+-      // Tizim panellari TEGILMAYDI: immersive'dan qaytish Android'da
+-      // oynani boshqa rejimga o'tkazardi (egasining telefoni, 2026-09-24).
+-      expect(modes, isEmpty, reason: 'tizim panellari rejimi o‘zgarmaydi');
+-      final chip = find.byKey(const ValueKey('reel-id-chip')).first;
+-      final ignoring = tester
+-          .widgetList<IgnorePointer>(
+-              find.ancestor(of: chip, matching: find.byType(IgnorePointer)))
+-          .any((w) => w.ignoring);
+-      expect(ignoring, isTrue, reason: 'belgilar yashirin va bosilmaydi');
+-      expect(video.playing, isNotEmpty, reason: 'video to‘xtamaydi');
+-
+-      await tester.tapAt(const Offset(195, 380));
+-      await tester.pump(const Duration(milliseconds: 350));
+-      await settle(tester, frames: 6);
+-      expect(c.read(reelsCleanProvider), isFalse);
+-      expect(find.byType(NovaBottomNav), findsOneWidget);
+-      expect(modes, isEmpty);
+-      expect(tester.takeException(), isNull);
++      await boot(tester, go: Routes.reels);
++      expect(find.byType(ShowcaseScreen), findsOneWidget);
++      expect(find.byType(ReelsScreen, skipOffstage: false), findsNothing);
++      expect(c.read(activeTabProvider), kShowcaseTab);
+     });
+ 
+-    testWidgets('"orqaga" avval toza rejimdan chiqaradi', (tester) async {
++    testWidgets('"orqaga" — Asosiy tabga, ilova yopilmaydi', (tester) async {
+       await boot(tester);
+-      c.read(reelsCleanProvider.notifier).state = true;
+-      await settle(tester, frames: 4);
+       await tester.binding.handlePopRoute();
+-      await settle(tester, frames: 6);
+-      expect(c.read(reelsCleanProvider), isFalse);
+-      expect(find.byType(ReelsScreen), findsOneWidget,
+-          reason: 'Reels’dan chiqib ketmaydi');
++      await settle(tester, frames: 8);
++      expect(c.read(activeTabProvider), 0);
+     });
+ 
+-    testWidgets('boshqa tabga o‘tilsa toza rejim tugaydi', (tester) async {
++    testWidgets('boshqa tabga o‘tilsa musiqa to‘xtaydi, panel oddiy',
++        (tester) async {
+       await boot(tester);
+-      c.read(reelsCleanProvider.notifier).state = true;
+-      await settle(tester, frames: 4);
++      expect(video.playing, hasLength(1), reason: 'Ko‘rgazma musiqasi');
+       c.read(routerProvider).go(Routes.home);
+       await settle(tester, frames: 10);
+-      expect(c.read(reelsCleanProvider), isFalse);
+-      expect(find.byType(NovaBottomNav), findsOneWidget);
++      await _flush(tester);
++      expect(video.playing, isEmpty);
+       expect(tester.widget<NovaBottomNav>(find.byType(NovaBottomNav)).onVideo,
+           isFalse);
+     });
+-
+-    testWidgets('bosib turish — pauza, qo‘yib yuborish — davom', (tester) async {
+-      await boot(tester);
+-      expect(video.playing, hasLength(1));
+-      final g = await tester.startGesture(const Offset(195, 380));
+-      await tester.pump(const Duration(milliseconds: 650));
+-      await _flush(tester);
+-      expect(video.playing, isEmpty, reason: 'bosib turilganda pauza');
+-      await g.up();
+-      await settle(tester, frames: 4);
+-      await _flush(tester);
+-      expect(video.playing, hasLength(1), reason: 'qo‘yib yuborilsa davom');
+-      expect(c.read(reelsCleanProvider), isFalse,
+-          reason: 'bosib turish toza rejimni almashtirmaydi');
+-    });
+   });
+ 
+   group('Lenta videosi — to‘liq ekran', () {
+diff --git a/mobile_nova/test/profile_grid_lazy_test.dart b/mobile_nova/test/profile_grid_lazy_test.dart
+index f09092d..560cf70 100644
+--- a/mobile_nova/test/profile_grid_lazy_test.dart
++++ b/mobile_nova/test/profile_grid_lazy_test.dart
+@@ -32,11 +32,13 @@ class _Social extends FakeSocialRepository {
+   @override
+   Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async => Ok([
+         for (var i = 0; i < 30; i++)
++          // Ko'rgazma posti (2026-10: "Postlar | Ko'rgazma" tablari).
+           Post(
+             id: i + 1,
+             code: code,
+             text: 'Rasm $i',
+             mediaUrls: const [_photo],
++            showcase: true,
+             createdAt: DateTime(2026),
+           ),
+         for (var i = 0; i < 30; i++)
+@@ -91,27 +93,33 @@ void main() {
+     // bitta qator ko'p. `Wrap` da har doim 30 tadan 30 tasi qurilardi.
+     const few = 21;
+ 
+-    // ── Postlar tabi: 30 ta rasm ───────────────────────────────
++    // ── Postlar tabi: 30 ta video (video postlar shu yerda qoladi) ──
++    final posters = _posters().evaluate().length;
++    expect(posters, greaterThan(0), reason: 'to‘r umuman chizilmadi');
++    // Kvadrat video katakchalar (8 qatorgacha kesh bilan) — baribir
++    // 30 tadan ancha kam.
++    expect(posters, lessThanOrEqualTo(few + 3),
++        reason: '$posters/30 video muqovasi navbatga qo‘yilgan — har biri '
++            'pleer ochadi');
++    final video = tester.getSize(find.byKey(const ValueKey('tile-31')));
++    expect(video.width, closeTo(side, .5));
++    expect(video.height, closeTo(side, .5));
++
++    // ── Ko'rgazma tabi: 30 ta rasm, vertikal (4:5) ──────────────
++    await tester.tap(find.text('${l.navShowcase} · 30'));
++    await settle(tester, frames: 6);
+     final photos = _photoTiles().evaluate().length;
+-    expect(photos, greaterThan(0), reason: 'to‘r umuman chizilmadi');
++    expect(photos, greaterThan(0));
+     expect(photos, lessThanOrEqualTo(few),
+         reason: 'ekranda ~1 qator ko‘rinadi, lekin $photos/30 rasm '
+             'katakchasi qurilgan — to‘r dangasa emas');
+     final photo = tester.getSize(_photoTiles().first);
+     expect(photo.width, closeTo(side, .5));
+-    expect(photo.height, closeTo(side, .5));
++    expect(photo.height, closeTo(side * 1.25, .5));
+ 
+-    // ── Reels tabi: 30 ta video ────────────────────────────────
+-    await tester.tap(find.text('${l.navReels} · 30'));
++    // Postlarga qaytamiz — video to'r bilan davom.
++    await tester.tap(find.text('${l.profilePosts} · 30'));
+     await settle(tester, frames: 6);
+-    final posters = _posters().evaluate().length;
+-    expect(posters, greaterThan(0));
+-    expect(posters, lessThanOrEqualTo(few),
+-        reason: '$posters/30 video muqovasi navbatga qo‘yilgan — har biri '
+-            'pleer ochadi');
+-    final reel = tester.getSize(find.byKey(const ValueKey('tile-31')));
+-    expect(reel.width, closeTo(side, .5));
+-    expect(reel.height, closeTo(side * 1.25, .5));
+ 
+     // ── Pastga aylantirganda keyingilari quriladi ──────────────
+     final scroll = find
+@@ -136,7 +144,7 @@ void main() {
+     expect(find.byKey(const ValueKey('tile-31'), skipOffstage: false),
+         findsNothing,
+         reason: 'ekrandan chiqqan katakcha xotirada qolib ketdi');
+-    expect(_posters().evaluate().length, lessThanOrEqualTo(few));
++    expect(_posters().evaluate().length, lessThanOrEqualTo(few + 3));
+     expect(tester.takeException(), isNull);
+ 
+     // Review: to'r TEPASIDA ham kesh zonasi bor (SliverMainAxisGroup
+@@ -157,8 +165,8 @@ void main() {
+             (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy - top)
+         .toList();
+     expect(tops, isNotEmpty);
+-    // Reels qatori: side * 1.25 baland + 6 oraliq.
+-    expect(tops.reduce((a, b) => a < b ? a : b), lessThan(-(side * 1.25 + 6)),
++    // Postlar qatori: side baland + 6 oraliq.
++    expect(tops.reduce((a, b) => a < b ? a : b), lessThan(-(side + 6)),
+         reason: 'ekran ustida zaxira qator yo‘q — to‘r keshi faqat pastda');
+ 
+     // Muqova navbatidagi taymerlar tugasin.
+@@ -166,7 +174,7 @@ void main() {
+     await tester.pump(const Duration(seconds: 2));
+   });
+ 
+-  testWidgets('bo‘sh va to‘la tab orasida Postlar/Reels paneli qayta yaratilmaydi',
++  testWidgets('bo‘sh va to‘la tab orasida Postlar/Ko‘rgazma paneli qayta yaratilmaydi',
+       (tester) async {
+     VideoPoster.clearCache();
+     VideoPlayerPlatform.instance = FakeVideoPlatform();
+@@ -188,10 +196,10 @@ void main() {
+         skipOffstage: false);
+     expect(tabs, findsOneWidget);
+     final before = tester.element(tabs);
+-    // Reels tabi bo'sh — ilgari panel boshqa daraxtga o'tib qayta
++    // Ko'rgazma tabi bo'sh — ilgari panel boshqa daraxtga o'tib qayta
+     // yaratilardi (chiziq animatsiyasi sakrardi, fokus yo'qolardi).
+-    await tester.ensureVisible(find.text('${l.navReels} · 0'));
+-    await tester.tap(find.text('${l.navReels} · 0'));
++    await tester.ensureVisible(find.text('${l.navShowcase} · 0'));
++    await tester.tap(find.text('${l.navShowcase} · 0'));
+     await tester.pump(const Duration(milliseconds: 60));
+     expect(identical(tester.element(tabs), before), isTrue,
+         reason: 'panel qayta yaratildi');
+diff --git a/mobile_nova/test/profile_tabs_test.dart b/mobile_nova/test/profile_tabs_test.dart
+index 1ac55d6..1f02d86 100644
+--- a/mobile_nova/test/profile_tabs_test.dart
++++ b/mobile_nova/test/profile_tabs_test.dart
+@@ -10,11 +10,13 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ 
+ import 'helpers.dart';
+ 
+-/// Profil: "Postlar | Reels" tablari HAQIQIY ro'yxatdan.
++/// Profil: "Postlar | Ko'rgazma" tablari HAQIQIY ro'yxatdan (2026-10,
++/// avval "Postlar | Reels").
+ ///
+-/// Reels alohida API emas — postlarning videolilari. Tablardagi sonlar
+-/// yig'indisi profil tepasidagi "Postlar" soniga TENG bo'lishi kerak
+-/// (egasining talabi: sonlar hamma joyda bir xil).
++/// Ko'rgazma alohida API emas — ko'rgazma postlari va rasmli reel'lar.
++/// VIDEO postlar "Postlar" da qoladi (egasi ko'rib o'chira olsin).
++/// Tablardagi sonlar yig'indisi profil tepasidagi "Postlar" soniga TENG
++/// bo'lishi kerak (egasining talabi: sonlar hamma joyda bir xil).
+ class _Social extends FakeSocialRepository {
+   @override
+   Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async => Ok([
+@@ -29,11 +31,15 @@ class _Social extends FakeSocialRepository {
+             isVideo: true,
+             createdAt: DateTime(2026),
+           ),
++        Post(id: 20, code: code, text: 'Vitrina', showcase: true,
++            createdAt: DateTime(2026)),
++        Post(id: 21, code: code, text: 'Rasmli reel', reel: true,
++            createdAt: DateTime(2026)),
+       ]);
+ }
+ 
+ void main() {
+-  testWidgets('tablar postlarni rasm va videoga ajratadi', (tester) async {
++  testWidgets('tablar: postlar (video ham) va ko‘rgazma', (tester) async {
+     tester.view.physicalSize = const Size(390 * 3, 2600 * 3);
+     tester.view.devicePixelRatio = 3;
+     addTearDown(tester.view.reset);
+@@ -50,15 +56,22 @@ void main() {
+     final l = await L.delegate.load(const Locale('uz'));
+ 
+     expect(tester.takeException(), isNull);
+-    // Tepadagi "Postlar" soni — hammasi (5), tablar — 3 + 2.
+-    expect(find.text('5'), findsOneWidget);
+-    expect(find.text('${l.profilePosts} · 3'), findsOneWidget);
+-    expect(find.text('${l.navReels} · 2'), findsOneWidget);
++    // Tepadagi "Postlar" soni — hammasi (7), tablar — 5 + 2.
++    expect(find.text('7'), findsOneWidget);
++    expect(find.text('${l.profilePosts} · 5'), findsOneWidget);
++    expect(find.text('${l.navShowcase} · 2'), findsOneWidget);
++    expect(find.text('${l.navReels} · 2'), findsNothing);
+     expect(find.text('Rasm 0'), findsOneWidget);
++    expect(find.text('Vitrina'), findsNothing);
+ 
+-    await tester.tap(find.text('${l.navReels} · 2'));
++    await tester.tap(find.text('${l.navShowcase} · 2'));
+     await settle(tester, frames: 6);
+     expect(find.text('Rasm 0'), findsNothing,
+-        reason: 'Reels tabida rasmli post ko‘rinyapti');
++        reason: 'Ko‘rgazma tabida oddiy post ko‘rinyapti');
++    expect(find.text('Vitrina'), findsOneWidget);
++    expect(find.text('Rasmli reel'), findsOneWidget);
++    // O'z profilim — Ko'rgazma yaratish tugmasi.
++    expect(find.byKey(const ValueKey('profile-showcase-create')),
++        findsOneWidget);
+   });
+ }
+diff --git a/mobile_nova/test/release_audit_fixes_test.dart b/mobile_nova/test/release_audit_fixes_test.dart
+index fd96cfa..37b3e99 100644
+--- a/mobile_nova/test/release_audit_fixes_test.dart
++++ b/mobile_nova/test/release_audit_fixes_test.dart
+@@ -193,7 +193,8 @@ void main() {
+       return out;
+     }
+ 
+-    final tab = find.text('${l.navReels} · 24');
++    // Video postlar "Postlar" tabida (2026-10: ikkinchi tab — Ko'rgazma).
++    final tab = find.text('${l.profilePosts} · 24');
+     await tester.ensureVisible(tab);
+     await settle(tester, frames: 2);
+     await tester.tap(tab);
+diff --git a/mobile_nova/test/routes_test.dart b/mobile_nova/test/routes_test.dart
+index cdff2ed..b9d9dd5 100644
+--- a/mobile_nova/test/routes_test.dart
++++ b/mobile_nova/test/routes_test.dart
+@@ -30,12 +30,15 @@ void main() {
+     Routes.profileSetup,
+     Routes.home,
+     Routes.discover,
++    // Eski manzil — Ko'rgazmaga buriladi (2026-10).
+     Routes.reels,
++    Routes.showcase,
+     Routes.nfc,
+     Routes.profile,
+     Routes.postCreate,
+     Routes.storyCreate,
+     Routes.reelCreate,
++    Routes.showcaseCreate,
+     Routes.nfcIds,
+     Routes.nfcMarket,
+     Routes.nfcScan,
+@@ -82,6 +85,8 @@ void main() {
+   /// Parametrli yo'llar — namunaviy qiymat bilan.
+   final dynamicPaths = <String>[
+     Routes.post(1),
++    // Eski reel havolasi — o'sha post ochiladi.
++    '/reel/5',
+     Routes.story('48210377'),
+     Routes.user('48210377'),
+     Routes.nfcId('48210377'),
+diff --git a/mobile_nova/test/showcase_nav_test.dart b/mobile_nova/test/showcase_nav_test.dart
+new file mode 100644
+index 0000000..4c88bfe
+--- /dev/null
++++ b/mobile_nova/test/showcase_nav_test.dart
+@@ -0,0 +1,161 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
++import 'package:nfcstore_nova/features/social/music_picker.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++
++import 'helpers.dart';
++
++/// PASTKI MENYU: Reels o'rnida "Ko'rgazma" (2026-10, kompilyatsiya
++/// paytida — server kalitiga bog'liq emas).
++void main() {
++  test('4-tab — Ko‘rgazma (uz/ru/en), Reels yo‘q', () {
++    for (final l in [LUz(), LRu(), LEn()]) {
++      final items = navItems(l);
++      expect(items, hasLength(5));
++      expect(items[kShowcaseTab].label, l.navShowcase);
++      expect(items[kShowcaseTab].route, Routes.showcase);
++      expect(items.map((e) => e.label), isNot(contains(l.navReels)));
++      expect(items.map((e) => e.route), isNot(contains(Routes.reels)));
++    }
++    expect(LUz().navShowcase, 'Ko‘rgazma');
++    expect(LRu().navShowcase, 'Витрина');
++    expect(LEn().navShowcase, 'Showcase');
++    expect(navItems(LUz())[kShowcaseTab].icon, Icons.collections_outlined);
++    expect(HomeShell.tabRoutes[kShowcaseTab], Routes.showcase);
++  });
++
++  group('ilovada', () {
++    Future<ProviderContainer> boot(WidgetTester tester) async {
++      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++      tester.view.devicePixelRatio = 3;
++      addTearDown(tester.view.reset);
++      final c = ProviderContainer(overrides: [
++        ...await testOverrides(),
++        showcaseProvider.overrideWith((ref) async => const <Post>[]),
++      ]);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(
++          UncontrolledProviderScope(container: c, child: const NovaApp()));
++      await settle(tester, frames: 12);
++      return c;
++    }
++
++    String loc(ProviderContainer c) => c
++        .read(routerProvider)
++        .routerDelegate
++        .currentConfiguration
++        .uri
++        .toString();
++
++    testWidgets('pastki panelda "Ko‘rgazma", bosilsa Ko‘rgazma ekrani',
++        (tester) async {
++      final c = await boot(tester);
++      final l = await L.delegate.load(const Locale('uz'));
++      final nav = find.byType(NovaBottomNav);
++      expect(find.descendant(of: nav, matching: find.text(l.navShowcase)),
++          findsOneWidget);
++      expect(find.descendant(of: nav, matching: find.text(l.navReels)),
++          findsNothing);
++      await tester.tap(
++          find.descendant(of: nav, matching: find.text(l.navShowcase)));
++      await settle(tester, frames: 10);
++      expect(loc(c), Routes.showcase);
++      expect(find.byType(ShowcaseScreen), findsOneWidget);
++      expect(find.text(l.showcaseEmpty), findsOneWidget);
++    });
++
++    for (final from in [Routes.reels, Routes.reelCreate]) {
++      testWidgets('$from — Ko‘rgazmaga buriladi', (tester) async {
++        final c = await boot(tester);
++        c.read(routerProvider).go(from);
++        await settle(tester, frames: 10);
++        expect(loc(c), Routes.showcase);
++        expect(find.byType(ReelsScreen, skipOffstage: false), findsNothing);
++        expect(find.byType(ComposerScreen), findsNothing,
++            reason: 'reel (video) yaratish ochilmaydi');
++      });
++    }
++
++    testWidgets('/reel/<id> havolasi — PostScreen, yiqilmaydi',
++        (tester) async {
++      final c = await boot(tester);
++      c.read(routerProvider).go('/reel/5?code=48210377');
++      await settle(tester, frames: 10);
++      expect(tester.takeException(), isNull);
++      final post = tester.widget<PostScreen>(find.byType(PostScreen));
++      expect(post.id, 5);
++      expect(post.code, '48210377');
++    });
++  });
++
++  testWidgets('«Shu musiqani ishlatish» — Ko‘rgazma yaratish, trek tanlangan',
++      (tester) async {
++    const track = MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://x/m.mp3');
++    final pushed = <String>[];
++    final c = ProviderContainer(overrides: await testOverrides());
++    addTearDown(c.dispose);
++    final router = GoRouter(routes: [
++      GoRoute(
++        path: '/',
++        builder: (context, _) => Scaffold(
++          body: Center(
++            child: TextButton(
++              onPressed: () => showMusicUseSheet(context, track),
++              child: const Text('OPEN'),
++            ),
++          ),
++        ),
++      ),
++      GoRoute(
++        path: Routes.showcaseCreate,
++        builder: (_, s) {
++          pushed.add(s.uri.path);
++          return const Scaffold(body: Text('CREATE'));
++        },
++      ),
++      GoRoute(
++        path: Routes.reelCreate,
++        builder: (_, s) {
++          pushed.add(s.uri.path);
++          return const Scaffold(body: Text('REEL'));
++        },
++      ),
++    ]);
++    await tester.pumpWidget(UncontrolledProviderScope(
++      container: c,
++      child: MaterialApp.router(
++        routerConfig: router,
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ));
++    await tester.tap(find.text('OPEN'));
++    await settle(tester, frames: 8);
++    await tester.tap(find.byKey(const ValueKey('music-use')));
++    await settle(tester, frames: 8);
++    expect(pushed, [Routes.showcaseCreate]);
++    expect(c.read(pendingComposerMusicProvider)?.id, 5);
++  });
++}
+diff --git a/mobile_nova/test/tab_audio_test.dart b/mobile_nova/test/tab_audio_test.dart
+index ea47075..75df021 100644
+--- a/mobile_nova/test/tab_audio_test.dart
++++ b/mobile_nova/test/tab_audio_test.dart
+@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
+ import 'package:nfcstore_nova/features/profile/music_player.dart';
+ import 'package:nfcstore_nova/routing/shell.dart';
+ 
++import 'package:nfcstore_nova/routing/routes.dart';
++
+ import 'helpers.dart';
+ 
+ /// TAB ALMASHGANDA OVOZ TO'XTASIN.
+@@ -20,12 +22,14 @@ void main() {
+     expect(c.read(activeTabProvider), 0);
+   });
+ 
+-  test('Reels tabining raqami 3 — ekran shunga qaraydi', () {
+-    // `_ReelsScreenState` da `activeTabProvider == 3` deb yozilgan.
+-    // Tartib o'zgarsa Reels ovozi yana boshqa bo'limda eshitilardi.
+-    expect(HomeShell.tabRoutes.indexOf('/reels'), 3,
+-        reason: 'tab tartibi o‘zgardi — Reels ekranidagi raqam ham '
++  test('Ko‘rgazma tabining raqami — ekran shunga qaraydi', () {
++    // `ShowcaseScreen` ko'rinishni `activeTabProvider == kShowcaseTab`
++    // dan biladi. Tartib o'zgarsa musiqa boshqa bo'limda eshitilardi.
++    expect(HomeShell.tabRoutes.indexOf(Routes.showcase), kShowcaseTab,
++        reason: 'tab tartibi o‘zgardi — kShowcaseTab ham '
+             'yangilanishi kerak');
++    // Reels pastki menyuda YO'Q.
++    expect(HomeShell.tabRoutes, isNot(contains(Routes.reels)));
+   });
+ 
+   test('`stopAll` ro‘yxatdagi HAMMA manbani to‘xtatadi', () async {
+diff --git a/mobile_nova/test/tab_preload_test.dart b/mobile_nova/test/tab_preload_test.dart
+index 2f0bf7e..b19ed86 100644
+--- a/mobile_nova/test/tab_preload_test.dart
++++ b/mobile_nova/test/tab_preload_test.dart
+@@ -6,6 +6,7 @@ import 'package:nfcstore_nova/app/app.dart';
+ import 'package:nfcstore_nova/features/discover/discover_screen.dart';
+ import 'package:nfcstore_nova/features/nfc/nfc_center_screen.dart';
+ import 'package:nfcstore_nova/features/profile/profile_screen.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
+ import 'package:nfcstore_nova/features/social/reels_screen.dart';
+ import 'package:nfcstore_nova/routing/router.dart';
+ import 'package:nfcstore_nova/routing/routes.dart';
+@@ -16,11 +17,11 @@ import 'support/fake_video_platform.dart';
+ 
+ /// TABLAR OLDINDAN TAYYOR (egasi, 2026-10, iPhone TestFlight 303).
+ ///
+-/// Tanlov, Reels va Profil shell ochilganda yashirin quriladi —
++/// Tanlov, Ko'rgazma va Profil shell ochilganda yashirin quriladi —
+ /// birinchi bosishda spinner/kechikish yo'q. Asosiy — boshlang'ich
+ /// tab. NFC oldindan QURILMAYDI: u NFC sessiyasini boshlashi mumkin.
+ void main() {
+-  test('Tanlov, Reels, Profil — preload; NFC — yo‘q', () async {
++  test('Tanlov, Ko‘rgazma, Profil — preload; NFC — yo‘q', () async {
+     final c = ProviderContainer(overrides: [...await testOverrides()]);
+     addTearDown(c.dispose);
+     final router = c.read(routerProvider);
+@@ -35,13 +36,13 @@ void main() {
+       Routes.home: false,
+       Routes.discover: true,
+       Routes.nfc: false,
+-      Routes.reels: true,
++      Routes.showcase: true,
+       Routes.profile: true,
+     });
+   });
+ 
+-  testWidgets('ilovada: Asosiyda turganda Tanlov/Reels/Profil tayyor, '
+-      'NFC qurilmagan, Reels pleyer ochmagan; tab almashganda qayta '
++  testWidgets('ilovada: Asosiyda turganda Tanlov/Ko‘rgazma/Profil tayyor, '
++      'NFC qurilmagan, Ko‘rgazma pleyer ochmagan; tab almashganda qayta '
+       'qurilmaydi', (tester) async {
+     final video = FakeVideoPlatform();
+     VideoPlayerPlatform.instance = video;
+@@ -66,12 +67,14 @@ void main() {
+ 
+     Finder hidden(Type t) => find.byType(t, skipOffstage: false);
+     expect(hidden(DiscoverScreen), findsOneWidget);
+-    expect(hidden(ReelsScreen), findsOneWidget);
++    expect(hidden(ShowcaseScreen), findsOneWidget);
++    expect(hidden(ReelsScreen), findsNothing,
++        reason: 'Reels endi pastki menyuda yo‘q');
+     expect(hidden(ProfileScreen), findsOneWidget);
+     expect(hidden(NfcCenterScreen), findsNothing,
+         reason: 'NFC oldindan qurilmasligi kerak');
+     expect(video.created, isEmpty,
+-        reason: 'yashirin Reels video pleyer ochmasligi kerak');
++        reason: 'yashirin Ko‘rgazma pleyer ochmasligi kerak');
+ 
+     // Profil tabiga o'tish — o'sha tayyor ekran (yangi nusxa emas).
+     final before = tester.element(hidden(ProfileScreen));
+-- 
+2.43.0
+

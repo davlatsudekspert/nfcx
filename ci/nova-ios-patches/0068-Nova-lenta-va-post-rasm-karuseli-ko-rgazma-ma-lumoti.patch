@@ -1,0 +1,747 @@
+From 35f170d6d4556c1290880d9a51ec11ac14403248 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 17:19:40 +0000
+Subject: [PATCH 68/69] =?UTF-8?q?Nova:=20lenta=20va=20post=20=E2=80=94=20r?=
+ =?UTF-8?q?asm=20karuseli,=20ko'rgazma=20ma'lumoti,=20"=E2=8B=AF"=20(shiko?=
+ =?UTF-8?q?yat/bloklash)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Bir nechta rasmli post (faqat rasm) lentada va post tafsilotida
+  gorizontal karusel: surish, nuqtalar, bosilsa butun ekranda ko'rish.
+  Video post avvalgidek bitta media.
+- Ko'rgazma posti ixcham: sarlavha, narx ("125 000 so'm"), "Mahsulotni
+  ko'rish" va YouTube/Instagram havolasi (faqat tashqarida ochiladi) —
+  lentada ham, post tafsilotida ham (ShowcaseExtras).
+- Lenta kartasida "⋯": post tafsilotidagi o'sha shikoyat va bloklash
+  varag'i (biznes posti — company_post); bloklangach lenta yangilanadi;
+  o'z postimda yo'q. Sarlavha qatori balandligi o'zgarmagan, vaqt
+  yozuvi tor ekranda qisqaradi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../lib/features/home/home_screen.dart        |   8 +-
+ .../features/showcase/showcase_extras.dart    | 157 ++++++++++++
+ .../lib/features/social/feed_card.dart        |  85 ++++++-
+ .../lib/features/social/media_carousel.dart   |  87 +++++++
+ .../lib/features/social/post_screens.dart     |  21 +-
+ mobile_nova/test/showcase_feed_test.dart      | 229 ++++++++++++++++++
+ 6 files changed, 574 insertions(+), 13 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/showcase_extras.dart
+ create mode 100644 mobile_nova/test/showcase_feed_test.dart
+
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index 2090a78..a04ac41 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -1416,6 +1416,11 @@ class _AutoplayFeedState extends State<_AutoplayFeed> {
+     });
+   }
+ 
++  /// Kartadagi "⋯" dan muallif bloklandi — lenta qayta o'qiladi
++  /// (server bloklanganlarni bermaydi).
++  void _onBlocked() => ProviderScope.containerOf(context, listen: false)
++      .invalidate(homeFeedProvider);
++
+   @override
+   Widget build(BuildContext context) {
+     return Column(
+@@ -1430,9 +1435,10 @@ class _AutoplayFeedState extends State<_AutoplayFeed> {
+                     child: FeedCard(
+                       post: widget.posts[i],
+                       activeVideo: _dominant == i,
++                      onBlocked: _onBlocked,
+                     ),
+                   )
+-                : FeedCard(post: widget.posts[i]),
++                : FeedCard(post: widget.posts[i], onBlocked: _onBlocked),
+           ),
+       ],
+     );
+diff --git a/mobile_nova/lib/features/showcase/showcase_extras.dart b/mobile_nova/lib/features/showcase/showcase_extras.dart
+new file mode 100644
+index 0000000..4b3ddcb
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/showcase_extras.dart
+@@ -0,0 +1,157 @@
++import 'package:flutter/material.dart';
++import 'package:go_router/go_router.dart';
++
++import '../../core/utils/external_link.dart';
++import '../../data/models/models.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/nfc_tokens.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/surfaces.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../../routing/routes.dart';
++import 'showcase_common.dart';
++
++/// KO'RGAZMA MA'LUMOTI — lenta kartasi va post tafsilotida (yorug' fon).
++///
++/// Sarlavha, narx, "Mahsulotni ko'rish" va YouTube/Instagram havolasi
++/// (faqat tashqarida ochiladi). Ma'lumot yo'q — hech narsa chizilmaydi.
++class ShowcaseExtras extends StatelessWidget {
++  const ShowcaseExtras({
++    super.key,
++    required this.post,
++    this.keyPrefix = 'showcase-extras',
++  });
++
++  final Post post;
++  final String keyPrefix;
++
++  static bool hasAny(Post p) =>
++      p.title.isNotEmpty ||
++      p.priceUzs != null ||
++      p.catalogItem != null ||
++      showcaseLinkKind(p.linkUrl) != null;
++
++  @override
++  Widget build(BuildContext context) {
++    final p = post;
++    if (!hasAny(p)) return const SizedBox.shrink();
++    final l = L.of(context);
++    final t = context.tokens;
++    final link = showcaseLinkKind(p.linkUrl);
++    final item = p.catalogItem;
++    return Column(
++      crossAxisAlignment: CrossAxisAlignment.start,
++      mainAxisSize: MainAxisSize.min,
++      children: [
++        if (p.title.isNotEmpty)
++          Text(
++            p.title,
++            key: ValueKey('$keyPrefix-title'),
++            maxLines: 2,
++            overflow: TextOverflow.ellipsis,
++            style: TextStyle(
++              fontFamily: AppType.sans,
++              fontSize: 15.5,
++              fontWeight: FontWeight.w800,
++              height: 1.25,
++              color: t.text1,
++            ),
++          ),
++        if (p.priceUzs != null) ...[
++          if (p.title.isNotEmpty) const SizedBox(height: 2),
++          Text(
++            formatUzs(l, p.priceUzs!),
++            key: ValueKey('$keyPrefix-price'),
++            style: AppType.monoStyle(
++                color: t.text1, size: 14, weight: FontWeight.w700),
++          ),
++        ],
++        if (item != null || link != null) ...[
++          const SizedBox(height: Gap.sm),
++          Wrap(
++            spacing: Gap.sm,
++            runSpacing: 6,
++            children: [
++              if (item != null)
++                _Pill(
++                  key: ValueKey('$keyPrefix-product'),
++                  icon: Icons.shopping_bag_outlined,
++                  label: l.showcaseViewProduct,
++                  filled: true,
++                  onTap: () => context.push(
++                      Routes.catalogProduct(item.companyId, item.id)),
++                ),
++              if (link != null)
++                _Pill(
++                  key: ValueKey('$keyPrefix-link'),
++                  icon: Icons.open_in_new_rounded,
++                  label: showcaseLinkLabel(l, link),
++                  onTap: () => openLink(p.linkUrl),
++                ),
++            ],
++          ),
++        ],
++      ],
++    );
++  }
++}
++
++class _Pill extends StatelessWidget {
++  const _Pill({
++    super.key,
++    required this.icon,
++    required this.label,
++    required this.onTap,
++    this.filled = false,
++  });
++
++  final IconData icon;
++  final String label;
++  final VoidCallback onTap;
++  final bool filled;
++
++  @override
++  Widget build(BuildContext context) {
++    final t = context.tokens;
++    final fg = filled ? t.surfaceSolid : t.text1;
++    return Semantics(
++      button: true,
++      label: label,
++      excludeSemantics: true,
++      child: PressableScale(
++        onTap: onTap,
++        child: ConstrainedBox(
++          constraints: const BoxConstraints(minHeight: 40),
++          child: Container(
++            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
++            decoration: BoxDecoration(
++              color: filled ? t.text1 : t.surfaceSolid,
++              borderRadius: R.pill,
++              border: Border.all(color: filled ? t.text1 : t.border2),
++            ),
++            child: Row(
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                Icon(icon, size: 15, color: fg),
++                const SizedBox(width: 6),
++                Flexible(
++                  child: Text(
++                    label,
++                    maxLines: 1,
++                    overflow: TextOverflow.ellipsis,
++                    style: TextStyle(
++                      fontFamily: AppType.sans,
++                      fontSize: 12.5,
++                      fontWeight: FontWeight.w700,
++                      color: fg,
++                    ),
++                  ),
++                ),
++              ],
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index dfe5e7d..0958b5b 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -16,11 +16,14 @@ import '../home/widgets/avatar.dart';
+ import '../home/widgets/identity_card.dart';
+ import 'engagement.dart';
+ import 'image_viewer.dart';
++import 'media_carousel.dart';
+ import 'media_frame.dart';
++import 'moderation.dart';
+ import 'music_picker.dart' show MusicChip;
+ import 'post_contact_bar.dart';
+ import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
++import '../showcase/showcase_extras.dart';
+ 
+ /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
+ ///
+@@ -32,7 +35,11 @@ import '../../design/icons/nova_icons.dart';
+ ///
+ /// Endpointlarning hammasi serverda allaqachon bor edi.
+ class FeedCard extends ConsumerWidget {
+-  const FeedCard({super.key, required this.post, this.activeVideo});
++  const FeedCard(
++      {super.key, required this.post, this.activeVideo, this.onBlocked});
++
++  /// Muallif "⋯" menyusidan bloklandi — lenta yangilansin.
++  final VoidCallback? onBlocked;
+ 
+   /// Lentadagi DOMINANT karta shumi.
+   ///
+@@ -146,15 +153,18 @@ class FeedCard extends ConsumerWidget {
+                           // Usiz bugungi post bilan bir yillik post
+                           // lentada farq qilmasdi.
+                           if (post.createdAt != null)
+-                            Text(
+-                              '${post.code.isEmpty && !post.featured ? '' : ' · '}'
+-                              '${timeAgo(post.createdAt!, l)}',
+-                              key: const ValueKey('feed-time'),
+-                              maxLines: 1,
+-                              style: TextStyle(
+-                                fontFamily: AppType.sans,
+-                                fontSize: 11,
+-                                color: t.text3,
++                            Flexible(
++                              child: Text(
++                                '${post.code.isEmpty && !post.featured ? '' : ' · '}'
++                                '${timeAgo(post.createdAt!, l)}',
++                                key: const ValueKey('feed-time'),
++                                maxLines: 1,
++                                overflow: TextOverflow.ellipsis,
++                                style: TextStyle(
++                                  fontFamily: AppType.sans,
++                                  fontSize: 11,
++                                  color: t.text3,
++                                ),
+                               ),
+                             ),
+                         ],
+@@ -173,9 +183,57 @@ class FeedCard extends ConsumerWidget {
+                       .toggle(post.code,
+                           following: following, company: post.isCompany)),
+                 ),
++              // "⋯" — SHIKOYAT VA BLOKLASH (UGC talabi) lentaning o'zida,
++              // post tafsilotidagi varaqning aynan o'zi.
++              if (!mine && post.id > 0)
++                Semantics(
++                  button: true,
++                  label: l.reportTitle,
++                  excludeSemantics: true,
++                  child: InkResponse(
++                    key: const ValueKey('feed-more'),
++                    radius: 22,
++                    onTap: () => showContentActions(
++                      context,
++                      ref,
++                      target: post.isCompany
++                          ? ReportTarget.companyPost
++                          : ReportTarget.post,
++                      targetId: '${post.id}',
++                      ownerCode: post.code,
++                      blockKind:
++                          post.isCompany ? BlockKind.company : BlockKind.record,
++                      blockId: post.code,
++                      keyPrefix: 'feed',
++                      onBlocked: onBlocked,
++                    ),
++                    // Balandligi avatar bilan bir xil (38) — sarlavha
++                    // qatori va karta balandligi o'zgarmaydi.
++                    child: Padding(
++                      padding: const EdgeInsets.fromLTRB(8, 8, 0, 8),
++                      child: Icon(Icons.more_horiz_rounded,
++                          size: 22, color: t.text2),
++                    ),
++                  ),
++                ),
+             ],
+           ),
+-          if (media.isNotEmpty) ...[
++          // KARUSEL — bir nechta RASM (ko'rgazma posti): yon tomonga
++          // surish, ostida nuqtalar. Video post avvalgidek bitta media.
++          if (media.isNotEmpty && !post.isVideo && post.mediaUrls.length > 1) ...[
++            const SizedBox(height: Gap.md),
++            // Bosish — o'sha rasm butun ekranda (ikki marta bosib layk
++            // bu yerda yo'q: surish va bosish bilan to'qnashmasin).
++            MediaCarousel(
++              key: const ValueKey('feed-carousel'),
++              urls: post.mediaUrls,
++              keyPrefix: 'feed-carousel',
++              borderRadius: R.gentle,
++              background: t.surface2,
++              onTap: (i) =>
++                  openImageViewer(context, post.mediaUrls, initial: i),
++            ),
++          ] else if (media.isNotEmpty) ...[
+             const SizedBox(height: Gap.md),
+             // Quti media shakliga MOSLASHADI. Ilgari bu yerda
+             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
+@@ -228,6 +286,11 @@ class FeedCard extends ConsumerWidget {
+               ),
+             ),
+           ],
++          // KO'RGAZMA: sarlavha, narx, tovar va havola — ixcham.
++          if (ShowcaseExtras.hasAny(post)) ...[
++            const SizedBox(height: Gap.md),
++            ShowcaseExtras(post: post, keyPrefix: 'feed-showcase'),
++          ],
+           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
+           if (post.music != null) ...[
+             const SizedBox(height: Gap.md),
+diff --git a/mobile_nova/lib/features/social/media_carousel.dart b/mobile_nova/lib/features/social/media_carousel.dart
+index b89d044..0bda386 100644
+--- a/mobile_nova/lib/features/social/media_carousel.dart
++++ b/mobile_nova/lib/features/social/media_carousel.dart
+@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
+ import '../../design/motion/motion.dart';
+ import '../../design/tokens/shapes.dart';
+ import '../../l10n/gen/app_localizations.dart';
++import 'media_frame.dart' show mediaImage;
+ 
+ /// Karusel nuqtalari — faol rasm cho'ziq, qolganlari kichik doira
+ /// (katalog tovari galereyasi bilan bir xil uslub).
+@@ -46,3 +47,89 @@ class CarouselDots extends StatelessWidget {
+     );
+   }
+ }
++
++/// LENTA / POST KARUSELI — 2 tadan ko'p rasm (faqat rasm).
++///
++/// Gorizontal surish, ostida nuqtalar; rasm bosilsa [onTap] (odatda
++/// butun ekranda ko'rish). Quti 4:5 — rasm kesilmaydi (`contain`), bo'sh
++/// joy mavzu foni bilan.
++class MediaCarousel extends StatefulWidget {
++  const MediaCarousel({
++    super.key,
++    required this.urls,
++    this.onTap,
++    this.borderRadius = BorderRadius.zero,
++    this.background = Colors.black,
++    this.aspectRatio = 4 / 5,
++    this.keyPrefix = 'carousel',
++  });
++
++  final List<String> urls;
++  final void Function(int index)? onTap;
++  final BorderRadius borderRadius;
++  final Color background;
++  final double aspectRatio;
++
++  /// Sinov kalitlari: `<prefix>-pages`, `<prefix>-image-<i>`, `<prefix>-dots`.
++  final String keyPrefix;
++
++  @override
++  State<MediaCarousel> createState() => _MediaCarouselState();
++}
++
++class _MediaCarouselState extends State<MediaCarousel> {
++  final _page = PageController();
++  int _index = 0;
++
++  @override
++  void didUpdateWidget(MediaCarousel old) {
++    super.didUpdateWidget(old);
++    if (_index >= widget.urls.length) _index = 0;
++  }
++
++  @override
++  void dispose() {
++    _page.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final urls = widget.urls;
++    return Column(
++      mainAxisSize: MainAxisSize.min,
++      children: [
++        ClipRRect(
++          borderRadius: widget.borderRadius,
++          child: AspectRatio(
++            aspectRatio: widget.aspectRatio,
++            child: ColoredBox(
++              color: widget.background,
++              child: PageView.builder(
++                key: ValueKey('${widget.keyPrefix}-pages'),
++                controller: _page,
++                itemCount: urls.length,
++                onPageChanged: (i) => setState(() => _index = i),
++                itemBuilder: (context, i) => GestureDetector(
++                  key: ValueKey('${widget.keyPrefix}-image-$i'),
++                  behavior: HitTestBehavior.opaque,
++                  onTap: widget.onTap == null ? null : () => widget.onTap!(i),
++                  child: mediaImage(context, urls[i], fit: BoxFit.contain),
++                ),
++              ),
++            ),
++          ),
++        ),
++        if (urls.length > 1) ...[
++          const SizedBox(height: 8),
++          CarouselDots(
++            key: ValueKey('${widget.keyPrefix}-dots'),
++            count: urls.length,
++            index: _index,
++            color: Theme.of(context).colorScheme.onSurface,
++          ),
++        ],
++      ],
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 7af4ba4..ab75557 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -32,12 +32,14 @@ import '../profile/profile_screen.dart';
+ import 'comments.dart';
+ import 'engagement.dart';
+ import 'image_viewer.dart';
++import 'media_carousel.dart';
+ import 'reels_screen.dart';
+ import 'story_viewer.dart';
+ import 'media_frame.dart';
+ import 'content_rules.dart';
+ import 'moderation.dart';
+ import '../shop/store_policy.dart';
++import '../showcase/showcase_extras.dart';
+ import 'music_picker.dart';
+ import 'time_ago.dart';
+ import '../../design/icons/nova_icons.dart';
+@@ -340,7 +342,19 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     ),
+                 ],
+               ),
+-              if (p.mediaUrls.isNotEmpty) ...[
++              // KARUSEL — bir nechta rasm (ko'rgazma posti).
++              if (!p.isVideo && p.mediaUrls.length > 1) ...[
++                const SizedBox(height: Gap.lg),
++                MediaCarousel(
++                  key: const ValueKey('post-carousel'),
++                  urls: p.mediaUrls,
++                  keyPrefix: 'post-carousel',
++                  borderRadius: R.gentle,
++                  background: t.surface2,
++                  onTap: (i) =>
++                      openImageViewer(context, p.mediaUrls, initial: i),
++                ),
++              ] else if (p.mediaUrls.isNotEmpty) ...[
+                 const SizedBox(height: Gap.lg),
+                 // LENTA BILAN BIR XIL QUTI. Ilgari lentada
+                 // `AspectRatio(4 / 3)`, bu yerda `AspectRatio(1)`
+@@ -396,6 +410,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                   ],
+                 ),
+               ],
++              // KO'RGAZMA: sarlavha, narx, tovar va havola.
++              if (ShowcaseExtras.hasAny(p)) ...[
++                const SizedBox(height: Gap.lg),
++                ShowcaseExtras(post: p, keyPrefix: 'post-showcase'),
++              ],
+               if (p.music != null) ...[
+                 const SizedBox(height: Gap.lg),
+                 Align(
+diff --git a/mobile_nova/test/showcase_feed_test.dart b/mobile_nova/test/showcase_feed_test.dart
+new file mode 100644
+index 0000000..46cdc4d
+--- /dev/null
++++ b/mobile_nova/test/showcase_feed_test.dart
+@@ -0,0 +1,229 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/utils/external_link.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/business_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/profile/profile_repository.dart';
++import 'package:nfcstore_nova/features/social/feed_card.dart';
++import 'package:nfcstore_nova/features/social/media_carousel.dart';
++import 'package:nfcstore_nova/features/social/moderation.dart';
++import 'package:nfcstore_nova/features/social/post_screens.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++class _Mod extends ModerationRepository {
++  _Mod() : super(ApiClient());
++  final reports = <(ReportTarget, String)>[];
++  final blocked = <(BlockKind, String)>[];
++
++  @override
++  Future<Result<void>> report({
++    required ReportTarget target,
++    required String targetId,
++    required ReportReason reason,
++    String note = '',
++    String ownerCode = '',
++  }) async {
++    reports.add((target, targetId));
++    return const Ok(null);
++  }
++
++  @override
++  Future<Result<void>> block(BlockKind kind, String id) async {
++    blocked.add((kind, id));
++    return const Ok(null);
++  }
++}
++
++class _Profile extends ProfileRepository {
++  _Profile() : super(ApiClient());
++  @override
++  Future<Result<FollowStats>> followStats(String code) async =>
++      const Ok((followers: 0, following: 0, isFollowing: false));
++  @override
++  Future<Result<List<NfcId>>> followList(String code,
++          {String dir = 'followers'}) async =>
++      const Ok([]);
++}
++
++class _Biz extends BusinessRepository {
++  _Biz() : super(ApiClient());
++  @override
++  Future<Result<List<Business>>> mine() async => const Ok([]);
++}
++
++class _Social extends FakeSocialRepository {
++  _Social(this.posts);
++  final List<Post> posts;
++  @override
++  Future<Result<List<Post>>> postsOf(String code, {int page = 1}) async =>
++      Ok(posts.where((p) => p.code == code).toList());
++}
++
++const _photo = 'assets/demo/z_post_cafe.jpg';
++
++Post _showcase({String code = 'TTS075', int images = 3}) => Post(
++      id: 77,
++      code: code,
++      authorName: 'Tohir',
++      text: 'Tavsif',
++      showcase: true,
++      title: 'Qizil ko‘ylak',
++      priceUzs: 125000,
++      linkUrl: 'https://youtu.be/abc',
++      catalogItem: const PostCatalogItem(id: 'uuid-1', companyId: 'C7'),
++      mediaUrls: [for (var i = 0; i < images; i++) _photo],
++    );
++
++Future<({_Mod mod, List<String> pushed, List<int> blockedCalls})> _pump(
++  WidgetTester tester,
++  Widget child, {
++  List<Post> posts = const [],
++}) async {
++  tester.view.physicalSize = const Size(390 * 3, 1400 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final mod = _Mod();
++  final pushed = <String>[];
++  final base = await testOverrides();
++  final router = GoRouter(routes: [
++    GoRoute(path: '/', builder: (_, __) => child),
++    GoRoute(
++      path: '/catalog/:c/:i',
++      builder: (_, s) {
++        pushed.add(s.uri.path);
++        return const Scaffold(body: Text('PRODUCT'));
++      },
++    ),
++  ]);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [
++      ...base.where((o) => !identical(o, base[2])),
++      socialRepositoryProvider.overrideWithValue(_Social(posts)),
++      profileRepositoryProvider.overrideWithValue(_Profile()),
++      businessRepositoryProvider.overrideWithValue(_Biz()),
++      moderationRepositoryProvider.overrideWithValue(mod),
++    ],
++    child: MaterialApp.router(
++      routerConfig: router,
++      theme: buildTheme(NfcTokens.ivory),
++      locale: const Locale('uz'),
++      supportedLocales: LocaleController.supported,
++      localizationsDelegates: const [
++        L.delegate,
++        GlobalMaterialLocalizations.delegate,
++        GlobalWidgetsLocalizations.delegate,
++        GlobalCupertinoLocalizations.delegate,
++      ],
++    ),
++  ));
++  await settle(tester, frames: 8);
++  return (mod: mod, pushed: pushed, blockedCalls: <int>[]);
++}
++
++Widget _card(Post p, {VoidCallback? onBlocked}) => Scaffold(
++      body: ListView(children: [FeedCard(post: p, onBlocked: onBlocked)]),
++    );
++
++void main() {
++  testWidgets('lenta: bir nechta rasm — karusel, nuqtalar, surish',
++      (tester) async {
++    await _pump(tester, _card(_showcase()));
++    expect(find.byKey(const ValueKey('feed-carousel')), findsOneWidget);
++    expect(find.byKey(const ValueKey('feed-carousel-dots')), findsOneWidget);
++    int dot() => tester
++        .widget<CarouselDots>(find.byKey(const ValueKey('feed-carousel-dots')))
++        .index;
++    expect(dot(), 0);
++    await tester.drag(
++        find.byKey(const ValueKey('feed-carousel')), const Offset(-300, 0));
++    // Sahifa to'liq joyiga tushguncha (surish paytida bosish o'tmaydi).
++    await settle(tester, frames: 25);
++    expect(dot(), 1);
++
++    // Rasm bosilsa — butun ekranda ko'rish.
++    await tester.tap(find.byKey(const ValueKey('feed-carousel-image-1')));
++    await tester.pump(const Duration(milliseconds: 400));
++    await settle(tester, frames: 6);
++    expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
++  });
++
++  testWidgets('lenta: bitta rasm — karusel yo‘q', (tester) async {
++    await _pump(tester, _card(_showcase(images: 1)));
++    expect(find.byKey(const ValueKey('feed-carousel')), findsNothing);
++  });
++
++  testWidgets('lenta: sarlavha, narx, tovar va havola — ixcham',
++      (tester) async {
++    final opened = <Uri>[];
++    openLinkOverride = (u) async {
++      opened.add(u);
++      return true;
++    };
++    addTearDown(() => openLinkOverride = null);
++    final r = await _pump(tester, _card(_showcase()));
++    final l = LUz();
++    expect(find.text('Qizil ko‘ylak'), findsOneWidget);
++    expect(find.text('125 000 so‘m'), findsOneWidget);
++    expect(find.text(l.showcaseViewProduct), findsOneWidget);
++    expect(find.text(l.showcaseOpenYoutube), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('feed-showcase-link')));
++    await settle(tester, frames: 3);
++    expect(opened.single.toString(), 'https://youtu.be/abc');
++    await tester.tap(find.byKey(const ValueKey('feed-showcase-product')));
++    await settle(tester, frames: 6);
++    expect(r.pushed, ['/catalog/C7/uuid-1']);
++  });
++
++  testWidgets('lenta "⋯": shikoyat (post) va bloklash', (tester) async {
++    var blocked = 0;
++    final r = await _pump(tester, _card(_showcase(), onBlocked: () => blocked++));
++    final l = await L.delegate.load(const Locale('uz'));
++
++    await tester.tap(find.byKey(const ValueKey('feed-more')));
++    await settle(tester, frames: 8);
++    expect(find.byKey(const ValueKey('feed-report')), findsOneWidget);
++    expect(find.byKey(const ValueKey('feed-block')), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('feed-report')));
++    await settle(tester, frames: 8);
++    await tester.tap(find.text(ReportReason.spam.label(l)));
++    await settle(tester, frames: 2);
++    await tester.tap(find.text(l.reportTitle).last);
++    await settle(tester, frames: 8);
++    expect(r.mod.reports, [(ReportTarget.post, '77')]);
++
++    await tester.tap(find.byKey(const ValueKey('feed-more')));
++    await settle(tester, frames: 8);
++    await tester.tap(find.byKey(const ValueKey('feed-block')));
++    await settle(tester, frames: 8);
++    expect(r.mod.blocked, [(BlockKind.record, 'TTS075')]);
++    expect(blocked, 1);
++  });
++
++  testWidgets('lenta: o‘z postimda "⋯" yo‘q', (tester) async {
++    await _pump(tester, _card(_showcase(code: testIds.first.code)));
++    expect(find.byKey(const ValueKey('feed-more')), findsNothing);
++  });
++
++  testWidgets('post tafsiloti: karusel va ko‘rgazma ma’lumoti',
++      (tester) async {
++    final p = _showcase();
++    await _pump(tester, PostScreen(id: p.id, code: p.code), posts: [p]);
++    expect(find.byKey(const ValueKey('post-carousel')), findsOneWidget);
++    expect(find.byKey(const ValueKey('post-showcase-title')), findsOneWidget);
++    expect(find.text('125 000 so‘m'), findsOneWidget);
++    expect(find.byKey(const ValueKey('post-showcase-product')), findsOneWidget);
++    expect(find.byKey(const ValueKey('post-showcase-link')), findsOneWidget);
++  });
++}
+-- 
+2.43.0
+

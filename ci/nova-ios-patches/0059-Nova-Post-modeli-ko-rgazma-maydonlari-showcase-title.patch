@@ -1,0 +1,297 @@
+From 2eba1057727159a8429bb7f5b75bf64d0faf7f01 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 16:34:18 +0000
+Subject: [PATCH 59/69] =?UTF-8?q?Nova:=20Post=20modeli=20=E2=80=94=20ko'rg?=
+ =?UTF-8?q?azma=20maydonlari=20(showcase,=20title,=20priceUzs,=20linkUrl,?=
+ =?UTF-8?q?=20catalogItem,=20pending)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Yangi maydonlar yo'q/null bo'lsa xavfsiz sukut qiymatlari; narx
+  buzuq yoki manfiy — null.
+- PostCatalogItem: id va companyId satr (UUID; raqam ham satrga).
+- mediaUrls: birinchi bo'sh bo'lmagan ro'yxat olinadi.
+- inShowcase: ko'rgazma posti yoki rasmli reel (video emas).
+- copyWith/copyWithKind yangi maydonlarni saqlaydi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/lib/data/models/models.dart   | 105 +++++++++++++++++++-
+ mobile_nova/test/showcase_model_test.dart | 115 ++++++++++++++++++++++
+ 2 files changed, 218 insertions(+), 2 deletions(-)
+ create mode 100644 mobile_nova/test/showcase_model_test.dart
+
+diff --git a/mobile_nova/lib/data/models/models.dart b/mobile_nova/lib/data/models/models.dart
+index b6c0cf0..e102270 100644
+--- a/mobile_nova/lib/data/models/models.dart
++++ b/mobile_nova/lib/data/models/models.dart
+@@ -1389,10 +1389,40 @@ class Post {
+     this.imageSeconds = 10,
+     this.views = 0,
+     this.contact,
++    this.showcase = false,
++    this.title = '',
++    this.priceUzs,
++    this.linkUrl = '',
++    this.catalogItem,
++    this.pending = false,
+   });
+ 
+   final int id;
+ 
++  // ── KO'RGAZMA (showcase, shartnoma §3) ─────────────────────────────
++
++  /// Ko'rgazma posti: 1–5 rasm karusel, sarlavha, narx, tovar/havola.
++  final bool showcase;
++
++  /// Ko'rgazma sarlavhasi (≤ 80 belgi); bo'lmasa bo'sh.
++  final String title;
++
++  /// Narx — faqat so'mda, butun son; `null` — narxsiz.
++  final int? priceUzs;
++
++  /// YouTube / Instagram havolasi — faqat tashqarida ochiladi.
++  final String linkUrl;
++
++  /// Biriktirilgan katalog tovari (faqat kompaniya posti).
++  final PostCatalogItem? catalogItem;
++
++  /// Media hali tekshirilmagan — faqat EGASIGA keladi, boshqalar
++  /// bu postni umuman ko'rmaydi.
++  final bool pending;
++
++  /// Ko'rgazma bo'limida chiqadimi: ko'rgazma posti yoki rasmli reel.
++  bool get inShowcase => !isVideo && (showcase || reel);
++
+   /// Biznes postidagi "Bog'lanish" (telefon, Telegram, xarita) — faqat
+   /// FAOL kompaniya postida keladi ([PostContact]); bo'lmasa `null`.
+   final PostContact? contact;
+@@ -1475,6 +1505,12 @@ class Post {
+         imageSeconds: imageSeconds,
+         views: views,
+         contact: contact,
++        showcase: showcase,
++        title: title,
++        priceUzs: priceUzs,
++        linkUrl: linkUrl,
++        catalogItem: catalogItem,
++        pending: pending,
+       );
+ 
+   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
+@@ -1501,16 +1537,26 @@ class Post {
+         imageSeconds: imageSeconds,
+         views: views ?? this.views,
+         contact: contact,
++        showcase: showcase,
++        title: title,
++        priceUzs: priceUzs,
++        linkUrl: linkUrl,
++        catalogItem: catalogItem,
++        pending: pending,
+       );
+ 
+   factory Post.fromJson(Map<String, dynamic> j) {
+     final media = <String>[];
+-    final raw = j['media'] ?? j['images'] ?? j['mediaUrls'];
+-    if (raw is List) {
++    // Birinchi BO'SH BO'LMAGAN ro'yxat: ko'rgazma `mediaUrls` beradi,
++    // eski javoblar `media`/`images`. Bo'sh `media: []` keyingisini
++    // yashirmasin.
++    for (final raw in [j['media'], j['images'], j['mediaUrls']]) {
++      if (raw is! List) continue;
+       for (final e in raw) {
+         if (e is String && e.isNotEmpty) media.add(mediaUrl(e));
+         if (e is Map && e['url'] != null) media.add(_u(e['url']));
+       }
++      if (media.isNotEmpty) break;
+     }
+     // BO'SH SATR — `null` EMAS.
+     //
+@@ -1562,6 +1608,61 @@ class Post {
+       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
+       views: _i(j['viewCount'] ?? j['views']),
+       contact: PostContact.fromJson(j['contact']),
++      showcase: _b(j['showcase']),
++      title: _s(j['title']).trim(),
++      priceUzs: _priceOrNull(j['priceUzs']),
++      linkUrl: _externalLink(j['linkUrl']),
++      catalogItem: PostCatalogItem.tryParse(j['catalogItem']),
++      pending: _b(j['pending']),
++    );
++  }
++}
++
++/// TASHQI havola (YouTube/Instagram) — media EMAS, shuning uchun `_u`
++/// (server bazasini ulash) dan o'tmaydi; faqat bo'sh joylar olinadi.
++String _externalLink(dynamic v) => v == null ? '' : '$v'.trim();
++
++/// Narx: butun son yoki `null` (yo'q, bo'sh, manfiy yoki buzuq).
++int? _priceOrNull(dynamic v) {
++  if (v == null) return null;
++  final n = v is num ? v : num.tryParse('$v'.trim());
++  if (n == null || n < 0) return null;
++  return n.toInt();
++}
++
++/// Ko'rgazma postiga biriktirilgan katalog tovari (`post.catalogItem`).
++///
++/// [id] — kompaniya katalogidagi SATR id (UUID); server raqam bersa ham
++/// satrga aylantiriladi. [companyId] — ilovadagi `/catalog/:companyId/
++/// :itemId` manzilidagi ommaviy kompaniya identifikatori.
++class PostCatalogItem {
++  const PostCatalogItem({
++    required this.id,
++    required this.companyId,
++    this.name = '',
++    this.priceUzs,
++    this.image = '',
++  });
++
++  final String id;
++  final String companyId;
++  final String name;
++  final int? priceUzs;
++  final String image;
++
++  /// Buzuq yoki to'liq bo'lmagan qiymat (`null`, id/kompaniyasiz) —
++  /// `null`: tovar tugmasi chizilmaydi.
++  static PostCatalogItem? tryParse(dynamic v) {
++    if (v is! Map) return null;
++    final id = _s(v['id']).trim();
++    final company = _s(v['companyId']).trim();
++    if (id.isEmpty || company.isEmpty) return null;
++    return PostCatalogItem(
++      id: id,
++      companyId: company,
++      name: _s(v['name']),
++      priceUzs: _priceOrNull(v['priceUzs']),
++      image: _u(v['image']),
+     );
+   }
+ }
+diff --git a/mobile_nova/test/showcase_model_test.dart b/mobile_nova/test/showcase_model_test.dart
+new file mode 100644
+index 0000000..85388fc
+--- /dev/null
++++ b/mobile_nova/test/showcase_model_test.dart
+@@ -0,0 +1,115 @@
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++
++/// Post modeli — ko'rgazma maydonlari (shartnoma §3).
++void main() {
++  test('ko‘rgazma posti — hamma yangi maydonlar o‘qiladi', () {
++    final p = Post.fromJson({
++      'id': 9,
++      'code': 'C7',
++      'authorKind': 'company',
++      'showcase': true,
++      'title': '  Qizil ko‘ylak  ',
++      'priceUzs': 125000,
++      'linkUrl': 'https://youtu.be/abc',
++      'catalogItem': {
++        'id': 'b9fa1d77-794a-4b7a-b972-aecb1dce7c02',
++        'companyId': 'C7',
++        'name': 'Ko‘ylak',
++        'priceUzs': 125000,
++        'image': '/uploads/k.jpg',
++      },
++      'mediaUrls': ['/uploads/a.jpg', '/uploads/b.jpg'],
++      'pending': true,
++    });
++    expect(p.showcase, isTrue);
++    expect(p.inShowcase, isTrue);
++    expect(p.title, 'Qizil ko‘ylak');
++    expect(p.priceUzs, 125000);
++    expect(p.linkUrl, 'https://youtu.be/abc');
++    expect(p.catalogItem!.id, 'b9fa1d77-794a-4b7a-b972-aecb1dce7c02');
++    expect(p.catalogItem!.companyId, 'C7');
++    expect(p.catalogItem!.name, 'Ko‘ylak');
++    expect(p.catalogItem!.image, endsWith('/uploads/k.jpg'));
++    expect(p.mediaUrls, hasLength(2));
++    expect(p.mediaUrls.first, endsWith('/uploads/a.jpg'));
++    expect(p.pending, isTrue);
++    expect(p.isVideo, isFalse);
++  });
++
++  test('maydonlar yo‘q yoki null — xavfsiz sukut qiymatlari', () {
++    final p = Post.fromJson({
++      'id': 1,
++      'imageUrl': '/uploads/x.jpg',
++      'title': null,
++      'priceUzs': null,
++      'linkUrl': null,
++      'catalogItem': null,
++      'mediaUrls': null,
++      'pending': null,
++      'showcase': null,
++    });
++    expect(p.showcase, isFalse);
++    expect(p.title, '');
++    expect(p.priceUzs, isNull);
++    expect(p.linkUrl, '');
++    expect(p.catalogItem, isNull);
++    expect(p.pending, isFalse);
++    expect(p.mediaUrls, hasLength(1));
++  });
++
++  test('raqamli catalogItem.id satrga, buzuq narx — null', () {
++    final p = Post.fromJson({
++      'id': 2,
++      'priceUzs': 'abc',
++      'catalogItem': {'id': 123, 'companyId': 7},
++    });
++    expect(p.priceUzs, isNull);
++    expect(p.catalogItem!.id, '123');
++    expect(p.catalogItem!.companyId, '7');
++    expect(Post.fromJson({'id': 3, 'priceUzs': '5000'}).priceUzs, 5000);
++    expect(Post.fromJson({'id': 3, 'priceUzs': -1}).priceUzs, isNull);
++    // id yoki kompaniyasiz tovar — tugma chizilmaydi.
++    expect(
++        Post.fromJson({'id': 4, 'catalogItem': {'id': 'x'}}).catalogItem,
++        isNull);
++  });
++
++  test('bo‘sh `media` mediaUrls ni yashirmaydi', () {
++    final p = Post.fromJson({
++      'id': 5,
++      'media': <String>[],
++      'mediaUrls': ['/uploads/a.jpg'],
++    });
++    expect(p.mediaUrls, hasLength(1));
++  });
++
++  test('rasmli reel ko‘rgazmada, video — yo‘q', () {
++    expect(Post.fromJson({'id': 1, 'reel': true, 'imageUrl': '/u/a.jpg'})
++        .inShowcase, isTrue);
++    expect(Post.fromJson({'id': 1, 'reel': true, 'videoUrl': '/u/a.mp4'})
++        .inShowcase, isFalse);
++    expect(Post.fromJson({'id': 1, 'imageUrl': '/u/a.jpg'}).inShowcase,
++        isFalse);
++  });
++
++  test('copyWith yangi maydonlarni saqlaydi', () {
++    final p = Post.fromJson({
++      'id': 9,
++      'showcase': true,
++      'title': 'T',
++      'priceUzs': 10,
++      'linkUrl': 'https://youtu.be/a',
++      'pending': true,
++      'catalogItem': {'id': 'u', 'companyId': 'C'},
++    });
++    for (final q in [p.copyWith(likes: 3), p.copyWithKind(authorKind: 'company')]) {
++      expect(q.showcase, isTrue);
++      expect(q.title, 'T');
++      expect(q.priceUzs, 10);
++      expect(q.linkUrl, 'https://youtu.be/a');
++      expect(q.pending, isTrue);
++      expect(q.catalogItem!.id, 'u');
++    }
++  });
++}
+-- 
+2.43.0
+
