@@ -44,7 +44,7 @@ const drawOrder = <DrawTube>[
     }),
     colors: [Color(0xFFE8C21A), Color(0xFF222222)],
     note: LocalizedText({
-      'uz': 'Ozuqa muhiti (broth)',
+      'uz': 'Ozuqa muhiti (bulyon)',
       'ru': 'Питательная среда (бульон)',
       'en': 'Broth mixture',
     }),
@@ -58,7 +58,7 @@ const drawOrder = <DrawTube>[
     cap: LocalizedText({
       'uz': 'rang ko‘rsatilmagan',
       'ru': 'цвет не указан',
-      'en': 'colour not specified',
+      'en': 'color not specified',
     }),
     colors: [],
   ),
@@ -169,7 +169,7 @@ const drawOrder = <DrawTube>[
     note: LocalizedText({
       'uz': 'To‘liq to‘ldirilishi shart (kam to‘ldirilsa gemoliz bo‘lishi mumkin)',
       'ru': 'Полное заполнение (при недоборе возможен гемолиз)',
-      'en': 'Requires a full draw (a short draw may cause haemolysis)',
+      'en': 'Requires a full draw (a short draw may cause hemolysis)',
     }),
   ),
 ];
@@ -184,7 +184,7 @@ const drawOrderNotes = <LocalizedText>[
         'Цвета крышек и добавки различаются у производителей — сверяйте '
         'порядок с вашей лабораторией.',
     'en':
-        'Cap colours and additives vary by manufacturer — confirm the order '
+        'Cap colors and additives vary by manufacturer — confirm the order '
         'with your laboratory.',
   }),
   LocalizedText({
@@ -224,7 +224,7 @@ const drawOrderNotes = <LocalizedText>[
         'биохимия и банк крови.',
     'en':
         'For capillary (skin-puncture) sampling the order is reversed: '
-        'haematology first, then chemistry and blood bank.',
+        'hematology first, then chemistry and blood bank.',
   }),
 ];
 

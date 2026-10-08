@@ -1,7 +1,7 @@
 {
  "pack_id": "core",
  "schema_version": 1,
- "content_version": "2026.10.08-dev.3",
+ "content_version": "2026.10.08-dev.4",
  "groups": [
   {
    "id": "carbohydrate",
@@ -171,7 +171,7 @@
    ],
    "notes": {
     "preanalytics": {
-     "uz": "Probirka, saqlash va ajratish shartlari aniq reagent IFU va mahalliy SOP ga bog‘lanadi. Bu namunada universal vaqt, harorat yoki apparat parametri berilmagan.",
+     "uz": "Probirka, saqlash va ajratish shartlari aniq reagent IFU va mahalliy SOP ga bog‘lanadi. Bu yerda universal vaqt, harorat yoki apparat parametrlari berilmaydi.",
      "ru": "Пробирка, хранение и отделение образца привязываются к конкретной IFU реагента и локальной SOP. Универсальные время, температура и параметры прибора здесь не задаются.",
      "en": "Tube, storage and separation conditions are tied to the exact reagent IFU and local SOP. No universal times, temperatures or instrument settings are given here."
     }
@@ -188,7 +188,7 @@
      "low": 100,
      "high": 125,
      "population": {
-      "uz": "Homilador bo‘lmagan odamlar, kamida 8 soat ochlikdan keyin",
+      "uz": "Homilador bo‘lmagan odamlar, kamida 8 soat och qolgandan keyin",
       "ru": "Небеременные, после голодания не менее 8 часов",
       "en": "People who are not pregnant, after fasting for at least 8 hours"
      },
@@ -206,7 +206,7 @@
      "low": 126,
      "high": null,
      "population": {
-      "uz": "Homilador bo‘lmagan odamlar, kamida 8 soat ochlikdan keyin",
+      "uz": "Homilador bo‘lmagan odamlar, kamida 8 soat och qolgandan keyin",
       "ru": "Небеременные, после голодания не менее 8 часов",
       "en": "People who are not pregnant, after fasting for at least 8 hours"
      },
@@ -258,7 +258,7 @@
    "names": {
     "uz": "Glikirlangan gemoglobin (HbA1c)",
     "ru": "Гликированный гемоглобин (HbA1c)",
-    "en": "Glycated haemoglobin (HbA1c)"
+    "en": "Glycated hemoglobin (HbA1c)"
    },
    "synonyms": [
     "HbA1c",
@@ -452,7 +452,7 @@
       }
      ],
      "text": {
-      "uz": "HbA1c 1-tip diabet, homiladorlik (gestatsion) diabeti va mukovistsidoz bilan bog‘liq diabetni tashxislashda qo‘llanilmasligi kerak.",
+      "uz": "HbA1c 1-tip diabet, homiladorlik (gestatsion) diabeti va mukovissidoz bilan bog‘liq diabetni tashxislashda qo‘llanilmasligi kerak.",
       "ru": "HbA1c не следует использовать для диагностики диабета 1 типа, гестационного диабета и диабета, связанного с муковисцидозом.",
       "en": "A1C should not be used to diagnose type 1 diabetes, gestational diabetes or cystic fibrosis–related diabetes."
      }
@@ -588,7 +588,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "Glyukozaga tolerantlik testi (OGTT)",
+    "uz": "Og‘iz orqali glyukozaga tolerantlik testi (OGTT)",
     "ru": "Пероральный глюкозотолерантный тест (ПГТТ)",
     "en": "Oral glucose tolerance test (OGTT)"
    },
@@ -991,8 +991,8 @@
     "en": "pending"
    },
    "tagline": {
-    "uz": "Mushak chiqindisi, buyrak ko‘rsatkichi",
-    "ru": "Продукт мышц, показатель работы почек",
+    "uz": "Mushak almashinuvi mahsuloti, buyrak ko‘rsatkichi",
+    "ru": "Продукт обмена в мышцах, маркер функции почек",
     "en": "Muscle waste product, kidney marker"
    },
    "units": [
@@ -1027,8 +1027,8 @@
       }
      ],
      "text": {
-      "uz": "Buyraklar holatini tekshirish, buyrak kasalligini tashxislash, ma’lum buyrak muammolari va davolash samarasini kuzatish hamda buyraklarga ta’sir qilishi mumkin bo‘lgan dorilarning nojo‘ya ta’sirini aniqlash uchun qo‘llaniladi. Qondagi kreatinin alohida yoki asosiy (BMP) yoki kengaytirilgan (CMP) metabolik panel tarkibida o‘lchanadi.",
-      "ru": "Применяется для оценки состояния почек, диагностики их заболеваний, наблюдения за известной патологией почек и эффективностью лечения, а также для выявления побочного действия лекарств на почки. Креатинин крови определяют отдельно или в составе базовой (BMP) или расширенной (CMP) метаболической панели.",
+      "uz": "Buyraklar holatini tekshirish, buyrak kasalligini tashxislash, ma’lum buyrak muammolari va davolash samarasini kuzatish hamda buyraklarga ta’sir qilishi mumkin bo‘lgan dorilarning nojo‘ya ta’sirini aniqlash uchun qo‘llaniladi. Qondagi kreatinin alohida yoki asosiy metabolik panel (BMP) yoki kompleks metabolik panel (CMP) tarkibida o‘lchanadi.",
+      "ru": "Применяется для оценки состояния почек, диагностики их заболеваний, наблюдения за известной патологией почек и эффективностью лечения, а также для выявления побочного действия лекарств на почки. Креатинин крови определяют отдельно или в составе базовой (BMP) или комплексной (CMP) метаболической панели.",
       "en": "Used to check kidney health, help diagnose kidney disease, monitor known kidney problems and how treatment is working, and check for side effects of medicines that may affect the kidneys. Blood creatinine may be measured alone or within a basic (BMP) or comprehensive (CMP) metabolic panel."
      }
     },
@@ -1083,7 +1083,7 @@
       }
      ],
      "text": {
-      "uz": "NIDDK laboratoriyalarga qon zardobidagi kreatinin har safar o‘lchanganda eGFR ni ham hisobot qilishni taklif qiladi. eGFR formulalaridagi yaxlitlash xatolarini kamaytirish uchun kreatinin mg/dL da ikki kasr xonagacha, µmol/L da butun songacha yaxlitlanadi.",
+      "uz": "NIDDK laboratoriyalarga qon zardobidagi kreatinin har safar o‘lchanganda natijada eGFR ni ham ko‘rsatishni taklif qiladi. eGFR formulalaridagi yaxlitlash xatolarini kamaytirish uchun kreatinin mg/dL da ikki kasr xonagacha, µmol/L da butun songacha yaxlitlanadi.",
       "ru": "NIDDK предлагает лабораториям сообщать рСКФ при каждом определении креатинина сыворотки. Чтобы уменьшить ошибки округления в формулах рСКФ, креатинин округляют до двух знаков после запятой в мг/дл или до целого числа в мкмоль/л.",
       "en": "NIDDK suggests that laboratories report eGFR whenever serum creatinine is measured. To reduce rounding errors in eGFR equations, creatinine is rounded to two decimal places in mg/dL or to the nearest whole number in µmol/L."
      }
@@ -1282,8 +1282,8 @@
       }
      ],
      "text": {
-      "uz": "BUN ko‘pincha kengaytirilgan metabolik panel (CMP) tarkibida o‘lchanadi va buyrak kasalliklarini tashxislash yoki kuzatishga yordam beradi. Erta buyrak kasalligi odatda belgilarsiz kechgani uchun u xavf guruhidagi odamlarni skrining qilishda ham qo‘llaniladi.",
-      "ru": "BUN часто входит в расширенную метаболическую панель (CMP) и помогает диагностировать заболевания почек или наблюдать за ними. Поскольку ранняя болезнь почек обычно протекает без симптомов, его используют и для скрининга людей из групп риска.",
+      "uz": "BUN ko‘pincha kompleks metabolik panel (CMP) tarkibida o‘lchanadi va buyrak kasalliklarini tashxislash yoki kuzatishga yordam beradi. Erta buyrak kasalligi odatda belgilarsiz kechgani uchun u xavf guruhidagi odamlarni skrining qilishda ham qo‘llaniladi.",
+      "ru": "BUN часто входит в комплексную метаболическую панель (CMP) и помогает диагностировать заболевания почек или наблюдать за ними. Поскольку ранняя болезнь почек обычно протекает без симптомов, его используют и для скрининга людей из групп риска.",
       "en": "BUN is often part of a comprehensive metabolic panel (CMP) and helps diagnose or monitor kidney diseases. Because early kidney disease usually has no signs or symptoms, it is also used to screen people at risk."
      }
     },
@@ -1400,7 +1400,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "Koptokcha filtratsiyasi tezligi (eGFR)",
+    "uz": "Hisoblangan koptokcha filtratsiyasi tezligi (eGFR)",
     "ru": "Расчётная скорость клубочковой фильтрации (рСКФ)",
     "en": "Estimated glomerular filtration rate (eGFR)"
    },
@@ -1853,7 +1853,7 @@
       }
      ],
      "text": {
-      "uz": "Qonda siydik kislotasi yuqoriligi bilan bog‘liq bo‘lishi mumkin bo‘lgan holatlar: podagra, buyrak kasalligi yoki buyrak toshlari, leykemiya, mieloma kasalligi, metastaz bergan saraton, kimyoterapiya kabi saraton davolashining nojo‘ya ta’siri, alkogolga qaramlik va preeklampsiya.",
+      "uz": "Qonda siydik kislotasi yuqoriligi bilan bog‘liq bo‘lishi mumkin bo‘lgan holatlar: podagra, buyrak kasalligi yoki buyrak toshlari, leykemiya, multipl miyeloma, metastaz bergan saraton, kimyoterapiya kabi saraton davolashining nojo‘ya ta’siri, alkogolga qaramlik va preeklampsiya.",
       "ru": "Состояния, которые могут быть связаны с высокой мочевой кислотой в крови: подагра, болезнь почек или камни в почках, лейкоз, множественная миелома, метастатический рак, побочные эффекты лечения рака (например, химиотерапии), алкогольная зависимость и преэклампсия.",
       "en": "Conditions that may be related to high blood uric acid include gout, kidney disease or kidney stones, leukemia, multiple myeloma, metastatic cancer, side effects of cancer treatment such as chemotherapy, alcohol use disorder and preeclampsia."
      }
@@ -1881,7 +1881,7 @@
       }
      ],
      "text": {
-      "uz": "Siydikda siydik kislotasining yuqori bo‘lishi podagra, buyrak toshlari yoki ularning yuqori xavfi, leykemiya, mieloma kasalligi yoki metastaz bergan saraton, semizlik yoki Lesh–Nixan sindromi kabi irsiy kasallik bilan bog‘liq bo‘lishi mumkin.",
+      "uz": "Siydikda siydik kislotasining yuqori bo‘lishi podagra, buyrak toshlari yoki ularning yuqori xavfi, leykemiya, multipl miyeloma yoki metastaz bergan saraton, semizlik yoki Lesh–Nixan sindromi kabi irsiy kasallik bilan bog‘liq bo‘lishi mumkin.",
       "ru": "Высокая мочевая кислота в моче может быть связана с подагрой, камнями в почках или высоким риском их образования, лейкозом, множественной миеломой или метастатическим раком, ожирением, а также наследственным заболеванием, например синдромом Леша–Найхана.",
       "en": "High urine uric acid may be related to gout, kidney stones or a high risk of them, leukemia, multiple myeloma or metastatic cancer, obesity, or an inherited genetic condition such as Lesch–Nyhan syndrome."
      }
@@ -2073,7 +2073,7 @@
       }
      ],
      "text": {
-      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ayrimlarini to‘xtatish kerak bo‘lishi mumkin, lekin faqat shifokor ko‘rsatmasi bilan. ALT odatda boshqa qon tahlillari bilan birga buyurilgani uchun ko‘pincha bir necha soat ochlik talab qilinadi.",
+      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ayrimlarini to‘xtatish kerak bo‘lishi mumkin, lekin faqat shifokor ko‘rsatmasi bilan. ALT odatda boshqa qon tahlillari bilan birga buyurilgani uchun ko‘pincha bir necha soat och qolish talab qilinadi.",
       "ru": "Нужно сообщить врачу обо всех принимаемых лекарствах; некоторые может потребоваться временно отменить, но только по указанию врача. Поскольку АЛТ обычно назначают вместе с другими анализами, часто требуется голодание в течение нескольких часов.",
       "en": "Tell the provider about all medicines taken; some may need to be paused, but only on the provider's advice. Because ALT is usually ordered with other blood tests, fasting for several hours is often required."
      }
@@ -2303,7 +2303,7 @@
       }
      ],
      "text": {
-      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin. AST odatda boshqa qon tahlillari bilan birga buyuriladi, ular uchun ko‘pincha 12 soatgacha ochlik talab qilinadi.",
+      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin. AST odatda boshqa qon tahlillari bilan birga buyuriladi, ular uchun ko‘pincha 12 soatgacha och qolish talab qilinadi.",
       "ru": "Нужно сообщить врачу обо всех принимаемых лекарствах; отменять их можно только по указанию врача. АСТ обычно назначают вместе с другими анализами, для которых часто требуется голодание до 12 часов.",
       "en": "Tell the provider about all medicines taken; stop any only if the provider says so. AST is usually ordered with other blood tests, which often require fasting for up to 12 hours."
      }
@@ -2502,7 +2502,7 @@
       }
      ],
      "text": {
-      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ayrimlarini to‘xtatish kerak bo‘lishi mumkin, lekin faqat shifokor ko‘rsatmasi bilan. ALP odatda boshqa qon tahlillari bilan birga buyurilgani uchun ko‘pincha bir necha soat ochlik talab qilinadi.",
+      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ayrimlarini to‘xtatish kerak bo‘lishi mumkin, lekin faqat shifokor ko‘rsatmasi bilan. ALP odatda boshqa qon tahlillari bilan birga buyurilgani uchun ko‘pincha bir necha soat och qolish talab qilinadi.",
       "ru": "Нужно сообщить врачу обо всех принимаемых лекарствах; некоторые может потребоваться временно отменить, но только по указанию врача. Поскольку ЩФ обычно назначают вместе с другими анализами, часто требуется голодание в течение нескольких часов.",
       "en": "Tell the provider about all medicines taken; some may need to be paused, but only on the provider's advice. Because ALP is usually ordered with other blood tests, fasting for several hours is often required."
      }
@@ -2709,7 +2709,7 @@
       }
      ],
      "text": {
-      "uz": "Maxsus ko‘rsatmalarni shifokordan aniqlash kerak; tahlildan oldin ma’lum vaqt ochlik saqlash so‘ralishi mumkin.",
+      "uz": "Maxsus ko‘rsatmalarni shifokordan aniqlash kerak; tahlildan oldin ma’lum vaqt och qolish so‘ralishi mumkin.",
       "ru": "Особые указания следует уточнить у врача; перед анализом может потребоваться голодание в течение определённого времени.",
       "en": "Ask the provider about specific instructions; fasting for a set time before the test may be requested."
      }
@@ -2888,8 +2888,8 @@
       }
      ],
      "text": {
-      "uz": "Shifokor tahlildan oldin bir necha soat ochlik saqlashni so‘rashi mumkin. Qabul qilinayotgan barcha dorilar haqida aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin.",
-      "ru": "Врач может попросить не есть и не пить несколько часов перед анализом. Нужно сообщить обо всех принимаемых лекарствах; отменять их можно только по указанию врача.",
+      "uz": "Shifokor tahlildan oldin bir necha soat och qolishni so‘rashi mumkin. Qabul qilinayotgan barcha dorilar haqida aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin.",
+      "ru": "Врач может попросить сдавать анализ натощак, после голодания в течение нескольких часов. Нужно сообщить обо всех принимаемых лекарствах; отменять их можно только по указанию врача.",
       "en": "The provider may ask for fasting for several hours before the test. Tell the provider about all medicines taken; stop any only if the provider says so."
      }
     },
@@ -2939,7 +2939,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "To‘g‘ri (bog‘langan) bilirubin",
+    "uz": "Bevosita (bog‘langan) bilirubin",
     "ru": "Прямой (связанный) билирубин",
     "en": "Direct (conjugated) bilirubin"
    },
@@ -2947,7 +2947,9 @@
     "direct bilirubin",
     "conjugated bilirubin",
     "прямой билирубин",
-    "DBIL"
+    "DBIL",
+    "to‘g‘ri bilirubin",
+    "bevosita bilirubin"
    ],
    "group": "liver",
    "sections": [
@@ -2983,7 +2985,7 @@
       }
      ],
      "text": {
-      "uz": "To‘g‘ri (bog‘langan) bilirubin qondagi bilirubin tahlilida umumiy va noto‘g‘ri (bog‘lanmagan) bilirubin bilan bir qatorda qayd etiladigan nomlardan biridir.",
+      "uz": "Bevosita (bog‘langan) bilirubin qondagi bilirubin tahlilida umumiy va bilvosita (bog‘lanmagan) bilirubin bilan bir qatorda qayd etiladigan nomlardan biridir.",
       "ru": "Прямой (связанный) билирубин — одно из названий, под которыми проводится исследование билирубина в крови, наряду с общим и непрямым (несвязанным) билирубином.",
       "en": "Direct (conjugated) bilirubin is one of the names under which bilirubin blood testing is done, alongside total and indirect (unconjugated) bilirubin."
      }
@@ -3047,8 +3049,8 @@
       }
      ],
      "text": {
-      "uz": "Shifokor tahlildan oldin bir necha soat ochlik saqlashni so‘rashi mumkin. Qabul qilinayotgan barcha dorilar haqida aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin.",
-      "ru": "Врач может попросить не есть и не пить несколько часов перед анализом. Нужно сообщить обо всех принимаемых лекарствах; отменять их можно только по указанию врача.",
+      "uz": "Shifokor tahlildan oldin bir necha soat och qolishni so‘rashi mumkin. Qabul qilinayotgan barcha dorilar haqida aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin.",
+      "ru": "Врач может попросить сдавать анализ натощак, после голодания в течение нескольких часов. Нужно сообщить обо всех принимаемых лекарствах; отменять их можно только по указанию врача.",
       "en": "The provider may ask for fasting for several hours before the test. Tell the provider about all medicines taken; stop any only if the provider says so."
      }
     }
@@ -3152,7 +3154,7 @@
       }
      ],
      "text": {
-      "uz": "Tahlil muntazam ko‘rik doirasida buyurilishi mumkin; qachon va qanchalik tez-tez o‘tkazilishi yosh, xavf omillari va oilaviy anamnezga bog‘liq. Yurak muammolari xavfi yuqori bo‘lsa (oilada yurak kasalligi, yuqori qon bosimi, 2-tur qandli diabet, chekish, ortiqcha vazn, kam harakatlilik, to‘yingan yog‘larga boy ovqatlanish), tahlil tez-tez qilinishi mumkin.",
+      "uz": "Tahlil muntazam ko‘rik doirasida buyurilishi mumkin; qachon va qanchalik tez-tez o‘tkazilishi yosh, xavf omillari va oilaviy anamnezga bog‘liq. Yurak muammolari xavfi yuqori bo‘lsa (oilada yurak kasalligi, yuqori qon bosimi, 2-tip qandli diabet, chekish, ortiqcha vazn, kam harakatlilik, to‘yingan yog‘larga boy ovqatlanish), tahlil tez-tez qilinishi mumkin.",
       "ru": "Анализ может назначаться в рамках планового обследования; когда и как часто его делать, зависит от возраста, факторов риска и семейного анамнеза. При высоком риске проблем с сердцем (болезни сердца в семье, высокое давление, сахарный диабет 2 типа, курение, избыточный вес, недостаток физической активности, питание с избытком насыщенных жиров) анализ могут делать чаще.",
       "en": "The test may be ordered as part of a routine exam; when and how often depends on age, risk factors and family history. It may be done more often with a high risk of heart problems, such as a family history of heart disease, high blood pressure, type 2 diabetes, smoking, excess weight, lack of physical activity or a diet high in saturated fat."
      }
@@ -3188,7 +3190,7 @@
       }
      ],
      "text": {
-      "uz": "Irsiy gen o‘zgarishlari oilaviy giperxolesterinemiyaga sabab bo‘lishi mumkin. Yuqori xolesterin xavfi bilan bog‘liq kasalliklar: surunkali buyrak kasalligi, qandli diabet, OIV/OITS, gipotireoz, qizil yuguruk (lyupus), ortiqcha vazn va semizlik, polikistoz tuxumdon sindromi va uyqudagi apnoe.",
+      "uz": "Irsiy gen o‘zgarishlari oilaviy giperxolesterinemiyaga sabab bo‘lishi mumkin. Yuqori xolesterin xavfi bilan bog‘liq kasalliklar: surunkali buyrak kasalligi, qandli diabet, OIV/OITS, gipotireoz, qizil yugurik (lupus), ortiqcha vazn va semizlik, polikistoz tuxumdon sindromi va uyqudagi apnoe.",
       "ru": "Наследственные изменения генов могут вызывать семейную гиперхолестеринемию. С риском высокого холестерина связаны хроническая болезнь почек, сахарный диабет, ВИЧ/СПИД, гипотиреоз, красная волчанка, избыточный вес и ожирение, синдром поликистозных яичников и апноэ сна.",
       "en": "Inherited gene changes can cause familial hypercholesterolemia. Conditions associated with a risk of high cholesterol include chronic kidney disease, diabetes, HIV/AIDS, hypothyroidism, lupus, overweight and obesity, polycystic ovary syndrome and sleep apnea."
      }
@@ -3254,7 +3256,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "YuZLP xolesterini (HDL-C)",
+    "uz": "HDL xolesterin (YuZLP)",
     "ru": "Холестерин ЛПВП",
     "en": "HDL cholesterol"
    },
@@ -3432,7 +3434,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "PZLP xolesterini (LDL-C)",
+    "uz": "LDL xolesterin (PZLP)",
     "ru": "Холестерин ЛПНП",
     "en": "LDL cholesterol"
    },
@@ -3810,7 +3812,7 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "Non-HDL xolesterin",
+    "uz": "HDL bo‘lmagan xolesterin (non-HDL)",
     "ru": "Холестерин не-ЛПВП",
     "en": "Non-HDL cholesterol"
    },
@@ -4038,7 +4040,7 @@
       }
      ],
      "text": {
-      "uz": "Albuminning o‘zi uchun maxsus tayyorgarlik kerak emas; boshqa qon tahlillari ham buyurilgan bo‘lsa, bir necha soat ochlik talab qilinishi mumkin. Ayrim dorilar natijaga ta’sir qilgani uchun qabul qilinayotgan dorilar haqida shifokorga aytish kerak.",
+      "uz": "Albuminning o‘zi uchun maxsus tayyorgarlik kerak emas; boshqa qon tahlillari ham buyurilgan bo‘lsa, bir necha soat och qolish talab qilinishi mumkin. Ayrim dorilar natijaga ta’sir qilgani uchun qabul qilinayotgan dorilar haqida shifokorga aytish kerak.",
       "ru": "Для самого альбумина специальной подготовки не требуется; если назначены и другие анализы крови, может понадобиться голодание в течение нескольких часов. Некоторые лекарства влияют на результат, поэтому нужно сообщить врачу о принимаемых препаратах.",
       "en": "No special preparation is needed for albumin itself; fasting for several hours may be needed if other blood tests are ordered. Some medicines can affect the result, so tell the provider what is being taken."
      }
@@ -4210,7 +4212,7 @@
       }
      ],
      "text": {
-      "uz": "A/G nisbatining yuqoriligi ayrim irsiy kasalliklar yoki leykoz bilan bog‘liq bo‘lishi mumkin.",
+      "uz": "A/G nisbatining yuqoriligi ayrim irsiy kasalliklar yoki leykemiya bilan bog‘liq bo‘lishi mumkin.",
       "ru": "Высокий коэффициент А/Г может быть вызван некоторыми генетическими нарушениями или лейкозом.",
       "en": "A high A/G ratio may be caused by certain types of genetic disorders or leukemia."
      }
@@ -4242,7 +4244,7 @@
       }
      ],
      "text": {
-      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin. Test boshqa qon tahlili tarkibida bo‘lsa, bir necha soat ochlik talab qilinishi mumkin.",
+      "uz": "Qabul qilinayotgan barcha dorilar haqida shifokorga aytish kerak; ularni faqat shifokor ko‘rsatmasi bilan to‘xtatish mumkin. Test boshqa qon tahlili tarkibida bo‘lsa, bir necha soat och qolish talab qilinishi mumkin.",
       "ru": "Нужно сообщить врачу обо всех принимаемых лекарствах; отменять их можно только по указанию врача. Если тест входит в состав другого анализа крови, может потребоваться голодание в течение нескольких часов.",
       "en": "Tell the provider about all medicines taken; stop any only if the provider says so. If the test is part of another blood test, fasting for several hours may be needed."
      }
@@ -4482,7 +4484,7 @@
      ],
      "text": {
       "uz": "Natriy — elektrolit: u organizmdagi suyuqlik miqdori va kislota-asos (pH) muvozanatini boshqarishga yordam beradi hamda asab va mushaklarning to‘g‘ri ishlashi uchun zarur. Natriyning asosiy qismi ovqat bilan tushadi; ortiqchasini buyraklar siydik bilan chiqaradi va qondagi natriy odatda juda tor chegarada saqlanadi.",
-      "ru": "Натрий — электролит: он помогает регулировать количество жидкости в организме и кислотно-щелочной (pH) баланс, а также необходим для нормальной работы нервов и мышц. Основная часть натрия поступает с пищей; избыток почки выводят с мочой, а уровень натрия в крови обычно удерживается в очень узких пределах.",
+      "ru": "Натрий — электролит: он помогает регулировать количество жидкости в организме и кислотно-основной (pH) баланс, а также необходим для нормальной работы нервов и мышц. Основная часть натрия поступает с пищей; избыток почки выводят с мочой, а уровень натрия в крови обычно удерживается в очень узких пределах.",
       "en": "Sodium is an electrolyte: it helps control the amount of body fluid and the acid–base (pH) balance, and helps nerves and muscles work properly. Most sodium comes from the diet; the kidneys excrete any excess in urine, and blood sodium is normally kept within a very narrow range."
      }
     },
@@ -4495,8 +4497,8 @@
       }
      ],
      "text": {
-      "uz": "Umumiy sog‘liqni tekshirishda qo‘llaniladigan muntazam tahlil; suyuqlik, elektrolitlar va kislotalilik muvozanatiga ta’sir qiluvchi holatlarni aniqlash va kuzatishga yordam beradi. Ko‘pincha elektrolitlar paneli, asosiy (BMP) yoki kengaytirilgan (CMP) metabolik panel tarkibida bajariladi.",
-      "ru": "Рутинный анализ для оценки общего состояния здоровья; помогает выявлять и контролировать состояния, нарушающие баланс жидкости, электролитов и кислотности. Часто выполняется в составе электролитной панели, базовой (BMP) или расширенной (CMP) метаболической панели.",
+      "uz": "Umumiy sog‘liqni tekshirishda qo‘llaniladigan muntazam tahlil; suyuqlik, elektrolitlar va kislotalilik muvozanatiga ta’sir qiluvchi holatlarni aniqlash va kuzatishga yordam beradi. Ko‘pincha elektrolitlar paneli, asosiy (BMP) yoki kompleks (CMP) metabolik panel tarkibida bajariladi.",
+      "ru": "Рутинный анализ для оценки общего состояния здоровья; помогает выявлять и контролировать состояния, нарушающие баланс жидкости, электролитов и кислотности. Часто выполняется в составе электролитной панели, базовой (BMP) или комплексной (CMP) метаболической панели.",
       "en": "A routine test of general health that helps find and monitor conditions affecting the balance of fluids, electrolytes and acidity. It is often done as part of an electrolyte panel or a basic (BMP) or comprehensive (CMP) metabolic panel."
      }
     },
@@ -4595,7 +4597,7 @@
     "magnesium"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon",
+    "uz": "Venoz qon",
     "ru": "Венозная кровь",
     "en": "Venous blood"
    }
@@ -4684,7 +4686,7 @@
       }
      ],
      "text": {
-      "uz": "Kaliyning yuqori bo‘lishi (giperkaliyemiya) ko‘pincha ikki yoki undan ortiq sabab natijasidir. Mumkin bo‘lgan sabablar: buyrak kasalligi, Addison kasalligi, jarohatlar, kuyishlar yoki jarrohlik (hujayralardan qonga ortiqcha kaliy chiqadi), yaxshi nazorat qilinmayotgan 1-tur diabet, ayrim dorilarning (masalan, diuretiklar yoki antibiotiklar) nojo‘ya ta’siri va kamdan-kam hollarda ovqat yoki qo‘shimchalar bilan juda ko‘p kaliy qabul qilish.",
+      "uz": "Kaliyning yuqori bo‘lishi (giperkaliyemiya) ko‘pincha ikki yoki undan ortiq sabab natijasidir. Mumkin bo‘lgan sabablar: buyrak kasalligi, Addison kasalligi, jarohatlar, kuyishlar yoki jarrohlik (hujayralardan qonga ortiqcha kaliy chiqadi), yaxshi nazorat qilinmayotgan 1-tip diabet, ayrim dorilarning (masalan, diuretiklar yoki antibiotiklar) nojo‘ya ta’siri va kamdan-kam hollarda ovqat yoki qo‘shimchalar bilan juda ko‘p kaliy qabul qilish.",
       "ru": "Повышенный калий (гиперкалиемия) часто обусловлен двумя и более причинами. Возможны: болезни почек, болезнь Аддисона, травмы, ожоги или операции (клетки высвобождают в кровь избыток калия), плохо контролируемый диабет 1 типа, побочное действие некоторых лекарств (например, диуретиков или антибиотиков) и, нечасто, очень большое поступление калия с пищей или добавками.",
       "en": "High potassium (hyperkalemia) often has two or more causes. Possibilities include kidney disease, Addison disease, injuries, burns or surgery (which make cells release extra potassium), poorly controlled type 1 diabetes, side effects of certain medicines such as diuretics or antibiotics and, uncommonly, a very high potassium intake from food or supplements."
      }
@@ -4770,7 +4772,7 @@
     "magnesium"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon (qon zardobi)",
+    "uz": "Venoz qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
    }
@@ -4780,16 +4782,17 @@
    "status": "draft",
    "content_state": "sourced_sample",
    "names": {
-    "uz": "Xlor (Cl)",
-    "ru": "Хлор (Cl)",
-    "en": "Chloride (Cl)"
+    "uz": "Xlorid (Cl⁻)",
+    "ru": "Хлорид (Cl⁻)",
+    "en": "Chloride (Cl⁻)"
    },
    "synonyms": [
     "Cl",
     "xlor",
     "хлор",
     "хлориды",
-    "chloride"
+    "chloride",
+    "xlorid"
    ],
    "group": "electrolytes",
    "sections": [
@@ -4814,7 +4817,7 @@
    },
    "tagline": {
     "uz": "Suyuqlik va kislota-asos elektroliti",
-    "ru": "Электролит водного и кислотно-щелочного баланса",
+    "ru": "Электролит водного и кислотно-основного баланса",
     "en": "Fluid and acid–base electrolyte"
    },
    "units": [],
@@ -4954,7 +4957,7 @@
     "magnesium"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon (qon zardobi)",
+    "uz": "Venoz qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
    }
@@ -5053,7 +5056,7 @@
       }
      ],
      "text": {
-      "uz": "Ionlashgan kalsiyni aniqlash qiyinroq; u odatda umumiy kalsiy me’yordan tashqarida bo‘lganda, ionlashgan va bog‘langan kalsiy muvozanatiga ta’sir qiluvchi holatlarda yoki og‘ir kasal bo‘lgan va jarrohlik amaliyotini o‘tkazayotgan bemorlarda buyuriladi.",
+      "uz": "Ionlashgan kalsiyni aniqlash qiyinroq; u odatda umumiy kalsiy me’yordan tashqarida bo‘lganda, ionlashgan va bog‘langan kalsiy muvozanatiga ta’sir qiluvchi holatlarda yoki og‘ir kasal bo‘lgan yoki jarrohlik amaliyoti o‘tkazilayotgan bemorlarda buyuriladi.",
       "ru": "Ионизированный кальций определить сложнее; его обычно назначают при отклонениях общего кальция, при состояниях, нарушающих баланс ионизированного и связанного кальция, а также тяжелобольным или при хирургических вмешательствах.",
       "en": "Ionized calcium is harder to measure; it is usually ordered when total calcium is abnormal, when a condition affects the balance of ionized and bound calcium, or in people who are seriously ill or having surgery."
      }
@@ -5081,7 +5084,7 @@
       }
      ],
      "text": {
-      "uz": "Umumiy kalsiy yuqori bo‘lishining (giperkalsiyemiya) mumkin bo‘lgan sabablari: paratireoid bezlar faolligining oshishi (giperparatireoz), ayrim saraton turlari, jumladan suyakka tarqalgan saraton, suyak kasalliklari (masalan, suyakning Pejet kasalligi) va uzoq vaqt davomida D vitaminini haddan tashqari ko‘p qabul qilish.",
+      "uz": "Umumiy kalsiy yuqori bo‘lishining (giperkalsiyemiya) mumkin bo‘lgan sabablari: paratireoid bezlar faolligining oshishi (giperparatireoz), ayrim saraton turlari, jumladan suyakka tarqalgan saraton, suyak kasalliklari (masalan, suyakning Paget kasalligi) va uzoq vaqt davomida D vitaminini haddan tashqari ko‘p qabul qilish.",
       "ru": "Возможные причины повышенного общего кальция (гиперкальциемии): повышенная функция паращитовидных желез (гиперпаратиреоз), некоторые виды рака, в том числе распространившийся на кости, заболевания костей, например болезнь Педжета, и длительный приём избыточного количества витамина D.",
       "en": "Possible causes of high total calcium (hypercalcemia) include overactive parathyroid glands (hyperparathyroidism), certain cancers including cancer that has spread to bone, bone disorders such as Paget’s disease of bone, and taking too much vitamin D over a long period."
      }
@@ -5153,7 +5156,7 @@
     "uric-acid"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon",
+    "uz": "Venoz qon",
     "ru": "Венозная кровь",
     "en": "Venous blood"
    },
@@ -5344,7 +5347,7 @@
     "chloride"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon (qon zardobi)",
+    "uz": "Venoz qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
    },
@@ -5437,7 +5440,7 @@
      ],
      "text": {
       "uz": "Boshqa tahlillar bilan birga buyrak kasalligi (ayniqsa surunkali buyrak kasalligi), suyak kasalliklari va paratireoid bez kasalliklarini aniqlash yoki kuzatish uchun qo‘llaniladi. Shuningdek, yaxshi nazorat qilinmayotgan diabet yoki kislota-asos muvozanati buzilishi belgilari bo‘lgan bemorlarni kuzatishda ishlatilishi mumkin.",
-      "ru": "Применяется вместе с другими анализами для диагностики и контроля болезней почек (особенно хронической болезни почек), заболеваний костей и паращитовидных желез. Также может использоваться для наблюдения при плохо контролируемом диабете или признаках нарушения кислотно-щелочного баланса.",
+      "ru": "Применяется вместе с другими анализами для диагностики и контроля болезней почек (особенно хронической болезни почек), заболеваний костей и паращитовидных желез. Также может использоваться для наблюдения при плохо контролируемом диабете или признаках нарушения кислотно-основного баланса.",
       "en": "Used with other tests to help diagnose or monitor kidney disease (especially chronic kidney disease), bone disorders and parathyroid disorders. It may also be used to monitor people with poorly controlled diabetes or signs of an acid–base imbalance."
      }
     },
@@ -5536,7 +5539,7 @@
     "magnesium"
    ],
    "specimen": {
-    "uz": "Venadan olingan qon (qon zardobi)",
+    "uz": "Venoz qon (qon zardobi)",
     "ru": "Венозная кровь (сыворотка)",
     "en": "Venous blood (serum)"
    },
@@ -5655,7 +5658,7 @@
       }
      ],
      "text": {
-      "uz": "Qon yoki siydikda amilazaning pastligi kam uchraydi; mumkin bo‘lgan sabablar: amilaza ishlab chiqaruvchi hujayralarni doimiy shikastlagan surunkali pankreatit, buyrak kasalligi, kistoz fibroz (mukovistsidoz), jigar kasalligi va preeklampsiya.",
+      "uz": "Qon yoki siydikda amilazaning pastligi kam uchraydi; mumkin bo‘lgan sabablar: amilaza ishlab chiqaruvchi hujayralarni doimiy shikastlagan surunkali pankreatit, buyrak kasalligi, kistoz fibroz (mukovissidoz), jigar kasalligi va preeklampsiya.",
       "ru": "Низкая амилаза в крови или моче встречается редко; возможные причины: хронический панкреатит с необратимым повреждением клеток, вырабатывающих амилазу, болезни почек, муковисцидоз, болезни печени и преэклампсия.",
       "en": "Low amylase in blood or urine is uncommon; possible causes include chronic pancreatitis with permanent damage to the amylase-producing cells, kidney disease, cystic fibrosis, liver disease and pre-eclampsia."
      }
@@ -5670,7 +5673,7 @@
      ],
      "text": {
       "uz": "Qon yoki siydikdagi amilaza tahlilidan oldin 24 soat davomida alkogol ichmaslik kerak; qon tahlilidan oldin 2 soat och qolish so‘ralishi mumkin.",
-      "ru": "За 24 часа до анализа крови или мочи на амилазу нельзя употреблять алкоголь; перед анализом крови могут попросить не есть и не пить 2 часа.",
+      "ru": "За 24 часа до анализа крови или мочи на амилазу нельзя употреблять алкоголь; перед анализом крови могут попросить соблюдать голодание 2 часа.",
       "en": "Alcohol should be avoided for 24 hours before a blood or urine amylase test, and fasting for two hours may be requested before a blood test."
      }
     },
@@ -5835,7 +5838,7 @@
       }
      ],
      "text": {
-      "uz": "Lipazaning me’yordan chetga chiqishi har doim ham davolashni talab qiluvchi kasallikni bildirmaydi. Ko‘plab dorilar, jumladan kodein, diuretiklar, ayrim xolesterin dorilari va homiladorlikdan saqlovchi tabletkalar lipaza darajasiga ta’sir qilishi mumkin.",
+      "uz": "Lipazaning me’yordan chetga chiqishi har doim ham davolashni talab qiluvchi kasallikni bildirmaydi. Ko‘plab dorilar, jumladan kodein, diuretiklar, ayrim xolesterin dorilari va kontratseptiv tabletkalar lipaza darajasiga ta’sir qilishi mumkin.",
       "ru": "Отклонение липазы от нормы не всегда означает заболевание, требующее лечения. На уровень липазы могут влиять многие лекарства, в том числе кодеин, диуретики, некоторые препараты от холестерина и противозачаточные таблетки.",
       "en": "An abnormal lipase result does not always mean a condition that needs treatment. Many medicines, including codeine, diuretics, certain cholesterol medicines and birth control pills, can affect lipase levels."
      }
@@ -5947,7 +5950,7 @@
       }
      ],
      "text": {
-      "uz": "Shuningdek, u ayrim og‘ir infeksiyalarni tashxislashga, ba’zi saraton turlari (multipl miyeloma, limfoma, leykoz, moyak saratoni, melanoma) qanchalik og‘irligini aniqlashga va saraton davolash samarasini tekshirishga yordam berishi mumkin.",
+      "uz": "Shuningdek, u ayrim og‘ir infeksiyalarni tashxislashga, ba’zi saraton turlari (multipl miyeloma, limfoma, leykemiya, moyak saratoni, melanoma) qanchalik og‘irligini aniqlashga va saraton davolash samarasini tekshirishga yordam berishi mumkin.",
       "ru": "Анализ может также помогать в диагностике некоторых тяжёлых инфекций, в оценке тяжести ряда онкологических заболеваний (множественная миелома, лимфома, лейкоз, рак яичка, меланома) и в проверке эффективности их лечения.",
       "en": "It may also help diagnose certain severe infections, show how serious some cancers are (multiple myeloma, lymphoma, leukemia, testicular cancer, melanoma) and check whether treatment for certain cancers is working."
      }
@@ -6476,8 +6479,8 @@
       }
      ],
      "text": {
-      "uz": "Odatda siydikda bilirubin bo‘lmaydi. Uning topilishi (bilirubinuriya) gepatit yoki sirroz kabi jigar kasalligi yoki o‘t yo‘llari to‘silishi belgisi bo‘lishi mumkin; bu jigar shikastlanishining erta belgisi bo‘lib, belgilar paydo bo‘lishidan oldin ham aniqlanishi mumkin.",
-      "ru": "В норме билирубина в моче нет. Его появление (билирубинурия) может быть признаком заболевания печени, например гепатита или цирроза, или закупорки желчных протоков; это ранний признак поражения печени, который может выявляться ещё до появления симптомов.",
+      "uz": "Odatda siydikda bilirubin bo‘lmaydi. Uning topilishi (bilirubinuriya) gepatit yoki sirroz kabi jigar kasalligi yoki o‘t yo‘llari to‘silishi belgisi bo‘lishi mumkin; bu jigar shikastlanishining erta belgisi bo‘lishi va belgilar paydo bo‘lishidan oldin ham aniqlanishi mumkin.",
+      "ru": "В норме билирубина в моче нет. Его появление (билирубинурия) может быть признаком заболевания печени, например гепатита или цирроза, или закупорки желчных протоков; это может быть ранним признаком поражения печени и выявляться ещё до появления симптомов.",
       "en": "Bilirubin is normally not found in urine. Its presence (bilirubinuria) may be a sign of liver disease, such as hepatitis or cirrhosis, or of a blockage in the bile ducts; it can be an early sign of liver damage and may appear before symptoms do."
      }
     },
@@ -6558,7 +6561,7 @@
       }
      ],
      "text": {
-      "uz": "Namuna odatda «toza yig‘ish» usulida olinadi: qo‘l yuvilib, jinsiy a’zolar sohasi tozalangach, siydikning dastlabki qismi unitazga chiqariladi, keyingi qismi esa ichki yuzasiga tegmasdan idishga yig‘iladi — bu teridagi mikroblar namunaga tushmasligi uchun kerak. Qon ketayotgan bavosil yoki hayz davri bo‘lsa, bu haqda tahlildan oldin aytish lozim.",
+      "uz": "Namuna odatda «toza yig‘ish» usulida olinadi: qo‘l yuvilib, jinsiy a’zolar sohasi tozalangach, siydikning dastlabki qismi unitazga chiqariladi, keyingi qismi esa ichki yuzasiga tegmasdan idishga yig‘iladi — bu teridagi mikroblar namunaga tushmasligi uchun kerak. Qon ketayotgan gemorroy yoki hayz davri bo‘lsa, bu haqda tahlildan oldin aytish lozim.",
       "ru": "Образец обычно собирают методом «чистого сбора»: после мытья рук и обработки области половых органов первую порцию мочи выпускают в унитаз, а следующую собирают в контейнер, не касаясь его внутренней поверхности, — чтобы микробы с кожи не попали в образец. О кровоточащем геморрое или менструации нужно сообщить до анализа.",
       "en": "The sample is usually collected by the clean-catch method: after washing hands and cleaning the genital area, the first few seconds of urine go into the toilet and the rest is collected in the container without touching its inside, so that germs from the skin do not get into the sample. Bleeding hemorrhoids or a menstrual period should be reported before the test."
      }
@@ -6727,7 +6730,7 @@
       }
      ],
      "text": {
-      "uz": "Ayrim dorilar va lavlagi yoki ravoch kabi oziq-ovqatlar ham siydikni qizil rangga bo‘yashi mumkin. Qon ketayotgan bavosil yoki hayzdagi qon namunaga tushib, natijaga ta’sir qilishi mumkin, shuning uchun bu haqda tahlildan oldin aytish kerak.",
+      "uz": "Ayrim dorilar va lavlagi yoki ravoch kabi oziq-ovqatlar ham siydikni qizil rangga bo‘yashi mumkin. Qon ketayotgan gemorroy yoki hayzdagi qon namunaga tushib, natijaga ta’sir qilishi mumkin, shuning uchun bu haqda tahlildan oldin aytish kerak.",
       "ru": "Некоторые лекарства и продукты, например свёкла или ревень, тоже могут окрашивать мочу в красный цвет. Кровь при кровоточащем геморрое или менструации может попасть в образец и повлиять на результат, поэтому об этом нужно сообщить до анализа.",
       "en": "Some medicines and certain foods, such as beets or rhubarb, can also turn urine red. Blood from bleeding hemorrhoids or a menstrual period can get into the sample and affect results, so these should be reported before the test."
      }
@@ -6773,7 +6776,7 @@
       }
      ],
      "text": {
-      "uz": "Siydikda yassi epiteliy hujayralari bo‘lishi namunaning organizmning boshqa qismidan tushgan hujayralar bilan ifloslanganini bildirishi mumkin; bu «toza yig‘ish» usulida jinsiy a’zolar sohasi yaxshi tozalanmaganda yuz beradi.",
+      "uz": "Siydikda yassi epiteliy hujayralari bo‘lishi namunaning organizmning boshqa qismidan tushgan hujayralar bilan ifloslanganini bildirishi mumkin; bu «toza yig‘ish» usulida jinsiy a’zolar sohasi yaxshi tozalanmaganda yuz berishi mumkin.",
       "ru": "Плоские эпителиальные клетки в моче могут означать, что образец загрязнён клетками из другой части тела; это бывает, если при «чистом сборе» недостаточно обработана область половых органов.",
       "en": "Squamous epithelial cells in urine may mean the sample was contaminated with cells from another part of the body, which can happen if the genital area is not cleaned well enough during clean-catch collection."
      }
@@ -6787,7 +6790,7 @@
       }
      ],
      "text": {
-      "uz": "Siydik kristallari buyraklarda ayrim minerallar boshqa moddalar bilan birikib to‘planganda hosil bo‘ladi — odatda siydikda bu minerallar ko‘p bo‘lganda yoki kislota juda ko‘p yoki juda kam bo‘lganda. Bir nechta mayda kristallar me’yoriy; ayrim turdagi kristallarning ko‘p miqdori davolashni talab qiluvchi holat belgisi bo‘lishi mumkin, ba’zi kristallar esa birikib buyrak toshlarini hosil qiladi.",
+      "uz": "Siydik kristallari buyraklarda ayrim minerallar boshqa moddalar bilan birikib to‘planganda hosil bo‘ladi — odatda siydikda bu minerallar ko‘p bo‘lganda yoki kislota juda ko‘p yoki juda kam bo‘lganda. Bir nechta mayda kristallar me’yoriy; ayrim turdagi kristallarning ko‘p miqdori davolashni talab qiluvchi holat belgisi bo‘lishi mumkin, ba’zi kristallar esa birikib buyrak toshlarini hosil qilishi mumkin.",
       "ru": "Кристаллы мочи образуются в почках, когда определённые минералы слипаются с другими веществами, обычно при высоком содержании этих минералов в моче или при слишком высокой либо низкой её кислотности. Немного мелких кристаллов — норма; большое количество некоторых типов может указывать на состояние, требующее лечения, а некоторые кристаллы могут слипаться в камни почек.",
       "en": "Urine crystals form in the kidneys when certain minerals clump together with other substances, usually when urine has high levels of those minerals or too much or too little acid. A few small crystals are normal; large amounts of certain types may signal a condition needing treatment, and some crystals can stick together to form kidney stones."
      }
@@ -6801,7 +6804,7 @@
       }
      ],
      "text": {
-      "uz": "Javobda odatda kristallar bor-yo‘qligi, miqdori va tarkibi ko‘rsatiladi. Kalsiy oksalat va kalsiy fosfat kristallari buyrak toshlarining eng ko‘p uchraydigan sababi; podagra yoki 2-tur diabet kabi metabolik muammolar siydikni haddan tashqari kislotali qilganda siydik kislotasi va urat kristallari ko‘p hosil bo‘lishi mumkin; takroriy siydik yo‘llari infeksiyalari struvit kristallarining ko‘payishiga sabab bo‘lishi mumkin.",
+      "uz": "Javobda odatda kristallar bor-yo‘qligi, miqdori va tarkibi ko‘rsatiladi. Kalsiy oksalat va kalsiy fosfat kristallari buyrak toshlarining eng ko‘p uchraydigan sababi; podagra yoki 2-tip diabet kabi metabolik muammolar siydikni haddan tashqari kislotali qilganda siydik kislotasi va urat kristallari ko‘p hosil bo‘lishi mumkin; takroriy siydik yo‘llari infeksiyalari struvit kristallarining ko‘payishiga sabab bo‘lishi mumkin.",
       "ru": "В заключении обычно указывают наличие кристаллов, их количество и состав. Кристаллы оксалата и фосфата кальция — самая частая причина камней в почках; кристаллы мочевой кислоты и уратов в большом количестве могут образовываться, когда нарушения обмена веществ, например подагра или диабет 2 типа, делают мочу слишком кислой; повторные ИМП могут вызывать большое количество кристаллов струвита.",
       "en": "Reports usually state whether crystals are present, their amount and what they are made of. Calcium oxalate and calcium phosphate crystals are the most common cause of kidney stones; large amounts of uric acid and urate crystals may form when metabolic problems such as gout or type 2 diabetes make urine too acidic; repeated urinary tract infections may cause large amounts of struvite crystals."
      }
@@ -7903,7 +7906,7 @@
    "correct_index": 1,
    "prompt": {
     "uz": "Boshqa moddaning mg/dL → mmol/L koeffitsiyentini ishlatish mumkinmi?",
-    "ru": "Можно ли использовать коэффициент mg/dL → mmol/L другого вещества?",
+    "ru": "Можно ли использовать коэффициент мг/дл → ммоль/л другого вещества?",
     "en": "Can another analyte’s mg/dL → mmol/L factor be reused?"
    },
    "basis": {
@@ -7920,7 +7923,7 @@
      },
      "explanation": {
       "uz": "Molyar massalar farq qiladi, demak koeffitsiyent ham: glyukoza ≈ 18,0 mg/dL har 1 mmol/L ga, kreatinin ≈ 11,3 mg/dL.",
-      "ru": "Молярные массы различаются, значит и коэффициенты: глюкоза ≈ 18,0 mg/dL на 1 mmol/L, креатинин ≈ 11,3 mg/dL.",
+      "ru": "Молярные массы различаются, значит и коэффициенты: глюкоза ≈ 18,0 мг/дл на 1 ммоль/л, креатинин ≈ 11,3 мг/дл.",
       "en": "Molar masses differ, so the factors differ: glucose ≈ 18.0 mg/dL per 1 mmol/L, creatinine ≈ 11.3 mg/dL."
      }
     },
@@ -7932,7 +7935,7 @@
      },
      "explanation": {
       "uz": "To‘g‘ri: mmol/L = (mg/dL × 10) / molyar massa (g/mol). Har bir modda o‘z molyar massasini talab qiladi.",
-      "ru": "Верно: mmol/L = (mg/dL × 10) / молярная масса (г/моль). Для каждого вещества нужна своя молярная масса.",
+      "ru": "Верно: ммоль/л = (мг/дл × 10) / молярная масса (г/моль). Для каждого вещества нужна своя молярная масса.",
       "en": "Correct: mmol/L = (mg/dL × 10) / molar mass (g/mol). Each substance needs its own molar mass."
      }
     },
@@ -7982,12 +7985,12 @@
      "text": {
       "uz": "Faqat qopqoq rangi",
       "ru": "Только цвет крышки",
-      "en": "Cap colour alone"
+      "en": "Cap color alone"
      },
      "explanation": {
       "uz": "Qopqoq rangi probirka turini bildiradi, apparat tartibini emas.",
       "ru": "Цвет крышки обозначает тип пробирки, а не процедуру прибора.",
-      "en": "Cap colour identifies a tube type, not the instrument procedure."
+      "en": "Cap color identifies a tube type, not the instrument procedure."
      }
     },
     {
@@ -8691,7 +8694,7 @@
       "en": "Creatinine is not filtered by the kidneys."
      },
      "explanation": {
-      "uz": "Noto‘g‘ri: buyraklar ishlamay qolganda kreatinin aynan qonda to‘planadi, chunki uni buyraklar chiqaradi.",
+      "uz": "Noto‘g‘ri: buyraklar yomon ishlaganda kreatinin aynan qonda to‘planadi, chunki uni buyraklar chiqaradi.",
       "ru": "Неверно: креатинин накапливается в крови именно при плохой работе почек, так как его выводят почки.",
       "en": "Incorrect: creatinine builds up in blood when the kidneys work poorly, because the kidneys remove it."
      }
@@ -9222,12 +9225,12 @@
     },
     {
      "text": {
-      "uz": "AST faqat ochlik saqlanmaganda oshadi",
+      "uz": "AST faqat och qolinmaganda oshadi",
       "ru": "АСТ повышается только при несоблюдении голодания",
       "en": "AST rises only when fasting instructions are not followed"
      },
      "explanation": {
-      "uz": "Noto‘g‘ri: manba ochlikni boshqa tahlillar bilan bog‘liq tayyorgarlik sifatida eslatadi, AST oshishi sababi sifatida emas.",
+      "uz": "Noto‘g‘ri: manba och qolishni boshqa tahlillar bilan bog‘liq tayyorgarlik sifatida eslatadi, AST oshishi sababi sifatida emas.",
       "ru": "Неверно: источник упоминает голодание как подготовку к сопутствующим анализам, а не как причину повышения АСТ.",
       "en": "Incorrect: the source mentions fasting as preparation for accompanying tests, not as a cause of high AST."
      }
@@ -9562,7 +9565,7 @@
    ],
    "correct_index": 1,
    "prompt": {
-    "uz": "Nima uchun chaqaloqlarda bilirubin tez-tez tekshiriladi?",
+    "uz": "Nima uchun chaqaloqlarda bilirubin ko‘pincha tekshiriladi?",
     "ru": "Почему у новорождённых часто определяют билирубин?",
     "en": "Why are newborns often tested for bilirubin?"
    },
@@ -11583,7 +11586,7 @@
    "correct_index": 1,
    "prompt": {
     "uz": "Manba qondagi xloridning PASTLIGINI qaysi kislota-asos buzilishi bilan bog‘laydi?",
-    "ru": "С каким кислотно-щелочным нарушением источник связывает ПОНИЖЕННЫЙ хлорид крови?",
+    "ru": "С каким кислотно-основным нарушением источник связывает ПОНИЖЕННЫЙ хлорид крови?",
     "en": "Which acid–base disturbance does the source link to LOW blood chloride?"
    },
    "basis": {
@@ -11619,7 +11622,7 @@
     {
      "text": {
       "uz": "Hech qaysi — xlorid kislota-asos muvozanati bilan bog‘liq emas",
-      "ru": "Ни с каким — хлорид не связан с кислотно-щелочным балансом",
+      "ru": "Ни с каким — хлорид не связан с кислотно-основным балансом",
       "en": "Neither — chloride is unrelated to acid–base balance"
      },
      "explanation": {
@@ -12223,8 +12226,8 @@
     "en": "A urine microscopy report shows many squamous epithelial cells. What should be considered first, according to the source?"
    },
    "basis": {
-    "uz": "Yassi epiteliy ko‘pligi ko‘pincha namuna yig‘ish sifati bilan bog‘liq.",
-    "ru": "Обилие плоского эпителия часто связано с качеством сбора образца.",
+    "uz": "Yassi epiteliy ko‘pligi namuna qanday yig‘ilganini aks ettirishi mumkin.",
+    "ru": "Обилие плоского эпителия может отражать способ сбора образца.",
     "en": "Many squamous cells may reflect how the sample was collected."
    },
    "options": [
@@ -12543,7 +12546,7 @@
    "url": "https://www.who.int/publications/i/item/9789241548274",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "Laboratoriya sifat menejmenti tizimi bo‘yicha WHO qo‘llanmasi — laboratoriya rahbarlari va xodimlari uchun.",
+    "uz": "Laboratoriya sifat menejmenti tizimi bo‘yicha JSST qo‘llanmasi — laboratoriya rahbarlari va xodimlari uchun.",
     "ru": "Пособие ВОЗ по системе управления качеством в лаборатории — для руководителей и сотрудников лабораторий.",
     "en": "WHO handbook on laboratory quality management systems for laboratory managers and staff."
    },
@@ -12573,7 +12576,7 @@
    "url": "https://www.who.int/ru/publications/i/item/9789241548274",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "WHO laboratoriya sifat menejmenti qo‘llanmasining rasmiy ruscha nashri.",
+    "uz": "JSST laboratoriya sifat menejmenti qo‘llanmasining rasmiy ruscha nashri.",
     "ru": "Официальное русское издание пособия ВОЗ по управлению качеством в лаборатории.",
     "en": "Official Russian edition of the WHO laboratory quality management handbook."
    },
@@ -12602,7 +12605,7 @@
    "url": "https://www.who.int/publications/i/item/9789241599221",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "Venoz, arterial va kapillyar qon olish bo‘yicha WHO qo‘llanmasi; ilovadagi probirkalar tartibi shunga asoslangan.",
+    "uz": "Venoz, arterial va kapillyar qon olish bo‘yicha JSST qo‘llanmasi; ilovadagi probirkalar tartibi shunga asoslangan.",
     "ru": "Руководство ВОЗ по взятию венозной, артериальной и капиллярной крови; раздел о порядке пробирок основан на нём.",
     "en": "WHO guidance on venous, arterial and capillary blood sampling; the app’s order-of-draw section is based on it."
    },
@@ -12634,8 +12637,8 @@
    "url": "https://iris.who.int/handle/10665/337956",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "WHO laboratoriya biologik xavfsizligi qo‘llanmasi, 4-nashr: klinik va sog‘liqni saqlash laboratoriyalari uchun xavfga asoslangan yondashuv.",
-    "ru": "Руководство ВОЗ по биобезопасности в лаборатории, 4-е изд.: риск-ориентированный подход для клинических и санитарных лабораторий.",
+    "uz": "JSST laboratoriya biologik xavfsizligi qo‘llanmasi, 4-nashr: klinik va sog‘liqni saqlash laboratoriyalari uchun xavfga asoslangan yondashuv.",
+    "ru": "Руководство ВОЗ по биобезопасности в лаборатории, 4-е изд.: риск-ориентированный подход для клинических лабораторий и лабораторий общественного здравоохранения.",
     "en": "WHO Laboratory biosafety manual, 4th edition: a risk-based approach for clinical and public-health laboratories."
    },
    "licence_quote": [
@@ -12666,7 +12669,7 @@
    "url": "https://iris.who.int/handle/10665/365602",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "WHO laboratoriya biologik xavfsizligi qo‘llanmasi 4-nashrining rasmiy ruscha tarjimasi.",
+    "uz": "JSST laboratoriya biologik xavfsizligi qo‘llanmasi 4-nashrining rasmiy ruscha tarjimasi.",
     "ru": "Официальный русский перевод руководства ВОЗ по лабораторной биобезопасности, 4-е изд.",
     "en": "Official Russian translation of the WHO Laboratory biosafety manual, 4th edition."
    },
@@ -12701,9 +12704,9 @@
    "url": "https://www.who.int/publications/i/item/9241545305",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "Kichik va tuman laboratoriyalari uchun asosiy usullar bo‘yicha WHO qo‘llanmasi (siydik, qonda glyukoza, gematologiya, mikroskopiya). 2003-yil nashri — amaldagi usullar bilan solishtiring.",
+    "uz": "Kichik va tuman laboratoriyalari uchun asosiy usullar bo‘yicha JSST qo‘llanmasi (siydik, qonda glyukoza, gematologiya, mikroskopiya). 2003-yil nashri — amaldagi usullar bilan solishtiring.",
     "ru": "Руководство ВОЗ по основным методикам для небольших и районных лабораторий (моча, глюкоза крови, гематология, микроскопия). Издание 2003 г. — сверяйте с действующими методиками.",
-    "en": "WHO manual of basic bench techniques for small and district laboratories (urine, blood glucose, haematology, microscopy). 2003 edition — check against current methods."
+    "en": "WHO manual of basic bench techniques for small and district laboratories (urine, blood glucose, hematology, microscopy). 2003 edition — check against current methods."
    },
    "licence_quote": [
     "Copyright CC BY-NC-SA 3.0 IGO",
@@ -12735,9 +12738,9 @@
    "url": "https://www.who.int/publications/i/item/definition-and-diagnosis-of-diabetes-mellitus-and-intermediate-hyperglycaemia",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "Qandli diabet va oraliq giperglikemiya ta’rifi hamda tashxisi bo‘yicha WHO/IDF maslahat hisoboti (2006).",
-    "ru": "Отчёт консультации ВОЗ/МФД (2006) об определении и диагностике сахарного диабета и промежуточной гипергликемии.",
-    "en": "WHO/IDF consultation report (2006) on the definition and diagnosis of diabetes and intermediate hyperglycaemia."
+    "uz": "Qandli diabet va oraliq giperglikemiya ta’rifi hamda tashxisi bo‘yicha JSST/XDF maslahat hisoboti (2006).",
+    "ru": "Отчёт консультации ВОЗ/МДФ (2006) об определении и диагностике сахарного диабета и промежуточной гипергликемии.",
+    "en": "WHO/IDF consultation report (2006) on the definition and diagnosis of diabetes and intermediate hyperglycemia."
    },
    "licence_quote": [
     "Download (1.5 MB)"
@@ -12765,8 +12768,8 @@
    "url": "https://iris.who.int/handle/10665/85476",
    "accessed": "2026-10-08",
    "note": {
-    "uz": "WHO/IDF diabet ta’rifi va tashxisi hisobotining ruscha nashri.",
-    "ru": "Русское издание отчёта ВОЗ/МФД об определении и диагностике диабета.",
+    "uz": "JSST/XDF diabet ta’rifi va tashxisi hisobotining ruscha nashri.",
+    "ru": "Русское издание отчёта ВОЗ/МДФ об определении и диагностике диабета.",
     "en": "Russian edition of the WHO/IDF report on the definition and diagnosis of diabetes."
    },
    "licence_quote": [
@@ -13162,7 +13165,7 @@
    "note": {
     "uz": "Klinik patologiya bo‘yicha klassik darslik: biokimyo, siydik tahlili, gematologiya, laboratoriya boshqaruvi (pullik).",
     "ru": "Классический учебник клинической патологии: биохимия, анализ мочи, гематология, управление лабораторией (платный).",
-    "en": "Classic clinical pathology textbook: chemistry, urinalysis, haematology and laboratory management (paid)."
+    "en": "Classic clinical pathology textbook: chemistry, urinalysis, hematology and laboratory management (paid)."
    },
    "licence_quote": [
     "Original Price €157.99",

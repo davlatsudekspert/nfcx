@@ -220,7 +220,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleStudent => 'Student';
 
   @override
-  String get roleStudentDesc => 'Learn, practise and prepare';
+  String get roleStudentDesc => 'Learn, practice and prepare';
 
   @override
   String get roleTeacher => 'Teacher / researcher';
@@ -499,7 +499,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyteCalculatorSub => 'Calculator · published formula';
 
   @override
-  String get analytePractice => 'Practise the topic';
+  String get analytePractice => 'Practice the topic';
 
   @override
   String get analytePracticeSub => 'Explained questions';
@@ -862,7 +862,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get preNotice =>
-      'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.';
+      'Tube color, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.';
 
   @override
   String get preOrderTitle => 'Order of draw (venepuncture)';
@@ -877,7 +877,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get preHaemolysisTitle => 'Causes of haemolysis';
+  String get preHaemolysisTitle => 'Causes of hemolysis';
 
   @override
   String get preTourniquetTitle => 'Tourniquet';

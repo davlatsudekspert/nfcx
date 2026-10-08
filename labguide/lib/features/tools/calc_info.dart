@@ -211,24 +211,24 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
     formula: [
       const LocalizedText({
         'uz':
-            'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1.200 × '
-            '0.9938^yosh × 1.012 [ayol]',
+            'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1,200 × '
+            '0,9938^yosh × 1,012 [ayol]',
         'ru':
-            'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1.200 × '
-            '0.9938^возраст × 1.012 [женщины]',
+            'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1,200 × '
+            '0,9938^возраст × 1,012 [женщины]',
         'en':
             'eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^−1.200 × '
             '0.9938^age × 1.012 [if female]',
       }),
       const LocalizedText({
-        'uz': 'Ayol: κ = 0.7, α = −0.241; erkak: κ = 0.9, α = −0.302',
-        'ru': 'Женщины: κ = 0.7, α = −0.241; мужчины: κ = 0.9, α = −0.302',
+        'uz': 'Ayol: κ = 0,7; α = −0,241. Erkak: κ = 0,9; α = −0,302',
+        'ru': 'Женщины: κ = 0,7; α = −0,241. Мужчины: κ = 0,9; α = −0,302',
         'en': 'Female: κ = 0.7, α = −0.241; male: κ = 0.9, α = −0.302',
       }),
       const LocalizedText({
         'uz':
             'Scr — mg/dL. µmol/L qiymat kreatininning molyar massasi '
-            '(113.12 g/mol) bo‘yicha o‘tkaziladi (≈ ÷ 88.4).',
+            '(113,12 g/mol) bo‘yicha o‘tkaziladi (≈ ÷ 88,4).',
         'ru':
             'Scr — мг/дл. Значение в мкмоль/л пересчитывается по молярной '
             'массе креатинина (113,12 г/моль) (≈ ÷ 88,4).',
@@ -287,7 +287,7 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       }),
       LocalizedText({
         'uz':
-            'ACR (mg/g) = albumin (mg/L) ÷ kreatinin (g/L); 1 mmol = 113.12 mg',
+            'ACR (mg/g) = albumin (mg/L) ÷ kreatinin (g/L); 1 mmol = 113,12 mg',
         'ru': 'ACR (мг/г) = альбумин (мг/л) ÷ креатинин (г/л); 1 ммоль = 113,12 мг',
         'en': 'ACR (mg/g) = albumin (mg/L) ÷ creatinine (g/L); 1 mmol = 113.12 mg',
       }),
@@ -322,8 +322,8 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       _all('AG = Na⁺ − (Cl⁻ + HCO₃⁻)'),
       _all('AG(K) = (Na⁺ + K⁺) − (Cl⁻ + HCO₃⁻)'),
       const LocalizedText({
-        'uz': 'AG(alb) = AG + 2.5 × (normal albumin − albumin), g/dL',
-        'ru': 'AG(альб) = AG + 2.5 × (нормальный альбумин − альбумин), г/дл',
+        'uz': 'AG(alb) = AG + 2,5 × (normal albumin − albumin), g/dL',
+        'ru': 'AG(альб) = AG + 2,5 × (нормальный альбумин − альбумин), г/дл',
         'en': 'AG(alb) = AG + 2.5 × (normal albumin − albumin), g/dL',
       }),
     ],
@@ -341,9 +341,9 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       }),
       LocalizedText({
         'uz':
-            'Figge 1998: albumin har 1 g/dL ga kamayganda anion farq '
-            '2.5 mmol/L ga kamayadi. Boshqa tadqiqotlarda bu ko‘rsatkich '
-            'taxminan 2.3 yoki 1.5–1.9 mmol/L (Kraut va Madias sharhi).',
+            'Figge 1998: albumin har 1 g/dL ga kamayganda anion oralig‘i '
+            '2,5 mmol/L ga kamayadi. Boshqa tadqiqotlarda bu ko‘rsatkich '
+            'taxminan 2,3 yoki 1,5–1,9 mmol/L (Kraut va Madias sharhi).',
         'ru':
             'Figge 1998: на каждый 1 г/дл снижения альбумина анионный '
             'интервал снижается на 2,5 ммоль/л. В других работах — около '
@@ -373,13 +373,13 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
   ClinicalCalc.calcium: CalcInfo(
     formula: const [
       LocalizedText({
-        'uz': 'Ca(tuzatilgan) = Ca − albumin + 4.0 (Ca mg/dL, albumin g/dL)',
-        'ru': 'Ca(скорр.) = Ca − альбумин + 4.0 (Ca мг/дл, альбумин г/дл)',
+        'uz': 'Ca(tuzatilgan) = Ca − albumin + 4,0 (Ca mg/dL, albumin g/dL)',
+        'ru': 'Ca(скорр.) = Ca − альбумин + 4,0 (Ca мг/дл, альбумин г/дл)',
         'en': 'Ca(adjusted) = Ca − albumin + 4.0 (Ca mg/dL, albumin g/dL)',
       }),
       LocalizedText({
         'uz':
-            'SI: Ca mmol/L × 4.0078 → mg/dL (40.078 g/mol); albumin g/L ÷ 10 '
+            'SI: Ca mmol/L × 4,0078 → mg/dL (40,078 g/mol); albumin g/L ÷ 10 '
             '→ g/dL; natija yana mmol/L da ko‘rsatiladi.',
         'ru':
             'СИ: Ca ммоль/л × 4,0078 → мг/дл (40,078 г/моль); альбумин г/л '
@@ -403,7 +403,7 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       }),
       LocalizedText({
         'uz':
-            'Boshqa kalkulyatorlarda 0.8 koeffitsiyentli variant ham '
+            'Boshqa kalkulyatorlarda 0,8 koeffitsiyentli variant ham '
             'uchraydi; bu yerda Payne 1973 maqolasidagi formula ishlatilgan, '
             'shuning uchun natijalar farq qilishi mumkin.',
         'ru':
@@ -433,18 +433,18 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       LocalizedText({
         'uz':
             'Sampson: LDL = UX/0.948 − HDL/0.971 − (TG/8.56 + TG × '
-            'non-HDL/2140 − TG²/16100) − 9.44 (mg/dL)',
+            'non-HDL/2140 − TG²/16100) − 9,44 (mg/dL)',
         'ru':
             'Сэмпсон: ХС ЛПНП = ОХС/0.948 − ХС ЛПВП/0.971 − (ТГ/8.56 + ТГ × '
-            'ХС не-ЛПВП/2140 − ТГ²/16100) − 9.44 (мг/дл)',
+            'ХС не-ЛПВП/2140 − ТГ²/16100) − 9,44 (мг/дл)',
         'en':
             'Sampson: LDL = TC/0.948 − HDL/0.971 − (TG/8.56 + TG × '
             'non-HDL/2140 − TG²/16100) − 9.44 (mg/dL)',
       }),
       LocalizedText({
         'uz':
-            'UX — umumiy xolesterin. mmol/L: xolesterin × 38.666, TG × 88.545 '
-            '→ mg/dL (386.66 va triolein 885.45 g/mol); natija yana mmol/L da.',
+            'UX — umumiy xolesterin. mmol/L: xolesterin × 38,666, TG × 88,545 '
+            '→ mg/dL (386,66 va triolein 885,45 g/mol); natija yana mmol/L da.',
         'ru':
             'ОХС — общий холестерин. ммоль/л: холестерин × 38,666, ТГ × '
             '88,545 → мг/дл (386,66 и триолеин 885,45 г/моль); результат '
@@ -460,14 +460,14 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
         'uz':
             'Friedewald: xilomikronli namunalarda qo‘llanmaydi; III tip '
             'giperlipoproteinemiyada noto‘g‘ri yuqori natija beradi; TG '
-            '400 mg/dL (≈ 4.5 mmol/L) dan oshsa ishonchli emas.',
+            '400 mg/dL (≈ 4,5 mmol/L) dan oshsa ishonchli emas.',
         'ru':
             'Фридевальд: не применим к образцам с хиломикронами; при '
             'гиперлипопротеинемии III типа даёт ошибочно высокий результат; '
             'при ТГ выше 400 мг/дл (≈ 4,5 ммоль/л) ненадёжен.',
         'en':
             'Friedewald: not applicable to samples containing chylomicrons; '
-            'erroneously high in type III hyperlipoproteinaemia; not reliable '
+            'erroneously high in type III hyperlipoproteinemia; not reliable '
             'when TG exceeds 400 mg/dL (≈ 4.5 mmol/L).',
       }),
       LocalizedText({
@@ -481,14 +481,14 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
       }),
       LocalizedText({
         'uz':
-            'Sampson: TG 800 mg/dL (≈ 9.0 mmol/L) gacha tekshirilgan; III tip '
+            'Sampson: TG 800 mg/dL (≈ 9,0 mmol/L) gacha tekshirilgan; III tip '
             'giperlipidemiyali bemorlar tadqiqotga kiritilmagan.',
         'ru':
             'Сэмпсон: проверено при ТГ до 800 мг/дл (≈ 9,0 ммоль/л); пациенты '
             'с гиперлипидемией III типа в исследование не включались.',
         'en':
             'Sampson: validated for TG up to 800 mg/dL (≈ 9.0 mmol/L); '
-            'patients with type III hyperlipidaemia were excluded.',
+            'patients with type III hyperlipidemia were excluded.',
       }),
     ],
     refs: const [
@@ -500,8 +500,8 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
   ClinicalCalc.osmolality: CalcInfo(
     formula: const [
       LocalizedText({
-        'uz': 'mg/dL: 2 × Na + glyukoza/18 + BUN/2.8',
-        'ru': 'мг/дл: 2 × Na + глюкоза/18 + АМК/2.8',
+        'uz': 'mg/dL: 2 × Na + glyukoza/18 + BUN/2,8',
+        'ru': 'мг/дл: 2 × Na + глюкоза/18 + BUN/2,8',
         'en': 'mg/dL: 2 × Na + glucose/18 + BUN/2.8',
       }),
       LocalizedText({
@@ -567,14 +567,14 @@ final Map<ClinicalCalc, CalcInfo> calcInfo = {
             'и беременные не изучались.',
         'en':
             'ADAG: adults with type 1 or type 2 diabetes and without '
-            'diabetes, with stable glycaemia. Anaemia, haemoglobinopathies, '
+            'diabetes, with stable glycemia. Anemia, hemoglobinopathies, '
             'high red-cell turnover and chronic kidney or liver disease were '
             'exclusions; children and pregnant women were not studied.',
       }),
       LocalizedText({
         'uz':
-            'eAG — baho: bashorat xatosining standart chetlanishi 15.7 mg/dL '
-            '(0.87 mmol/L).',
+            'eAG — baho: bashorat xatosining standart chetlanishi 15,7 mg/dL '
+            '(0,87 mmol/L).',
         'ru':
             'eAG — оценка: стандартное отклонение ошибки прогноза 15,7 мг/дл '
             '(0,87 ммоль/л).',

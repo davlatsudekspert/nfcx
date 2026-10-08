@@ -487,7 +487,7 @@ abstract class AppLocalizations {
   /// No description provided for @roleStudentDesc.
   ///
   /// In en, this message translates to:
-  /// **'Learn, practise and prepare'**
+  /// **'Learn, practice and prepare'**
   String get roleStudentDesc;
 
   /// No description provided for @roleTeacher.
@@ -997,7 +997,7 @@ abstract class AppLocalizations {
   /// No description provided for @analytePractice.
   ///
   /// In en, this message translates to:
-  /// **'Practise the topic'**
+  /// **'Practice the topic'**
   String get analytePractice;
 
   /// No description provided for @analytePracticeSub.
@@ -1627,7 +1627,7 @@ abstract class AppLocalizations {
   /// No description provided for @preNotice.
   ///
   /// In en, this message translates to:
-  /// **'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.'**
+  /// **'Tube color, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.'**
   String get preNotice;
 
   /// No description provided for @preOrderTitle.
@@ -1651,7 +1651,7 @@ abstract class AppLocalizations {
   /// No description provided for @preHaemolysisTitle.
   ///
   /// In en, this message translates to:
-  /// **'Causes of haemolysis'**
+  /// **'Causes of hemolysis'**
   String get preHaemolysisTitle;
 
   /// No description provided for @preTourniquetTitle.

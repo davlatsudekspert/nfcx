@@ -82,7 +82,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get welcomeDevices => 'Телефон и планшет';
 
   @override
-  String get welcomeRoles => 'Врач · лаборант · студент · преподаватель';
+  String get welcomeRoles =>
+      'Врач · специалист лаборатории · студент · преподаватель';
 
   @override
   String get welcomeGetStarted => 'Начать / зарегистрироваться';
@@ -462,12 +463,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String analyteSourceAccessed(String date) {
-    return 'Просмотрено: $date';
+    return 'Дата обращения: $date';
   }
 
   @override
   String get analyteReuseRightsVerify =>
-      'Права на использование: проверяются до распространения';
+      'Права на использование: необходимо проверить перед распространением';
 
   @override
   String get analyteReview => 'Статус проверки';
@@ -672,7 +673,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qcLoadError =>
-      'Не удалось прочитать сохранённые данные КК. Ничего не перезаписано.';
+      'Не удалось прочитать сохранённые данные контроля качества. Ничего не перезаписано.';
 
   @override
   String get qcAddSet => 'Добавить тест';
@@ -849,7 +850,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qcRulesSource =>
-      'Правила: мультиправило Вестгарда (Westgard JO и соавт., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). Средство обучения и проверки — не заменяет процедуру КК вашей лаборатории.';
+      'Правила: мультиправило Вестгарда (Westgard JO и соавт., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). Средство обучения и проверки — не заменяет процедуру контроля качества вашей лаборатории.';
 
   @override
   String get preTitle => 'Путь образца';
@@ -919,7 +920,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dilC2 => 'C₂ · Конечная концентрация';
 
   @override
-  String get dilV2 => 'V₂ · Конечный объём (mL)';
+  String get dilV2 => 'V₂ · Конечный объём (мл)';
 
   @override
   String get dilNote =>
@@ -930,7 +931,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String dilResult(String volume) {
-    return 'V₁ = $volume mL';
+    return 'V₁ = $volume мл';
   }
 
   @override
@@ -939,7 +940,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String dilDiluent(String volume) {
-    return 'Разбавитель ≈ $volume mL (если объёмы складываются)';
+    return 'Разбавитель ≈ $volume мл (если объёмы складываются)';
   }
 
   @override
@@ -960,7 +961,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get ucSubtitle =>
-      'У каждого вещества свой коэффициент — один общий коэффициент mg/dL → mmol/L был бы ошибкой.';
+      'У каждого вещества свой коэффициент — один общий коэффициент мг/дл → ммоль/л был бы ошибкой.';
 
   @override
   String get ucAnalyte => 'Вещество';
@@ -996,7 +997,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get calcSectionLab => 'Лабораторные';
 
   @override
-  String get calcEgfr => 'eGFR · CKD-EPI 2021';
+  String get calcEgfr => 'рСКФ (eGFR) · CKD-EPI 2021';
 
   @override
   String get calcEgfrSub => 'Креатинин, возраст, пол';
@@ -1100,7 +1101,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get fieldGlucose => 'Глюкоза';
 
   @override
-  String get fieldUrea => 'Мочевина (или АМК)';
+  String get fieldUrea => 'Мочевина (или BUN)';
 
   @override
   String get fieldMeasuredOsmolality => 'Измеренная осмоляльность';
@@ -1348,11 +1349,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sourcesContent => 'Карточки анализов';
 
   @override
-  String get sourcesMethods => 'Калькуляторы, КК и преаналитика';
+  String get sourcesMethods => 'Калькуляторы, контроль качества и преаналитика';
 
   @override
   String get sourcesBody =>
-      'Каждое публикуемое утверждение связано с первоисточником, датой просмотра, областью применения и статусом проверки.';
+      'Каждое публикуемое утверждение связано с первоисточником, датой обращения, областью применения и статусом проверки.';
 
   @override
   String get researchTitle => 'Исследовательское пространство';

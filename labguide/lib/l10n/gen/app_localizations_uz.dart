@@ -13,7 +13,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get appTagline => 'BIOKIMYO · LABORATORIYA';
 
   @override
-  String get navHome => 'Bosh';
+  String get navHome => 'Bosh sahifa';
 
   @override
   String get navTests => 'Tahlillar';
@@ -82,7 +82,8 @@ class AppLocalizationsUz extends AppLocalizations {
   String get welcomeDevices => 'Telefon va planshet';
 
   @override
-  String get welcomeRoles => 'Shifokor · laborant · student · ustoz';
+  String get welcomeRoles =>
+      'Shifokor · laboratoriya mutaxassisi · talaba · ustoz';
 
   @override
   String get welcomeGetStarted => 'Boshlash / ro‘yxatdan o‘tish';
@@ -457,12 +458,12 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String analyteSourceAccessed(String date) {
-    return 'Ko‘rilgan sana: $date';
+    return 'Murojaat sanasi: $date';
   }
 
   @override
   String get analyteReuseRightsVerify =>
-      'Foydalanish huquqi: tarqatishdan oldin tekshiriladi';
+      'Foydalanish huquqi: tarqatishdan oldin tekshirilishi kerak';
 
   @override
   String get analyteReview => 'Tekshiruv holati';
@@ -612,7 +613,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String calCatalogCount(int count) {
-    return 'Bu buildda tasdiqlangan IFU yozuvlari: $count';
+    return 'Ilovaning bu versiyasida tasdiqlangan IFU yozuvlari: $count';
   }
 
   @override
@@ -858,11 +859,11 @@ class AppLocalizationsUz extends AppLocalizations {
       'Probirka rangi, vaqt va harorat aniq probirka, metod va yo‘riqnomaga bog‘lanadi. Universal parametrlar berilmaydi.';
 
   @override
-  String get preOrderTitle => 'Probirkalar tartibi (venepunktsiya)';
+  String get preOrderTitle => 'Probirkalar tartibi (venepunksiya)';
 
   @override
   String get preOrderSub =>
-      'WHO 2010, 2.3-jadval (NCCLS 2003 konsensusi asosida). Laboratoriyangizning amaldagi tartibini tekshiring.';
+      'JSST 2010, 2.3-jadval (NCCLS 2003 konsensusi asosida). Laboratoriyangizning amaldagi tartibini tekshiring.';
 
   @override
   String preCap(String cap) {
@@ -992,7 +993,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get calcAcrSub => 'Siydik ACR · KDIGO A toifasi';
 
   @override
-  String get calcAnionGap => 'Anion farq';
+  String get calcAnionGap => 'Anion oralig‘i';
 
   @override
   String get calcAnionGapSub => 'Na, Cl, HCO₃ · K va albumin ixtiyoriy';
@@ -1121,7 +1122,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get resCategoryBasisConv => 'mg/g chegaralari bo‘yicha aniqlandi.';
 
   @override
-  String get resAnionGap => 'Anion farq';
+  String get resAnionGap => 'Anion oralig‘i';
 
   @override
   String get resAnionGapK => 'Kaliy bilan';
@@ -1336,7 +1337,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get sourcesBody =>
-      'Nashr etiladigan har bir da’vo asl manba, ko‘rilgan sana, qamrov va tekshiruv holatiga bog‘lanadi.';
+      'Nashr etiladigan har bir da’vo asl manba, murojaat sanasi, qamrov va tekshiruv holatiga bog‘lanadi.';
 
   @override
   String get researchTitle => 'Ilmiy ish maydoni';
@@ -1608,7 +1609,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'Bu build serverga ma’lumot yubormaydi. Sozlamalar, xatcho‘plar va qoralamalar faqat shu qurilmada saqlanadi.';
+      'Ilovaning bu versiyasi serverga ma’lumot yubormaydi. Sozlamalar, xatcho‘plar va qoralamalar faqat shu qurilmada saqlanadi.';
 
   @override
   String get privacyTerms => 'Foydalanish shartlari';
