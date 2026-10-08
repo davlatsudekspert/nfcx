@@ -114,6 +114,17 @@ bool get showDigitalPrices => false;
 /// (`StoreNotice(physical: true)`, `kShowSiteNotice` bilan).
 bool get showDigitalSiteHints => false;
 
+/// "LENTADA KO'TARISH" (FEATURED) EKRANIGA KIRISH YO'LI BO'LSINMI.
+///
+/// Ekran faqat paketlar (muddat + narx) va "reklama saytda
+/// rasmiylashtiriladi" yozuvidan iborat edi. Narx va yozuv olib
+/// tashlangach (`showDigitalPrices`, `showDigitalSiteHints`) unda
+/// foydali narsa qolmaydi — iPhone'dagidek Android'da ham post
+/// ostidagi tugma chizilmaydi, `/featured/...` esa bosh sahifaga
+/// buriladi (`router.dart`). iPhone'dagi Apple consumable "Ko'tarish"
+/// (`boost_controller.dart`) bunga aloqasiz — u ilova ichidagi xarid.
+bool get showFeaturedEntry => false;
+
 /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
 class OrderKind {
   static const nfcId = 'card_purchase';

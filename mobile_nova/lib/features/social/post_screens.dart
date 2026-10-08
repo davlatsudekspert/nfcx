@@ -279,10 +279,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     // to'siladi (403), lekin tugmani ko'rsatib
                     // keyin rad etish — odamni bekorga yugurtirish.
                     //
-                    // iPhone'da YO'Q: ekran faqat pullik xizmat
+                    // iPhone'da ham, Android'da ham YO'Q
+                    // (`showFeaturedEntry`): ekran faqat pullik xizmat
                     // xaridi, narx va sayt yozuvisiz u bo'sh qoladi
-                    // (`store_policy.dart`). Ko'tarilgan postlar
-                    // lentada iPhone'da ham ko'rinadi.
+                    // (Google Play to'lov qoidasi, `store_policy.dart`).
+                    // Ko'tarilgan postlar lentada ko'rinaveradi.
                     //
                     // iPhone'da — Apple consumable orqali "Ko'tarish"
                     // varag'i, faqat server kaliti (`boostEnabled`)
@@ -297,7 +298,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                         size: 38,
                         onPressed: () => showBoostSheet(context, ref, p),
                       ),
-                    if (!isAppStoreBuild)
+                    if (showFeaturedEntry)
                       NovaIconButton(
                         icon: Icons.trending_up_rounded,
                         tooltip: l.featuredTitle,

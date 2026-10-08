@@ -116,9 +116,10 @@ void main() {
   /// yozuvi va narx ham shunga kiradi. Apple 3.1.1 iPhone'da buni
   /// avvaldan talab qiladi. Jismoniy tovar (NFC karta) yozuvi QOLADI.
   group('raqamli xarid — Android va iPhone', () {
-    testWidgets('kalitlar: narx va sayt yozuvi yo‘q', (tester) async {
+    testWidgets('kalitlar: narx, sayt yozuvi va FEATURED yo‘q', (tester) async {
       expect(showDigitalPrices, isFalse);
       expect(showDigitalSiteHints, isFalse);
+      expect(showFeaturedEntry, isFalse);
       for (final kind in [
         OrderKind.nfcId,
         OrderKind.premium,

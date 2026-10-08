@@ -298,10 +298,17 @@ void main() {
       }
     }, variant: _ios);
 
-    testWidgets('Android: o‘zgarmagan — ekranlar ochiladi', (tester) async {
+    /// FEATURED Android'da ham yopiq (2026-10-08, Google Play to'lov
+    /// qoidasi): narx va sayt yozuvisiz ekran bo'sh qoladi
+    /// (`showFeaturedEntry`). Qolganlari Android'da ochiladi.
+    const closedOnAndroid = {'/featured/post/5': Routes.home};
+
+    testWidgets('Android: FEATURED yopiq, qolgan ekranlar ochiladi',
+        (tester) async {
       final r = await boot(tester);
       for (final p in closed.keys) {
-        expect((await go(tester, r, p)).path, p, reason: p);
+        final at = await go(tester, r, p);
+        expect(at.path, closedOnAndroid[p] ?? p, reason: p);
       }
       final biz = await go(tester, r, Routes.businessOnboardCustom);
       expect(biz.queryParameters['mode'], 'custom');

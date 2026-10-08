@@ -40,6 +40,7 @@ void main() {
       expect(isAppStoreBuild, isFalse);
       expect(showDigitalPrices, isFalse);
       expect(showDigitalSiteHints, isFalse);
+      expect(showFeaturedEntry, isFalse);
     });
 
     test('iPhone: raqamli narx va sayt yozuvi yo‘q', () {
@@ -48,7 +49,8 @@ void main() {
         expect(isAppStoreBuild, isTrue);
         expect(showDigitalPrices, isFalse);
         expect(showDigitalSiteHints, isFalse);
-        } finally {
+        expect(showFeaturedEntry, isFalse);
+      } finally {
         debugDefaultTargetPlatformOverride = null;
       }
     });
@@ -171,16 +173,24 @@ void main() {
       }
     });
 
-    test('"Lentada ko‘tarish" tugmasi iPhone’da yo‘q', () {
+    test('"Lentada ko‘tarish" tugmasi `showFeaturedEntry` ortida', () {
       final src = read('lib/features/social/post_screens.dart');
       final at = src.indexOf('Routes.featured(');
       expect(at, greaterThan(0));
       final before = src.substring(0, at);
-      final guard = before.lastIndexOf('if (!isAppStoreBuild)');
+      final guard = before.lastIndexOf('if (showFeaturedEntry)');
       final button = before.lastIndexOf('NovaIconButton(');
       expect(guard, greaterThan(0), reason: 'kalit yo‘q');
       expect(guard, lessThan(button),
           reason: 'kalit aynan shu tugmadan oldin turishi kerak');
+    });
+
+    test('`/featured` marshruti `showFeaturedEntry` bilan yopiq', () {
+      final src = read('lib/routing/router.dart');
+      final at = src.indexOf("path: '/featured/:kind/:id'");
+      expect(at, greaterThan(0));
+      final route = src.substring(at, src.indexOf('builder:', at));
+      expect(route, contains('showFeaturedEntry ? null : Routes.home'));
     });
 
     /// Avval faqat Android'da chiziladigan "(sayt orqali)", "saytdagi

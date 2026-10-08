@@ -15,6 +15,14 @@ import '../business/business_screens.dart' show formatMoney;
 
 /// POSTNI LENTADA KO'TARISH — NFCSTORE FEATURED.
 ///
+/// ## HOZIR HECH QAYERDA OCHILMAYDI
+///
+/// 2026-10-08 dan narx va "saytda rasmiylashtiriladi" yozuvi Android'da
+/// ham yo'q (Google Play to'lov qoidasi, `store_policy.dart`). Ularsiz
+/// ekran bo'sh qoladi, shuning uchun kirish yo'li ham, marshrut ham
+/// yopiq (`showFeaturedEntry`). Ekran kalit qaytarilgan kun uchun
+/// saqlanadi.
+///
 /// ## ILOVA SLOTNI YOQMAYDI
 ///
 /// Bu ekran faqat KUTILAYOTGAN buyurtma ochadi va to'lov
@@ -90,12 +98,13 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
                 const SizedBox(height: Gap.md),
                 StoreNotice(text: l.storeBuyOnSiteAd),
               ] else ...[
-                // PAKETLAR VA NARXLAR KO'RINADI — xarid esa saytda.
+                // PAKETLAR — muddat; narx va sayt yozuvi faqat
+                // `showDigitalPrices` / `showDigitalSiteHints` bilan.
                 //
                 // Sabab `lib/features/shop/store_policy.dart` da:
                 // Google Play raqamli xizmatni o'z to'lov tizimisiz
-                // sotishga ruxsat bermaydi. Ro'yxatni yashirish
-                // shart emas — u ma'lumot, xarid emas.
+                // sotishga ham, tashqi to'lovga yo'naltirishga ham
+                // ruxsat bermaydi.
                 SectionHeader(title: l.featuredPick),
                 for (final p in o.packages)
                   Padding(
@@ -150,8 +159,8 @@ class _PackageTile extends StatelessWidget {
             ),
           ),
           // Narx do'kon bilan BIR XIL ko'rinishda — ikki joyda
-          // ikki xil yozilishi odamni ikkilantirardi. iPhone'da
-          // raqamli narx yo'q (`store_policy.dart`).
+          // ikki xil yozilishi odamni ikkilantirardi. Raqamli narx
+          // ikkala platformada yo'q (`store_policy.dart`).
           if (showDigitalPrices)
             Text(
               formatMoney(pack.price, 'UZS'),

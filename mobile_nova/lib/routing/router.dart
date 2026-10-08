@@ -45,7 +45,11 @@ import '../features/premium/boost_sheet.dart' show BoostCreditsScreen;
 import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
-    show isAppStoreBuild, showNewsEntry, showNotificationSettings;
+    show
+        isAppStoreBuild,
+        showFeaturedEntry,
+        showNewsEntry,
+        showNotificationSettings;
 import '../features/showcase/showcase_composer.dart';
 import '../features/showcase/showcase_screen.dart';
 import '../features/social/post_screens.dart';
@@ -340,10 +344,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, __) => const NfcIdMarketScreen()),
       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
       GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
-      // FEATURED (lentada pullik ko'tarish) — iPhone'da yo'q.
+      // FEATURED (lentada pullik ko'tarish) — iPhone'da ham, Android'da
+      // ham yo'q (`showFeaturedEntry`): narx va "saytda oling" yozuvisiz
+      // ekran bo'sh qoladi (Google Play to'lov qoidasi).
       GoRoute(
         path: '/featured/:kind/:id',
-        redirect: _closedOnIos(Routes.home),
+        redirect: (_, __) => showFeaturedEntry ? null : Routes.home,
         builder: (_, st) => FeaturedScreen(
           targetKind: st.pathParameters['kind'] ?? 'post',
           targetId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
