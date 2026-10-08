@@ -249,3 +249,27 @@ konteynerda tekshiriladi.
 - **Ishga tushish:** Android/iOS da oq fon o‘rniga mavzuga mos fon (yorug‘ #F3F3EC, qorong‘i
   #0D1919) — qorong‘i rejimda oq “chaqnash” yo‘q; Android 12+ splash foni ham shu rang. Android
   belgisi alohida PNG (adaptive ikonka XML `<bitmap>` ichida ishlamaydi).
+
+## D-27. QC: chegaradagi qiymat, rad etilgan seriya, zaxira nusxa (2026-10-08)
+Mustaqil sharh (review A) topgan xatolar asosida:
+- **Chegaradagi qiymat:** z suzuvchi nuqta xatosi bilan hisoblanadi (x̄ 5.0, SD 0.2, qiymat 5.4 →
+  z = 2.0000000000000018). D-20 ga ko‘ra aynan ±k SD dagi qiymat buzilish emas, shuning uchun
+  barcha taqqoslashlar `z > k + 1e-9`. Avval bu holatda 2-2s/4-1s bo‘yicha noto‘g‘ri “rad”
+  chiqardi.
+- **Rad etilgan seriya:** rad etilgan seriya qiymatlari keyingi seriyalarning seriyalararo
+  qoidalarida (2-2s, 4-1s, 10x) va kuzatilgan x̄/SD/CV da ishlatilmaydi — xato tuzatilib, seriya
+  qaytarilgan deb hisoblanadi (bitta 1-3s chiqishi SD ni ~1.6 dan 14.4 ga oshirardi). Seriya
+  tarixda qoladi va “keyingi qoidalar va statistikada ishlatilmaydi” deb belgilanadi.
+- **Saqlash:** avval diskka, so‘ng xotiraga yoziladi; xato bo‘lsa ekranda saqlanmagan ma’lumot
+  ko‘rinmaydi va xabar chiqadi (tugma “osilib” qolmaydi). Cheksiz qiymatlar (1e400) rad etiladi.
+- **Maqsad:** manba (laboratoriya/ishlab chiqaruvchi) endi har maqsadda saqlanadi; amal qilish
+  sanasini tanlash mumkin (oldingi davrdan oldin emas); “kuzatilgan x̄/SD” tugmasi (rad
+  etilmagan, joriy davr). n < 20 bo‘lsa Westgard 1981 dagi ~20 qiymat eslatiladi.
+- **Seriya vaqti:** kechikib kiritilgan seriya uchun haqiqiy vaqt tanlanadi (kelajak emas).
+- **Zaxira nusxa:** QC JSON nusxasi clipboard’ga va tekshirilgan holda tiklash (tasdiq bilan).
+  Saqlangan ma’lumot o‘qilmasa — matnni nusxalash, zaxiradan tiklash yoki tasdiq bilan
+  o‘chirish; avval foydalanuvchi butunlay qulflanib qolardi.
+- **CSV:** `run_verdict` + `level_verdict` + `level_rules`; `= + - @` bilan boshlanadigan matn
+  `'` bilan himoyalanadi (CSV formula injection).
+- **Kirish:** “1,500” — ming ajratgichmi yoki o‘nlik vergulmi aniq emas, taxmin qilinmaydi
+  (qayta kiritish so‘raladi). `roundHalfUp` juda katta sonlarda int64 ga o‘tmaydi.

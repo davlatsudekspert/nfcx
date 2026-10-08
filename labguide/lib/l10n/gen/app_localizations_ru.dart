@@ -833,7 +833,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qcChangeTargetBody =>
-      'Используйте при переходе на новый лот контроля или после пересчёта среднего и SD лабораторией. Новые значения действуют с этого момента; прежние серии по-прежнему оцениваются по действовавшим тогда целям.';
+      'Используйте при переходе на новый лот контроля или после пересчёта среднего и SD лабораторией. Новые значения действуют с выбранного времени (обычно с этого момента); прежние серии по-прежнему оцениваются по действовавшим тогда целям.';
 
   @override
   String get qcErrTarget => 'Введите среднее и SD больше нуля.';
@@ -851,6 +851,106 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get qcRulesSource =>
       'Правила: мультиправило Вестгарда (Westgard JO и соавт., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). Средство обучения и проверки — не заменяет процедуру контроля качества вашей лаборатории.';
+
+  @override
+  String get qcErrSave => 'Не удалось сохранить. Попробуйте ещё раз.';
+
+  @override
+  String qcErrNotFinite(String label) {
+    return 'Уровень $label: значение слишком велико или слишком мало.';
+  }
+
+  @override
+  String get qcLevelName => 'Название уровня (необязательно, напр. «Низкий»)';
+
+  @override
+  String get qcStatsExcluded => 'Отклонённые серии не учитываются.';
+
+  @override
+  String qcStatsFew(int count) {
+    return 'n = $count: значений пока мало — Westgard и соавт. (1981) рассчитывают цель сначала примерно по 20 значениям.';
+  }
+
+  @override
+  String qcUseObserved(int count) {
+    return 'Подставить наблюдаемые x̄ и SD (n = $count)';
+  }
+
+  @override
+  String get qcEffectiveFrom => 'Действует с';
+
+  @override
+  String get qcFromNow => 'С этого момента';
+
+  @override
+  String qcFromDate(String date) {
+    return 'С $date';
+  }
+
+  @override
+  String get qcPickDate => 'Выбрать дату';
+
+  @override
+  String qcRunTime(String time) {
+    return 'Время серии: $time';
+  }
+
+  @override
+  String get qcRunTimeNow => 'сейчас';
+
+  @override
+  String get qcRunTimeHint =>
+      'Для серии, внесённой с опозданием, выберите фактическое время измерения — правила проверяют серии по порядку времени.';
+
+  @override
+  String qcShowAllRuns(int count) {
+    return 'Показать все ($count)';
+  }
+
+  @override
+  String get qcRejectedExcluded =>
+      'Не используется в следующих правилах и статистике';
+
+  @override
+  String get qcBackupTitle => 'Резервная копия';
+
+  @override
+  String get qcBackupBody =>
+      'Данные контроля качества хранятся только на этом устройстве. Скопируйте резервную копию (JSON) и сохраните в надёжном месте; на другом устройстве её можно восстановить из буфера.';
+
+  @override
+  String get qcBackupCopy => 'Скопировать резервную копию';
+
+  @override
+  String get qcBackupCopied => 'Резервная копия скопирована в буфер';
+
+  @override
+  String get qcBackupRestore => 'Восстановить из буфера';
+
+  @override
+  String qcRestoreConfirm(int sets, int runs) {
+    return 'Текущие данные контроля качества будут заменены резервной копией из буфера: тестов — $sets, серий — $runs.';
+  }
+
+  @override
+  String get qcRestoreAction => 'Заменить';
+
+  @override
+  String get qcRestoreInvalid =>
+      'В буфере нет корректной резервной копии контроля качества.';
+
+  @override
+  String get qcRestored => 'Данные контроля качества восстановлены';
+
+  @override
+  String get qcCopyRaw => 'Скопировать сохранённый текст';
+
+  @override
+  String get qcDiscard => 'Удалить нечитаемые данные';
+
+  @override
+  String get qcDiscardConfirm =>
+      'Сначала скопируйте сохранённый текст. После удаления его нельзя вернуть.';
 
   @override
   String get preTitle => 'Путь образца';

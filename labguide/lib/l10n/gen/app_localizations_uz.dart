@@ -817,7 +817,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get qcChangeTargetBody =>
-      'Yangi nazorat loti boshlanganda yoki laboratoriya o‘rtacha va SD ni qayta hisoblaganda ishlating. Yangi qiymatlar hozirdan amal qiladi; oldingi seriyalar o‘sha paytdagi maqsad bilan baholanishda davom etadi.';
+      'Yangi nazorat loti boshlanganda yoki laboratoriya o‘rtacha va SD ni qayta hisoblaganda ishlating. Yangi qiymatlar tanlangan vaqtdan (odatda hozirdan) amal qiladi; oldingi seriyalar o‘sha paytdagi maqsad bilan baholanishda davom etadi.';
 
   @override
   String get qcErrTarget => 'O‘rtacha va noldan katta SD kiriting.';
@@ -835,6 +835,105 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get qcRulesSource =>
       'Qoidalar: Westgard ko‘p qoidali tartibi (Westgard JO va boshq., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). O‘rganish va tekshirish vositasi — laboratoriyangizning QC tartibini almashtirmaydi.';
+
+  @override
+  String get qcErrSave => 'Saqlab bo‘lmadi. Qayta urinib ko‘ring.';
+
+  @override
+  String qcErrNotFinite(String label) {
+    return '$label-daraja: qiymat juda katta yoki juda kichik.';
+  }
+
+  @override
+  String get qcLevelName => 'Daraja nomi (ixtiyoriy, masalan “Past”)';
+
+  @override
+  String get qcStatsExcluded => 'Rad etilgan seriyalar hisobga olinmagan.';
+
+  @override
+  String qcStatsFew(int count) {
+    return 'n = $count: qiymatlar hali kam — Westgard va boshq. (1981) maqsadni dastlab taxminan 20 ta qiymatdan hisoblaydi.';
+  }
+
+  @override
+  String qcUseObserved(int count) {
+    return 'Kuzatilgan x̄ va SD ni qo‘yish (n = $count)';
+  }
+
+  @override
+  String get qcEffectiveFrom => 'Amal qilish boshlanishi';
+
+  @override
+  String get qcFromNow => 'Hozirdan';
+
+  @override
+  String qcFromDate(String date) {
+    return '$date dan';
+  }
+
+  @override
+  String get qcPickDate => 'Sanani tanlash';
+
+  @override
+  String qcRunTime(String time) {
+    return 'Seriya vaqti: $time';
+  }
+
+  @override
+  String get qcRunTimeNow => 'hozir';
+
+  @override
+  String get qcRunTimeHint =>
+      'Kechikib kiritilgan seriya uchun haqiqiy o‘lchash vaqtini tanlang — qoidalar seriyalarni vaqt tartibida tekshiradi.';
+
+  @override
+  String qcShowAllRuns(int count) {
+    return 'Hammasini ko‘rsatish ($count)';
+  }
+
+  @override
+  String get qcRejectedExcluded =>
+      'Keyingi qoidalar va statistikada ishlatilmaydi';
+
+  @override
+  String get qcBackupTitle => 'Zaxira nusxa';
+
+  @override
+  String get qcBackupBody =>
+      'QC ma’lumotlari faqat shu qurilmada saqlanadi. Zaxira nusxani (JSON) nusxalab, xavfsiz joyda saqlang; boshqa qurilmada buferdan tiklash mumkin.';
+
+  @override
+  String get qcBackupCopy => 'Zaxira nusxani nusxalash';
+
+  @override
+  String get qcBackupCopied => 'Zaxira nusxa buferga nusxalandi';
+
+  @override
+  String get qcBackupRestore => 'Buferdan tiklash';
+
+  @override
+  String qcRestoreConfirm(int sets, int runs) {
+    return 'Joriy QC ma’lumotlari buferdagi zaxira nusxa bilan almashtiriladi: $sets ta test, $runs ta seriya.';
+  }
+
+  @override
+  String get qcRestoreAction => 'Almashtirish';
+
+  @override
+  String get qcRestoreInvalid => 'Buferda yaroqli QC zaxira nusxasi topilmadi.';
+
+  @override
+  String get qcRestored => 'QC ma’lumotlari tiklandi';
+
+  @override
+  String get qcCopyRaw => 'Saqlangan matnni nusxalash';
+
+  @override
+  String get qcDiscard => 'O‘qib bo‘lmagan ma’lumotni o‘chirish';
+
+  @override
+  String get qcDiscardConfirm =>
+      'Avval saqlangan matnni nusxalab oling. O‘chirilgandan keyin uni qaytarib bo‘lmaydi.';
 
   @override
   String get preTitle => 'Namuna yo‘li';

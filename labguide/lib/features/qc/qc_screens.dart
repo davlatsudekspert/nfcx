@@ -25,6 +25,9 @@ const _decimalKeyboard = TextInputType.numberWithOptions(
 /// Grafikda ko'rsatiladigan oxirgi seriyalar soni.
 const kQcChartRuns = 30;
 
+/// Tarixda dastlab ko'rsatiladigan seriyalar soni (qolgani — tugma bilan).
+const _kHistoryRuns = 50;
+
 String verdictLabel(QcVerdict v, AppLocalizations l) => switch (v) {
   QcVerdict.accept => l.qcAccept,
   QcVerdict.warning => l.qcWarning,
@@ -37,6 +40,99 @@ String _num(double v, String locale) =>
 String _z(double z, String locale) {
   final s = formatResult(roundHalfUp(z, 2), locale, maxDecimals: 2);
   return z > 0 ? '+$s' : s;
+}
+
+/// Maydonga qo'yish uchun: guruhlashsiz, lokal o'nlik belgisi bilan —
+/// [parseDecimal] uni qayta o'qiy oladi.
+String _plain(double v, String locale) {
+  final decimals = v.abs() >= 1 ? 4 : 6;
+  final f = NumberFormat.decimalPattern(locale)
+    ..maximumFractionDigits = decimals
+    ..minimumFractionDigits = 0
+    ..turnOffGrouping();
+  return f.format(roundHalfUp(v, decimals));
+}
+
+/// To'plam darajalarining amaldagi x̄/SD manbalari.
+Set<QcTargetSource> _sources(QcSet set) => {
+  for (final level in set.levels) set.sourceOf(level.current),
+};
+
+String _sourceLabel(QcTargetSource s, AppLocalizations l) => switch (s) {
+  QcTargetSource.laboratory => l.qcSourceLab,
+  QcTargetSource.manufacturer => l.qcSourceManufacturer,
+};
+
+/// Joriy maqsad davridagi, rad etilmagan seriyalar qiymatlari — kuzatilgan
+/// statistika uchun (rad etilgan seriya x̄/SD ni buzmasin, D-27).
+List<double> _periodValues(QcLevel level, List<QcRunResult> results) => [
+  for (final r in results)
+    if (r.verdict != QcVerdict.reject)
+      if (level.since == null || !r.run.at.isBefore(level.since!))
+        ?r.run.values[level.id],
+];
+
+void _snack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+Future<bool> _confirmDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String action,
+}) async {
+  final l = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l.actionCancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
+  return ok ?? false;
+}
+
+/// Buferdagi zaxira nusxani tekshirib, tasdiqdan keyin tiklaydi.
+Future<void> _restoreFromClipboard(BuildContext context) async {
+  final l = AppLocalizations.of(context);
+  final qc = context.services.qc;
+  final clip = await Clipboard.getData(Clipboard.kTextPlain);
+  if (!context.mounted) return;
+  final QcData data;
+  try {
+    data = QcController.parseBackup(clip?.text ?? '');
+  } on FormatException {
+    _snack(context, l.qcRestoreInvalid);
+    return;
+  }
+  final runs = data.runs.values.fold<int>(0, (n, r) => n + r.length);
+  final ok = await _confirmDialog(
+    context,
+    title: l.qcBackupRestore,
+    body: l.qcRestoreConfirm(data.sets.length, runs),
+    action: l.qcRestoreAction,
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await qc.restore(data);
+  } on Object {
+    if (context.mounted) _snack(context, l.qcErrSave);
+    return;
+  }
+  if (context.mounted) _snack(context, l.qcRestored);
 }
 
 class QcScreen extends StatelessWidget {
@@ -64,9 +160,42 @@ class QcScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (qc.loadError != null)
-              LgStateView(kind: StateKind.error, title: l.qcLoadError)
-            else if (data.sets.isEmpty)
+            if (qc.loadError != null) ...[
+              LgStateView(kind: StateKind.error, title: l.qcLoadError),
+              const SizedBox(height: 10),
+              // Hech narsa jim yo'qolmaydi: avval matnni nusxalash, so'ng
+              // zaxiradan tiklash yoki (tasdiq bilan) o'chirish.
+              LgButton.secondary(
+                label: l.qcCopyRaw,
+                icon: Icons.copy_rounded,
+                onPressed: () async {
+                  await Clipboard.setData(
+                    ClipboardData(text: qc.unreadableRaw ?? ''),
+                  );
+                  if (context.mounted) _snack(context, l.qcBackupCopied);
+                },
+              ),
+              const SizedBox(height: 10),
+              LgButton.secondary(
+                label: l.qcBackupRestore,
+                icon: Icons.restore_rounded,
+                onPressed: () => _restoreFromClipboard(context),
+              ),
+              const SizedBox(height: 10),
+              LgButton.secondary(
+                label: l.qcDiscard,
+                icon: Icons.delete_outline_rounded,
+                onPressed: () async {
+                  final ok = await _confirmDialog(
+                    context,
+                    title: l.qcDiscard,
+                    body: l.qcDiscardConfirm,
+                    action: l.actionDelete,
+                  );
+                  if (ok) await qc.discardUnreadable();
+                },
+              ),
+            ] else if (data.sets.isEmpty)
               LgStateView(
                 kind: StateKind.empty,
                 title: l.qcEmptyTitle,
@@ -85,6 +214,27 @@ class QcScreen extends StatelessWidget {
                 label: l.qcAddSet,
                 icon: Icons.add_rounded,
                 onPressed: () => context.push('/lab/qc/new'),
+              ),
+              LgSectionTitle(l.qcBackupTitle),
+              Text(l.qcBackupBody, style: text.bodySmall),
+              const SizedBox(height: 10),
+              if (data.sets.isNotEmpty) ...[
+                LgButton.secondary(
+                  label: l.qcBackupCopy,
+                  icon: Icons.copy_rounded,
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: qc.exportJson()),
+                    );
+                    if (context.mounted) _snack(context, l.qcBackupCopied);
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+              LgButton.secondary(
+                label: l.qcBackupRestore,
+                icon: Icons.restore_rounded,
+                onPressed: () => _restoreFromClipboard(context),
               ),
             ],
             const SizedBox(height: 14),
@@ -140,11 +290,13 @@ class QcNewSetScreen extends StatefulWidget {
 }
 
 class _LevelFields {
+  final label = TextEditingController();
   final lot = TextEditingController();
   final mean = TextEditingController();
   final sd = TextEditingController();
 
   void dispose() {
+    label.dispose();
     lot.dispose();
     mean.dispose();
     sd.dispose();
@@ -180,22 +332,43 @@ class _QcNewSetScreenState extends State<QcNewSetScreen> {
     for (final (i, f) in _levels.indexed) {
       final mean = parseDecimal(f.mean.text);
       final sd = parseDecimal(f.sd.text);
-      if (mean == null || sd == null || !mean.isFinite || !(sd > 0)) {
+      if (mean == null ||
+          sd == null ||
+          !mean.isFinite ||
+          !sd.isFinite ||
+          !(sd > 0)) {
         setState(() => _error = l.qcErrLevel('${i + 1}'));
         return;
       }
-      levels.add((label: '${i + 1}', lot: f.lot.text, mean: mean, sd: sd));
+      final label = f.label.text.trim();
+      levels.add((
+        label: label.isEmpty ? '${i + 1}' : label,
+        lot: f.lot.text,
+        mean: mean,
+        sd: sd,
+      ));
     }
     setState(() {
       _error = null;
       _busy = true;
     });
-    final set = await context.services.qc.addSet(
-      name: _name.text,
-      unit: _unit.text,
-      targetSource: _source,
-      levels: levels,
-    );
+    final QcSet set;
+    try {
+      set = await context.services.qc.addSet(
+        name: _name.text,
+        unit: _unit.text,
+        targetSource: _source,
+        levels: levels,
+      );
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = l.qcErrSave;
+        });
+      }
+      return;
+    }
     if (!mounted) return;
     context.pushReplacement('/lab/qc/set/${set.id}');
   }
@@ -256,6 +429,7 @@ class _QcNewSetScreenState extends State<QcNewSetScreen> {
                   )
                 : null,
           ),
+          LgField(label: l.qcLevelName, controller: f.label, maxLength: 20),
           LgField(label: l.qcLot, controller: f.lot),
           LgField(
             label: l.qcMean,
@@ -308,6 +482,10 @@ class _QcSetScreenState extends State<QcSetScreen> {
   String? _error;
   bool _busy = false;
 
+  /// Kechikib kiritilgan seriya uchun haqiqiy o'lchash vaqti (`null` — hozir).
+  DateTime? _runAt;
+  bool _showAllRuns = false;
+
   @override
   void dispose() {
     for (final c in _values.values) {
@@ -332,6 +510,10 @@ class _QcSetScreenState extends State<QcSetScreen> {
         setState(() => _error = l.qcErrRunInvalid(level.label));
         return;
       }
+      if (!v.isFinite) {
+        setState(() => _error = l.qcErrNotFinite(level.label));
+        return;
+      }
       values[level.id] = v;
     }
     if (values.isEmpty) {
@@ -342,35 +524,77 @@ class _QcSetScreenState extends State<QcSetScreen> {
       _error = null;
       _busy = true;
     });
-    await context.services.qc.addRun(set.id, values, note: _note.text);
+    final now = DateTime.now();
+    final at = _runAt == null || _runAt!.isAfter(now) ? null : _runAt;
+    try {
+      await context.services.qc.addRun(
+        set.id,
+        values,
+        note: _note.text,
+        at: at,
+      );
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = l.qcErrSave;
+        });
+      }
+      return;
+    }
     if (!mounted) return;
     for (final c in _values.values) {
       c.clear();
     }
     _note.clear();
-    setState(() => _busy = false);
+    setState(() {
+      _busy = false;
+      _runAt = null;
+    });
   }
 
-  Future<bool> _confirm(String title) async {
-    final l = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
+  Future<void> _pickRunTime() async {
+    final now = DateTime.now();
+    final initial = _runAt ?? now;
+    final date = await showDatePicker(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(l.qcConfirmDelete),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l.actionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l.actionDelete),
-          ),
-        ],
-      ),
+      initialDate: initial,
+      firstDate: DateTime(now.year - 2),
+      lastDate: now,
     );
-    return ok ?? false;
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null || !mounted) return;
+    final at = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    setState(() => _runAt = at.isAfter(now) ? null : at);
+  }
+
+  Future<bool> _confirm(String title) {
+    final l = AppLocalizations.of(context);
+    return _confirmDialog(
+      context,
+      title: title,
+      body: l.qcConfirmDelete,
+      action: l.actionDelete,
+    );
+  }
+
+  Future<void> _guard(Future<void> Function() action) async {
+    final l = AppLocalizations.of(context);
+    try {
+      await action();
+    } on Object {
+      if (mounted) _snack(context, l.qcErrSave);
+    }
   }
 
   @override
@@ -390,14 +614,12 @@ class _QcSetScreenState extends State<QcSetScreen> {
           );
         }
         final results = evaluateRuns(set, qc.data.runsOf(set.id));
+        final sources = _sources(set);
         return LgPage(
           title: set.name,
           subtitle: [
             if (set.unit.isNotEmpty) set.unit,
-            switch (set.targetSource) {
-              QcTargetSource.laboratory => l.qcSourceLab,
-              QcTargetSource.manufacturer => l.qcSourceManufacturer,
-            },
+            if (sources.length == 1) _sourceLabel(sources.single, l),
           ].join(' · '),
           children: _body(context, l, qc, set, results),
         );
@@ -418,6 +640,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
     final dateFmt = DateFormat.yMd(locale).add_Hm();
     final dateOnly = DateFormat.yMd(locale);
     final last = results.isEmpty ? null : results.last;
+    final sources = _sources(set);
     final shown = results.length > kQcChartRuns
         ? results.sublist(results.length - kQcChartRuns)
         : results;
@@ -469,9 +692,14 @@ class _QcSetScreenState extends State<QcSetScreen> {
           ),
         ),
         Text(
-          'x̄ ${_num(level.mean, locale)} · SD ${_num(level.sd, locale)}'
-          '${set.unit.isEmpty ? '' : ' ${set.unit}'}'
-          '${level.previous.isEmpty || level.since == null ? '' : ' · ${l.qcSince(dateOnly.format(level.since!))}'}',
+          [
+            'x̄ ${_num(level.mean, locale)} · SD ${_num(level.sd, locale)}'
+                '${set.unit.isEmpty ? '' : ' ${set.unit}'}',
+            if (level.previous.isNotEmpty && level.since != null)
+              l.qcSince(dateOnly.format(level.since!)),
+            if (sources.length > 1)
+              _sourceLabel(set.sourceOf(level.current), l),
+          ].join(' · '),
           style: text.bodySmall,
         ),
         const SizedBox(height: 6),
@@ -483,30 +711,55 @@ class _QcSetScreenState extends State<QcSetScreen> {
                   if (r.run.values[level.id] != null) r,
             ];
             return LgPanel(
-              child: LeveyJenningsChart(
-                mean: level.mean,
-                sd: level.sd,
-                points: [
-                  for (final r in period)
-                    LjPoint(r.run.values[level.id]!, markFor(r, level.id)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LeveyJenningsChart(
+                    mean: level.mean,
+                    sd: level.sd,
+                    points: [
+                      for (final r in period)
+                        LjPoint(r.run.values[level.id]!, markFor(r, level.id)),
+                    ],
+                    semanticLabel: l.qcChartSemantics(
+                      level.label,
+                      period.length,
+                    ),
+                  ),
+                  // X o'qi: vaqt tartibi — birinchi va oxirgi nuqta sanasi.
+                  if (period.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        period.length == 1
+                            ? dateOnly.format(period.first.run.at)
+                            : '${dateOnly.format(period.first.run.at)} – '
+                                  '${dateOnly.format(period.last.run.at)}',
+                        style: text.bodySmall,
+                      ),
+                    ),
                 ],
-                semanticLabel: l.qcChartSemantics(level.label, period.length),
               ),
             );
           },
         ),
-        if (QcStats.of([
-              for (final r in results)
-                if (level.since == null || !r.run.at.isBefore(level.since!))
-                  ?r.run.values[level.id],
-            ])
-            case final s when s.n >= 2)
+        if (QcStats.of(_periodValues(level, results)) case final s
+            when s.n >= 2)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              '${l.qcStats}: n = ${s.n} · x̄ ${_num(s.mean!, locale)} · '
-              'SD ${_num(s.sd!, locale)}'
-              '${s.cv == null ? '' : ' · CV ${formatResult(roundHalfUp(s.cv!, 1), locale, maxDecimals: 1)} %'}',
+              [
+                '${l.qcStats}: n = ${s.n} · x̄ ${_num(s.mean!, locale)} · '
+                    'SD ${_num(s.sd!, locale)}'
+                    '${s.cv == null ? '' : ' · CV ${formatResult(roundHalfUp(s.cv!, 1), locale, maxDecimals: 1)} %'}',
+                if (results.any(
+                  (r) =>
+                      r.verdict == QcVerdict.reject &&
+                      r.run.values.containsKey(level.id),
+                ))
+                  l.qcStatsExcluded,
+                if (s.n < 20) l.qcStatsFew(s.n),
+              ].join('\n'),
               style: text.bodySmall,
             ),
           ),
@@ -519,6 +772,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
                   if (t.lot.isNotEmpty) '${l.qcLot} ${t.lot}',
                   'x̄ ${_num(t.mean, locale)}',
                   'SD ${_num(t.sd, locale)}',
+                  _sourceLabel(set.sourceOf(t), l),
                 ].join(' · '),
                 t.from == null ? '—' : dateOnly.format(t.from!),
               ),
@@ -528,6 +782,12 @@ class _QcSetScreenState extends State<QcSetScreen> {
       ],
       const SizedBox(height: 6),
       Text(l.qcChartLegend, style: text.bodySmall),
+      if (set.levels.any(
+        (lv) => set.sourceOf(lv.current) == QcTargetSource.manufacturer,
+      )) ...[
+        const SizedBox(height: 10),
+        LgNotice(l.qcManufacturerWarning, kind: NoticeKind.warning),
+      ],
 
       // Yangi seriya.
       LgSectionTitle(l.qcAddRun),
@@ -542,6 +802,31 @@ class _QcSetScreenState extends State<QcSetScreen> {
           textInputAction: TextInputAction.next,
         ),
       LgField(label: l.qcNote, controller: _note, maxLength: 200),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Flexible(
+            child: LgButton.secondary(
+              label: l.qcRunTime(
+                _runAt == null ? l.qcRunTimeNow : dateFmt.format(_runAt!),
+              ),
+              icon: Icons.schedule_rounded,
+              expand: false,
+              onPressed: _pickRunTime,
+            ),
+          ),
+          if (_runAt != null)
+            IconButton(
+              tooltip: l.qcRunTime(l.qcRunTimeNow),
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => setState(() => _runAt = null),
+            ),
+        ],
+      ),
+      if (_runAt != null) ...[
+        const SizedBox(height: 6),
+        Text(l.qcRunTimeHint, style: text.bodySmall),
+      ],
       const SizedBox(height: 12),
       if (_error != null) ...[
         LgNotice(_error!, kind: NoticeKind.error),
@@ -552,7 +837,10 @@ class _QcSetScreenState extends State<QcSetScreen> {
       // Seriyalar tarixi (oxirgisi birinchi).
       if (results.isNotEmpty) ...[
         LgSectionTitle(l.qcRunHistory),
-        for (final r in results.reversed.take(50))
+        for (final r
+            in _showAllRuns
+                ? results.reversed
+                : results.reversed.take(_kHistoryRuns))
           _RunTile(
             set: set,
             result: r,
@@ -560,10 +848,18 @@ class _QcSetScreenState extends State<QcSetScreen> {
             locale: locale,
             onDelete: () async {
               if (await _confirm(l.qcDeleteRun)) {
-                await qc.deleteRun(set.id, r.run.id);
+                await _guard(() => qc.deleteRun(set.id, r.run.id));
               }
             },
           ),
+        if (!_showAllRuns && results.length > _kHistoryRuns) ...[
+          const SizedBox(height: 10),
+          LgButton.secondary(
+            label: l.qcShowAllRuns(results.length),
+            icon: Icons.expand_more_rounded,
+            onPressed: () => setState(() => _showAllRuns = true),
+          ),
+        ],
       ],
       if (results.isNotEmpty) ...[
         const SizedBox(height: 14),
@@ -571,16 +867,11 @@ class _QcSetScreenState extends State<QcSetScreen> {
           label: l.qcCopyCsv,
           icon: Icons.table_view_outlined,
           onPressed: () async {
-            final messenger = ScaffoldMessenger.of(context);
             final csv = qcCsv(set, results);
             await Clipboard.setData(ClipboardData(text: csv));
-            messenger
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(l.qcCopied('\n'.allMatches(csv).length - 1)),
-                ),
-              );
+            if (context.mounted) {
+              _snack(context, l.qcCopied('\n'.allMatches(csv).length - 1));
+            }
           },
         ),
       ],
@@ -591,7 +882,12 @@ class _QcSetScreenState extends State<QcSetScreen> {
         onPressed: () async {
           final router = GoRouter.of(context);
           if (await _confirm(l.qcDeleteSet)) {
-            await qc.deleteSet(set.id);
+            try {
+              await qc.deleteSet(set.id);
+            } on Object {
+              if (context.mounted) _snack(context, l.qcErrSave);
+              return;
+            }
             router.pop();
           }
         },
@@ -658,6 +954,8 @@ class _RunTile extends StatelessWidget {
                         : FontWeight.w600,
                   ),
                 ),
+                if (r.verdict == QcVerdict.reject)
+                  Text(l.qcRejectedExcluded, style: text.bodySmall),
                 if (r.run.note != null)
                   Text(r.run.note!, style: text.bodySmall),
               ],
@@ -675,8 +973,8 @@ class _RunTile extends StatelessWidget {
 }
 
 /// Daraja maqsadini almashtirish: yangi lot yoki laboratoriya qayta
-/// hisoblagan x̄/SD. Hozirdan boshlab amal qiladi; oldingi seriyalar o'z
-/// maqsadi bilan baholanishda davom etadi.
+/// hisoblagan x̄/SD. Hozirdan (yoki tanlangan sanadan) amal qiladi; undan
+/// oldingi seriyalar o'z maqsadi bilan baholanishda davom etadi.
 class QcTargetScreen extends StatefulWidget {
   const QcTargetScreen({super.key, required this.setId, required this.levelId});
 
@@ -692,6 +990,10 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
   final _mean = TextEditingController();
   final _sd = TextEditingController();
   bool _prefilled = false;
+  QcTargetSource _source = QcTargetSource.laboratory;
+
+  /// Amal qilish boshlanishi (`null` — hozirdan).
+  DateTime? _from;
   String? _error;
   bool _busy = false;
 
@@ -708,7 +1010,11 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
     FocusScope.of(context).unfocus();
     final mean = parseDecimal(_mean.text);
     final sd = parseDecimal(_sd.text);
-    if (mean == null || sd == null || !mean.isFinite || !(sd > 0)) {
+    if (mean == null ||
+        sd == null ||
+        !mean.isFinite ||
+        !sd.isFinite ||
+        !(sd > 0)) {
       setState(() => _error = l.qcErrTarget);
       return;
     }
@@ -717,15 +1023,47 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
       _busy = true;
     });
     final router = GoRouter.of(context);
-    await context.services.qc.changeTarget(
-      widget.setId,
-      widget.levelId,
-      lot: _lot.text,
-      mean: mean,
-      sd: sd,
-    );
+    try {
+      await context.services.qc.changeTarget(
+        widget.setId,
+        widget.levelId,
+        lot: _lot.text,
+        mean: mean,
+        sd: sd,
+        from: _from,
+        source: _source,
+      );
+    } on Object {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = l.qcErrSave;
+        });
+      }
+      return;
+    }
     if (!mounted) return;
     router.pop();
+  }
+
+  Future<void> _pickFrom(DateTime previousStart) async {
+    final now = DateTime.now();
+    final first = DateTime(
+      previousStart.year,
+      previousStart.month,
+      previousStart.day,
+    );
+    if (now.isBefore(first)) return;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _from ?? now,
+      firstDate: first,
+      lastDate: now,
+    );
+    if (date == null || !mounted) return;
+    // Kun boshidan; oldingi davr boshlanishidan oldin bo'lishi mumkin emas.
+    final day = DateTime(date.year, date.month, date.day);
+    setState(() => _from = day.isBefore(previousStart) ? previousStart : day);
   }
 
   @override
@@ -743,8 +1081,18 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
     if (!_prefilled) {
       // Lot odatda o'zgaradi, lekin oldingisi ko'rinib tursin.
       _lot.text = level.lot;
+      _source = set.sourceOf(level.current);
       _prefilled = true;
     }
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dateOnly = DateFormat.yMd(locale);
+    final previousStart = level.since ?? set.createdAt;
+    final observed = QcStats.of(
+      _periodValues(
+        level,
+        evaluateRuns(set, context.services.qc.data.runsOf(set.id)),
+      ),
+    );
     return LgPage(
       title: l.qcChangeTarget,
       subtitle: '${set.name} · ${l.qcLevel(level.label)}',
@@ -755,6 +1103,45 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
           controller: _lot,
           textInputAction: TextInputAction.next,
         ),
+        Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 7),
+          child: Text(
+            l.qcTargetSource,
+            style: text.titleSmall!.copyWith(fontSize: 14),
+          ),
+        ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final s in QcTargetSource.values)
+              LgChoiceChip(
+                label: _sourceLabel(s, l),
+                selected: _source == s,
+                onTap: () => setState(() => _source = s),
+              ),
+          ],
+        ),
+        if (_source == QcTargetSource.manufacturer) ...[
+          const SizedBox(height: 10),
+          LgNotice(l.qcManufacturerWarning, kind: NoticeKind.warning),
+        ],
+        if (observed.n >= 2) ...[
+          const SizedBox(height: 12),
+          LgButton.secondary(
+            label: l.qcUseObserved(observed.n),
+            icon: Icons.functions_rounded,
+            onPressed: () => setState(() {
+              _mean.text = _plain(observed.mean!, locale);
+              _sd.text = _plain(observed.sd!, locale);
+              _source = QcTargetSource.laboratory;
+            }),
+          ),
+          if (observed.n < 20) ...[
+            const SizedBox(height: 6),
+            Text(l.qcStatsFew(observed.n), style: text.bodySmall),
+          ],
+        ],
         LgField(
           label: set.unit.isEmpty ? l.qcMean : '${l.qcMean}, ${set.unit}',
           controller: _mean,
@@ -767,6 +1154,31 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
           keyboardType: _decimalKeyboard,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _save(),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 7),
+          child: Text(
+            l.qcEffectiveFrom,
+            style: text.titleSmall!.copyWith(fontSize: 14),
+          ),
+        ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            LgChoiceChip(
+              label: l.qcFromNow,
+              selected: _from == null,
+              onTap: () => setState(() => _from = null),
+            ),
+            LgChoiceChip(
+              label: _from == null
+                  ? l.qcPickDate
+                  : l.qcFromDate(dateOnly.format(_from!)),
+              selected: _from != null,
+              onTap: () => _pickFrom(previousStart),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         if (_error != null) ...[

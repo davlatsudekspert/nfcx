@@ -162,7 +162,96 @@ void main() {
           throwsStateError,
         );
         expect(store.getString(StoreKeys.qcData), '{"version": 99}');
+        // Foydalanuvchi o'qib bo'lmagan matnni nusxalab olishi mumkin.
+        expect(c.unreadableRaw, '{"version": 99}');
+        await c.discardUnreadable();
+        expect(c.loadError, isNull);
+        expect(store.getString(StoreKeys.qcData), isNull);
       },
     );
+
+    test('a failed write leaves memory unchanged', () async {
+      final store = _FailingStore();
+      final c = QcController(store, clock: clock);
+      await expectLater(
+        c.addSet(
+          name: 'X',
+          unit: '',
+          targetSource: QcTargetSource.laboratory,
+          levels: [(label: '1', lot: '', mean: 1, sd: 1)],
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(c.data.sets, isEmpty);
+    });
+
+    test('backup round trip and validation', () async {
+      final (c, _, set) = await setup();
+      await c.addRun(set.id, {'L1': 5.1, 'L2': 15.2}, note: 'ok');
+      final json = c.exportJson();
+      final parsed = QcController.parseBackup(json);
+      expect(parsed.sets.single.name, 'Glucose');
+      expect(parsed.runsOf(set.id).single.note, 'ok');
+
+      final other = QcController(MemoryKeyValueStore());
+      await other.restore(parsed);
+      expect(other.data.runsOf(set.id), hasLength(1));
+
+      for (final bad in [
+        'not json',
+        '[]',
+        '{"version": 1, "sets": [], "runs": {"x": []}}',
+        json.replaceFirst('"sd":0.2', '"sd":0'),
+        json.replaceFirst('"L1":5.1', '"L9":5.1'),
+      ]) {
+        expect(
+          () => QcController.parseBackup(bad),
+          throwsFormatException,
+          reason: bad,
+        );
+      }
+    });
+
+    test('target change keeps its own source; clock skew is clamped', () async {
+      var now = DateTime(2026, 10, 8, 9);
+      final store = MemoryKeyValueStore();
+      final c = QcController(store, clock: () => now);
+      final set = await c.addSet(
+        name: 'K',
+        unit: 'mmol/L',
+        targetSource: QcTargetSource.manufacturer,
+        levels: [(label: '1', lot: 'A', mean: 4.0, sd: 0.1)],
+      );
+      // Qurilma soati orqaga ketdi — xato emas, oldingi davr boshidan.
+      now = DateTime(2026, 10, 7);
+      await c.changeTarget(
+        set.id,
+        'L1',
+        lot: 'A',
+        mean: 4.1,
+        sd: 0.08,
+        source: QcTargetSource.laboratory,
+      );
+      final updated = c.data.set(set.id)!;
+      final level = updated.levels.single;
+      expect(level.since, set.createdAt);
+      expect(updated.sourceOf(level.current), QcTargetSource.laboratory);
+      expect(
+        updated.sourceOf(level.previous.single),
+        QcTargetSource.manufacturer,
+      );
+      // Saqlangan va qayta o'qilgan holda ham.
+      final reloaded = QcController(store).data.set(set.id)!;
+      expect(
+        reloaded.sourceOf(reloaded.levels.single.current),
+        QcTargetSource.laboratory,
+      );
+    });
   });
+}
+
+class _FailingStore extends MemoryKeyValueStore {
+  @override
+  Future<void> setString(String key, String value) async =>
+      throw StateError('disk full');
 }

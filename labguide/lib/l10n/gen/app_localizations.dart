@@ -1561,7 +1561,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcChangeTargetBody.
   ///
   /// In en, this message translates to:
-  /// **'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.'**
+  /// **'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from the chosen time (usually now); earlier runs keep being evaluated against the targets that were in effect then.'**
   String get qcChangeTargetBody;
 
   /// No description provided for @qcErrTarget.
@@ -1587,6 +1587,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.'**
   String get qcRulesSource;
+
+  /// No description provided for @qcErrSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save. Please try again.'**
+  String get qcErrSave;
+
+  /// No description provided for @qcErrNotFinite.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {label}: the value is too large or too small.'**
+  String qcErrNotFinite(String label);
+
+  /// No description provided for @qcLevelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Level name (optional, e.g. “Low”)'**
+  String get qcLevelName;
+
+  /// No description provided for @qcStatsExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected runs are excluded.'**
+  String get qcStatsExcluded;
+
+  /// No description provided for @qcStatsFew.
+  ///
+  /// In en, this message translates to:
+  /// **'n = {count}: still few values — Westgard et al. (1981) initially calculate targets from about 20 values.'**
+  String qcStatsFew(int count);
+
+  /// No description provided for @qcUseObserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Use observed x̄ and SD (n = {count})'**
+  String qcUseObserved(int count);
+
+  /// No description provided for @qcEffectiveFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective from'**
+  String get qcEffectiveFrom;
+
+  /// No description provided for @qcFromNow.
+  ///
+  /// In en, this message translates to:
+  /// **'From now'**
+  String get qcFromNow;
+
+  /// No description provided for @qcFromDate.
+  ///
+  /// In en, this message translates to:
+  /// **'From {date}'**
+  String qcFromDate(String date);
+
+  /// No description provided for @qcPickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get qcPickDate;
+
+  /// No description provided for @qcRunTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Run time: {time}'**
+  String qcRunTime(String time);
+
+  /// No description provided for @qcRunTimeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get qcRunTimeNow;
+
+  /// No description provided for @qcRunTimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For a run entered late, pick the actual measurement time — the rules check runs in time order.'**
+  String get qcRunTimeHint;
+
+  /// No description provided for @qcShowAllRuns.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all ({count})'**
+  String qcShowAllRuns(int count);
+
+  /// No description provided for @qcRejectedExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not used in later rules or statistics'**
+  String get qcRejectedExcluded;
+
+  /// No description provided for @qcBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get qcBackupTitle;
+
+  /// No description provided for @qcBackupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'QC data is stored only on this device. Copy the backup (JSON) and keep it somewhere safe; on another device you can restore it from the clipboard.'**
+  String get qcBackupBody;
+
+  /// No description provided for @qcBackupCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy backup'**
+  String get qcBackupCopy;
+
+  /// No description provided for @qcBackupCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup copied to the clipboard'**
+  String get qcBackupCopied;
+
+  /// No description provided for @qcBackupRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from clipboard'**
+  String get qcBackupRestore;
+
+  /// No description provided for @qcRestoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Current QC data will be replaced by the backup from the clipboard: {sets} tests, {runs} runs.'**
+  String qcRestoreConfirm(int sets, int runs);
+
+  /// No description provided for @qcRestoreAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get qcRestoreAction;
+
+  /// No description provided for @qcRestoreInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The clipboard does not contain a valid QC backup.'**
+  String get qcRestoreInvalid;
+
+  /// No description provided for @qcRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'QC data restored'**
+  String get qcRestored;
+
+  /// No description provided for @qcCopyRaw.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the saved text'**
+  String get qcCopyRaw;
+
+  /// No description provided for @qcDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the unreadable data'**
+  String get qcDiscard;
+
+  /// No description provided for @qcDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the saved text first. Once deleted, it cannot be recovered.'**
+  String get qcDiscardConfirm;
 
   /// No description provided for @preTitle.
   ///

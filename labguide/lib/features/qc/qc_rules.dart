@@ -71,15 +71,34 @@ class QcRunResult {
   }
 
   Set<QcRule> get rules => {for (final v in violations) v.rule};
+
+  /// Bitta daraja nuqtai nazaridan: shu darajani o'z ichiga olgan
+  /// buzilishlar bo'yicha (seriya xulosasi esa [verdict]).
+  QcVerdict levelVerdict(String levelId) {
+    final mine = violations.where((v) => v.levelIds.contains(levelId));
+    if (mine.any((v) => v.rule.rejects)) return QcVerdict.reject;
+    if (mine.isNotEmpty) return QcVerdict.warning;
+    return QcVerdict.accept;
+  }
 }
 
 /// Bitta o'lchov: qaysi seriya va daraja, z-qiymati.
 typedef _Obs = ({int run, String level, double z});
 
+/// Suzuvchi nuqta xatosiga chidamlilik: x̄ 5.0, SD 0.2 va qiymat 5.4 da
+/// z = 2.0000000000000018 chiqadi. Chegaraning aynan ustidagi qiymat
+/// buzilish emas (D-20), shuning uchun taqqoslash shu chegara bilan.
+const _eps = 1e-9;
+
+/// [z] chegaradan [k] SD dan aniq tashqaridami (`z > k`, xatoga chidamli).
+bool _over(double z, double k) => z > k + _eps;
+
 /// Har bir seriyani o'zidan oldingi seriyalar bilan birga baholaydi
 /// (vaqt tartibida). Har bir natija faqat shu seriyada paydo bo'lgan
 /// buzilishlarni ko'rsatadi — oldingi seriyadagi rad qilish keyingisiga
-/// “meros” o'tmaydi.
+/// “meros” o'tmaydi: rad etilgan seriya qiymatlari keyingi seriyalar
+/// qoidalarida (2-2s, 4-1s, 10x) ishlatilmaydi — xato tuzatilib, seriya
+/// qaytarilgan deb hisoblanadi (D-27).
 List<QcRunResult> evaluateRuns(QcSet set, List<QcRun> runs) {
   final levelOrder = [for (final l in set.levels) l.id];
   // Barcha o'lchovlar vaqt tartibida: seriya, so'ng daraja tartibi.
@@ -93,14 +112,21 @@ List<QcRunResult> evaluateRuns(QcSet set, List<QcRun> runs) {
           if (set.level(id)?.targetAt(run.at) case final t? when t.isValid)
             id: t.z(v),
     };
+    final before = stream.length;
     for (final id in levelOrder) {
       if (z[id] case final value?) {
         stream.add((run: i, level: id, z: value));
       }
     }
-    results.add(
-      QcRunResult(run: run, z: z, violations: _check(i, z, stream, levelOrder)),
+    final result = QcRunResult(
+      run: run,
+      z: z,
+      violations: _check(i, z, stream, levelOrder),
     );
+    if (result.verdict == QcVerdict.reject) {
+      stream.removeRange(before, stream.length);
+    }
+    results.add(result);
   }
   return results;
 }
@@ -117,14 +143,14 @@ List<QcViolation> _check(
   // 1-3s: bitta nazorat qiymati o'rtacha ± 3 SD dan tashqarida.
   final beyond3 = {
     for (final e in z.entries)
-      if (e.value.abs() > 3) e.key,
+      if (_over(e.value.abs(), 3)) e.key,
   };
   if (beyond3.isNotEmpty) out.add(QcViolation(QcRule.r13s, levelIds: beyond3));
 
   // 1-2s: bitta nazorat qiymati ± 2 SD dan tashqarida (ogohlantirish).
   final beyond2 = {
     for (final e in z.entries)
-      if (e.value.abs() > 2) e.key,
+      if (_over(e.value.abs(), 2)) e.key,
   };
   if (beyond2.isNotEmpty) out.add(QcViolation(QcRule.r12s, levelIds: beyond2));
 
@@ -134,15 +160,15 @@ List<QcViolation> _check(
   for (final sign in [1, -1]) {
     final within = {
       for (final e in z.entries)
-        if (e.value * sign > 2) e.key,
+        if (_over(e.value * sign, 2)) e.key,
     };
     if (within.length >= 2) {
       out.add(QcViolation(QcRule.r22s, levelIds: within));
     }
     for (final id in current) {
-      if (z[id]! * sign <= 2) continue;
+      if (!_over(z[id]! * sign, 2)) continue;
       final prev = _previous(stream, id, runIndex);
-      if (prev != null && prev.z * sign > 2) {
+      if (prev != null && _over(prev.z * sign, 2)) {
         out.add(QcViolation(QcRule.r22s, levelIds: {id}, acrossRuns: true));
       }
     }
@@ -152,11 +178,11 @@ List<QcViolation> _check(
   // tashqarida (oraliq 4 SD dan katta).
   final high = {
     for (final e in z.entries)
-      if (e.value > 2) e.key,
+      if (_over(e.value, 2)) e.key,
   };
   final low = {
     for (final e in z.entries)
-      if (e.value < -2) e.key,
+      if (_over(-e.value, 2)) e.key,
   };
   if (high.isNotEmpty && low.isNotEmpty) {
     out.add(QcViolation(QcRule.rR4s, levelIds: {...high, ...low}));
@@ -203,7 +229,7 @@ List<QcViolation> _consecutive(
   List<String> levels,
 ) {
   bool sameSide(Iterable<_Obs> xs, int sign) =>
-      xs.every((o) => o.z * sign > limit);
+      xs.every((o) => _over(o.z * sign, limit));
 
   final out = <QcViolation>[];
   // Har bir daraja ichida (seriyalar bo'ylab).
@@ -267,7 +293,7 @@ const Map<QcRule, LocalizedText> qcRuleText = {
     'ru':
         '2-2s — два последовательных контрольных значения по одну сторону '
         'за пределами 2 SD (в серии или в двух сериях подряд). '
-        'Отклонение (систематическая ошибка).',
+        'Серия отклоняется (систематическая ошибка).',
     'en':
         '2-2s — two consecutive control values beyond 2 SD on the same '
         'side (within a run or across two runs). Reject (systematic error).',
@@ -278,7 +304,7 @@ const Map<QcRule, LocalizedText> qcRuleText = {
         'tashqarida. Rad (tasodifiy xato).',
     'ru':
         'R-4s — в одной серии одно значение выше + 2 SD, другое ниже '
-        '− 2 SD. Отклонение (случайная ошибка).',
+        '− 2 SD. Серия отклоняется (случайная ошибка).',
     'en':
         'R-4s — within one run one value exceeds + 2 SD and another '
         '− 2 SD. Reject (random error).',
@@ -289,7 +315,7 @@ const Map<QcRule, LocalizedText> qcRuleText = {
         'tashqarida. Rad (tizimli xato).',
     'ru':
         '4-1s — четыре последовательных контрольных значения по одну '
-        'сторону за пределами 1 SD. Отклонение (систематическая ошибка).',
+        'сторону за пределами 1 SD. Серия отклоняется (систематическая ошибка).',
     'en':
         '4-1s — four consecutive control values beyond 1 SD on the same '
         'side. Reject (systematic error).',
@@ -300,7 +326,7 @@ const Map<QcRule, LocalizedText> qcRuleText = {
         'Rad (tizimli xato).',
     'ru':
         '10x — десять последовательных контрольных значений по одну '
-        'сторону от среднего. Отклонение (систематическая ошибка).',
+        'сторону от среднего. Серия отклоняется (систематическая ошибка).',
     'en':
         '10x — ten consecutive control values on the same side of the '
         'mean. Reject (systematic error).',

@@ -20,11 +20,18 @@ import 'dart:math' as math;
 /// Hisobot uchun yaxlitlash (yarmi yuqoriga). Ikkilik suzuvchi nuqta
 /// xatosini (28.7 × 6 − 46.7 = 125.4999…) tuzatadi, shunda natija manba
 /// jadvalidagi qiymat bilan bir xil chiqadi (ADAG: A1C 6 % → 126 mg/dL).
+///
+/// `roundToDouble` — butun songa (int64) o'girmaydi, shuning uchun juda
+/// katta qiymatlarda ham to'g'ri; cheksiz/NaN o'zgarishsiz qaytadi.
 double roundHalfUp(double v, int decimals) {
+  if (!v.isFinite) return v;
   final f = math.pow(10, decimals).toDouble();
   final scaled = v * f;
+  // 2^52 dan katta sonlarda kasr qism yo'q — yaxlitlash kerak emas.
+  if (!scaled.isFinite || scaled.abs() >= 4503599627370496) return v;
   final nudge = scaled.abs() * 1e-12 + 1e-9;
-  return (scaled >= 0 ? (scaled + nudge) : (scaled - nudge)).round() / f;
+  return (scaled >= 0 ? (scaled + nudge) : (scaled - nudge)).roundToDouble() /
+      f;
 }
 
 /// Kalkulyator maydonlari — UI xato xabarini aynan qaysi maydonga

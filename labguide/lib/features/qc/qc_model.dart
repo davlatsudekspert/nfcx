@@ -31,6 +31,7 @@ class QcTarget {
     required this.mean,
     required this.sd,
     this.from,
+    this.source,
   });
 
   factory QcTarget.fromJson(Map<String, Object?> json) => QcTarget(
@@ -38,6 +39,9 @@ class QcTarget {
     mean: (json['mean']! as num).toDouble(),
     sd: (json['sd']! as num).toDouble(),
     from: json['from'] == null ? null : DateTime.parse(json['from']! as String),
+    source: json['source'] == null
+        ? null
+        : QcTargetSource.parse(json['source']! as String),
   );
 
   final String lot;
@@ -46,6 +50,9 @@ class QcTarget {
 
   /// Shu sanadan boshlab amal qiladi (`null` — boshidan).
   final DateTime? from;
+
+  /// x̄/SD manbai; `null` — to'plamniki ([QcSet.targetSource]).
+  final QcTargetSource? source;
 
   bool get isValid => mean.isFinite && sd.isFinite && sd > 0;
 
@@ -57,6 +64,7 @@ class QcTarget {
     'mean': mean,
     'sd': sd,
     if (from != null) 'from': from!.toIso8601String(),
+    if (source != null) 'source': source!.name,
   };
 }
 
@@ -69,6 +77,7 @@ class QcLevel {
     required this.mean,
     required this.sd,
     this.since,
+    this.source,
     this.previous = const [],
   });
 
@@ -81,6 +90,9 @@ class QcLevel {
     since: json['since'] == null
         ? null
         : DateTime.parse(json['since']! as String),
+    source: json['source'] == null
+        ? null
+        : QcTargetSource.parse(json['source']! as String),
     previous: [
       for (final t in json['previous'] as List? ?? const [])
         QcTarget.fromJson((t as Map).cast<String, Object?>()),
@@ -100,11 +112,15 @@ class QcLevel {
   /// Amaldagi maqsadlar shu sanadan beri (`null` — to'plam yaratilgandan).
   final DateTime? since;
 
+  /// Amaldagi x̄/SD manbai; `null` — to'plamniki ([QcSet.targetSource]).
+  final QcTargetSource? source;
+
   /// Oldingi maqsadlar (eski lot yoki qayta hisoblangan x̄/SD) — vaqt
   /// tartibida. O'tgan seriyalar o'z davridagi maqsad bilan baholanadi.
   final List<QcTarget> previous;
 
-  QcTarget get current => QcTarget(lot: lot, mean: mean, sd: sd, from: since);
+  QcTarget get current =>
+      QcTarget(lot: lot, mean: mean, sd: sd, from: since, source: source);
 
   bool get isValid => current.isValid;
 
@@ -127,6 +143,7 @@ class QcLevel {
     required double mean,
     required double sd,
     required DateTime from,
+    QcTargetSource? source,
   }) => QcLevel(
     id: id,
     label: label,
@@ -134,6 +151,7 @@ class QcLevel {
     mean: mean,
     sd: sd,
     since: from,
+    source: source,
     previous: [...previous, current],
   );
 
@@ -144,6 +162,7 @@ class QcLevel {
     'mean': mean,
     'sd': sd,
     if (since != null) 'since': since!.toIso8601String(),
+    if (source != null) 'source': source!.name,
     if (previous.isNotEmpty) 'previous': [for (final t in previous) t.toJson()],
   };
 }
@@ -181,6 +200,9 @@ class QcSet {
   final DateTime createdAt;
 
   QcLevel? level(String id) => levels.where((l) => l.id == id).firstOrNull;
+
+  /// Maqsad x̄/SD manbai (maqsadda yozilmagan bo'lsa — to'plamniki).
+  QcTargetSource sourceOf(QcTarget target) => target.source ?? targetSource;
 
   Map<String, Object?> toJson() => {
     'id': id,

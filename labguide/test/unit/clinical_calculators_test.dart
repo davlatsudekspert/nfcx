@@ -451,6 +451,10 @@ void main() {
   test('roundHalfUp', () {
     expect(roundHalfUp(125.49999999999999, 0), 126);
     expect(roundHalfUp(2.25, 1), 2.3);
+    // Juda katta qiymatlar int64 ga sig'maydi — o'zgarishsiz qaytadi.
+    expect(roundHalfUp(1e300, 3), 1e300);
+    expect(roundHalfUp(-1e20, 2), -1e20);
+    expect(roundHalfUp(double.infinity, 1), double.infinity);
     expect(roundHalfUp(-2.25, 1), -2.3);
     expect(roundHalfUp(1.24, 1), 1.2);
     expect(roundHalfUp(0, 2), 0);

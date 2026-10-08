@@ -96,6 +96,15 @@ void main() {
       expect(parseDecimal(' 1 000,25 '), 1000.25);
       expect(parseDecimal('1e3'), 1000);
       expect(parseDecimal('.5'), 0.5);
+      expect(parseDecimal('0,500'), 0.5);
+      expect(parseDecimal('1,50'), 1.5);
+      expect(parseDecimal('1500'), 1500);
+    });
+
+    test('“1,500” is ambiguous (1500 or 1.5) and is not guessed', () {
+      for (final amb in ['1,500', '12,345', '-1,500', '1,500,000']) {
+        expect(parseDecimal(amb), isNull, reason: amb);
+      }
     });
 
     test('rejects garbage, empty, NaN and Infinity text', () {

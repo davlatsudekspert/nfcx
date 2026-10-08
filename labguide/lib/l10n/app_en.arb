@@ -365,7 +365,7 @@
     }
   },
   "qcChangeTarget": "Change target or lot",
-  "qcChangeTargetBody": "Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.",
+  "qcChangeTargetBody": "Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from the chosen time (usually now); earlier runs keep being evaluated against the targets that were in effect then.",
   "qcErrTarget": "Enter the mean and an SD greater than zero.",
   "qcSince": "since {date}",
   "@qcSince": {
@@ -387,6 +387,85 @@
     }
   },
   "qcRulesSource": "Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.",
+  "qcErrSave": "Couldn’t save. Please try again.",
+  "qcErrNotFinite": "Level {label}: the value is too large or too small.",
+  "@qcErrNotFinite": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcLevelName": "Level name (optional, e.g. “Low”)",
+  "qcStatsExcluded": "Rejected runs are excluded.",
+  "qcStatsFew": "n = {count}: still few values — Westgard et al. (1981) initially calculate targets from about 20 values.",
+  "@qcStatsFew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcUseObserved": "Use observed x̄ and SD (n = {count})",
+  "@qcUseObserved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcEffectiveFrom": "Effective from",
+  "qcFromNow": "From now",
+  "qcFromDate": "From {date}",
+  "@qcFromDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "qcPickDate": "Pick a date",
+  "qcRunTime": "Run time: {time}",
+  "@qcRunTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "qcRunTimeNow": "now",
+  "qcRunTimeHint": "For a run entered late, pick the actual measurement time — the rules check runs in time order.",
+  "qcShowAllRuns": "Show all ({count})",
+  "@qcShowAllRuns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcRejectedExcluded": "Not used in later rules or statistics",
+  "qcBackupTitle": "Backup",
+  "qcBackupBody": "QC data is stored only on this device. Copy the backup (JSON) and keep it somewhere safe; on another device you can restore it from the clipboard.",
+  "qcBackupCopy": "Copy backup",
+  "qcBackupCopied": "Backup copied to the clipboard",
+  "qcBackupRestore": "Restore from clipboard",
+  "qcRestoreConfirm": "Current QC data will be replaced by the backup from the clipboard: {sets} tests, {runs} runs.",
+  "@qcRestoreConfirm": {
+    "placeholders": {
+      "sets": {
+        "type": "int"
+      },
+      "runs": {
+        "type": "int"
+      }
+    }
+  },
+  "qcRestoreAction": "Replace",
+  "qcRestoreInvalid": "The clipboard does not contain a valid QC backup.",
+  "qcRestored": "QC data restored",
+  "qcCopyRaw": "Copy the saved text",
+  "qcDiscard": "Delete the unreadable data",
+  "qcDiscardConfirm": "Copy the saved text first. Once deleted, it cannot be recovered.",
   "preTitle": "Specimen journey",
   "preStep1": "Prepare for testing",
   "preStep2": "Select specimen and additive",

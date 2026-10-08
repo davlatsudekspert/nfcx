@@ -43,13 +43,82 @@ class QcController extends ChangeNotifier {
       '${_clock().microsecondsSinceEpoch.toRadixString(36)}'
       '${_random.nextInt(1 << 30).toRadixString(36)}';
 
+  /// Avval diskka yoziladi, so'ng xotiraga: yozish muvaffaqiyatsiz bo'lsa,
+  /// ekranda saqlanmagan ma'lumot ko'rinib qolmaydi (xato chaqiruvchiga).
   Future<void> _save(QcData next) async {
     if (_loadError != null) {
       throw StateError('QC data could not be read; refusing to overwrite');
     }
+    await _store.setString(StoreKeys.qcData, jsonEncode(next.toJson()));
     _data = next;
     notifyListeners();
-    await _store.setString(StoreKeys.qcData, jsonEncode(next.toJson()));
+  }
+
+  /// Zaxira nusxa (JSON) — boshqa qurilmaga ko'chirish yoki saqlash uchun.
+  String exportJson() => jsonEncode(_data.toJson());
+
+  /// O'qib bo'lmagan saqlangan matn (faqat [loadError] bo'lsa) — foydalanuvchi
+  /// uni nusxalab olishi mumkin, hech narsa jim yo'qolmaydi.
+  String? get unreadableRaw =>
+      _loadError == null ? null : _store.getString(StoreKeys.qcData);
+
+  /// Zaxira nusxani tekshirib o'qiydi; yaroqsiz bo'lsa [FormatException].
+  static QcData parseBackup(String raw) {
+    final QcData data;
+    try {
+      data = QcData.fromJson(
+        (jsonDecode(raw.trim()) as Map).cast<String, Object?>(),
+      );
+    } on FormatException {
+      rethrow;
+    } on Object catch (e) {
+      throw FormatException('not a QC backup: $e');
+    }
+    final ids = {for (final s in data.sets) s.id};
+    if (ids.length != data.sets.length) {
+      throw const FormatException('duplicate set id');
+    }
+    for (final set in data.sets) {
+      final levelIds = {for (final l in set.levels) l.id};
+      if (set.levels.isEmpty ||
+          levelIds.length != set.levels.length ||
+          !set.levels.every(
+            (l) => l.isValid && l.previous.every((t) => t.isValid),
+          )) {
+        throw FormatException('invalid levels in ${set.id}');
+      }
+    }
+    for (final e in data.runs.entries) {
+      final set = data.set(e.key);
+      if (set == null) throw FormatException('runs for unknown set ${e.key}');
+      for (final run in e.value) {
+        if (run.values.isEmpty ||
+            run.values.values.any((v) => !v.isFinite) ||
+            run.values.keys.any((k) => set.level(k) == null)) {
+          throw FormatException('invalid run ${run.id}');
+        }
+      }
+    }
+    return data;
+  }
+
+  /// Hamma QC ma'lumotini zaxira nusxa bilan almashtiradi. O'qib bo'lmagan
+  /// eski yozuv bo'lsa ham ishlaydi — bu tiklash yo'li (foydalanuvchi
+  /// tasdiqlagandan keyin).
+  Future<void> restore(QcData data) async {
+    await _store.setString(StoreKeys.qcData, jsonEncode(data.toJson()));
+    _data = data;
+    _loadError = null;
+    notifyListeners();
+  }
+
+  /// O'qib bo'lmagan yozuvni o'chirib, bo'sh holatdan boshlash
+  /// (foydalanuvchi tasdiqlagandan keyin).
+  Future<void> discardUnreadable() async {
+    await _store.remove(StoreKeys.qcData);
+    _data = const QcData();
+    _loadError = null;
+    notifyListeners();
   }
 
   /// Yangi to'plam. Har bir daraja uchun SD > 0 va o'rtacha chekli bo'lishi
@@ -109,14 +178,18 @@ class QcController extends ChangeNotifier {
     required double mean,
     required double sd,
     DateTime? from,
+    QcTargetSource? source,
   }) async {
     final set = _data.set(setId);
     final level = set?.level(levelId);
     if (set == null || level == null) {
       throw ArgumentError.value('$setId/$levelId', 'level');
     }
-    final start = from ?? _clock();
     final previousStart = level.since ?? set.createdAt;
+    // “Hozirdan”: qurilma soati orqaga ketgan bo'lsa ham oldingi davrdan
+    // oldin boshlanmaydi.
+    var start = from ?? _clock();
+    if (from == null && start.isBefore(previousStart)) start = previousStart;
     if (!mean.isFinite ||
         !sd.isFinite ||
         !(sd > 0) ||
@@ -140,8 +213,15 @@ class QcController extends ChangeNotifier {
                   sd: l.sd,
                   // Birinchi maqsadning boshlanishi aniq yozib qo'yiladi.
                   since: l.since ?? set.createdAt,
+                  source: l.source,
                   previous: l.previous,
-                ).withTarget(lot: lot.trim(), mean: mean, sd: sd, from: start)
+                ).withTarget(
+                  lot: lot.trim(),
+                  mean: mean,
+                  sd: sd,
+                  from: start,
+                  source: source,
+                )
               : l,
       ],
     );

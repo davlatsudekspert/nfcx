@@ -823,7 +823,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qcChangeTargetBody =>
-      'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.';
+      'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from the chosen time (usually now); earlier runs keep being evaluated against the targets that were in effect then.';
 
   @override
   String get qcErrTarget => 'Enter the mean and an SD greater than zero.';
@@ -841,6 +841,105 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get qcRulesSource =>
       'Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.';
+
+  @override
+  String get qcErrSave => 'Couldn’t save. Please try again.';
+
+  @override
+  String qcErrNotFinite(String label) {
+    return 'Level $label: the value is too large or too small.';
+  }
+
+  @override
+  String get qcLevelName => 'Level name (optional, e.g. “Low”)';
+
+  @override
+  String get qcStatsExcluded => 'Rejected runs are excluded.';
+
+  @override
+  String qcStatsFew(int count) {
+    return 'n = $count: still few values — Westgard et al. (1981) initially calculate targets from about 20 values.';
+  }
+
+  @override
+  String qcUseObserved(int count) {
+    return 'Use observed x̄ and SD (n = $count)';
+  }
+
+  @override
+  String get qcEffectiveFrom => 'Effective from';
+
+  @override
+  String get qcFromNow => 'From now';
+
+  @override
+  String qcFromDate(String date) {
+    return 'From $date';
+  }
+
+  @override
+  String get qcPickDate => 'Pick a date';
+
+  @override
+  String qcRunTime(String time) {
+    return 'Run time: $time';
+  }
+
+  @override
+  String get qcRunTimeNow => 'now';
+
+  @override
+  String get qcRunTimeHint =>
+      'For a run entered late, pick the actual measurement time — the rules check runs in time order.';
+
+  @override
+  String qcShowAllRuns(int count) {
+    return 'Show all ($count)';
+  }
+
+  @override
+  String get qcRejectedExcluded => 'Not used in later rules or statistics';
+
+  @override
+  String get qcBackupTitle => 'Backup';
+
+  @override
+  String get qcBackupBody =>
+      'QC data is stored only on this device. Copy the backup (JSON) and keep it somewhere safe; on another device you can restore it from the clipboard.';
+
+  @override
+  String get qcBackupCopy => 'Copy backup';
+
+  @override
+  String get qcBackupCopied => 'Backup copied to the clipboard';
+
+  @override
+  String get qcBackupRestore => 'Restore from clipboard';
+
+  @override
+  String qcRestoreConfirm(int sets, int runs) {
+    return 'Current QC data will be replaced by the backup from the clipboard: $sets tests, $runs runs.';
+  }
+
+  @override
+  String get qcRestoreAction => 'Replace';
+
+  @override
+  String get qcRestoreInvalid =>
+      'The clipboard does not contain a valid QC backup.';
+
+  @override
+  String get qcRestored => 'QC data restored';
+
+  @override
+  String get qcCopyRaw => 'Copy the saved text';
+
+  @override
+  String get qcDiscard => 'Delete the unreadable data';
+
+  @override
+  String get qcDiscardConfirm =>
+      'Copy the saved text first. Once deleted, it cannot be recovered.';
 
   @override
   String get preTitle => 'Specimen journey';

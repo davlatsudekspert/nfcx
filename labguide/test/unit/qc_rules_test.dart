@@ -116,6 +116,101 @@ void main() {
     expect(rs.last.verdict, QcVerdict.accept);
   });
 
+  test('a rejected run is not reused by later across-run rules', () {
+    // 1-3s rad → tuzatildi → qayta seriya +2.2: faqat 1-2s ogohlantirish,
+    // rad etilgan +3.5 bilan 2-2s hosil qilmaydi (D-27).
+    final rs = evalZ([(l1: 3.5, l2: 0), (l1: 2.2, l2: 0)]);
+    expect(rs.first.verdict, QcVerdict.reject);
+    expect(rs.last.rules, {QcRule.r12s});
+    expect(rs.last.verdict, QcVerdict.warning);
+    // Qabul qilingan seriyalar esa hisobga olinadi.
+    final kept = evalZ([(l1: 2.3, l2: 0), (l1: 2.2, l2: 0)]);
+    expect(kept.last.rules, contains(QcRule.r22s));
+  });
+
+  test('values exactly on a limit with decimal targets are not violations', () {
+    // x̄ 5.0, SD 0.2: 5.4 da z = 2.0000000000000018 (suzuvchi nuqta).
+    final dec = QcSet(
+      id: 'd',
+      name: 'K',
+      unit: 'mmol/L',
+      targetSource: QcTargetSource.laboratory,
+      createdAt: DateTime(2026),
+      levels: const [QcLevel(id: 'L1', label: '1', lot: '', mean: 5, sd: 0.2)],
+    );
+    List<QcRunResult> eval(List<double> xs) => evaluateRuns(dec, [
+      for (final (i, x) in xs.indexed)
+        QcRun(
+          id: 'r$i',
+          at: DateTime(2026, 1, 1).add(Duration(hours: i)),
+          values: {'L1': x},
+        ),
+    ]);
+    expect(eval([5.4]).single.violations, isEmpty);
+    expect(eval([4.6]).single.violations, isEmpty);
+    expect(eval([5.4, 5.4]).last.violations, isEmpty);
+    expect(eval([5.2, 5.2, 5.2, 5.2]).last.violations, isEmpty);
+    // Aynan +3 SD: 1-2s ogohlantirish, lekin 1-3s emas.
+    expect(eval([5.6]).single.rules, {QcRule.r12s});
+    expect(eval([5.41]).single.rules, {QcRule.r12s});
+  });
+
+  test('three-level set: 2-2s and R-4s within a run', () {
+    final three = QcSet(
+      id: 't',
+      name: 'x',
+      unit: '',
+      targetSource: QcTargetSource.laboratory,
+      createdAt: DateTime(2026),
+      levels: const [
+        QcLevel(id: 'L1', label: '1', lot: '', mean: 100, sd: 10),
+        QcLevel(id: 'L2', label: '2', lot: '', mean: 200, sd: 20),
+        QcLevel(id: 'L3', label: '3', lot: '', mean: 300, sd: 30),
+      ],
+    );
+    final r = evaluateRuns(three, [
+      QcRun(
+        id: 'a',
+        at: DateTime(2026),
+        values: const {'L1': 125, 'L2': 150, 'L3': 380},
+      ),
+    ]).single;
+    // L1 +2.5, L2 −2.5, L3 +2.67: 2-2s (L1, L3) va R-4s.
+    expect(r.rules, containsAll([QcRule.r22s, QcRule.rR4s]));
+    expect(r.violations.firstWhere((v) => v.rule == QcRule.r22s).levelIds, {
+      'L1',
+      'L3',
+    });
+    expect(r.levelVerdict('L2'), QcVerdict.reject); // R-4s da ishtirok etadi
+  });
+
+  test('CSV escapes text that a spreadsheet would run as a formula', () {
+    final evil = QcSet(
+      id: 'e',
+      name: '=HYPERLINK("x")',
+      unit: '@u',
+      targetSource: QcTargetSource.laboratory,
+      createdAt: DateTime(2026),
+      levels: const [
+        QcLevel(id: 'L1', label: '-1', lot: '+L', mean: 100, sd: 10),
+      ],
+    );
+    final rs = evaluateRuns(evil, [
+      QcRun(
+        id: 'a',
+        at: DateTime(2026),
+        values: const {'L1': 80},
+        note: '=1+1',
+      ),
+    ]);
+    final row = qcCsv(evil, rs).trim().split('\n').last;
+    expect(row, contains('"\'=HYPERLINK(""x"")"'));
+    expect(row, contains(",'-1,'+L,80.0,'@u,"));
+    expect(row, endsWith(",'=1+1"));
+    // Raqamlar (manfiy z ham) o'zgarmaydi.
+    expect(row, contains(',-2.00,'));
+  });
+
   test('each run is evaluated with the target in effect at its time', () {
     final changed = QcSet(
       id: 's',
@@ -179,9 +274,16 @@ void main() {
     final lines = csv.trim().split('\n');
     expect(lines, hasLength(4)); // sarlavha + 3 qiymat
     expect(lines.first, startsWith('date,test,level,lot,value'));
-    expect(lines[1], contains(',1,,125.0,mg/dL,100.0,10.0,2.50,warning,1-2s,'));
+    expect(
+      lines[1],
+      contains(',1,,125.0,mg/dL,100.0,10.0,2.50,warning,warning,1-2s,'),
+    );
     expect(lines[1], endsWith('"qayta, ""tekshirildi"""'));
-    expect(lines[2], contains(',2,,200.0,mg/dL,200.0,20.0,0.00,warning,,'));
+    // Seriya xulosasi “warning”, lekin 2-daraja o'zi nazoratda.
+    expect(
+      lines[2],
+      contains(',2,,200.0,mg/dL,200.0,20.0,0.00,warning,accept,,'),
+    );
     expect(lines[3], contains(',2,,180.0,'));
   });
 }

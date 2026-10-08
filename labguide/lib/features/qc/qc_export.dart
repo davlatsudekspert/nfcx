@@ -1,8 +1,10 @@
 /// QC ma'lumotini CSV ga (Excel/Sheets'ga qo'yish uchun) o'girish.
 ///
 /// Har qator — bitta seriyadagi bitta daraja qiymati; maqsad o'sha seriya
-/// vaqtida amal qilgan lot/x̄/SD bilan. Qiymatlar nuqta bilan (lokal
-/// formatsiz) — jadval dasturlari bir xil o'qiydi.
+/// vaqtida amal qilgan lot/x̄/SD bilan. `run_verdict` — butun seriya
+/// xulosasi, `level_verdict` va `level_rules` — shu daraja ishtirok etgan
+/// buzilishlar. Qiymatlar nuqta bilan (lokal formatsiz) — jadval dasturlari
+/// bir xil o'qiydi.
 library;
 
 import 'qc_model.dart';
@@ -12,6 +14,11 @@ String _cell(String v) {
   if (v.contains(RegExp(r'[",\n\r]'))) return '"${v.replaceAll('"', '""')}"';
   return v;
 }
+
+/// Foydalanuvchi matni (test nomi, daraja, lot, izoh): `= + - @` yoki
+/// tab/CR bilan boshlansa, jadval dasturi uni formula deb bajarmasligi
+/// uchun oldiga `'` qo'yiladi (CSV injection).
+String _text(String v) => v.startsWith(RegExp('[=+\\-@\t\r]')) ? "'$v" : v;
 
 String _two(int v) => v.toString().padLeft(2, '0');
 
@@ -30,8 +37,9 @@ String qcCsv(QcSet set, List<QcRunResult> results) {
       'target_mean',
       'target_sd',
       'z',
-      'verdict',
-      'rules',
+      'run_verdict',
+      'level_verdict',
+      'level_rules',
       'note',
     ],
   ];
@@ -43,20 +51,21 @@ String qcCsv(QcSet set, List<QcRunResult> results) {
       final z = r.z[level.id];
       rows.add([
         _date(r.run.at),
-        set.name,
-        level.label,
-        t.lot,
+        _text(set.name),
+        _text(level.label),
+        _text(t.lot),
         '$v',
-        set.unit,
+        _text(set.unit),
         '${t.mean}',
         '${t.sd}',
         z == null ? '' : z.toStringAsFixed(2),
         r.verdict.name,
+        r.levelVerdict(level.id).name,
         [
           for (final x in r.violations)
             if (x.levelIds.contains(level.id)) x.rule.code,
         ].join(' '),
-        r.run.note ?? '',
+        _text(r.run.note ?? ''),
       ]);
     }
   }
