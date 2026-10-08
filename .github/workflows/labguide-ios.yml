@@ -344,8 +344,15 @@ jobs:
               apps = [a for a in call('GET', '/v1/apps', {'filter[bundleId]': BUNDLE})['data']
                       if a['attributes']['bundleId'] == BUNDLE]
               if not apps:
-                  print(f"::error::App Store Connect'da {BUNDLE} uchun ilova yozuvi yo'q. "
-                        "App Store Connect -> Apps -> + -> New App (labguide/docs/IOS_TESTFLIGHT.md).")
+                  # Diagnostika: kalit qaysi ilovalarni ko'radi (boshqa jamoa yoki
+                  # boshqa bundle ID bilan yaratilgan bo'lsa, shu yerda bilinadi).
+                  seen = call('GET', '/v1/apps', {'limit': 50, 'fields[apps]': 'name,bundleId'})['data']
+                  listing = '; '.join(f"{x['attributes']['name']} ({x['attributes']['bundleId']})" for x in seen) or "hech biri"
+                  summary(f"- API kaliti ko'radigan ilovalar: {listing}")
+                  print(f"API kaliti ko'radigan ilovalar: {listing}")
+                  print(f"::error::App Store Connect'da {BUNDLE} uchun ilova yozuvi yo'q (jamoa {os.environ.get('IOS_TEAM_ID', '?')}). "
+                        "App Store Connect -> Apps -> + -> New App, Bundle ID ro'yxatidan aynan shu ID ni tanlang "
+                        "(labguide/docs/IOS_TESTFLIGHT.md).")
                   sys.exit(1)
               app = apps[0]
               builds = call('GET', '/v1/builds', {'filter[app]': app['id'], 'limit': 200,
