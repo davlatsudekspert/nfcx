@@ -163,6 +163,14 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
   Sex? _sex;
   CalcOutcome<Object?>? _outcome;
 
+  /// Natija qaysi kiritmalardan hisoblangan — natija ostida ko'rsatiladi.
+  Map<CalcField, double?> _inputs = const {};
+
+  /// Maydon o'zgarsa eski natija ko'rinib qolmasin.
+  void _invalidate() {
+    if (_outcome != null) setState(() => _outcome = null);
+  }
+
   @override
   void dispose() {
     for (final c in _ctrl.values) {
@@ -190,7 +198,10 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
       }
       values[s.field] = v;
     }
-    setState(() => _outcome = invalid ?? _compute(values));
+    setState(() {
+      _outcome = invalid ?? _compute(values);
+      _inputs = values;
+    });
   }
 
   CalcOutcome<Object?> _compute(Map<CalcField, double?> v) =>
@@ -244,8 +255,12 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
       };
 
   String _label(_Spec s, AppLocalizations l) {
+    // Tanlangan birlik ham yorliqda — ekran o'quvchi va ko'z uchun.
     final unit =
-        s.fixedUnit ?? (s.unitFrom == null ? null : _unitOf(s.field).label);
+        s.fixedUnit ??
+        (s.unitFrom != null || s.units.isNotEmpty
+            ? _unitOf(s.field).label
+            : null);
     return [
           fieldName(s.field, l),
           if (unit != null && unit.isNotEmpty) unit,
@@ -277,24 +292,29 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
                 ? TextInputAction.done
                 : TextInputAction.next,
             onSubmitted: i == _specs.length - 1 ? (_) => _calculate() : null,
+            onChanged: (_) => _invalidate(),
           ),
           if (s.units.length > 1)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final u in s.units)
-                    LgChoiceChip(
-                      label: u.label,
-                      selected: identical(_unit[s.field], u),
-                      onTap: () => setState(() {
-                        _unit[s.field] = u;
-                        _outcome = null;
-                      }),
-                    ),
-                ],
+              child: Semantics(
+                container: true,
+                label: l.calcUnitGroup(fieldName(s.field, l)),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final u in s.units)
+                      LgChoiceChip(
+                        label: u.label,
+                        selected: identical(_unit[s.field], u),
+                        onTap: () => setState(() {
+                          _unit[s.field] = u;
+                          _outcome = null;
+                        }),
+                      ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -336,6 +356,10 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
                   calc: widget.calc,
                   outcome: outcome,
                   unitOf: _unitOf,
+                  inputs: [
+                    for (final s in _specs)
+                      if (_inputs[s.field] case final v?) (s.field, v),
+                  ],
                 ),
         ),
         const SizedBox(height: 6),
@@ -372,11 +396,15 @@ class _ResultView extends StatelessWidget {
     required this.calc,
     required this.outcome,
     required this.unitOf,
+    this.inputs = const [],
   });
 
   final ClinicalCalc calc;
   final CalcOutcome<Object?> outcome;
   final LabUnit Function(CalcField) unitOf;
+
+  /// Hisobda ishlatilgan kiritmalar (maydon, qiymat) — tekshirish uchun.
+  final List<(CalcField, double)> inputs;
 
   @override
   Widget build(BuildContext context) {
@@ -415,6 +443,11 @@ class _ResultView extends StatelessWidget {
           CalcFail(issue: CalcIssue.outsideValidity) => tgLimitMsg,
           CalcFail() => l.errNotPositive,
         };
+    String line(CalcOutcome<double> o, String unit, int d) => switch (o) {
+      CalcOk(:final value) => '${n(value, d)} $unit',
+      final CalcFail<double> f => calcErrorText(l, f, unitOf, locale),
+    };
+    final checks = <String>[];
 
     final children = <Widget>[];
     switch (value) {
@@ -440,19 +473,14 @@ class _ResultView extends StatelessWidget {
           ),
         ]);
       case final AnionGapResult r:
+        if (r.gap < 0) checks.add(l.calcNegativeCheck(l.resAnionGap));
         children.addAll([
           Text(l.resAnionGap, style: text.titleSmall),
           headline('${n(r.gap, 1)} mmol/L'),
-          if (r.gapWithPotassium != null)
-            LgMetric(
-              label: l.resAnionGapK,
-              value: '${n(r.gapWithPotassium!, 1)} mmol/L',
-            ),
-          if (r.albuminCorrected != null)
-            LgMetric(
-              label: l.resAnionGapAlb,
-              value: '${n(r.albuminCorrected!, 1)} mmol/L',
-            ),
+          if (r.gapWithPotassium case final o?)
+            LgMetric(label: l.resAnionGapK, value: line(o, 'mmol/L', 1)),
+          if (r.albuminCorrected case final o?)
+            LgMetric(label: l.resAnionGapAlb, value: line(o, 'mmol/L', 1)),
         ]);
       case final LipidResult r:
         final unit = unitOf(CalcField.totalCholesterol);
@@ -487,6 +515,9 @@ class _ResultView extends StatelessWidget {
           ),
         ]);
       case final OsmolalityResult r:
+        if (r.gap case final g? when g < 0) {
+          checks.add(l.calcNegativeCheck(l.resOsmGap));
+        }
         children.addAll([
           Text(l.resOsmCalc, style: text.titleSmall),
           headline('${n(r.calculated, 1)} mOsm/kg'),
@@ -520,11 +551,43 @@ class _ResultView extends StatelessWidget {
       default:
         return const SizedBox.shrink();
     }
-    return LgPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
+    // Birlik chalkashligiga shubha (masalan glyukoza 90 “mmol/L”).
+    for (final (field, v) in inputs) {
+      final unit = unitOf(field);
+      if (unitLooksSwapped(field, unit, v)) {
+        checks.add(l.calcUnitCheck(fieldName(field, l), n(v, 2), unit.label));
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LgPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...children,
+              if (inputs.isNotEmpty)
+                note(
+                  l.calcInputs(
+                    [
+                      for (final (field, v) in inputs)
+                        [
+                          fieldName(field, l),
+                          n(v, 2),
+                          if (unitOf(field).label.isNotEmpty)
+                            unitOf(field).label,
+                        ].join(' '),
+                    ].join(' · '),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        for (final c in checks) ...[
+          const SizedBox(height: 8),
+          LgNotice(c, kind: NoticeKind.warning),
+        ],
+      ],
     );
   }
 }

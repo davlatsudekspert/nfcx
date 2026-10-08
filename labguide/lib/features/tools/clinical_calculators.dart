@@ -165,6 +165,28 @@ abstract final class Units {
   static const uCreatMgDl = LabUnit('mg/dL', 10 / MolarMass.creatinine);
 }
 
+/// Birlik chalkashligiga shubha: qiymat tanlangan birlikda kam uchraydi,
+/// boshqa birlikda esa odatiy (masalan glyukoza 90 “mmol/L” — aslida mg/dL).
+/// Hisob to'xtatilmaydi, faqat “birlikni tekshiring” eslatmasi uchun.
+/// Chegaralar klinik me'yor emas — faqat kiritishdagi xatoni tutish uchun.
+bool unitLooksSwapped(CalcField field, LabUnit unit, double value) =>
+    switch ((field, unit.label)) {
+      (CalcField.creatinine, 'µmol/L') => value < 15,
+      (CalcField.creatinine, 'mg/dL') => value > 20,
+      (CalcField.glucose, 'mmol/L') => value > 50,
+      (CalcField.glucose, 'mg/dL') => value < 10,
+      (CalcField.calcium, 'mmol/L') => value > 4.5,
+      (CalcField.calcium, 'mg/dL') => value < 4.5,
+      (CalcField.albumin, 'g/L') => value < 10,
+      (CalcField.totalCholesterol, 'mmol/L') => value > 25,
+      (CalcField.totalCholesterol, 'mg/dL') => value < 40,
+      (CalcField.urineCreatinine, 'mmol/L') => value > 50,
+      (CalcField.urineCreatinine, 'mg/dL') => value < 5,
+      (CalcField.hba1c, '%') => value > 15,
+      (CalcField.hba1c, 'mmol/mol') => value < 15,
+      _ => false,
+    };
+
 /// Qiymatni tekshirish: `null` → missing; chekli emas yoki [range] dan
 /// tashqarida → implausible ([range] formula birligida).
 CalcFail<T>? _guard<T>(
@@ -247,6 +269,13 @@ CalcOutcome<EgfrResult> egfrCkdEpi2021({
   if (age == null || !age.isFinite) {
     return const CalcFail(CalcIssue.missing, field: CalcField.age);
   }
+  if (age <= 0) {
+    return const CalcFail(
+      CalcIssue.implausible,
+      field: CalcField.age,
+      limit: EgfrLimits.age,
+    );
+  }
   if (age < EgfrLimits.minAge) {
     return const CalcFail(
       CalcIssue.outsideValidity,
@@ -294,11 +323,14 @@ class AnionGapResult {
   /// Na⁺ − (Cl⁻ + HCO₃⁻), mmol/L
   final double gap;
 
-  /// (Na⁺ + K⁺) − (Cl⁻ + HCO₃⁻), mmol/L — K kiritilgan bo'lsa.
-  final double? gapWithPotassium;
+  /// (Na⁺ + K⁺) − (Cl⁻ + HCO₃⁻), mmol/L — K kiritilgan bo'lsa (`null` —
+  /// kiritilmagan). Ixtiyoriy maydon xatosi faqat shu qatorga tegishli.
+  final CalcOutcome<double>? gapWithPotassium;
 
-  /// Albumin bo'yicha tuzatilgan (K siz) — albumin kiritilgan bo'lsa.
-  final double? albuminCorrected;
+  /// Albumin bo'yicha tuzatilgan (K siz) — albumin yoki “normal albumin”
+  /// kiritilgan bo'lsa (`null` — ikkalasi ham bo'sh). Biri yetishmasa yoki
+  /// noto'g'ri bo'lsa — faqat shu qatorda xato, asosiy AG baribir chiqadi.
+  final CalcOutcome<double>? albuminCorrected;
 }
 
 abstract final class AnionGapLimits {
@@ -343,43 +375,49 @@ CalcOutcome<AnionGapResult> anionGap({
         bicarbonate,
         mmol,
         AnionGapLimits.bicarbonate,
-      ) ??
-      (potassium == null
-          ? null
-          : _guard(
-              CalcField.potassium,
-              potassium,
-              mmol,
-              AnionGapLimits.potassium,
-            )) ??
-      (albumin == null
-          ? null
-          : _guard(
-              CalcField.albumin,
-              albumin,
-              albuminUnit,
-              AnionGapLimits.albumin,
-            )) ??
-      (albumin == null
-          ? null
-          : _guard(
-              CalcField.normalAlbumin,
-              normalAlbumin,
-              albuminUnit,
-              AnionGapLimits.normalAlbumin,
-            ));
+      );
   if (bad != null) return bad;
   final gap = sodium! - (chloride! + bicarbonate!);
+
+  CalcOutcome<double>? withK;
+  if (potassium != null) {
+    withK =
+        _guard<double>(
+          CalcField.potassium,
+          potassium,
+          mmol,
+          AnionGapLimits.potassium,
+        ) ??
+        CalcOk(gap + potassium);
+  }
+
+  CalcOutcome<double>? corrected;
+  if (albumin != null || normalAlbumin != null) {
+    corrected =
+        _guard<double>(
+          CalcField.albumin,
+          albumin,
+          albuminUnit,
+          AnionGapLimits.albumin,
+        ) ??
+        _guard<double>(
+          CalcField.normalAlbumin,
+          normalAlbumin,
+          albuminUnit,
+          AnionGapLimits.normalAlbumin,
+        ) ??
+        CalcOk(
+          gap +
+              AnionGapLimits.albuminCoefficient *
+                  (normalAlbumin! - albumin!) *
+                  albuminUnit.toCanonical,
+        );
+  }
   return CalcOk(
     AnionGapResult(
       gap: gap,
-      gapWithPotassium: potassium == null ? null : gap + potassium,
-      albuminCorrected: albumin == null
-          ? null
-          : gap +
-                AnionGapLimits.albuminCoefficient *
-                    (normalAlbumin! - albumin) *
-                    albuminUnit.toCanonical,
+      gapWithPotassium: withK,
+      albuminCorrected: corrected,
     ),
   );
 }

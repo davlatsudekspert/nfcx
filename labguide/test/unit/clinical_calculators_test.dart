@@ -93,6 +93,16 @@ void main() {
       );
       expect(f.issue, CalcIssue.outsideValidity);
       expect(f.field, CalcField.age);
+      // Manfiy yosh — bola emas, kiritish xatosi.
+      final neg = fail(
+        egfrCkdEpi2021(
+          creatinine: 0.5,
+          unit: Units.creatMgDl,
+          age: -5,
+          sex: Sex.female,
+        ),
+      );
+      expect(neg.issue, CalcIssue.implausible);
     });
 
     test('µmol/L value typed as mg/dL is caught', () {
@@ -162,17 +172,49 @@ void main() {
         ),
       );
       expect(r.gap, 12);
-      expect(r.gapWithPotassium, 16);
+      expect(ok(r.gapWithPotassium!), 16);
       // Figge 1998: AG + 2.5 × (normal − observed), g/dL.
-      expect(r.albuminCorrected, closeTo(12 + 2.5 * (4.4 - 2.4), 1e-9));
+      expect(ok(r.albuminCorrected!), closeTo(12 + 2.5 * (4.4 - 2.4), 1e-9));
     });
 
-    test('albumin correction needs the lab normal albumin', () {
-      final f = fail(
-        anionGap(sodium: 140, chloride: 104, bicarbonate: 24, albumin: 2.4),
+    test('albumin correction needs the lab normal albumin; AG still shown', () {
+      final r = ok(
+        anionGap(
+          sodium: 140,
+          chloride: 104,
+          bicarbonate: 24,
+          potassium: 4,
+          albumin: 2.4,
+        ),
       );
+      expect(r.gap, 12);
+      expect(ok(r.gapWithPotassium!), 16);
+      final f = fail(r.albuminCorrected!);
       expect(f.field, CalcField.normalAlbumin);
       expect(f.issue, CalcIssue.missing);
+      // “Normal albumin” albuminsiz — jim e'tiborsiz qoldirilmaydi.
+      final only = ok(
+        anionGap(
+          sodium: 140,
+          chloride: 104,
+          bicarbonate: 24,
+          normalAlbumin: 4.0,
+        ),
+      );
+      expect(fail(only.albuminCorrected!).field, CalcField.albumin);
+    });
+
+    test('invalid optional potassium only affects its own line', () {
+      final r = ok(
+        anionGap(sodium: 140, chloride: 104, bicarbonate: 24, potassium: 40),
+      );
+      expect(r.gap, 12);
+      expect(fail(r.gapWithPotassium!).issue, CalcIssue.implausible);
+    });
+
+    test('negative gap is computed (UI asks to check inputs)', () {
+      final r = ok(anionGap(sodium: 120, chloride: 140, bicarbonate: 40));
+      expect(r.gap, -60);
     });
 
     test('albumin in g/L gives the same correction', () {
@@ -195,7 +237,10 @@ void main() {
           albuminUnit: Units.albGL,
         ),
       );
-      expect(gl.albuminCorrected, closeTo(gdl.albuminCorrected!, 1e-9));
+      expect(
+        ok(gl.albuminCorrected!),
+        closeTo(ok(gdl.albuminCorrected!), 1e-9),
+      );
     });
 
     test('optional fields stay null; missing required field is reported', () {
@@ -538,5 +583,35 @@ void main() {
         CalcField.urineCreatinine,
       );
     });
+  });
+
+  test('unit mix-up heuristics flag likely swapped units only', () {
+    // Glyukoza 90 “mmol/L” — aslida mg/dL; 5.4 mmol/L — odatiy.
+    expect(unitLooksSwapped(CalcField.glucose, Units.glucoseMmolL, 90), isTrue);
+    expect(
+      unitLooksSwapped(CalcField.glucose, Units.glucoseMmolL, 5.4),
+      isFalse,
+    );
+    expect(unitLooksSwapped(CalcField.glucose, Units.glucoseMgDl, 5.4), isTrue);
+    // Kalsiy 2.3 “mg/dL” — aslida mmol/L.
+    expect(unitLooksSwapped(CalcField.calcium, Units.caMgDl, 2.3), isTrue);
+    expect(unitLooksSwapped(CalcField.calcium, Units.caMgDl, 9.2), isFalse);
+    expect(unitLooksSwapped(CalcField.calcium, Units.caMmolL, 9.2), isTrue);
+    expect(
+      unitLooksSwapped(CalcField.creatinine, Units.creatUmolL, 1.1),
+      isTrue,
+    );
+    expect(
+      unitLooksSwapped(CalcField.creatinine, Units.creatUmolL, 88),
+      isFalse,
+    );
+    expect(unitLooksSwapped(CalcField.albumin, Units.albGL, 4.2), isTrue);
+    expect(unitLooksSwapped(CalcField.hba1c, Units.ifcc, 6.5), isTrue);
+    expect(unitLooksSwapped(CalcField.hba1c, Units.ngsp, 48), isTrue);
+    // Bir birlikli maydonlar uchun hech qachon.
+    expect(
+      unitLooksSwapped(CalcField.sodium, const LabUnit('mmol/L', 1), 1),
+      isFalse,
+    );
   });
 }

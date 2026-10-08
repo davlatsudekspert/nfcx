@@ -1149,6 +1149,26 @@ class AppLocalizationsRu extends AppLocalizations {
       'Вспомогательный расчёт для обучения и проверки. Не ставит диагноз: интерпретируйте результат с учётом клинической картины и референсных интервалов вашей лаборатории.';
 
   @override
+  String calcUnitCheck(String field, String value, String unit) {
+    return '$field: $value $unit — необычное значение для этой единицы; проверьте, правильно ли выбрана единица.';
+  }
+
+  @override
+  String calcInputs(String list) {
+    return 'Введено: $list';
+  }
+
+  @override
+  String calcNegativeCheck(String name) {
+    return '$name: отрицательное значение — проверьте введённые значения и единицы.';
+  }
+
+  @override
+  String calcUnitGroup(String field) {
+    return 'Единица: $field';
+  }
+
+  @override
   String get calcFormula => 'Формула';
 
   @override

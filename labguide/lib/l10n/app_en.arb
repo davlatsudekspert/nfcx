@@ -554,6 +554,44 @@
   "calcFormulaTag": "Published formula",
   "calcOptional": "optional",
   "calcNotDiagnosis": "A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.",
+  "calcUnitCheck": "{field}: {value} {unit} is unusual for this unit — check that the right unit is selected.",
+  "@calcUnitCheck": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "calcInputs": "Entered: {list}",
+  "@calcInputs": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "calcNegativeCheck": "{name} is negative — check the entered values and units.",
+  "@calcNegativeCheck": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "calcUnitGroup": "{field} unit",
+  "@calcUnitGroup": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
   "calcFormula": "Formula",
   "calcLimitations": "Limitations",
   "calcSources": "Sources",

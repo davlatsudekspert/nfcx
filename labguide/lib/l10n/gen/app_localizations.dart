@@ -2110,6 +2110,30 @@ abstract class AppLocalizations {
   /// **'A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.'**
   String get calcNotDiagnosis;
 
+  /// No description provided for @calcUnitCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'{field}: {value} {unit} is unusual for this unit — check that the right unit is selected.'**
+  String calcUnitCheck(String field, String value, String unit);
+
+  /// No description provided for @calcInputs.
+  ///
+  /// In en, this message translates to:
+  /// **'Entered: {list}'**
+  String calcInputs(String list);
+
+  /// No description provided for @calcNegativeCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is negative — check the entered values and units.'**
+  String calcNegativeCheck(String name);
+
+  /// No description provided for @calcUnitGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'{field} unit'**
+  String calcUnitGroup(String field);
+
   /// No description provided for @calcFormula.
   ///
   /// In en, this message translates to:

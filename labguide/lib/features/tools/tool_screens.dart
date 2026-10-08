@@ -77,6 +77,11 @@ class _DilutionScreenState extends State<DilutionScreen> {
   final _v2 = TextEditingController(text: '100');
   DilutionResult? _result;
 
+  /// Maydon o'zgarsa eski natija ko'rinib qolmasin.
+  void _invalidate(String _) {
+    if (_result != null) setState(() => _result = null);
+  }
+
   @override
   void dispose() {
     for (final c in [_c1, _c2, _v2]) {
@@ -113,12 +118,14 @@ class _DilutionScreenState extends State<DilutionScreen> {
           controller: _c1,
           keyboardType: _decimalKeyboard,
           textInputAction: TextInputAction.next,
+          onChanged: _invalidate,
         ),
         LgField(
           label: l.dilC2,
           controller: _c2,
           keyboardType: _decimalKeyboard,
           textInputAction: TextInputAction.next,
+          onChanged: _invalidate,
         ),
         LgField(
           label: l.dilV2,
@@ -126,6 +133,7 @@ class _DilutionScreenState extends State<DilutionScreen> {
           keyboardType: _decimalKeyboard,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _calculate(),
+          onChanged: _invalidate,
         ),
         const SizedBox(height: 12),
         Text(l.dilNote, style: text.bodySmall),
@@ -295,6 +303,9 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
                   keyboardType: _decimalKeyboard,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _convert(analyte),
+                  onChanged: (_) {
+                    if (_result != null) setState(() => _result = null);
+                  },
                 ),
                 const SizedBox(height: 10),
                 Align(

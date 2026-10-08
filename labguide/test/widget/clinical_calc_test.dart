@@ -64,6 +64,82 @@ void main() {
     expect(find.text('98 mL/min/1.73 m²'), findsNothing);
   });
 
+  testWidgets('editing a field clears the old result (no stale answer)', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 3200));
+    await goTo(tester, '/lab/calculators/egfr');
+    await _fill(tester, ['88.4', '40']);
+    await _tap(tester, en.sexMale);
+    await _tap(tester, en.dilCalculate);
+    expect(find.text('98 mL/min/1.73 m²'), findsOneWidget);
+    // Kiritilgan qiymatlar natija ostida qaytariladi.
+    expect(find.textContaining('Entered: '), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '400');
+    await tester.pumpAndSettle();
+    expect(find.text('98 mL/min/1.73 m²'), findsNothing);
+  });
+
+  testWidgets('osmolality: glucose 90 “mmol/L” gets a unit check', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 3200));
+    await goTo(tester, '/lab/calculators/osmolality');
+    await _fill(tester, ['140', '90', '5']);
+    await _tap(tester, en.dilCalculate);
+    expect(
+      find.text(en.calcUnitCheck(en.fieldGlucose, '90', 'mmol/L')),
+      findsOneWidget,
+    );
+    // Odatiy qiymatda eslatma yo'q.
+    await _fill(tester, ['140', '5', '5']);
+    await _tap(tester, en.dilCalculate);
+    expect(find.textContaining('is unusual for this unit'), findsNothing);
+  });
+
+  testWidgets('anion gap: missing normal albumin only affects its line', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 3200));
+    await goTo(tester, '/lab/calculators/anion-gap');
+    await _fill(tester, ['140', '104', '24', '4', '24']);
+    await _tap(tester, en.dilCalculate);
+    expect(find.text('12 mmol/L'), findsOneWidget);
+    expect(find.text('16 mmol/L'), findsOneWidget);
+    expect(find.text(en.errCalcMissing(en.fieldNormalAlbumin)), findsOneWidget);
+    // Manfiy anion oralig'i — tekshirish eslatmasi.
+    await _fill(tester, ['120', '140', '40', '', '', '']);
+    await _tap(tester, en.dilCalculate);
+    expect(find.text(en.calcNegativeCheck(en.resAnionGap)), findsOneWidget);
+  });
+
+  testWidgets('unit chips are grouped under the field name for TalkBack', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 3200));
+    await goTo(tester, '/lab/calculators/osmolality');
+    expect(
+      find.bySemanticsLabel(
+        RegExp(RegExp.escape(en.calcUnitGroup(en.fieldGlucose))),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        RegExp(RegExp.escape(en.calcUnitGroup(en.fieldUrea))),
+      ),
+      findsOneWidget,
+    );
+    // Maydon yorlig'ida tanlangan birlik ham bor.
+    expect(find.text('${en.fieldGlucose}, mmol/L'), findsOneWidget);
+    handle.dispose();
+  });
+
   testWidgets('LDL in Russian: mmol/L in, mmol/L out, locale decimals', (
     tester,
   ) async {

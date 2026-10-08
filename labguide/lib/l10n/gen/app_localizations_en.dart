@@ -1139,6 +1139,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.';
 
   @override
+  String calcUnitCheck(String field, String value, String unit) {
+    return '$field: $value $unit is unusual for this unit — check that the right unit is selected.';
+  }
+
+  @override
+  String calcInputs(String list) {
+    return 'Entered: $list';
+  }
+
+  @override
+  String calcNegativeCheck(String name) {
+    return '$name is negative — check the entered values and units.';
+  }
+
+  @override
+  String calcUnitGroup(String field) {
+    return '$field unit';
+  }
+
+  @override
   String get calcFormula => 'Formula';
 
   @override

@@ -1132,6 +1132,26 @@ class AppLocalizationsUz extends AppLocalizations {
       'O‘rganish va tekshirish uchun hisob vositasi. Tashxis qo‘ymaydi: natijani klinik manzara va laboratoriyangiz referens intervallari bilan birga talqin qiling.';
 
   @override
+  String calcUnitCheck(String field, String value, String unit) {
+    return '$field: $value $unit bu birlik uchun odatiy emas — birlik to‘g‘ri tanlanganini tekshiring.';
+  }
+
+  @override
+  String calcInputs(String list) {
+    return 'Kiritilgan: $list';
+  }
+
+  @override
+  String calcNegativeCheck(String name) {
+    return '$name manfiy chiqdi — kiritilgan qiymatlar va birliklarni tekshiring.';
+  }
+
+  @override
+  String calcUnitGroup(String field) {
+    return '$field birligi';
+  }
+
+  @override
   String get calcFormula => 'Formula';
 
   @override
