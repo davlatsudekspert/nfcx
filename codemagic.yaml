@@ -1,0 +1,121 @@
+# Codemagic — NFCSTORE (Nova) iOS → TestFlight.
+#
+# NIMA UCHUN: GitHub Actions'ning macOS daqiqalari qimmat (1 daqiqa = 10),
+# Xcode Cloud esa birinchi sozlash uchun Mac talab qiladi. Codemagic —
+# brauzerdan sozlanadi, oyiga 500 daqiqa macOS bepul.
+#
+# QAYSI KOD: `claude/nova-release-1.1.0` branchi — `claude/vibrant-einstein-p5lo1i`
+# + `ci/nova-ios-patches/*.patch` (git am) allaqachon qo'llangan holat
+# (APK ham shu branchdan yig'iladi). Shu fayl asos branchda turadi, shuning
+# uchun reliz branchida ham bor.
+#
+# BIR MARTALIK SOZLASH (Codemagic UI, egasi):
+#   1. codemagic.io → GitHub bilan kirish → `nfcx` repo'ni qo'shish.
+#   2. Team settings → Integrations → Developer Portal → App Store Connect
+#      API kalitini qo'shish, NOMI: `NFCSTORE ASC` (App Manager roli).
+#   3. Team settings → Code signing identities → iOS certificates →
+#      "Generate certificate" (Apple Distribution) — yoki mavjud .p12.
+#   4. Build → `nova-ios-testflight` workflow → branch `claude/nova-release-1.1.0`.
+#
+# Hech qanday maxfiy kalit bu faylda YO'Q — hammasi Codemagic integratsiyasida.
+
+workflows:
+  nova-ios-testflight:
+    name: NFCSTORE iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 75
+    integrations:
+      app_store_connect: NFCSTORE ASC
+    environment:
+      flutter: 3.35.5
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uz.nfcstore.nova
+      vars:
+        BUNDLE_ID: uz.nfcstore.nova
+        # 1.1.1 (325) ko'rikda, TestFlight'da 328 bor — undan pastga tushmaydi.
+        MIN_BUILD_NUMBER: "329"
+    triggering:
+      events: []   # faqat qo'lda (Start new build)
+    scripts:
+      - name: Target tekshiruvi
+        script: |
+          set -euo pipefail
+          cd mobile_nova
+          P=ios/Runner.xcodeproj/project.pbxproj
+          N=$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = uz.nfcstore.nova;' "$P" || true)
+          [ "$N" = 3 ] || { echo "Runner bundle ID uz.nfcstore.nova emas ($N/3)"; exit 1; }
+          if grep -q 'uz.nfcstore.app' "$P"; then echo "uz.nfcstore.app topildi"; exit 1; fi
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' ios/Runner/Info.plist)
+          [ "$NAME" = "NFCSTORE" ] || { echo "Ilova nomi '$NAME'"; exit 1; }
+          python3 - <<'PY'
+          import plistlib
+          e = plistlib.load(open('ios/Runner/Runner.entitlements', 'rb'))
+          assert e['com.apple.developer.nfc.readersession.formats'] == ['TAG'], 'NFC TAG entitlement'
+          PY
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "IOS_VERSION=$VERSION" >> "$CM_ENV"
+          echo "TARGET = uz.nfcstore.nova @ $(git rev-parse --short HEAD) (v$VERSION)"
+
+      - name: Build raqami (App Store Connect'dan)
+        script: |
+          set -euo pipefail
+          APP_ID=$(app-store-connect apps list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json \
+                   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"])')
+          TF=$(app-store-connect get-latest-testflight-build-number "$APP_ID" 2>/dev/null || echo 0)
+          AS=$(app-store-connect get-latest-app-store-build-number "$APP_ID" 2>/dev/null || echo 0)
+          NEXT=$(python3 -c "import sys; v=[int(x) for x in sys.argv[1:] if x.strip().isdigit()]; print(max(v)+1)" "$TF" "$AS" "$((MIN_BUILD_NUMBER-1))")
+          echo "ASC app $APP_ID: TestFlight=$TF AppStore=$AS → yangi build $NEXT"
+          echo "BUILD_NUMBER=$NEXT" >> "$CM_ENV"
+
+      - name: Paketlar
+        script: |
+          set -euo pipefail
+          cd mobile_nova
+          flutter pub get --enforce-lockfile
+          cd ios && pod install
+
+      - name: Imzo profillari
+        script: xcode-project use-profiles --project mobile_nova/ios/Runner.xcodeproj
+
+      - name: Imzolangan IPA
+        script: |
+          set -euo pipefail
+          cd mobile_nova
+          flutter build ipa --release \
+            --build-name="$IOS_VERSION" --build-number="$BUILD_NUMBER" \
+            --dart-define=NOVA_VERSION="$IOS_VERSION" --dart-define=NOVA_BUILD="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+          test "$(find build/ios/ipa -maxdepth 1 -name '*.ipa' | wc -l | tr -d ' ')" = 1
+
+      - name: Imzo va entitlement tekshiruvi
+        script: |
+          set -euo pipefail
+          D=$(mktemp -d)
+          unzip -q mobile_nova/build/ios/ipa/*.ipa -d "$D"
+          APP="$D/Payload/Runner.app"
+          codesign --verify --deep --strict "$APP"
+          codesign -d --entitlements :- "$APP" > "$D/ent.plist" 2>/dev/null
+          python3 - "$D/ent.plist" <<'PY'
+          import plistlib, sys
+          e = plistlib.load(open(sys.argv[1], 'rb'))
+          assert e['application-identifier'].endswith('.uz.nfcstore.nova'), e['application-identifier']
+          assert e.get('com.apple.developer.nfc.readersession.formats') == ['TAG'], 'NFC'
+          assert not e.get('get-task-allow', False), 'debug imzo'
+          print('Entitlements OK:', sorted(e.keys()))
+          PY
+
+    artifacts:
+      - mobile_nova/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - NFCSTORE Internal
+          - NFCSTORE Testers
+        submit_to_app_store: false
