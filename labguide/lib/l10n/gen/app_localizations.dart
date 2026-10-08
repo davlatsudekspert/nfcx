@@ -1504,6 +1504,402 @@ abstract class AppLocalizations {
   /// **'The value is outside the calculable range.'**
   String get ucErrorRange;
 
+  /// No description provided for @calcSectionClinical.
+  ///
+  /// In en, this message translates to:
+  /// **'Clinical formulas'**
+  String get calcSectionClinical;
+
+  /// No description provided for @calcSectionLab.
+  ///
+  /// In en, this message translates to:
+  /// **'Laboratory'**
+  String get calcSectionLab;
+
+  /// No description provided for @calcEgfr.
+  ///
+  /// In en, this message translates to:
+  /// **'eGFR · CKD-EPI 2021'**
+  String get calcEgfr;
+
+  /// No description provided for @calcEgfrSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Creatinine, age, sex'**
+  String get calcEgfrSub;
+
+  /// No description provided for @calcAcr.
+  ///
+  /// In en, this message translates to:
+  /// **'Albumin/creatinine ratio'**
+  String get calcAcr;
+
+  /// No description provided for @calcAcrSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Urine ACR · KDIGO A category'**
+  String get calcAcrSub;
+
+  /// No description provided for @calcAnionGap.
+  ///
+  /// In en, this message translates to:
+  /// **'Anion gap'**
+  String get calcAnionGap;
+
+  /// No description provided for @calcAnionGapSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Na, Cl, HCO₃ · K and albumin optional'**
+  String get calcAnionGapSub;
+
+  /// No description provided for @calcCalcium.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrected calcium'**
+  String get calcCalcium;
+
+  /// No description provided for @calcCalciumSub.
+  ///
+  /// In en, this message translates to:
+  /// **'By albumin · Payne 1973'**
+  String get calcCalciumSub;
+
+  /// No description provided for @calcLdl.
+  ///
+  /// In en, this message translates to:
+  /// **'LDL-C and non-HDL-C'**
+  String get calcLdl;
+
+  /// No description provided for @calcLdlSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Friedewald · Sampson'**
+  String get calcLdlSub;
+
+  /// No description provided for @calcOsmo.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated osmolality'**
+  String get calcOsmo;
+
+  /// No description provided for @calcOsmoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'And osmolal gap'**
+  String get calcOsmoSub;
+
+  /// No description provided for @calcHba1c.
+  ///
+  /// In en, this message translates to:
+  /// **'HbA1c units and eAG'**
+  String get calcHba1c;
+
+  /// No description provided for @calcHba1cSub.
+  ///
+  /// In en, this message translates to:
+  /// **'NGSP ↔ IFCC · ADAG'**
+  String get calcHba1cSub;
+
+  /// No description provided for @calcFormulaTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Published formula'**
+  String get calcFormulaTag;
+
+  /// No description provided for @calcOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'optional'**
+  String get calcOptional;
+
+  /// No description provided for @calcNotDiagnosis.
+  ///
+  /// In en, this message translates to:
+  /// **'A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.'**
+  String get calcNotDiagnosis;
+
+  /// No description provided for @calcFormula.
+  ///
+  /// In en, this message translates to:
+  /// **'Formula'**
+  String get calcFormula;
+
+  /// No description provided for @calcLimitations.
+  ///
+  /// In en, this message translates to:
+  /// **'Limitations'**
+  String get calcLimitations;
+
+  /// No description provided for @calcSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get calcSources;
+
+  /// No description provided for @fieldCreatinine.
+  ///
+  /// In en, this message translates to:
+  /// **'Serum creatinine'**
+  String get fieldCreatinine;
+
+  /// No description provided for @fieldAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Age, years'**
+  String get fieldAge;
+
+  /// No description provided for @fieldSex.
+  ///
+  /// In en, this message translates to:
+  /// **'Sex'**
+  String get fieldSex;
+
+  /// No description provided for @fieldSodium.
+  ///
+  /// In en, this message translates to:
+  /// **'Sodium (Na⁺)'**
+  String get fieldSodium;
+
+  /// No description provided for @fieldChloride.
+  ///
+  /// In en, this message translates to:
+  /// **'Chloride (Cl⁻)'**
+  String get fieldChloride;
+
+  /// No description provided for @fieldBicarbonate.
+  ///
+  /// In en, this message translates to:
+  /// **'Bicarbonate (HCO₃⁻)'**
+  String get fieldBicarbonate;
+
+  /// No description provided for @fieldPotassium.
+  ///
+  /// In en, this message translates to:
+  /// **'Potassium (K⁺)'**
+  String get fieldPotassium;
+
+  /// No description provided for @fieldAlbumin.
+  ///
+  /// In en, this message translates to:
+  /// **'Serum albumin'**
+  String get fieldAlbumin;
+
+  /// No description provided for @fieldNormalAlbumin.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal albumin used by your laboratory'**
+  String get fieldNormalAlbumin;
+
+  /// No description provided for @fieldCalcium.
+  ///
+  /// In en, this message translates to:
+  /// **'Total serum calcium'**
+  String get fieldCalcium;
+
+  /// No description provided for @fieldTotalCholesterol.
+  ///
+  /// In en, this message translates to:
+  /// **'Total cholesterol'**
+  String get fieldTotalCholesterol;
+
+  /// No description provided for @fieldHdl.
+  ///
+  /// In en, this message translates to:
+  /// **'HDL cholesterol'**
+  String get fieldHdl;
+
+  /// No description provided for @fieldTriglycerides.
+  ///
+  /// In en, this message translates to:
+  /// **'Triglycerides'**
+  String get fieldTriglycerides;
+
+  /// No description provided for @fieldGlucose.
+  ///
+  /// In en, this message translates to:
+  /// **'Glucose'**
+  String get fieldGlucose;
+
+  /// No description provided for @fieldUrea.
+  ///
+  /// In en, this message translates to:
+  /// **'Urea (or BUN)'**
+  String get fieldUrea;
+
+  /// No description provided for @fieldMeasuredOsmolality.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured osmolality'**
+  String get fieldMeasuredOsmolality;
+
+  /// No description provided for @fieldHba1c.
+  ///
+  /// In en, this message translates to:
+  /// **'HbA1c'**
+  String get fieldHba1c;
+
+  /// No description provided for @fieldUrineAlbumin.
+  ///
+  /// In en, this message translates to:
+  /// **'Urine albumin'**
+  String get fieldUrineAlbumin;
+
+  /// No description provided for @fieldUrineCreatinine.
+  ///
+  /// In en, this message translates to:
+  /// **'Urine creatinine'**
+  String get fieldUrineCreatinine;
+
+  /// No description provided for @sexFemale.
+  ///
+  /// In en, this message translates to:
+  /// **'Female'**
+  String get sexFemale;
+
+  /// No description provided for @sexMale.
+  ///
+  /// In en, this message translates to:
+  /// **'Male'**
+  String get sexMale;
+
+  /// No description provided for @resGfrCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'KDIGO GFR category {code}'**
+  String resGfrCategory(String code);
+
+  /// No description provided for @resAlbCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'KDIGO albuminuria category {code}'**
+  String resAlbCategory(String code);
+
+  /// No description provided for @resCategoryBasisSi.
+  ///
+  /// In en, this message translates to:
+  /// **'Determined on the mg/mmol cut-offs.'**
+  String get resCategoryBasisSi;
+
+  /// No description provided for @resCategoryBasisConv.
+  ///
+  /// In en, this message translates to:
+  /// **'Determined on the mg/g cut-offs.'**
+  String get resCategoryBasisConv;
+
+  /// No description provided for @resAnionGap.
+  ///
+  /// In en, this message translates to:
+  /// **'Anion gap'**
+  String get resAnionGap;
+
+  /// No description provided for @resAnionGapK.
+  ///
+  /// In en, this message translates to:
+  /// **'With potassium'**
+  String get resAnionGapK;
+
+  /// No description provided for @resAnionGapAlb.
+  ///
+  /// In en, this message translates to:
+  /// **'Albumin-corrected (Figge)'**
+  String get resAnionGapAlb;
+
+  /// No description provided for @resCorrectedCa.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrected calcium (Payne)'**
+  String get resCorrectedCa;
+
+  /// No description provided for @resNonHdl.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-HDL cholesterol'**
+  String get resNonHdl;
+
+  /// No description provided for @resLdlFriedewald.
+  ///
+  /// In en, this message translates to:
+  /// **'LDL-C · Friedewald'**
+  String get resLdlFriedewald;
+
+  /// No description provided for @resLdlSampson.
+  ///
+  /// In en, this message translates to:
+  /// **'LDL-C · Sampson'**
+  String get resLdlSampson;
+
+  /// No description provided for @resOsmCalc.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated osmolality'**
+  String get resOsmCalc;
+
+  /// No description provided for @resOsmGap.
+  ///
+  /// In en, this message translates to:
+  /// **'Osmolal gap'**
+  String get resOsmGap;
+
+  /// No description provided for @resEag.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated average glucose (eAG)'**
+  String get resEag;
+
+  /// No description provided for @errCalcMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number: {field}.'**
+  String errCalcMissing(String field);
+
+  /// No description provided for @errCalcImplausible.
+  ///
+  /// In en, this message translates to:
+  /// **'{field}: outside the range this calculator accepts ({min}–{max}{unit}). Check the value and the unit.'**
+  String errCalcImplausible(String field, String min, String max, String unit);
+
+  /// No description provided for @errEgfrAge.
+  ///
+  /// In en, this message translates to:
+  /// **'The CKD-EPI 2021 equation was developed in participants aged 18 or older; it is not calculated for children.'**
+  String get errEgfrAge;
+
+  /// No description provided for @errFriedewaldTg.
+  ///
+  /// In en, this message translates to:
+  /// **'Not calculated: Friedewald is not reliable when triglycerides exceed {limit}.'**
+  String errFriedewaldTg(String limit);
+
+  /// No description provided for @errSampsonTg.
+  ///
+  /// In en, this message translates to:
+  /// **'Not calculated: the Sampson equation was validated for triglycerides up to {limit}.'**
+  String errSampsonTg(String limit);
+
+  /// No description provided for @errEagRange.
+  ///
+  /// In en, this message translates to:
+  /// **'eAG not shown: the ADAG data cover HbA1c {range}.'**
+  String errEagRange(String range);
+
+  /// No description provided for @errHdlGeTc.
+  ///
+  /// In en, this message translates to:
+  /// **'HDL cholesterol can\'t be equal to or greater than total cholesterol.'**
+  String get errHdlGeTc;
+
+  /// No description provided for @errNotPositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Not calculated: the result is not positive — check the values.'**
+  String get errNotPositive;
+
+  /// No description provided for @errSexMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose sex.'**
+  String get errSexMissing;
+
   /// No description provided for @micTitle.
   ///
   /// In en, this message translates to:

@@ -325,6 +325,130 @@
   "ucNotAvailable": "No verified molar mass for this analyte, so conversion is not offered.",
   "ucErrorInvalid": "Enter a number of 0 or more.",
   "ucErrorRange": "The value is outside the calculable range.",
+  "calcSectionClinical": "Clinical formulas",
+  "calcSectionLab": "Laboratory",
+  "calcEgfr": "eGFR · CKD-EPI 2021",
+  "calcEgfrSub": "Creatinine, age, sex",
+  "calcAcr": "Albumin/creatinine ratio",
+  "calcAcrSub": "Urine ACR · KDIGO A category",
+  "calcAnionGap": "Anion gap",
+  "calcAnionGapSub": "Na, Cl, HCO₃ · K and albumin optional",
+  "calcCalcium": "Corrected calcium",
+  "calcCalciumSub": "By albumin · Payne 1973",
+  "calcLdl": "LDL-C and non-HDL-C",
+  "calcLdlSub": "Friedewald · Sampson",
+  "calcOsmo": "Calculated osmolality",
+  "calcOsmoSub": "And osmolal gap",
+  "calcHba1c": "HbA1c units and eAG",
+  "calcHba1cSub": "NGSP ↔ IFCC · ADAG",
+  "calcFormulaTag": "Published formula",
+  "calcOptional": "optional",
+  "calcNotDiagnosis": "A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.",
+  "calcFormula": "Formula",
+  "calcLimitations": "Limitations",
+  "calcSources": "Sources",
+  "fieldCreatinine": "Serum creatinine",
+  "fieldAge": "Age, years",
+  "fieldSex": "Sex",
+  "fieldSodium": "Sodium (Na⁺)",
+  "fieldChloride": "Chloride (Cl⁻)",
+  "fieldBicarbonate": "Bicarbonate (HCO₃⁻)",
+  "fieldPotassium": "Potassium (K⁺)",
+  "fieldAlbumin": "Serum albumin",
+  "fieldNormalAlbumin": "Normal albumin used by your laboratory",
+  "fieldCalcium": "Total serum calcium",
+  "fieldTotalCholesterol": "Total cholesterol",
+  "fieldHdl": "HDL cholesterol",
+  "fieldTriglycerides": "Triglycerides",
+  "fieldGlucose": "Glucose",
+  "fieldUrea": "Urea (or BUN)",
+  "fieldMeasuredOsmolality": "Measured osmolality",
+  "fieldHba1c": "HbA1c",
+  "fieldUrineAlbumin": "Urine albumin",
+  "fieldUrineCreatinine": "Urine creatinine",
+  "sexFemale": "Female",
+  "sexMale": "Male",
+  "resGfrCategory": "KDIGO GFR category {code}",
+  "@resGfrCategory": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "resAlbCategory": "KDIGO albuminuria category {code}",
+  "@resAlbCategory": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "resCategoryBasisSi": "Determined on the mg/mmol cut-offs.",
+  "resCategoryBasisConv": "Determined on the mg/g cut-offs.",
+  "resAnionGap": "Anion gap",
+  "resAnionGapK": "With potassium",
+  "resAnionGapAlb": "Albumin-corrected (Figge)",
+  "resCorrectedCa": "Corrected calcium (Payne)",
+  "resNonHdl": "Non-HDL cholesterol",
+  "resLdlFriedewald": "LDL-C · Friedewald",
+  "resLdlSampson": "LDL-C · Sampson",
+  "resOsmCalc": "Calculated osmolality",
+  "resOsmGap": "Osmolal gap",
+  "resEag": "Estimated average glucose (eAG)",
+  "errCalcMissing": "Enter a number: {field}.",
+  "@errCalcMissing": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "errCalcImplausible": "{field}: outside the range this calculator accepts ({min}–{max}{unit}). Check the value and the unit.",
+  "@errCalcImplausible": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "errEgfrAge": "The CKD-EPI 2021 equation was developed in participants aged 18 or older; it is not calculated for children.",
+  "errFriedewaldTg": "Not calculated: Friedewald is not reliable when triglycerides exceed {limit}.",
+  "@errFriedewaldTg": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errSampsonTg": "Not calculated: the Sampson equation was validated for triglycerides up to {limit}.",
+  "@errSampsonTg": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errEagRange": "eAG not shown: the ADAG data cover HbA1c {range}.",
+  "@errEagRange": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "errHdlGeTc": "HDL cholesterol can't be equal to or greater than total cholesterol.",
+  "errNotPositive": "Not calculated: the result is not positive — check the values.",
+  "errSexMissing": "Choose sex.",
   "micTitle": "Microscopy atlas",
   "micNotice": "Image slot. Authentic micrographs are added only after usage rights and labels are verified.",
   "micRedCells": "Red blood cells",

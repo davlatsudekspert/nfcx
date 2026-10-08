@@ -8,7 +8,9 @@ import '../../design/widgets/lg_widgets.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../content/content_model.dart';
 import '../content/ui/content_widgets.dart';
+import 'calc_info.dart';
 import 'calculators.dart';
+import 'clinical_calc_screens.dart';
 
 /// Natijani lokal formatda ko'rsatish; juda kichik/katta qiymatlar
 /// eksponensial ko'rinishda (0 ga yaxlitlanib "yo'qolmasligi" uchun).
@@ -32,6 +34,16 @@ class CalculatorsScreen extends StatelessWidget {
     return LgPage(
       title: l.calcTitle,
       children: [
+        LgSectionTitle(l.calcSectionClinical),
+        for (final (i, c) in ClinicalCalc.values.indexed)
+          LgRow(
+            title: calcTitle(c, l),
+            subtitle: calcSubtitle(c, l),
+            icon: calcIcon(c),
+            onTap: () => context.push('/lab/calculators/${calcRoute(c)}'),
+            divider: i < ClinicalCalc.values.length - 1,
+          ),
+        LgSectionTitle(l.calcSectionLab),
         LgRow(
           title: l.calcDilution,
           subtitle: l.calcDilutionSub,

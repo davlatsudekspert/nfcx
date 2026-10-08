@@ -777,6 +777,222 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ucErrorRange => 'The value is outside the calculable range.';
 
   @override
+  String get calcSectionClinical => 'Clinical formulas';
+
+  @override
+  String get calcSectionLab => 'Laboratory';
+
+  @override
+  String get calcEgfr => 'eGFR · CKD-EPI 2021';
+
+  @override
+  String get calcEgfrSub => 'Creatinine, age, sex';
+
+  @override
+  String get calcAcr => 'Albumin/creatinine ratio';
+
+  @override
+  String get calcAcrSub => 'Urine ACR · KDIGO A category';
+
+  @override
+  String get calcAnionGap => 'Anion gap';
+
+  @override
+  String get calcAnionGapSub => 'Na, Cl, HCO₃ · K and albumin optional';
+
+  @override
+  String get calcCalcium => 'Corrected calcium';
+
+  @override
+  String get calcCalciumSub => 'By albumin · Payne 1973';
+
+  @override
+  String get calcLdl => 'LDL-C and non-HDL-C';
+
+  @override
+  String get calcLdlSub => 'Friedewald · Sampson';
+
+  @override
+  String get calcOsmo => 'Calculated osmolality';
+
+  @override
+  String get calcOsmoSub => 'And osmolal gap';
+
+  @override
+  String get calcHba1c => 'HbA1c units and eAG';
+
+  @override
+  String get calcHba1cSub => 'NGSP ↔ IFCC · ADAG';
+
+  @override
+  String get calcFormulaTag => 'Published formula';
+
+  @override
+  String get calcOptional => 'optional';
+
+  @override
+  String get calcNotDiagnosis =>
+      'A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.';
+
+  @override
+  String get calcFormula => 'Formula';
+
+  @override
+  String get calcLimitations => 'Limitations';
+
+  @override
+  String get calcSources => 'Sources';
+
+  @override
+  String get fieldCreatinine => 'Serum creatinine';
+
+  @override
+  String get fieldAge => 'Age, years';
+
+  @override
+  String get fieldSex => 'Sex';
+
+  @override
+  String get fieldSodium => 'Sodium (Na⁺)';
+
+  @override
+  String get fieldChloride => 'Chloride (Cl⁻)';
+
+  @override
+  String get fieldBicarbonate => 'Bicarbonate (HCO₃⁻)';
+
+  @override
+  String get fieldPotassium => 'Potassium (K⁺)';
+
+  @override
+  String get fieldAlbumin => 'Serum albumin';
+
+  @override
+  String get fieldNormalAlbumin => 'Normal albumin used by your laboratory';
+
+  @override
+  String get fieldCalcium => 'Total serum calcium';
+
+  @override
+  String get fieldTotalCholesterol => 'Total cholesterol';
+
+  @override
+  String get fieldHdl => 'HDL cholesterol';
+
+  @override
+  String get fieldTriglycerides => 'Triglycerides';
+
+  @override
+  String get fieldGlucose => 'Glucose';
+
+  @override
+  String get fieldUrea => 'Urea (or BUN)';
+
+  @override
+  String get fieldMeasuredOsmolality => 'Measured osmolality';
+
+  @override
+  String get fieldHba1c => 'HbA1c';
+
+  @override
+  String get fieldUrineAlbumin => 'Urine albumin';
+
+  @override
+  String get fieldUrineCreatinine => 'Urine creatinine';
+
+  @override
+  String get sexFemale => 'Female';
+
+  @override
+  String get sexMale => 'Male';
+
+  @override
+  String resGfrCategory(String code) {
+    return 'KDIGO GFR category $code';
+  }
+
+  @override
+  String resAlbCategory(String code) {
+    return 'KDIGO albuminuria category $code';
+  }
+
+  @override
+  String get resCategoryBasisSi => 'Determined on the mg/mmol cut-offs.';
+
+  @override
+  String get resCategoryBasisConv => 'Determined on the mg/g cut-offs.';
+
+  @override
+  String get resAnionGap => 'Anion gap';
+
+  @override
+  String get resAnionGapK => 'With potassium';
+
+  @override
+  String get resAnionGapAlb => 'Albumin-corrected (Figge)';
+
+  @override
+  String get resCorrectedCa => 'Corrected calcium (Payne)';
+
+  @override
+  String get resNonHdl => 'Non-HDL cholesterol';
+
+  @override
+  String get resLdlFriedewald => 'LDL-C · Friedewald';
+
+  @override
+  String get resLdlSampson => 'LDL-C · Sampson';
+
+  @override
+  String get resOsmCalc => 'Calculated osmolality';
+
+  @override
+  String get resOsmGap => 'Osmolal gap';
+
+  @override
+  String get resEag => 'Estimated average glucose (eAG)';
+
+  @override
+  String errCalcMissing(String field) {
+    return 'Enter a number: $field.';
+  }
+
+  @override
+  String errCalcImplausible(String field, String min, String max, String unit) {
+    return '$field: outside the range this calculator accepts ($min–$max$unit). Check the value and the unit.';
+  }
+
+  @override
+  String get errEgfrAge =>
+      'The CKD-EPI 2021 equation was developed in participants aged 18 or older; it is not calculated for children.';
+
+  @override
+  String errFriedewaldTg(String limit) {
+    return 'Not calculated: Friedewald is not reliable when triglycerides exceed $limit.';
+  }
+
+  @override
+  String errSampsonTg(String limit) {
+    return 'Not calculated: the Sampson equation was validated for triglycerides up to $limit.';
+  }
+
+  @override
+  String errEagRange(String range) {
+    return 'eAG not shown: the ADAG data cover HbA1c $range.';
+  }
+
+  @override
+  String get errHdlGeTc =>
+      'HDL cholesterol can\'t be equal to or greater than total cholesterol.';
+
+  @override
+  String get errNotPositive =>
+      'Not calculated: the result is not positive — check the values.';
+
+  @override
+  String get errSexMissing => 'Choose sex.';
+
+  @override
   String get micTitle => 'Microscopy atlas';
 
   @override

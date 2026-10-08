@@ -781,6 +781,223 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ucErrorRange => 'Значение вне допустимого диапазона расчёта.';
 
   @override
+  String get calcSectionClinical => 'Клинические формулы';
+
+  @override
+  String get calcSectionLab => 'Лабораторные';
+
+  @override
+  String get calcEgfr => 'eGFR · CKD-EPI 2021';
+
+  @override
+  String get calcEgfrSub => 'Креатинин, возраст, пол';
+
+  @override
+  String get calcAcr => 'Альбумин/креатинин';
+
+  @override
+  String get calcAcrSub => 'ACR мочи · категория A по KDIGO';
+
+  @override
+  String get calcAnionGap => 'Анионный интервал';
+
+  @override
+  String get calcAnionGapSub => 'Na, Cl, HCO₃ · K и альбумин по желанию';
+
+  @override
+  String get calcCalcium => 'Скорректированный кальций';
+
+  @override
+  String get calcCalciumSub => 'По альбумину · Payne 1973';
+
+  @override
+  String get calcLdl => 'ХС ЛПНП и ХС не-ЛПВП';
+
+  @override
+  String get calcLdlSub => 'Фридевальд · Сэмпсон';
+
+  @override
+  String get calcOsmo => 'Расчётная осмоляльность';
+
+  @override
+  String get calcOsmoSub => 'И осмоляльный зазор';
+
+  @override
+  String get calcHba1c => 'HbA1c: единицы и eAG';
+
+  @override
+  String get calcHba1cSub => 'NGSP ↔ IFCC · ADAG';
+
+  @override
+  String get calcFormulaTag => 'Опубликованная формула';
+
+  @override
+  String get calcOptional => 'необязательно';
+
+  @override
+  String get calcNotDiagnosis =>
+      'Вспомогательный расчёт для обучения и проверки. Не ставит диагноз: интерпретируйте результат с учётом клинической картины и референсных интервалов вашей лаборатории.';
+
+  @override
+  String get calcFormula => 'Формула';
+
+  @override
+  String get calcLimitations => 'Ограничения';
+
+  @override
+  String get calcSources => 'Источники';
+
+  @override
+  String get fieldCreatinine => 'Креатинин сыворотки';
+
+  @override
+  String get fieldAge => 'Возраст, лет';
+
+  @override
+  String get fieldSex => 'Пол';
+
+  @override
+  String get fieldSodium => 'Натрий (Na⁺)';
+
+  @override
+  String get fieldChloride => 'Хлорид (Cl⁻)';
+
+  @override
+  String get fieldBicarbonate => 'Бикарбонат (HCO₃⁻)';
+
+  @override
+  String get fieldPotassium => 'Калий (K⁺)';
+
+  @override
+  String get fieldAlbumin => 'Альбумин сыворотки';
+
+  @override
+  String get fieldNormalAlbumin =>
+      'Нормальный альбумин, принятый в вашей лаборатории';
+
+  @override
+  String get fieldCalcium => 'Общий кальций сыворотки';
+
+  @override
+  String get fieldTotalCholesterol => 'Общий холестерин';
+
+  @override
+  String get fieldHdl => 'ХС ЛПВП';
+
+  @override
+  String get fieldTriglycerides => 'Триглицериды';
+
+  @override
+  String get fieldGlucose => 'Глюкоза';
+
+  @override
+  String get fieldUrea => 'Мочевина (или АМК)';
+
+  @override
+  String get fieldMeasuredOsmolality => 'Измеренная осмоляльность';
+
+  @override
+  String get fieldHba1c => 'HbA1c';
+
+  @override
+  String get fieldUrineAlbumin => 'Альбумин мочи';
+
+  @override
+  String get fieldUrineCreatinine => 'Креатинин мочи';
+
+  @override
+  String get sexFemale => 'Женский';
+
+  @override
+  String get sexMale => 'Мужской';
+
+  @override
+  String resGfrCategory(String code) {
+    return 'Категория СКФ по KDIGO: $code';
+  }
+
+  @override
+  String resAlbCategory(String code) {
+    return 'Категория альбуминурии по KDIGO: $code';
+  }
+
+  @override
+  String get resCategoryBasisSi => 'Определена по порогам в мг/ммоль.';
+
+  @override
+  String get resCategoryBasisConv => 'Определена по порогам в мг/г.';
+
+  @override
+  String get resAnionGap => 'Анионный интервал';
+
+  @override
+  String get resAnionGapK => 'С калием';
+
+  @override
+  String get resAnionGapAlb => 'С поправкой на альбумин (Figge)';
+
+  @override
+  String get resCorrectedCa => 'Скорректированный кальций (Payne)';
+
+  @override
+  String get resNonHdl => 'ХС не-ЛПВП';
+
+  @override
+  String get resLdlFriedewald => 'ХС ЛПНП · Фридевальд';
+
+  @override
+  String get resLdlSampson => 'ХС ЛПНП · Сэмпсон';
+
+  @override
+  String get resOsmCalc => 'Расчётная осмоляльность';
+
+  @override
+  String get resOsmGap => 'Осмоляльный зазор';
+
+  @override
+  String get resEag => 'Расчётная средняя глюкоза (eAG)';
+
+  @override
+  String errCalcMissing(String field) {
+    return 'Введите число: $field.';
+  }
+
+  @override
+  String errCalcImplausible(String field, String min, String max, String unit) {
+    return '$field: вне диапазона, который принимает калькулятор ($min–$max$unit). Проверьте значение и единицы.';
+  }
+
+  @override
+  String get errEgfrAge =>
+      'Уравнение CKD-EPI 2021 разработано на участниках 18 лет и старше; у детей не рассчитывается.';
+
+  @override
+  String errFriedewaldTg(String limit) {
+    return 'Не рассчитано: при триглицеридах выше $limit формула Фридевальда ненадёжна.';
+  }
+
+  @override
+  String errSampsonTg(String limit) {
+    return 'Не рассчитано: уравнение Сэмпсона проверено при триглицеридах до $limit.';
+  }
+
+  @override
+  String errEagRange(String range) {
+    return 'eAG не показан: данные ADAG охватывают HbA1c $range.';
+  }
+
+  @override
+  String get errHdlGeTc =>
+      'ХС ЛПВП не может быть больше общего холестерина или равен ему.';
+
+  @override
+  String get errNotPositive =>
+      'Не рассчитано: результат не положительный — проверьте значения.';
+
+  @override
+  String get errSexMissing => 'Выберите пол.';
+
+  @override
   String get micTitle => 'Атлас микроскопии';
 
   @override

@@ -1,10 +1,9 @@
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/widgets/lg_page.dart';
+import '../../../app/widgets/links.dart';
 import '../../../design/tokens.dart';
 import '../../../design/widgets/lg_widgets.dart';
 import '../../../l10n/gen/app_localizations.dart';
@@ -403,28 +402,6 @@ class SourceTile extends StatelessWidget {
   final int index;
   final ContentSource source;
 
-  Future<void> _open(BuildContext context, String url) async {
-    var opened = false;
-    try {
-      opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-    } on Object {
-      opened = false;
-    }
-    if (!opened && context.mounted) await _copy(context, url);
-  }
-
-  Future<void> _copy(BuildContext context, String url) async {
-    final l = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(ClipboardData(text: url));
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l.linkCopied)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -464,8 +441,8 @@ class SourceTile extends StatelessWidget {
             )
           else
             InkWell(
-              onTap: () => _open(context, url),
-              onLongPress: () => _copy(context, url),
+              onTap: () => openExternalLink(context, url),
+              onLongPress: () => copyLink(context, url),
               borderRadius: BorderRadius.circular(8),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: kMinTap),

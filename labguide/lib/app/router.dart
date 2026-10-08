@@ -12,6 +12,8 @@ import '../features/learn/learn_screens.dart';
 import '../features/library/library_screens.dart';
 import '../features/profile/profile_screens.dart';
 import '../features/settings/settings_controller.dart';
+import '../features/tools/calc_info.dart';
+import '../features/tools/clinical_calc_screens.dart';
 import '../features/tools/tool_screens.dart';
 import 'shell.dart';
 
@@ -167,6 +169,12 @@ GoRouter buildRouter(
                         builder: (context, state) =>
                             const UnitConverterScreen(),
                       ),
+                      for (final c in ClinicalCalc.values)
+                        GoRoute(
+                          path: calcRoute(c),
+                          builder: (context, state) =>
+                              ClinicalCalcScreen(calc: c),
+                        ),
                     ],
                   ),
                 ],

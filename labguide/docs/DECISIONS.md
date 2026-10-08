@@ -110,3 +110,25 @@ PRODUCT_BUNDLE_IDENTIFIER). App Store / Play’da ro‘yxatdan o‘tgach o‘zga
 ## D-17. Muhitga oid (repoga kirmaydi)
 Bulut konteynerida Maven Central 429 qaytardi; `~/.gradle/init.d/maven-mirror.gradle`
 mavenCentral manzilini Google’ning rasmiy ko‘zgusiga yo‘naltiradi. Loyiha fayllari o‘zgarmagan.
+
+## D-18. Klinik kalkulyatorlar — faqat birlamchi manbadan tekshirilgan formulalar (2026-10-08)
+eGFR CKD-EPI 2021 (Inker 2021, 2-jadval; NKF sahifasi), ACR va KDIGO 2012 A toifasi
+(6-jadval), anion farq (Kraut va Madias; albumin tuzatishi Figge 1998), tuzatilgan kalsiy,
+LDL (Friedewald 1972; Sampson 2020), non-HDL, hisoblangan osmolyallik (Rasouli 2016; SI
+shakli Lynd 2008), HbA1c NGSP↔IFCC (NGSP master tenglamasi) va eAG (ADAG, Nathan 2008).
+- Har koeffitsiyent birlamchi matndan o‘qib tekshirildi; test qiymatlari mustaqil Python
+  hisobidan (eAG — ADAG 2-jadvali bilan bir xil).
+- Kalsiy: Payne 1973 maqolasidagi asl formula `Ca − albumin + 4.0` (mg/dL, g/dL). Keng
+  tarqalgan 0.8 koeffitsiyentli variant manbada yo‘q — ishlatilmadi, ekranda izohlangan.
+- Figge “normal albumin” qiymatini bermaydi → foydalanuvchi o‘z laboratoriyasi qiymatini
+  kiritadi; ilova son to‘qimaydi.
+- Formula doirasidan tashqarida natija berilmaydi: yosh < 18 (eGFR), TG > 400 mg/dL
+  (Friedewald), TG > 800 mg/dL (Sampson), A1C 4–12 % dan tashqari (eAG).
+- Kirish oralig‘i (masalan kreatinin 0.1–30 mg/dL) klinik chegara emas — birlik adashishini
+  ushlash uchun; xabar oraliqni kiritilgan birlikda ko‘rsatadi.
+- KDIGO toifalari rangsiz, “tasnif, tashxis emas” izohi bilan; toifa ekrandagi (yaxlitlangan)
+  qiymat bo‘yicha — son va toifa doim mos.
+- SI birliklar birinchi tanlangan (O‘zbekiston/MDH laboratoriyalari shuni beradi).
+- Formula, cheklov va manba matnlari kod bilan birga `lib/features/tools/calc_info.dart` da:
+  formula o‘zgarsa, izoh ham shu commit’da o‘zgaradi. Bibliografiyada faqat tekshirilgan
+  maydonlar (muallif, sarlavha, jurnal, yil, DOI) — jild/sahifa yozilmagan.

@@ -776,6 +776,223 @@ class AppLocalizationsUz extends AppLocalizations {
   String get ucErrorRange => 'Qiymat hisoblash oralig‘idan tashqarida.';
 
   @override
+  String get calcSectionClinical => 'Klinik formulalar';
+
+  @override
+  String get calcSectionLab => 'Laboratoriya';
+
+  @override
+  String get calcEgfr => 'eGFR · CKD-EPI 2021';
+
+  @override
+  String get calcEgfrSub => 'Kreatinin, yosh, jins';
+
+  @override
+  String get calcAcr => 'Albumin/kreatinin nisbati';
+
+  @override
+  String get calcAcrSub => 'Siydik ACR · KDIGO A toifasi';
+
+  @override
+  String get calcAnionGap => 'Anion farq';
+
+  @override
+  String get calcAnionGapSub => 'Na, Cl, HCO₃ · K va albumin ixtiyoriy';
+
+  @override
+  String get calcCalcium => 'Tuzatilgan kalsiy';
+
+  @override
+  String get calcCalciumSub => 'Albumin bo‘yicha · Payne 1973';
+
+  @override
+  String get calcLdl => 'LDL va non-HDL xolesterin';
+
+  @override
+  String get calcLdlSub => 'Friedewald · Sampson';
+
+  @override
+  String get calcOsmo => 'Hisoblangan osmolyallik';
+
+  @override
+  String get calcOsmoSub => 'Osmolyal farq bilan';
+
+  @override
+  String get calcHba1c => 'HbA1c birliklari va eAG';
+
+  @override
+  String get calcHba1cSub => 'NGSP ↔ IFCC · ADAG';
+
+  @override
+  String get calcFormulaTag => 'Nashr etilgan formula';
+
+  @override
+  String get calcOptional => 'ixtiyoriy';
+
+  @override
+  String get calcNotDiagnosis =>
+      'O‘rganish va tekshirish uchun hisob vositasi. Tashxis qo‘ymaydi: natijani klinik manzara va laboratoriyangiz referens intervallari bilan birga talqin qiling.';
+
+  @override
+  String get calcFormula => 'Formula';
+
+  @override
+  String get calcLimitations => 'Cheklovlar';
+
+  @override
+  String get calcSources => 'Manbalar';
+
+  @override
+  String get fieldCreatinine => 'Qon zardobidagi kreatinin';
+
+  @override
+  String get fieldAge => 'Yosh, yil';
+
+  @override
+  String get fieldSex => 'Jins';
+
+  @override
+  String get fieldSodium => 'Natriy (Na⁺)';
+
+  @override
+  String get fieldChloride => 'Xlorid (Cl⁻)';
+
+  @override
+  String get fieldBicarbonate => 'Bikarbonat (HCO₃⁻)';
+
+  @override
+  String get fieldPotassium => 'Kaliy (K⁺)';
+
+  @override
+  String get fieldAlbumin => 'Zardob albumini';
+
+  @override
+  String get fieldNormalAlbumin =>
+      'Laboratoriyangiz qabul qilgan normal albumin';
+
+  @override
+  String get fieldCalcium => 'Zardobdagi umumiy kalsiy';
+
+  @override
+  String get fieldTotalCholesterol => 'Umumiy xolesterin';
+
+  @override
+  String get fieldHdl => 'HDL xolesterin';
+
+  @override
+  String get fieldTriglycerides => 'Triglitseridlar';
+
+  @override
+  String get fieldGlucose => 'Glyukoza';
+
+  @override
+  String get fieldUrea => 'Mochevina (yoki BUN)';
+
+  @override
+  String get fieldMeasuredOsmolality => 'O‘lchangan osmolyallik';
+
+  @override
+  String get fieldHba1c => 'HbA1c';
+
+  @override
+  String get fieldUrineAlbumin => 'Siydikdagi albumin';
+
+  @override
+  String get fieldUrineCreatinine => 'Siydikdagi kreatinin';
+
+  @override
+  String get sexFemale => 'Ayol';
+
+  @override
+  String get sexMale => 'Erkak';
+
+  @override
+  String resGfrCategory(String code) {
+    return 'KDIGO GFR toifasi: $code';
+  }
+
+  @override
+  String resAlbCategory(String code) {
+    return 'KDIGO albuminuriya toifasi: $code';
+  }
+
+  @override
+  String get resCategoryBasisSi => 'mg/mmol chegaralari bo‘yicha aniqlandi.';
+
+  @override
+  String get resCategoryBasisConv => 'mg/g chegaralari bo‘yicha aniqlandi.';
+
+  @override
+  String get resAnionGap => 'Anion farq';
+
+  @override
+  String get resAnionGapK => 'Kaliy bilan';
+
+  @override
+  String get resAnionGapAlb => 'Albumin bo‘yicha tuzatilgan (Figge)';
+
+  @override
+  String get resCorrectedCa => 'Tuzatilgan kalsiy (Payne)';
+
+  @override
+  String get resNonHdl => 'Non-HDL xolesterin';
+
+  @override
+  String get resLdlFriedewald => 'LDL xolesterin · Friedewald';
+
+  @override
+  String get resLdlSampson => 'LDL xolesterin · Sampson';
+
+  @override
+  String get resOsmCalc => 'Hisoblangan osmolyallik';
+
+  @override
+  String get resOsmGap => 'Osmolyal farq';
+
+  @override
+  String get resEag => 'Taxminiy o‘rtacha glyukoza (eAG)';
+
+  @override
+  String errCalcMissing(String field) {
+    return 'Son kiriting: $field.';
+  }
+
+  @override
+  String errCalcImplausible(String field, String min, String max, String unit) {
+    return '$field: kalkulyator qabul qiladigan oraliqdan tashqarida ($min–$max$unit). Qiymat va birlikni tekshiring.';
+  }
+
+  @override
+  String get errEgfrAge =>
+      'CKD-EPI 2021 tenglamasi 18 yosh va undan katta ishtirokchilarda ishlab chiqilgan; bolalar uchun hisoblanmaydi.';
+
+  @override
+  String errFriedewaldTg(String limit) {
+    return 'Hisoblanmadi: triglitseridlar $limit dan oshsa, Friedewald ishonchli emas.';
+  }
+
+  @override
+  String errSampsonTg(String limit) {
+    return 'Hisoblanmadi: Sampson tenglamasi triglitseridlar $limit gacha bo‘lganda tekshirilgan.';
+  }
+
+  @override
+  String errEagRange(String range) {
+    return 'eAG ko‘rsatilmadi: ADAG ma’lumotlari HbA1c $range oralig‘ini qamraydi.';
+  }
+
+  @override
+  String get errHdlGeTc =>
+      'HDL xolesterin umumiy xolesteringa teng yoki undan katta bo‘lishi mumkin emas.';
+
+  @override
+  String get errNotPositive =>
+      'Hisoblanmadi: natija musbat emas — qiymatlarni tekshiring.';
+
+  @override
+  String get errSexMissing => 'Jinsni tanlang.';
+
+  @override
   String get micTitle => 'Mikroskopiya atlasi';
 
   @override
