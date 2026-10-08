@@ -176,3 +176,13 @@ shakli Lynd 2008), HbA1c NGSP↔IFCC (NGSP master tenglamasi) va eAG (ADAG, Nath
   kvadrat) — faqat rangga tayanmaydi; ±4 SD dan tashqarisi strelka bilan.
 - Ma’lumot faqat qurilmada (`qc.data`), buzilgan yozuv ustidan yozilmaydi; “lokal ma’lumotlarni
   o‘chirish” QC ni ham o‘chiradi. Kuzatilgan n, x̄, SD (n−1), CV % ko‘rsatiladi.
+
+## D-21. LabGuide alohida public repoga ko‘chadi (2026-10-08)
+nfcx hisobida GitHub Actions to‘lovi o‘tmagani sabab barcha ishlar `startup_failure` bilan
+to‘xtadi. Egasi “public qilib ishlataver” dedi: public repoda standart runnerlar (macOS ham)
+bepul. Reja: `git subtree split -P labguide` bilan tarix saqlangan holda yangi
+`labguide` repoga; CI `labguide/.github/workflows/build.yml` da (split’dan keyin repo ildizida
+`.github/` bo‘ladi; nfcx ichida esa ishlamaydi — NFCSTORE CI’ga tegmaydi). nfcx ildizidagi
+oldingi `labguide-ios.yml` olib tashlandi. Litsenziya fayli qo‘shilmaydi (kod ko‘rinadi,
+huquqlar egada). Secretlar repo sozlamalarida — kodda yo‘q ([IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md)).
+Repo yaratish Claude integratsiyasiga ruxsat etilmagan (403) — egasi yaratadi.

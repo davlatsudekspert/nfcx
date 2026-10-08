@@ -59,7 +59,9 @@ kelmagan**.
 | Vizual tekshiruv | `tool/screenshots` — 22 ta ekran rasmi (light/dark, uz/ru/en, 320 px, planshet) ko‘rib chiqildi |
 
 **Bajarilmagan tekshiruvlar** (o‘tdi deb hisoblanmaydi):
-- iOS build / simulator — macOS va Xcode kerak (bu konteyner Linux).
+- iOS build / simulator — macOS va Xcode kerak (bu konteyner Linux). CI tayyor
+  (`.github/workflows/build.yml`, actionlint toza), lekin hali bir marta ham ishga tushmagan:
+  nfcx’da Actions to‘lov sababli to‘xtagan; public `labguide` repo yaratilishi kutilmoqda (D-21).
 - Android emulator yoki haqiqiy qurilmada ishga tushirish — konteynerda KVM yo‘q.
   Haqiqiy qurilma tekshiruvi alohida qayd etilishi kerak.
 - Screen reader (TalkBack/VoiceOver) bilan qo‘lda tekshiruv.
@@ -74,6 +76,11 @@ kelmagan**.
 - Tasdiqlangan IFU katalogi, litsenziyali mikrofotolar.
 
 ## Blockerlar va foydalanuvchidan kerak bo‘ladigan narsalar
+
+- **Public `labguide` repo** (D-21): github.com/new → nomi `labguide`, Public, bo‘sh (README/
+  litsenziyasiz); Claude GitHub App’ga shu repoga ruxsat. Keyin kod tarix bilan ko‘chiriladi.
+- **TestFlight:** repo secretlari va App Store Connect’da ilova yozuvi —
+  [IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md).
 
 - **Domla materiallari** (kitob, qo‘llanma, metodika, testlar) — hali kelmagan; kelganda
   tarqatish huquqi haqida ma’lumot ham kerak.
