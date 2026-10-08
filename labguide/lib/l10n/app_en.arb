@@ -463,6 +463,23 @@
     }
   },
   "qcRejectedExcluded": "Not used in later rules or statistics",
+  "qcAtEntry": "At entry: {verdict}",
+  "@qcAtEntry": {
+    "placeholders": {
+      "verdict": {
+        "type": "String"
+      }
+    }
+  },
+  "qcUndoTarget": "Undo the last change",
+  "qcUndoTargetBody": "The current target is removed and the previous one is restored: {target}. Runs are re-evaluated.",
+  "@qcUndoTargetBody": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
   "qcBackupTitle": "Backup",
   "qcBackupBody": "QC data is stored only on this device. Copy the backup (JSON) and keep it somewhere safe; on another device you can restore it from the clipboard.",
   "qcBackupCopy": "Copy backup",

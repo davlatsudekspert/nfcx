@@ -3,7 +3,8 @@
 /// Har qator — bitta seriyadagi bitta daraja qiymati; maqsad o'sha seriya
 /// vaqtida amal qilgan lot/x̄/SD bilan. `run_verdict` — butun seriya
 /// xulosasi, `level_verdict` va `level_rules` — shu daraja ishtirok etgan
-/// buzilishlar. Qiymatlar nuqta bilan (lokal formatsiz) — jadval dasturlari
+/// buzilishlar; `entered_verdict` — seriya kiritilgan paytdagi qaror (audit).
+/// Qiymatlar nuqta bilan (lokal formatsiz) — jadval dasturlari
 /// bir xil o'qiydi.
 library;
 
@@ -40,6 +41,7 @@ String qcCsv(QcSet set, List<QcRunResult> results) {
       'run_verdict',
       'level_verdict',
       'level_rules',
+      'entered_verdict',
       'note',
     ],
   ];
@@ -65,6 +67,7 @@ String qcCsv(QcSet set, List<QcRunResult> results) {
           for (final x in r.violations)
             if (x.levelIds.contains(level.id)) x.rule.code,
         ].join(' '),
+        [?r.run.enteredVerdict, ...r.run.enteredRules].join(' '),
         _text(r.run.note ?? ''),
       ]);
     }

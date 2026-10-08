@@ -332,3 +332,11 @@ Mustaqil sharh (review B) asosida:
   ro‘yxati ostida katalog izohi, bo‘sh filtr natijasida “Filtrlarni tozalash”.
 - **Kalibrovka:** Asboblar ro‘yxatidan ishlab chiqaruvchi uzatiladi; maydon o‘zgarsa eski IFU
   natijasi o‘chadi.
+
+## D-30. QC audit izi va maqsadni bekor qilish (2026-10-08)
+- Har seriya kiritilganda o‘sha paytdagi Westgard xulosasi va qoidalari (`entered`) saqlanadi.
+  Keyin oldingi seriya o‘chirilsa yoki maqsad o‘zgarsa joriy baho boshqacha bo‘lishi mumkin —
+  tarixda “Kiritilganda: Rad etildi · 1-2s, 2-2s” ko‘rinadi, CSV’da `entered_verdict` ustuni.
+  Eski yozuvlarda bu maydon yo‘q — ko‘rsatilmaydi (taxmin qilinmaydi).
+- Xato kiritilgan maqsadni “Oxirgi o‘zgarishni bekor qilish” bilan qaytarish mumkin (tasdiq
+  bilan); seriyalar qayta baholanadi.

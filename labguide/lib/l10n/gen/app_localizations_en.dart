@@ -911,6 +911,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qcRejectedExcluded => 'Not used in later rules or statistics';
 
   @override
+  String qcAtEntry(String verdict) {
+    return 'At entry: $verdict';
+  }
+
+  @override
+  String get qcUndoTarget => 'Undo the last change';
+
+  @override
+  String qcUndoTargetBody(String target) {
+    return 'The current target is removed and the previous one is restored: $target. Runs are re-evaluated.';
+  }
+
+  @override
   String get qcBackupTitle => 'Backup';
 
   @override

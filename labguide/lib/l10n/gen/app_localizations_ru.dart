@@ -922,6 +922,19 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не используется в следующих правилах и статистике';
 
   @override
+  String qcAtEntry(String verdict) {
+    return 'При вводе: $verdict';
+  }
+
+  @override
+  String get qcUndoTarget => 'Отменить последнее изменение';
+
+  @override
+  String qcUndoTargetBody(String target) {
+    return 'Текущая цель будет удалена, вернётся предыдущая: $target. Серии будут переоценены.';
+  }
+
+  @override
   String get qcBackupTitle => 'Резервная копия';
 
   @override

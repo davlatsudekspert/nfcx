@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/storage/kv_store.dart';
 import 'qc_model.dart';
+import 'qc_rules.dart';
 
 /// QC to'plamlari va seriyalarini lokal saqlaydi (`qc.data`, JSON).
 ///
@@ -248,16 +249,64 @@ class QcController extends ChangeNotifier {
         values.keys.any((k) => set.level(k) == null)) {
       throw ArgumentError.value(values, 'values');
     }
-    final run = QcRun(
+    final draft = QcRun(
       id: _newId(),
       at: at ?? _clock(),
       values: Map.unmodifiable(values),
       note: note?.trim().isEmpty ?? true ? null : note!.trim(),
     );
-    final runs = [..._data.runsOf(setId), run]
+    // Kiritilgan paytdagi Westgard xulosasi audit uchun yoziladi.
+    final provisional = [..._data.runsOf(setId), draft]
       ..sort((a, b) => a.at.compareTo(b.at));
+    final result = evaluateRuns(
+      set,
+      provisional,
+    ).firstWhere((r) => r.run.id == draft.id);
+    final run = draft.withEntered(result.verdict.name, [
+      for (final rule in result.rules) rule.code,
+    ]);
+    final runs = [for (final r in provisional) r.id == run.id ? run : r];
     await _save(QcData(sets: _data.sets, runs: {..._data.runs, setId: runs}));
     return run;
+  }
+
+  /// Oxirgi maqsad almashtirishini bekor qilish (xato kiritilgan bo'lsa):
+  /// joriy maqsad o'chiriladi, oldingisi qaytadi; seriyalar qayta baholanadi.
+  Future<void> undoTargetChange(String setId, String levelId) async {
+    final set = _data.set(setId);
+    final level = set?.level(levelId);
+    if (set == null || level == null || level.previous.isEmpty) {
+      throw ArgumentError.value('$setId/$levelId', 'level');
+    }
+    final restored = level.previous.last;
+    final updated = QcSet(
+      id: set.id,
+      name: set.name,
+      unit: set.unit,
+      targetSource: set.targetSource,
+      createdAt: set.createdAt,
+      levels: [
+        for (final l in set.levels)
+          l.id == levelId
+              ? QcLevel(
+                  id: l.id,
+                  label: l.label,
+                  lot: restored.lot,
+                  mean: restored.mean,
+                  sd: restored.sd,
+                  since: restored.from,
+                  source: restored.source,
+                  previous: l.previous.sublist(0, l.previous.length - 1),
+                )
+              : l,
+      ],
+    );
+    await _save(
+      QcData(
+        sets: [for (final s in _data.sets) s.id == setId ? updated : s],
+        runs: _data.runs,
+      ),
+    );
   }
 
   Future<void> deleteRun(String setId, String runId) => _save(

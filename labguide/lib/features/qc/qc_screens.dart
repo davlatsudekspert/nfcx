@@ -956,6 +956,25 @@ class _RunTile extends StatelessWidget {
                 ),
                 if (r.verdict == QcVerdict.reject)
                   Text(l.qcRejectedExcluded, style: text.bodySmall),
+                // Audit izi: kiritilgandagi qaror hozirgisidan farq qilsa.
+                if (r.run.enteredVerdict case final entered?
+                    when entered != r.verdict.name ||
+                        r.run.enteredRules.join(',') !=
+                            r.rules.map((x) => x.code).join(','))
+                  Text(
+                    l.qcAtEntry(
+                      [
+                        switch (entered) {
+                          'reject' => l.qcReject,
+                          'warning' => l.qcWarning,
+                          _ => l.qcAccept,
+                        },
+                        if (r.run.enteredRules.isNotEmpty)
+                          r.run.enteredRules.join(', '),
+                      ].join(' · '),
+                    ),
+                    style: text.bodySmall!.copyWith(color: p.amber),
+                  ),
                 if (r.run.note != null)
                   Text(r.run.note!, style: text.bodySmall),
               ],
@@ -1186,9 +1205,44 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
           const SizedBox(height: 10),
         ],
         LgButton(label: l.qcSave, busy: _busy, onPressed: _save),
+        if (level.previous.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          LgButton.secondary(
+            label: l.qcUndoTarget,
+            icon: Icons.undo_rounded,
+            onPressed: _busy ? null : () => _undo(level),
+          ),
+        ],
         const SizedBox(height: 12),
         Text(l.qcTargetNote, style: text.bodySmall),
       ],
     );
+  }
+
+  Future<void> _undo(QcLevel level) async {
+    final l = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final t = level.previous.last;
+    final ok = await _confirmDialog(
+      context,
+      title: l.qcUndoTarget,
+      body: l.qcUndoTargetBody(
+        [
+          if (t.lot.isNotEmpty) '${l.qcLot} ${t.lot}',
+          'x̄ ${_num(t.mean, locale)}',
+          'SD ${_num(t.sd, locale)}',
+        ].join(' · '),
+      ),
+      action: l.qcUndoTarget,
+    );
+    if (!ok || !mounted) return;
+    final router = GoRouter.of(context);
+    try {
+      await context.services.qc.undoTargetChange(widget.setId, widget.levelId);
+    } on Object {
+      if (mounted) setState(() => _error = l.qcErrSave);
+      return;
+    }
+    if (mounted) router.pop();
   }
 }

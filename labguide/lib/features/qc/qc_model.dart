@@ -222,17 +222,24 @@ class QcRun {
     required this.at,
     required this.values,
     this.note,
+    this.enteredVerdict,
+    this.enteredRules = const [],
   });
 
-  factory QcRun.fromJson(Map<String, Object?> json) => QcRun(
-    id: json['id']! as String,
-    at: DateTime.parse(json['at']! as String),
-    values: {
-      for (final e in (json['values']! as Map).entries)
-        e.key as String: (e.value as num).toDouble(),
-    },
-    note: json['note'] as String?,
-  );
+  factory QcRun.fromJson(Map<String, Object?> json) {
+    final entered = (json['entered'] as Map?)?.cast<String, Object?>();
+    return QcRun(
+      id: json['id']! as String,
+      at: DateTime.parse(json['at']! as String),
+      values: {
+        for (final e in (json['values']! as Map).entries)
+          e.key as String: (e.value as num).toDouble(),
+      },
+      note: json['note'] as String?,
+      enteredVerdict: entered?['verdict'] as String?,
+      enteredRules: (entered?['rules'] as List? ?? const []).cast<String>(),
+    );
+  }
 
   final String id;
   final DateTime at;
@@ -241,11 +248,28 @@ class QcRun {
   final Map<String, double> values;
   final String? note;
 
+  /// Kiritilgan paytdagi xulosa (`accept` / `warning` / `reject`) va
+  /// qoidalar — audit izi: keyin seriya o'chirilsa yoki maqsad o'zgarsa,
+  /// joriy baho farq qilishi mumkin, lekin o'sha paytdagi qaror saqlanadi.
+  final String? enteredVerdict;
+  final List<String> enteredRules;
+
+  QcRun withEntered(String verdict, List<String> rules) => QcRun(
+    id: id,
+    at: at,
+    values: values,
+    note: note,
+    enteredVerdict: verdict,
+    enteredRules: List.unmodifiable(rules),
+  );
+
   Map<String, Object?> toJson() => {
     'id': id,
     'at': at.toIso8601String(),
     'values': values,
     if (note != null && note!.isNotEmpty) 'note': note,
+    if (enteredVerdict != null)
+      'entered': {'verdict': enteredVerdict, 'rules': enteredRules},
   };
 }
 

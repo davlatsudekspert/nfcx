@@ -170,6 +170,35 @@ void main() {
       },
     );
 
+    test('entered verdict is kept as an audit trail', () async {
+      final (c, store, set) = await setup();
+      // L1: x̄ 5.0, SD 0.2. +2.5 SD ikki marta → ikkinchisi 2-2s rad.
+      final first = await c.addRun(set.id, {'L1': 5.5});
+      final second = await c.addRun(set.id, {'L1': 5.5});
+      expect(first.enteredVerdict, 'warning');
+      expect(second.enteredVerdict, 'reject');
+      expect(second.enteredRules, containsAll(['1-2s', '2-2s']));
+      // Birinchisi o'chirilsa — joriy baho o'zgaradi, kiritilgandagi qaror yo'q
+      // bo'lib ketmaydi (va qayta ishga tushganda ham saqlanadi).
+      await c.deleteRun(set.id, first.id);
+      final reloaded = QcController(store).data.runsOf(set.id).single;
+      expect(reloaded.enteredVerdict, 'reject');
+      expect(reloaded.enteredRules, contains('2-2s'));
+    });
+
+    test('a mistaken target change can be undone', () async {
+      final (c, _, set) = await setup();
+      await c.changeTarget(set.id, 'L1', lot: 'X', mean: 50, sd: 2);
+      expect(c.data.set(set.id)!.level('L1')!.mean, 50);
+      await c.undoTargetChange(set.id, 'L1');
+      final level = c.data.set(set.id)!.level('L1')!;
+      expect(level.mean, 5.0);
+      expect(level.sd, 0.2);
+      expect(level.lot, 'A1');
+      expect(level.previous, isEmpty);
+      await expectLater(c.undoTargetChange(set.id, 'L1'), throwsArgumentError);
+    });
+
     test('a failed write leaves memory unchanged', () async {
       final store = _FailingStore();
       final c = QcController(store, clock: clock);

@@ -906,6 +906,19 @@ class AppLocalizationsUz extends AppLocalizations {
       'Keyingi qoidalar va statistikada ishlatilmaydi';
 
   @override
+  String qcAtEntry(String verdict) {
+    return 'Kiritilganda: $verdict';
+  }
+
+  @override
+  String get qcUndoTarget => 'Oxirgi o‘zgarishni bekor qilish';
+
+  @override
+  String qcUndoTargetBody(String target) {
+    return 'Joriy maqsad o‘chiriladi va oldingisi qaytariladi: $target. Seriyalar qayta baholanadi.';
+  }
+
+  @override
   String get qcBackupTitle => 'Zaxira nusxa';
 
   @override

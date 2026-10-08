@@ -1690,6 +1690,24 @@ abstract class AppLocalizations {
   /// **'Not used in later rules or statistics'**
   String get qcRejectedExcluded;
 
+  /// No description provided for @qcAtEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'At entry: {verdict}'**
+  String qcAtEntry(String verdict);
+
+  /// No description provided for @qcUndoTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo the last change'**
+  String get qcUndoTarget;
+
+  /// No description provided for @qcUndoTargetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The current target is removed and the previous one is restored: {target}. Runs are re-evaluated.'**
+  String qcUndoTargetBody(String target);
+
   /// No description provided for @qcBackupTitle.
   ///
   /// In en, this message translates to:
