@@ -820,6 +820,34 @@ class AppLocalizationsRu extends AppLocalizations {
   String get qcSetMissing => 'Этого теста больше нет.';
 
   @override
+  String get qcCopyCsv => 'Скопировать серии таблицей (CSV)';
+
+  @override
+  String qcCopied(int count) {
+    return 'Скопировано строк: $count — вставьте в Excel или Google Таблицы';
+  }
+
+  @override
+  String get qcChangeTarget => 'Сменить цель или лот';
+
+  @override
+  String get qcChangeTargetBody =>
+      'Используйте при переходе на новый лот контроля или после пересчёта среднего и SD лабораторией. Новые значения действуют с этого момента; прежние серии по-прежнему оцениваются по действовавшим тогда целям.';
+
+  @override
+  String get qcErrTarget => 'Введите среднее и SD больше нуля.';
+
+  @override
+  String qcSince(String date) {
+    return 'с $date';
+  }
+
+  @override
+  String qcPreviousTarget(String target, String date) {
+    return 'Ранее: $target (с $date)';
+  }
+
+  @override
   String get qcRulesSource =>
       'Правила: мультиправило Вестгарда (Westgard JO и соавт., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). Средство обучения и проверки — не заменяет процедуру КК вашей лаборатории.';
 
@@ -1315,6 +1343,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sourcesTitle => 'Источники и лицензии';
+
+  @override
+  String get sourcesContent => 'Карточки анализов';
+
+  @override
+  String get sourcesMethods => 'Калькуляторы, КК и преаналитика';
 
   @override
   String get sourcesBody =>

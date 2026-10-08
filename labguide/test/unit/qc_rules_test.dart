@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:labguide/features/qc/qc_export.dart';
 import 'package:labguide/features/qc/qc_model.dart';
 import 'package:labguide/features/qc/qc_rules.dart';
 
@@ -115,6 +116,34 @@ void main() {
     expect(rs.last.verdict, QcVerdict.accept);
   });
 
+  test('each run is evaluated with the target in effect at its time', () {
+    final changed = QcSet(
+      id: 's',
+      name: 'Test',
+      unit: 'mg/dL',
+      targetSource: QcTargetSource.laboratory,
+      createdAt: DateTime(2026),
+      levels: [
+        const QcLevel(
+          id: 'L1',
+          label: '1',
+          lot: 'A',
+          mean: 100,
+          sd: 10,
+        ).withTarget(lot: 'B', mean: 130, sd: 5, from: DateTime(2026, 2)),
+      ],
+    );
+    final rs = evaluateRuns(changed, [
+      QcRun(id: 'a', at: DateTime(2026, 1, 10), values: const {'L1': 125}),
+      QcRun(id: 'b', at: DateTime(2026, 2, 10), values: const {'L1': 125}),
+    ]);
+    // Eski lot: (125 − 100)/10 = +2.5 → 1-2s; yangi lot: (125 − 130)/5 = −1.
+    expect(rs.first.z['L1'], closeTo(2.5, 1e-12));
+    expect(rs.first.verdict, QcVerdict.warning);
+    expect(rs.last.z['L1'], closeTo(-1, 1e-12));
+    expect(rs.last.verdict, QcVerdict.accept);
+  });
+
   test('missing levels and invalid SD are skipped, not guessed', () {
     final bad = QcSet(
       id: 'b',
@@ -129,5 +158,30 @@ void main() {
     ]).single;
     expect(r.z, isEmpty);
     expect(r.verdict, QcVerdict.accept);
+  });
+
+  test('CSV export: one row per level value, quoting, target at run time', () {
+    final rs = evalZ([(l1: 2.5, l2: 0), (l1: null, l2: -1)]);
+    final noted = [
+      QcRunResult(
+        run: QcRun(
+          id: rs.first.run.id,
+          at: rs.first.run.at,
+          values: rs.first.run.values,
+          note: 'qayta, "tekshirildi"',
+        ),
+        z: rs.first.z,
+        violations: rs.first.violations,
+      ),
+      rs.last,
+    ];
+    final csv = qcCsv(set, noted);
+    final lines = csv.trim().split('\n');
+    expect(lines, hasLength(4)); // sarlavha + 3 qiymat
+    expect(lines.first, startsWith('date,test,level,lot,value'));
+    expect(lines[1], contains(',1,,125.0,mg/dL,100.0,10.0,2.50,warning,1-2s,'));
+    expect(lines[1], endsWith('"qayta, ""tekshirildi"""'));
+    expect(lines[2], contains(',2,,200.0,mg/dL,200.0,20.0,0.00,warning,,'));
+    expect(lines[3], contains(',2,,180.0,'));
   });
 }

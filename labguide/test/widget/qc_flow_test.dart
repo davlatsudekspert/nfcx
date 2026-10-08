@@ -82,6 +82,23 @@ void main() {
     await _tap(tester, find.text(en.qcSaveRun));
     expect(find.text(en.qcErrRunEmpty), findsOneWidget);
 
+    // Yangi lot: maqsad almashtiriladi, eski maqsad tarixda ko'rinadi.
+    await _tap(tester, find.byTooltip(en.qcChangeTarget).first);
+    expect(find.text(en.qcChangeTargetBody), findsOneWidget);
+    final tf = find.byType(TextField);
+    await tester.enterText(tf.at(0), 'A-2');
+    await tester.enterText(tf.at(1), '5.6');
+    await tester.enterText(tf.at(2), '0.25');
+    await _tap(tester, find.text(en.qcSave));
+    expect(find.textContaining('Previous: '), findsOneWidget);
+    expect(s.qc.data.sets.single.level('L1')!.lot, 'A-2');
+    // Oldingi seriyalar baribir eski maqsad bilan baholanadi.
+    final sameRuns = s.qc.data.runsOf(s.qc.data.sets.single.id);
+    expect(
+      evaluateRuns(s.qc.data.sets.single, sameRuns).last.verdict,
+      QcVerdict.reject,
+    );
+
     // Seriyani o'chirish (tasdiq bilan).
     await _tap(tester, find.byTooltip(en.qcDeleteRun));
     await tester.tap(find.text(en.actionDelete));

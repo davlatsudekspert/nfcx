@@ -601,7 +601,8 @@ class CalcSourceTile extends StatelessWidget {
                           decorationColor: p.brand.withValues(alpha: 0.5),
                         ),
                       ),
-                      Text(ref.locator, style: text.bodySmall),
+                      if (ref.locator.isNotEmpty)
+                        Text(ref.locator, style: text.bodySmall),
                     ],
                   ),
                 ),

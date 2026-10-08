@@ -99,6 +99,60 @@ class QcController extends ChangeNotifier {
     ),
   );
 
+  /// Daraja maqsadini almashtirish (yangi lot yoki qayta hisoblangan x̄/SD).
+  /// Eski maqsad tarixda qoladi; [from] dan oldingi seriyalar eski maqsad
+  /// bilan baholanishda davom etadi.
+  Future<void> changeTarget(
+    String setId,
+    String levelId, {
+    required String lot,
+    required double mean,
+    required double sd,
+    DateTime? from,
+  }) async {
+    final set = _data.set(setId);
+    final level = set?.level(levelId);
+    if (set == null || level == null) {
+      throw ArgumentError.value('$setId/$levelId', 'level');
+    }
+    final start = from ?? _clock();
+    final previousStart = level.since ?? set.createdAt;
+    if (!mean.isFinite ||
+        !sd.isFinite ||
+        !(sd > 0) ||
+        start.isBefore(previousStart)) {
+      throw ArgumentError('invalid target');
+    }
+    final updated = QcSet(
+      id: set.id,
+      name: set.name,
+      unit: set.unit,
+      targetSource: set.targetSource,
+      createdAt: set.createdAt,
+      levels: [
+        for (final l in set.levels)
+          l.id == levelId
+              ? QcLevel(
+                  id: l.id,
+                  label: l.label,
+                  lot: l.lot,
+                  mean: l.mean,
+                  sd: l.sd,
+                  // Birinchi maqsadning boshlanishi aniq yozib qo'yiladi.
+                  since: l.since ?? set.createdAt,
+                  previous: l.previous,
+                ).withTarget(lot: lot.trim(), mean: mean, sd: sd, from: start)
+              : l,
+      ],
+    );
+    await _save(
+      QcData(
+        sets: [for (final s in _data.sets) s.id == setId ? updated : s],
+        runs: _data.runs,
+      ),
+    );
+  }
+
   /// Seriya qo'shish. Kamida bitta daraja qiymati bo'lishi, hamma qiymat
   /// chekli bo'lishi va to'plamdagi darajaga tegishli bo'lishi shart.
   Future<QcRun> addRun(

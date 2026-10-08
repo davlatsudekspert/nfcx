@@ -9,11 +9,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../content/content_model.dart';
 
-const whoPhlebotomyUrl = 'https://iris.who.int/handle/10665/44294';
-const whoPhlebotomyCitation =
-    'WHO guidelines on drawing blood: best practices in phlebotomy. '
-    'World Health Organization, 2010. ISBN 978 92 4 159922 1';
-
 class DrawTube {
   const DrawTube({
     required this.name,

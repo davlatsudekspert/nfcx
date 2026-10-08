@@ -158,6 +158,15 @@ GoRouter buildRouter(
                         path: 'set/:id',
                         builder: (context, state) =>
                             QcSetScreen(setId: state.pathParameters['id']!),
+                        routes: [
+                          GoRoute(
+                            path: 'target/:level',
+                            builder: (context, state) => QcTargetScreen(
+                              setId: state.pathParameters['id']!,
+                              levelId: state.pathParameters['level']!,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

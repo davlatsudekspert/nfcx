@@ -89,6 +89,53 @@ void main() {
       expect(c.data.runsOf(set.id), isEmpty);
     });
 
+    test(
+      'target change keeps history; past runs keep their own target',
+      () async {
+        final (c, store, set) = await setup();
+        final early = await c.addRun(set.id, {'L1': 5.3}); // z = +1.5 (5.0/0.2)
+        await c.changeTarget(set.id, 'L1', lot: 'A2', mean: 5.4, sd: 0.1);
+        final late = await c.addRun(set.id, {'L1': 5.3}); // z = −1.0 (5.4/0.1)
+        final reopened = QcController(store);
+        final level = reopened.data.set(set.id)!.level('L1')!;
+        expect(level.lot, 'A2');
+        expect(level.previous.single.lot, 'A1');
+        expect(level.targetAt(early.at).mean, 5.0);
+        expect(level.targetAt(late.at).mean, 5.4);
+        expect(level.since, isNotNull);
+        // Boshqa daraja tegilmagan.
+        expect(reopened.data.set(set.id)!.level('L2')!.previous, isEmpty);
+        await expectLater(
+          c.changeTarget(set.id, 'L1', lot: '', mean: 5, sd: 0),
+          throwsArgumentError,
+        );
+        await expectLater(
+          c.changeTarget(
+            set.id,
+            'L1',
+            lot: '',
+            mean: 5,
+            sd: 1,
+            from: DateTime(2000),
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('legacy saved data without target history still loads', () {
+      final legacy = QcLevel.fromJson({
+        'id': 'L1',
+        'label': '1',
+        'lot': 'X',
+        'mean': 2,
+        'sd': 0.5,
+      });
+      expect(legacy.since, isNull);
+      expect(legacy.previous, isEmpty);
+      expect(legacy.targetAt(DateTime(1990)).mean, 2);
+    });
+
     test('delete run and set', () async {
       final (c, _, set) = await setup();
       final run = await c.addRun(set.id, {'L1': 5.0});

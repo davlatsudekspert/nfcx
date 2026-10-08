@@ -811,6 +811,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qcSetMissing => 'This test no longer exists.';
 
   @override
+  String get qcCopyCsv => 'Copy runs as a table (CSV)';
+
+  @override
+  String qcCopied(int count) {
+    return 'Copied $count rows — paste into Excel or Google Sheets';
+  }
+
+  @override
+  String get qcChangeTarget => 'Change target or lot';
+
+  @override
+  String get qcChangeTargetBody =>
+      'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.';
+
+  @override
+  String get qcErrTarget => 'Enter the mean and an SD greater than zero.';
+
+  @override
+  String qcSince(String date) {
+    return 'since $date';
+  }
+
+  @override
+  String qcPreviousTarget(String target, String date) {
+    return 'Previous: $target (from $date)';
+  }
+
+  @override
   String get qcRulesSource =>
       'Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.';
 
@@ -1305,6 +1333,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sourcesTitle => 'Sources and licences';
+
+  @override
+  String get sourcesContent => 'Analyte cards';
+
+  @override
+  String get sourcesMethods => 'Calculators, QC and preanalytics';
 
   @override
   String get sourcesBody =>

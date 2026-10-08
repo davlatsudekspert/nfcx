@@ -804,6 +804,34 @@ class AppLocalizationsUz extends AppLocalizations {
   String get qcSetMissing => 'Bu test endi mavjud emas.';
 
   @override
+  String get qcCopyCsv => 'Seriyalarni jadval (CSV) sifatida nusxalash';
+
+  @override
+  String qcCopied(int count) {
+    return '$count qator nusxalandi — Excel yoki Google Sheets’ga qo‘ying';
+  }
+
+  @override
+  String get qcChangeTarget => 'Maqsad yoki lotni almashtirish';
+
+  @override
+  String get qcChangeTargetBody =>
+      'Yangi nazorat loti boshlanganda yoki laboratoriya o‘rtacha va SD ni qayta hisoblaganda ishlating. Yangi qiymatlar hozirdan amal qiladi; oldingi seriyalar o‘sha paytdagi maqsad bilan baholanishda davom etadi.';
+
+  @override
+  String get qcErrTarget => 'O‘rtacha va noldan katta SD kiriting.';
+
+  @override
+  String qcSince(String date) {
+    return '$date dan beri';
+  }
+
+  @override
+  String qcPreviousTarget(String target, String date) {
+    return 'Oldingi: $target ($date dan)';
+  }
+
+  @override
   String get qcRulesSource =>
       'Qoidalar: Westgard ko‘p qoidali tartibi (Westgard JO va boshq., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). O‘rganish va tekshirish vositasi — laboratoriyangizning QC tartibini almashtirmaydi.';
 
@@ -1299,6 +1327,12 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get sourcesTitle => 'Manbalar va litsenziyalar';
+
+  @override
+  String get sourcesContent => 'Analit kartalari';
+
+  @override
+  String get sourcesMethods => 'Kalkulyatorlar, QC va preanalitika';
 
   @override
   String get sourcesBody =>

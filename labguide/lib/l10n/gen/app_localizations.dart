@@ -1540,6 +1540,48 @@ abstract class AppLocalizations {
   /// **'This test no longer exists.'**
   String get qcSetMissing;
 
+  /// No description provided for @qcCopyCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy runs as a table (CSV)'**
+  String get qcCopyCsv;
+
+  /// No description provided for @qcCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied {count} rows — paste into Excel or Google Sheets'**
+  String qcCopied(int count);
+
+  /// No description provided for @qcChangeTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Change target or lot'**
+  String get qcChangeTarget;
+
+  /// No description provided for @qcChangeTargetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.'**
+  String get qcChangeTargetBody;
+
+  /// No description provided for @qcErrTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the mean and an SD greater than zero.'**
+  String get qcErrTarget;
+
+  /// No description provided for @qcSince.
+  ///
+  /// In en, this message translates to:
+  /// **'since {date}'**
+  String qcSince(String date);
+
+  /// No description provided for @qcPreviousTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous: {target} (from {date})'**
+  String qcPreviousTarget(String target, String date);
+
   /// No description provided for @qcRulesSource.
   ///
   /// In en, this message translates to:
@@ -2439,6 +2481,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sources and licences'**
   String get sourcesTitle;
+
+  /// No description provided for @sourcesContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyte cards'**
+  String get sourcesContent;
+
+  /// No description provided for @sourcesMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculators, QC and preanalytics'**
+  String get sourcesMethods;
 
   /// No description provided for @sourcesBody.
   ///

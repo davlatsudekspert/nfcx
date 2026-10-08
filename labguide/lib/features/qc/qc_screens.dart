@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,6 +13,7 @@ import '../tools/clinical_calculators.dart';
 import '../tools/tool_screens.dart';
 import 'levey_jennings_chart.dart';
 import 'qc_controller.dart';
+import 'qc_export.dart';
 import 'qc_model.dart';
 import 'qc_rules.dart';
 
@@ -414,6 +416,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
     final lang = Localizations.localeOf(context).languageCode;
     final locale = Localizations.localeOf(context).toLanguageTag();
     final dateFmt = DateFormat.yMd(locale).add_Hm();
+    final dateOnly = DateFormat.yMd(locale);
     final last = results.isEmpty ? null : results.last;
     final shown = results.length > kQcChartRuns
         ? results.sublist(results.length - kQcChartRuns)
@@ -449,36 +452,54 @@ class _QcSetScreenState extends State<QcSetScreen> {
           ),
         ),
 
-      // Levey–Jennings: har bir daraja alohida.
+      // Levey–Jennings: har bir daraja alohida, amaldagi maqsad davri uchun
+      // (lot yoki x̄/SD o'zgargan bo'lsa, eski seriyalar o'z maqsadi bilan
+      // baholanadi, grafikda esa joriy davr ko'rsatiladi).
       for (final level in set.levels) ...[
         LgSectionTitle(
           [
             l.qcLevel(level.label),
             if (level.lot.isNotEmpty) '${l.qcLot} ${level.lot}',
           ].join(' · '),
+          trailing: IconButton(
+            tooltip: l.qcChangeTarget,
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () =>
+                context.push('/lab/qc/set/${set.id}/target/${level.id}'),
+          ),
         ),
         Text(
           'x̄ ${_num(level.mean, locale)} · SD ${_num(level.sd, locale)}'
-          '${set.unit.isEmpty ? '' : ' ${set.unit}'}',
+          '${set.unit.isEmpty ? '' : ' ${set.unit}'}'
+          '${level.previous.isEmpty || level.since == null ? '' : ' · ${l.qcSince(dateOnly.format(level.since!))}'}',
           style: text.bodySmall,
         ),
         const SizedBox(height: 6),
-        LgPanel(
-          child: LeveyJenningsChart(
-            mean: level.mean,
-            sd: level.sd,
-            points: [
+        Builder(
+          builder: (context) {
+            final period = [
               for (final r in shown)
-                if (r.run.values[level.id] case final v?)
-                  LjPoint(v, markFor(r, level.id)),
-            ],
-            semanticLabel: l.qcChartSemantics(
-              level.label,
-              shown.where((r) => r.run.values.containsKey(level.id)).length,
-            ),
-          ),
+                if (level.since == null || !r.run.at.isBefore(level.since!))
+                  if (r.run.values[level.id] != null) r,
+            ];
+            return LgPanel(
+              child: LeveyJenningsChart(
+                mean: level.mean,
+                sd: level.sd,
+                points: [
+                  for (final r in period)
+                    LjPoint(r.run.values[level.id]!, markFor(r, level.id)),
+                ],
+                semanticLabel: l.qcChartSemantics(level.label, period.length),
+              ),
+            );
+          },
         ),
-        if (QcStats.of([for (final r in results) ?r.run.values[level.id]])
+        if (QcStats.of([
+              for (final r in results)
+                if (level.since == null || !r.run.at.isBefore(level.since!))
+                  ?r.run.values[level.id],
+            ])
             case final s when s.n >= 2)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -486,6 +507,21 @@ class _QcSetScreenState extends State<QcSetScreen> {
               '${l.qcStats}: n = ${s.n} · x̄ ${_num(s.mean!, locale)} · '
               'SD ${_num(s.sd!, locale)}'
               '${s.cv == null ? '' : ' · CV ${formatResult(roundHalfUp(s.cv!, 1), locale, maxDecimals: 1)} %'}',
+              style: text.bodySmall,
+            ),
+          ),
+        for (final t in level.previous.reversed)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              l.qcPreviousTarget(
+                [
+                  if (t.lot.isNotEmpty) '${l.qcLot} ${t.lot}',
+                  'x̄ ${_num(t.mean, locale)}',
+                  'SD ${_num(t.sd, locale)}',
+                ].join(' · '),
+                t.from == null ? '—' : dateOnly.format(t.from!),
+              ),
               style: text.bodySmall,
             ),
           ),
@@ -528,6 +564,25 @@ class _QcSetScreenState extends State<QcSetScreen> {
               }
             },
           ),
+      ],
+      if (results.isNotEmpty) ...[
+        const SizedBox(height: 14),
+        LgButton.secondary(
+          label: l.qcCopyCsv,
+          icon: Icons.table_view_outlined,
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final csv = qcCsv(set, results);
+            await Clipboard.setData(ClipboardData(text: csv));
+            messenger
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(l.qcCopied('\n'.allMatches(csv).length - 1)),
+                ),
+              );
+          },
+        ),
       ],
       const SizedBox(height: 18),
       LgButton.secondary(
@@ -615,6 +670,113 @@ class _RunTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Daraja maqsadini almashtirish: yangi lot yoki laboratoriya qayta
+/// hisoblagan x̄/SD. Hozirdan boshlab amal qiladi; oldingi seriyalar o'z
+/// maqsadi bilan baholanishda davom etadi.
+class QcTargetScreen extends StatefulWidget {
+  const QcTargetScreen({super.key, required this.setId, required this.levelId});
+
+  final String setId;
+  final String levelId;
+
+  @override
+  State<QcTargetScreen> createState() => _QcTargetScreenState();
+}
+
+class _QcTargetScreenState extends State<QcTargetScreen> {
+  final _lot = TextEditingController();
+  final _mean = TextEditingController();
+  final _sd = TextEditingController();
+  bool _prefilled = false;
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _lot.dispose();
+    _mean.dispose();
+    _sd.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final l = AppLocalizations.of(context);
+    FocusScope.of(context).unfocus();
+    final mean = parseDecimal(_mean.text);
+    final sd = parseDecimal(_sd.text);
+    if (mean == null || sd == null || !mean.isFinite || !(sd > 0)) {
+      setState(() => _error = l.qcErrTarget);
+      return;
+    }
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
+    final router = GoRouter.of(context);
+    await context.services.qc.changeTarget(
+      widget.setId,
+      widget.levelId,
+      lot: _lot.text,
+      mean: mean,
+      sd: sd,
+    );
+    if (!mounted) return;
+    router.pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final text = Theme.of(context).textTheme;
+    final set = context.services.qc.data.set(widget.setId);
+    final level = set?.level(widget.levelId);
+    if (set == null || level == null) {
+      return LgPage(
+        title: l.qcChangeTarget,
+        children: [LgStateView(kind: StateKind.empty, title: l.qcSetMissing)],
+      );
+    }
+    if (!_prefilled) {
+      // Lot odatda o'zgaradi, lekin oldingisi ko'rinib tursin.
+      _lot.text = level.lot;
+      _prefilled = true;
+    }
+    return LgPage(
+      title: l.qcChangeTarget,
+      subtitle: '${set.name} · ${l.qcLevel(level.label)}',
+      children: [
+        LgNotice(l.qcChangeTargetBody, kind: NoticeKind.info),
+        LgField(
+          label: l.qcLot,
+          controller: _lot,
+          textInputAction: TextInputAction.next,
+        ),
+        LgField(
+          label: set.unit.isEmpty ? l.qcMean : '${l.qcMean}, ${set.unit}',
+          controller: _mean,
+          keyboardType: _decimalKeyboard,
+          textInputAction: TextInputAction.next,
+        ),
+        LgField(
+          label: set.unit.isEmpty ? l.qcSd : '${l.qcSd}, ${set.unit}',
+          controller: _sd,
+          keyboardType: _decimalKeyboard,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _save(),
+        ),
+        const SizedBox(height: 16),
+        if (_error != null) ...[
+          LgNotice(_error!, kind: NoticeKind.error),
+          const SizedBox(height: 10),
+        ],
+        LgButton(label: l.qcSave, busy: _busy, onPressed: _save),
+        const SizedBox(height: 12),
+        Text(l.qcTargetNote, style: text.bodySmall),
+      ],
     );
   }
 }

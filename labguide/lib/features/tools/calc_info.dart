@@ -167,6 +167,28 @@ abstract final class CalcSources {
     url: 'https://ngsp.org/ifcc.asp',
   );
 
+  /// QC qoidalari (lib/features/qc) — PubMed bo'yicha tekshirilgan.
+  static const westgard1981 = CalcSource(
+    id: 'qc-westgard-1981',
+    citation:
+        'Westgard JO, Barry PL, Hunt MR, Groth T. A multi-rule Shewhart chart '
+        'for quality control in clinical chemistry. Clin Chem. '
+        '1981;27(3):493–501. doi:10.1093/clinchem/27.3.493',
+    url: 'https://doi.org/10.1093/clinchem/27.3.493',
+  );
+
+  /// Preanalitika (lib/features/lab/preanalytics_info.dart).
+  static const whoPhlebotomy2010 = CalcSource(
+    id: 'who-phlebotomy-2010',
+    citation:
+        'WHO guidelines on drawing blood: best practices in phlebotomy. '
+        'World Health Organization, 2010. ISBN 978 92 4 159922 1',
+    url: 'https://iris.who.int/handle/10665/44294',
+  );
+
+  /// Kalkulyatorlar, QC va preanalitika manbalari (“Manbalar” ekrani uchun).
+  static const methods = [...all, westgard1981, whoPhlebotomy2010];
+
   static const all = [
     inker2021,
     nkf2021,

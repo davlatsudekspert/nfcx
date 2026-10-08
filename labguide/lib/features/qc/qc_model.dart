@@ -23,6 +23,43 @@ enum QcTargetSource {
   );
 }
 
+/// Maqsadli qiymatlar davri: lot, o'rtacha va SD qaysi sanadan amal qiladi.
+@immutable
+class QcTarget {
+  const QcTarget({
+    required this.lot,
+    required this.mean,
+    required this.sd,
+    this.from,
+  });
+
+  factory QcTarget.fromJson(Map<String, Object?> json) => QcTarget(
+    lot: json['lot'] as String? ?? '',
+    mean: (json['mean']! as num).toDouble(),
+    sd: (json['sd']! as num).toDouble(),
+    from: json['from'] == null ? null : DateTime.parse(json['from']! as String),
+  );
+
+  final String lot;
+  final double mean;
+  final double sd;
+
+  /// Shu sanadan boshlab amal qiladi (`null` — boshidan).
+  final DateTime? from;
+
+  bool get isValid => mean.isFinite && sd.isFinite && sd > 0;
+
+  /// z = (x − o'rtacha) / SD
+  double z(double value) => (value - mean) / sd;
+
+  Map<String, Object?> toJson() => {
+    'lot': lot,
+    'mean': mean,
+    'sd': sd,
+    if (from != null) 'from': from!.toIso8601String(),
+  };
+}
+
 @immutable
 class QcLevel {
   const QcLevel({
@@ -31,6 +68,8 @@ class QcLevel {
     required this.lot,
     required this.mean,
     required this.sd,
+    this.since,
+    this.previous = const [],
   });
 
   factory QcLevel.fromJson(Map<String, Object?> json) => QcLevel(
@@ -39,20 +78,64 @@ class QcLevel {
     lot: json['lot'] as String? ?? '',
     mean: (json['mean']! as num).toDouble(),
     sd: (json['sd']! as num).toDouble(),
+    since: json['since'] == null
+        ? null
+        : DateTime.parse(json['since']! as String),
+    previous: [
+      for (final t in json['previous'] as List? ?? const [])
+        QcTarget.fromJson((t as Map).cast<String, Object?>()),
+    ],
   );
 
   final String id;
 
   /// Ko'rsatiladigan nom: “1”, “2”, “Past”, “Yuqori” va h.k.
   final String label;
+
+  /// Amaldagi lot va maqsadli qiymatlar.
   final String lot;
   final double mean;
   final double sd;
 
-  bool get isValid => mean.isFinite && sd.isFinite && sd > 0;
+  /// Amaldagi maqsadlar shu sanadan beri (`null` — to'plam yaratilgandan).
+  final DateTime? since;
 
-  /// z = (x − o'rtacha) / SD
-  double z(double value) => (value - mean) / sd;
+  /// Oldingi maqsadlar (eski lot yoki qayta hisoblangan x̄/SD) — vaqt
+  /// tartibida. O'tgan seriyalar o'z davridagi maqsad bilan baholanadi.
+  final List<QcTarget> previous;
+
+  QcTarget get current => QcTarget(lot: lot, mean: mean, sd: sd, from: since);
+
+  bool get isValid => current.isValid;
+
+  /// Amaldagi maqsad bo'yicha z = (x − o'rtacha) / SD.
+  double z(double value) => current.z(value);
+
+  /// [at] vaqtida amal qilgan maqsad.
+  QcTarget targetAt(DateTime at) {
+    if (since == null || !at.isBefore(since!)) return current;
+    for (final t in previous.reversed) {
+      if (t.from == null || !at.isBefore(t.from!)) return t;
+    }
+    return previous.isEmpty ? current : previous.first;
+  }
+
+  /// Yangi maqsad (lot almashdi yoki x̄/SD qayta hisoblandi): amaldagisi
+  /// tarixga o'tadi.
+  QcLevel withTarget({
+    required String lot,
+    required double mean,
+    required double sd,
+    required DateTime from,
+  }) => QcLevel(
+    id: id,
+    label: label,
+    lot: lot,
+    mean: mean,
+    sd: sd,
+    since: from,
+    previous: [...previous, current],
+  );
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -60,6 +143,8 @@ class QcLevel {
     'lot': lot,
     'mean': mean,
     'sd': sd,
+    if (since != null) 'since': since!.toIso8601String(),
+    if (previous.isNotEmpty) 'previous': [for (final t in previous) t.toJson()],
   };
 }
 

@@ -355,6 +355,37 @@
   "qcDeleteSet": "Delete test and all runs",
   "qcConfirmDelete": "This can’t be undone.",
   "qcSetMissing": "This test no longer exists.",
+  "qcCopyCsv": "Copy runs as a table (CSV)",
+  "qcCopied": "Copied {count} rows — paste into Excel or Google Sheets",
+  "@qcCopied": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcChangeTarget": "Change target or lot",
+  "qcChangeTargetBody": "Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.",
+  "qcErrTarget": "Enter the mean and an SD greater than zero.",
+  "qcSince": "since {date}",
+  "@qcSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "qcPreviousTarget": "Previous: {target} (from {date})",
+  "@qcPreviousTarget": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "qcRulesSource": "Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.",
   "preTitle": "Specimen journey",
   "preStep1": "Prepare for testing",
@@ -619,6 +650,8 @@
   "savedEmptyTitle": "No bookmarks yet",
   "savedEmptyBody": "Select Save on a test card to keep it here.",
   "sourcesTitle": "Sources and licences",
+  "sourcesContent": "Analyte cards",
+  "sourcesMethods": "Calculators, QC and preanalytics",
   "sourcesBody": "Every published claim links to its original source, access date, scope and review status.",
   "researchTitle": "Research workspace",
   "researchQuestion": "Topic or research question",

@@ -236,3 +236,16 @@ repo) amalga oshirilmaydi: workflow nfcx ildizidagi `.github/workflows/labguide-
 qaytarildi (Android sinov APK job’i qo‘shildi, secretlar `LABGUIDE_* || NOVA_*`),
 `labguide/.github` olib tashlandi. To‘lov tiklanguncha CI ishga tushmaydi; kod va testlar
 konteynerda tekshiriladi.
+
+## D-26. QC maqsad tarixi, CSV eksport, ishga tushish ekrani (2026-10-08)
+- **Maqsad tarixi:** yangi nazorat loti yoki qayta hisoblangan x̄/SD uchun “Maqsad yoki lotni
+  almashtirish”. Eski maqsad `previous` ga o‘tadi; har seriya o‘z vaqtida amal qilgan maqsad
+  bilan baholanadi (o‘tmish qayta yozilmaydi). Grafik va kuzatilgan statistika — joriy davr.
+  Eski saqlangan ma’lumot (tarixsiz) o‘zgarishsiz o‘qiladi.
+- **CSV:** barcha seriyalar (sana, daraja, o‘sha paytdagi lot/x̄/SD, qiymat, z, xulosa, qoidalar,
+  izoh) clipboard’ga — Excel/Sheets uchun; qiymatlar nuqta bilan, CSV qo‘shtirnoq qoidasi bilan.
+- **Manbalar ekrani** endi kalkulyator, QC (Westgard 1981) va preanalitika (WHO 2010) manbalarini
+  ham ko‘rsatadi.
+- **Ishga tushish:** Android/iOS da oq fon o‘rniga mavzuga mos fon (yorug‘ #F3F3EC, qorong‘i
+  #0D1919) — qorong‘i rejimda oq “chaqnash” yo‘q; Android 12+ splash foni ham shu rang. Android
+  belgisi alohida PNG (adaptive ikonka XML `<bitmap>` ichida ishlamaydi).

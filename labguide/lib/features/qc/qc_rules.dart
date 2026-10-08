@@ -90,8 +90,8 @@ List<QcRunResult> evaluateRuns(QcSet set, List<QcRun> runs) {
     final z = <String, double>{
       for (final id in levelOrder)
         if (run.values[id] case final v?)
-          if (set.level(id) case final level? when level.isValid)
-            id: level.z(v),
+          if (set.level(id)?.targetAt(run.at) case final t? when t.isValid)
+            id: t.z(v),
     };
     for (final id in levelOrder) {
       if (z[id] case final value?) {

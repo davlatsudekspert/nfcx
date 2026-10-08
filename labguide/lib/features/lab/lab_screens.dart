@@ -260,11 +260,7 @@ class PreanalyticsScreen extends StatelessWidget {
         const CalcSourceTile(
           index: 1,
           ref: CalcRef(
-            CalcSource(
-              id: 'who-phlebotomy-2010',
-              citation: whoPhlebotomyCitation,
-              url: whoPhlebotomyUrl,
-            ),
+            CalcSources.whoPhlebotomy2010,
             'Section 2.2.3, Table 2.3; 1.1.1; 7.1.3',
           ),
         ),

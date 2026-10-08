@@ -11,6 +11,8 @@ import '../../l10n/gen/app_localizations.dart';
 import '../content/content_model.dart';
 import '../content/ui/analyte_screen.dart' show SourceTile, rightsLabel;
 import '../content/ui/content_widgets.dart';
+import '../tools/calc_info.dart';
+import '../tools/clinical_calc_screens.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -563,14 +565,31 @@ class SourcesScreen extends StatelessWidget {
         Text(l.sourcesBody, style: text.bodyMedium),
         const SizedBox(height: 8),
         ContentGate(
-          builder: (context, pack) => LgPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < pack.sources.length; i++)
-                  SourceTile(index: i + 1, source: pack.sources[i]),
-              ],
-            ),
+          builder: (context, pack) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LgSectionTitle('${l.sourcesContent} (${pack.sources.length})'),
+              LgPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < pack.sources.length; i++)
+                      SourceTile(index: i + 1, source: pack.sources[i]),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Kod bilan birga versiyalanadigan formulalar va usullar manbalari.
+        LgSectionTitle('${l.sourcesMethods} (${CalcSources.methods.length})'),
+        LgPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (i, src) in CalcSources.methods.indexed)
+                CalcSourceTile(index: i + 1, ref: CalcRef(src, '')),
+            ],
           ),
         ),
       ],
