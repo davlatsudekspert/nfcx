@@ -1,0 +1,910 @@
+{
+  "@@locale": "en",
+  "appTagline": "BIOCHEMISTRY · LABORATORY",
+  "navHome": "Home",
+  "navTests": "Tests",
+  "navLab": "Lab",
+  "navLibrary": "Library",
+  "navLearn": "Learn",
+  "actionBack": "Back",
+  "actionProfile": "Profile and settings",
+  "actionLanguage": "Language",
+  "actionOpen": "Explore",
+  "actionRetry": "Try again",
+  "actionContinue": "Continue",
+  "actionCancel": "Cancel",
+  "actionDelete": "Delete",
+  "actionCopyLink": "Copy link",
+  "linkCopied": "Link copied",
+  "plannedStage": "Planned for stage {stage}",
+  "@plannedStage": {
+    "placeholders": {
+      "stage": {
+        "type": "String"
+      }
+    }
+  },
+  "notAvailableYet": "Not available yet",
+  "debugBuildBadge": "DEBUG · DEMO ADAPTERS",
+  "welcomeEyebrow": "Your laboratory companion",
+  "welcomeTitle": "Biochemistry.\nClear and practical.",
+  "welcomeSubtitle": "Tests, laboratory practice and learning in one place.",
+  "welcomeDevices": "Phone and tablet",
+  "welcomeRoles": "Physician · lab professional · student · teacher",
+  "welcomeGetStarted": "Get started / sign up",
+  "welcomeGuest": "Explore as guest",
+  "welcomeSignIn": "Sign in",
+  "welcomeGuestNote": "No account is needed to read content. Sign-in is used for sync, classes and purchases.",
+  "authTitle": "Welcome",
+  "authSubtitle": "Sign in or create an account with email.",
+  "authEmailLabel": "Email",
+  "authEmailHint": "name@example.com",
+  "authEmailInvalid": "Enter a valid email address.",
+  "authConsent": "I accept the terms of use and privacy policy.",
+  "authConsentRequired": "Accept the terms to continue.",
+  "authGetCode": "Get code",
+  "authViewTerms": "View terms",
+  "authDemoNotice": "Debug build: demo sign-in. No email is sent; the code is shown on the next screen.",
+  "authUnavailableTitle": "Email sign-in isn't connected yet",
+  "authUnavailableBody": "All reading content is available to guests. Sign-in will be enabled once the email service is configured.",
+  "authContinueGuest": "Continue as guest",
+  "authRateLimited": "Too many requests. Try again in {seconds} s.",
+  "@authRateLimited": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "authGenericError": "Something went wrong. Check the connection and try again.",
+  "otpTitle": "Verify your email",
+  "otpCodeLabel": "6-digit code",
+  "otpVerify": "Verify",
+  "otpDemoCode": "Demo code: {code}. No email was sent (debug build only).",
+  "@otpDemoCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "otpInvalid": "Incorrect code. Attempts left: {attempts}.",
+  "@otpInvalid": {
+    "placeholders": {
+      "attempts": {
+        "type": "int"
+      }
+    }
+  },
+  "otpExpired": "The code has expired. Request a new one.",
+  "otpTooManyAttempts": "Too many attempts. Request a new code.",
+  "otpNoActiveCode": "No active code. Request a new one.",
+  "otpFormat": "Enter the 6-digit code.",
+  "otpResend": "Resend code",
+  "otpResendIn": "Resend in {seconds} s",
+  "@otpResendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "otpValidFor": "The code is valid for {minutes} min.",
+  "@otpValidFor": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "otpResent": "A new code was issued.",
+  "rolesTitle": "Your workspace",
+  "rolesSubtitle": "Choose your main role. You can change it later.",
+  "rolesNote": "The role only adapts the home screen. It doesn't grant access to other people's classes or data.",
+  "roleDoctor": "Physician",
+  "roleDoctorDesc": "Results and clinical context",
+  "roleLab": "Laboratory professional",
+  "roleLabDesc": "Methods, instruments and QC",
+  "roleStudent": "Student",
+  "roleStudentDesc": "Learn, practise and prepare",
+  "roleTeacher": "Teacher / researcher",
+  "roleTeacherDesc": "Classes, assignments and research",
+  "homeTitle": "Knowledge. Precision. Practice.",
+  "homeFocusTag": "Your focus",
+  "homeHeroDoctorTitle": "Understand the result in context",
+  "homeHeroDoctorBody": "Tests, influencing factors and related investigations.",
+  "homeHeroDoctorCta": "Explore tests",
+  "homeHeroLabTitle": "Confidence at the bench",
+  "homeHeroLabBody": "Samples, methods and quality control in one place.",
+  "homeHeroLabCta": "Open quality control",
+  "homeHeroStudentTitle": "Learn biochemistry with understanding",
+  "homeHeroStudentBody": "Topic → explanation → practice → review.",
+  "homeHeroStudentCta": "Start learning",
+  "homeHeroTeacherTitle": "Turn knowledge into teaching",
+  "homeHeroTeacherBody": "Classes, explained questions and assignments with deadlines.",
+  "homeHeroTeacherCta": "Open classes",
+  "homeQuickAccess": "Quick access",
+  "homeUsefulTests": "Useful tests",
+  "featureTests": "Tests",
+  "featureCalculators": "Calculators",
+  "featureSampleFactors": "Sample factors",
+  "featureSaved": "Saved",
+  "featureCalibration": "Calibration",
+  "featureQc": "QC",
+  "featureSampling": "Sampling",
+  "featureTopics": "Topics",
+  "featureQuiz": "Quiz",
+  "featureMicroscopy": "Microscopy",
+  "featureExam": "Exam",
+  "featureClasses": "Classes",
+  "featureQuestionBank": "Questions",
+  "featureSources": "Sources",
+  "featureResearch": "Research",
+  "testsTitle": "Test atlas",
+  "testsSubtitle": "From a marker to practical knowledge.",
+  "testsSearchLabel": "Search tests",
+  "testsSearchHint": "ALT, creatinine, HbA1c…",
+  "testsFilterAll": "All",
+  "testsEmptyTitle": "No results",
+  "testsEmptyBody": "Try another name, abbreviation or synonym.",
+  "testsClearSearch": "Clear search",
+  "testsResultCount": "{count, plural, one{{count} test} other{{count} tests}}",
+  "@testsResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statusDraft": "Draft",
+  "statusVerified": "Verified",
+  "statusPublished": "Published",
+  "statusSourcedSample": "Sourced sample",
+  "statusStructureOnly": "Structure only",
+  "contentLoading": "Loading content…",
+  "contentErrorTitle": "Content couldn't be loaded",
+  "contentErrorBody": "The content pack failed verification. Unverified data is never shown.",
+  "analyteSave": "Save",
+  "analyteSaved": "Saved",
+  "analyteSavedToast": "Added to saved",
+  "analyteRemovedToast": "Removed from saved",
+  "analyteNotFound": "This test card wasn't found.",
+  "analyteStructureOnlyTitle": "Content in preparation",
+  "analyteStructureOnlyBody": "This card shows the structure only. Clinical text is added after sourcing and independent expert review — generic text is never shown as ready.",
+  "analyteSampleNotice": "Learning sample based on the cited sources. Independent expert review is pending — not for clinical decisions.",
+  "analyteNotWritten": "Not written yet: requires sources and review.",
+  "analyteAtAGlance": "At a glance",
+  "analyteSpecimen": "Specimen",
+  "analytePopulation": "Population",
+  "analyteMethod": "Method",
+  "analyteMethodNotSet": "Not specified — depends on the reagent IFU",
+  "analyteUnits": "Units",
+  "analyteRefIntervals": "Reference intervals",
+  "analyteRefIntervalNone": "No reference interval is given here. Use the interval on your laboratory's report: it depends on the method, specimen and population.",
+  "analyteDecisionLimits": "Diagnostic thresholds",
+  "analyteDecisionNotRef": "Diagnostic thresholds are not laboratory reference intervals.",
+  "analyteNoInterpretation": "LabGuide doesn't interpret individual results or suggest diagnoses or doses.",
+  "analyteSources": "Sources",
+  "analyteSourceAccessed": "Accessed {date}",
+  "@analyteSourceAccessed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "analyteReuseRightsVerify": "Reuse rights: verify before distribution",
+  "analyteReview": "Review status",
+  "analyteReviewPending": "Expert review pending",
+  "analyteReviewApproved": "Reviewed",
+  "analyteReviewerNotAssigned": "Reviewer not assigned",
+  "analyteTranslationPending": "Translation review pending",
+  "analyteContentVersion": "Content version {version}",
+  "@analyteContentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "analyteConvertUnits": "Convert units",
+  "analyteConvertUnitsSub": "Analyte-specific factor",
+  "analyteMethodCalibration": "Method and calibration",
+  "analyteMethodCalibrationSub": "IFU · QC",
+  "analyteCalculatorSub": "Calculator · published formula",
+  "analytePractice": "Practise the topic",
+  "analytePracticeSub": "Explained questions",
+  "analyteRelated": "Related tests",
+  "sectionPurpose": "Purpose",
+  "sectionPhysiology": "Physiology",
+  "sectionHighResult": "High result",
+  "sectionLowResult": "Low result",
+  "sectionPreanalytics": "Specimen and preanalytics",
+  "sectionInterference": "Interference",
+  "sectionLimitations": "Limitations",
+  "labTitle": "Laboratory",
+  "labSubtitle": "A clear path at every stage.",
+  "labHeroEyebrow": "At the bench",
+  "labHeroTitle": "Instrument → reagent → method",
+  "labHeroBody": "Instructions and controls matched to the exact model.",
+  "labHeroCta": "Open calibration",
+  "labQcSub": "Control charts and rules",
+  "labPreanalytics": "Preanalytics",
+  "labPreanalyticsSub": "Prepare, collect, store, transport",
+  "labCalculatorsSub": "Dilution and units",
+  "labInstruments": "Instruments and methods",
+  "labInstrumentsSub": "Mindray · HUMAN · other",
+  "labMicroscopySub": "Compare images and structures",
+  "calTitle": "Calibration workflow",
+  "calSubtitle": "Exact matching is needed to select the correct instructions.",
+  "calManufacturer": "Manufacturer",
+  "calManufacturerOther": "Other",
+  "calModel": "Instrument model",
+  "calModelHint": "Exact model name",
+  "calReagentRef": "Reagent REF",
+  "calIfuRevision": "IFU revision",
+  "calCalibratorLot": "Calibrator lot",
+  "calCheck": "Check match",
+  "calFieldsRequired": "Fill in the model, reagent REF and IFU revision.",
+  "calNoMatchTitle": "No verified instructions for this combination",
+  "calNoMatchBody": "Calibration parameters are shown only from a verified IFU that matches the manufacturer, model, reagent REF, IFU revision and calibrator lot. Use the manufacturer's current IFU.",
+  "calCatalogCount": "Verified IFU records in this build: {count}",
+  "@calCatalogCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "calBrandWarning": "A brand name (e.g. Mindray or HUMAN) doesn't mean all models share settings. The reagent IFU and the instrument manual are separate documents.",
+  "calWorkflow": "Workflow",
+  "calStep1": "Model, reagent and instruction revision",
+  "calStep2": "Calibrator lot and assigned values",
+  "calStep3": "Method-specific preparation",
+  "calStep4": "Calibration according to the instructions",
+  "calStep5": "Post-calibration QC",
+  "calStep6": "Records and troubleshooting",
+  "calNoServiceCodes": "Service codes and safety-bypass procedures are not included.",
+  "qcTitle": "Quality control",
+  "qcChartTitle": "Levey–Jennings",
+  "qcChartBody": "A chart needs the test, control lot, level, target mean and SD. No invented results are plotted.",
+  "qcEmptyTitle": "No control records yet",
+  "qcEmptyBody": "Add a test with its control levels to start a Levey–Jennings chart. Data is stored only on this device.",
+  "qcIntro": "Enter each control level’s target mean and SD, then record every run. The app checks Westgard rules; it never invents target values or results.",
+  "qcLoadError": "Saved QC data could not be read. Nothing was overwritten.",
+  "qcAddSet": "Add test",
+  "qcSetName": "Test name",
+  "qcUnit": "Unit",
+  "qcTargetSource": "Source of the target mean and SD",
+  "qcSourceLab": "Our laboratory’s data",
+  "qcSourceManufacturer": "Manufacturer’s sheet",
+  "qcLevel": "Level {label}",
+  "@qcLevel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcLevelsCount": "{count, plural, =1{1 level} other{{count} levels}}",
+  "@qcLevelsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcRunsCount": "{count, plural, =0{no runs} =1{1 run} other{{count} runs}}",
+  "@qcRunsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcLot": "Lot",
+  "qcMean": "Target mean",
+  "qcSd": "Target SD",
+  "qcAddLevel": "Add level",
+  "qcRemoveLevel": "Remove level",
+  "qcSave": "Save",
+  "qcTargetNote": "Westgard et al. (1981) calculate the mean and SD from the laboratory’s own control measurements — initially about 20 (one run a day), then revised as more data accumulate. The app does not supply these values.",
+  "qcManufacturerWarning": "Manufacturer’s values are a guide only; Westgard’s lessons recommend limits calculated from your own control data — the assay sheet’s ranges are often too wide.",
+  "qcErrName": "Enter the test name.",
+  "qcErrLevel": "Level {label}: enter the mean and an SD greater than zero.",
+  "@qcErrLevel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcAccept": "Accepted",
+  "qcWarning": "Warning",
+  "qcReject": "Rejected",
+  "qcAcceptBody": "No rule violated.",
+  "qcLatestRun": "Latest run",
+  "qcNoRunsYet": "No runs yet — add the first one below.",
+  "qcAddRun": "Add run",
+  "qcNote": "Note (optional)",
+  "qcSaveRun": "Save run",
+  "qcErrRunEmpty": "Enter at least one control value.",
+  "qcErrRunInvalid": "Level {label}: not a number.",
+  "@qcErrRunInvalid": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "qcRunHistory": "Runs",
+  "qcStats": "Observed",
+  "qcChartLegend": "● in control   ▲ warning   ■ rejected",
+  "qcChartSemantics": "Levey–Jennings chart, level {label}: {count} values",
+  "@qcChartSemantics": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcDeleteRun": "Delete run",
+  "qcDeleteSet": "Delete test and all runs",
+  "qcConfirmDelete": "This can’t be undone.",
+  "qcSetMissing": "This test no longer exists.",
+  "qcCopyCsv": "Copy runs as a table (CSV)",
+  "qcCopied": "Copied {count} rows — paste into Excel or Google Sheets",
+  "@qcCopied": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qcChangeTarget": "Change target or lot",
+  "qcChangeTargetBody": "Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.",
+  "qcErrTarget": "Enter the mean and an SD greater than zero.",
+  "qcSince": "since {date}",
+  "@qcSince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "qcPreviousTarget": "Previous: {target} (from {date})",
+  "@qcPreviousTarget": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "qcRulesSource": "Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.",
+  "preTitle": "Specimen journey",
+  "preStep1": "Prepare for testing",
+  "preStep2": "Select specimen and additive",
+  "preStep3": "Collect and identify",
+  "preStep4": "Separate and store",
+  "preStep5": "Transport and receive",
+  "preNotice": "Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.",
+  "preOrderTitle": "Order of draw (venepuncture)",
+  "preOrderSub": "WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.",
+  "preCap": "Cap: {cap}",
+  "@preCap": {
+    "placeholders": {
+      "cap": {
+        "type": "String"
+      }
+    }
+  },
+  "preHaemolysisTitle": "Causes of haemolysis",
+  "preTourniquetTitle": "Tourniquet",
+  "preIdTitle": "Patient identification and labelling",
+  "calcTitle": "Calculators",
+  "calcLearningTag": "Learning calculator",
+  "calcDilution": "Dilution",
+  "calcDilutionSub": "C₁V₁ = C₂V₂",
+  "calcUnits": "Unit conversion",
+  "calcUnitsSub": "Analyte-specific",
+  "dilC1": "C₁ · Stock concentration",
+  "dilC2": "C₂ · Target concentration",
+  "dilV2": "V₂ · Final volume (mL)",
+  "dilNote": "Use the same units for C₁ and C₂. Simple dilution model: reactions, safety and volume changes are not modelled.",
+  "dilCalculate": "Calculate",
+  "dilResult": "V₁ = {volume} mL",
+  "@dilResult": {
+    "placeholders": {
+      "volume": {
+        "type": "String"
+      }
+    }
+  },
+  "dilResultBody": "Volume of stock solution. Bring the total final volume to V₂.",
+  "dilDiluent": "Diluent ≈ {volume} mL (assuming volumes add up)",
+  "@dilDiluent": {
+    "placeholders": {
+      "volume": {
+        "type": "String"
+      }
+    }
+  },
+  "dilNoDilution": "C₂ equals C₁: no dilution is needed.",
+  "dilErrorInvalid": "Enter a number greater than zero in every field.",
+  "dilErrorC2GtC1": "C₂ can't exceed C₁: dilution can't raise the concentration.",
+  "dilErrorRange": "The values are outside the calculable range.",
+  "ucTitle": "Unit conversion",
+  "ucSubtitle": "Each substance has its own factor — one shared mg/dL → mmol/L factor would be wrong.",
+  "ucAnalyte": "Analyte",
+  "ucValue": "Value",
+  "ucSwap": "Swap units",
+  "ucConvert": "Convert",
+  "ucNote": "Calculated from the molar mass {mass} g/mol. Laboratories may round differently; report the units your laboratory uses.",
+  "@ucNote": {
+    "placeholders": {
+      "mass": {
+        "type": "String"
+      }
+    }
+  },
+  "ucNotAvailable": "No verified molar mass for this analyte, so conversion is not offered.",
+  "ucErrorInvalid": "Enter a number of 0 or more.",
+  "ucErrorRange": "The value is outside the calculable range.",
+  "calcSectionClinical": "Clinical formulas",
+  "calcSectionLab": "Laboratory",
+  "calcEgfr": "eGFR · CKD-EPI 2021",
+  "calcEgfrSub": "Creatinine, age, sex",
+  "calcAcr": "Albumin/creatinine ratio",
+  "calcAcrSub": "Urine ACR · KDIGO A category",
+  "calcAnionGap": "Anion gap",
+  "calcAnionGapSub": "Na, Cl, HCO₃ · K and albumin optional",
+  "calcCalcium": "Corrected calcium",
+  "calcCalciumSub": "By albumin · Payne 1973",
+  "calcLdl": "LDL-C and non-HDL-C",
+  "calcLdlSub": "Friedewald · Sampson",
+  "calcOsmo": "Calculated osmolality",
+  "calcOsmoSub": "And osmolal gap",
+  "calcHba1c": "HbA1c units and eAG",
+  "calcHba1cSub": "NGSP ↔ IFCC · ADAG",
+  "calcFormulaTag": "Published formula",
+  "calcOptional": "optional",
+  "calcNotDiagnosis": "A calculation aid for learning and checking. It does not diagnose: interpret the result with the clinical picture and your laboratory’s reference intervals.",
+  "calcFormula": "Formula",
+  "calcLimitations": "Limitations",
+  "calcSources": "Sources",
+  "fieldCreatinine": "Serum creatinine",
+  "fieldAge": "Age, years",
+  "fieldSex": "Sex",
+  "fieldSodium": "Sodium (Na⁺)",
+  "fieldChloride": "Chloride (Cl⁻)",
+  "fieldBicarbonate": "Bicarbonate (HCO₃⁻)",
+  "fieldPotassium": "Potassium (K⁺)",
+  "fieldAlbumin": "Serum albumin",
+  "fieldNormalAlbumin": "Normal albumin used by your laboratory",
+  "fieldCalcium": "Total serum calcium",
+  "fieldTotalCholesterol": "Total cholesterol",
+  "fieldHdl": "HDL cholesterol",
+  "fieldTriglycerides": "Triglycerides",
+  "fieldGlucose": "Glucose",
+  "fieldUrea": "Urea (or BUN)",
+  "fieldMeasuredOsmolality": "Measured osmolality",
+  "fieldHba1c": "HbA1c",
+  "fieldUrineAlbumin": "Urine albumin",
+  "fieldUrineCreatinine": "Urine creatinine",
+  "sexFemale": "Female",
+  "sexMale": "Male",
+  "resGfrCategory": "KDIGO GFR category {code}",
+  "@resGfrCategory": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "resAlbCategory": "KDIGO albuminuria category {code}",
+  "@resAlbCategory": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "resCategoryBasisSi": "Determined on the mg/mmol cut-offs.",
+  "resCategoryBasisConv": "Determined on the mg/g cut-offs.",
+  "resAnionGap": "Anion gap",
+  "resAnionGapK": "With potassium",
+  "resAnionGapAlb": "Albumin-corrected (Figge)",
+  "resCorrectedCa": "Corrected calcium (Payne)",
+  "resNonHdl": "Non-HDL cholesterol",
+  "resLdlFriedewald": "LDL-C · Friedewald",
+  "resLdlSampson": "LDL-C · Sampson",
+  "resOsmCalc": "Calculated osmolality",
+  "resOsmGap": "Osmolal gap",
+  "resEag": "Estimated average glucose (eAG)",
+  "errCalcMissing": "Enter a number: {field}.",
+  "@errCalcMissing": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "errCalcImplausible": "{field}: outside the range this calculator accepts ({min}–{max}{unit}). Check the value and the unit.",
+  "@errCalcImplausible": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      },
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "errEgfrAge": "The CKD-EPI 2021 equation was developed in participants aged 18 or older; it is not calculated for children.",
+  "errFriedewaldTg": "Not calculated: Friedewald is not reliable when triglycerides exceed {limit}.",
+  "@errFriedewaldTg": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errSampsonTg": "Not calculated: the Sampson equation was validated for triglycerides up to {limit}.",
+  "@errSampsonTg": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "errEagRange": "eAG not shown: the ADAG data cover HbA1c {range}.",
+  "@errEagRange": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "errHdlGeTc": "HDL cholesterol can't be equal to or greater than total cholesterol.",
+  "errNotPositive": "Not calculated: the result is not positive — check the values.",
+  "errSexMissing": "Choose sex.",
+  "micTitle": "Microscopy atlas",
+  "micNotice": "Image slot. Authentic micrographs are added only after usage rights and labels are verified.",
+  "micRedCells": "Red blood cells",
+  "micWhiteCells": "White blood cells",
+  "micEpithelium": "Epithelial cells",
+  "micCasts": "Casts",
+  "micCrystals": "Crystals",
+  "micItemSub": "Appearance · distinctions · limitations",
+  "micImagePending": "Image pending rights check",
+  "insTitle": "Instruments",
+  "insMindraySub": "Exact model required",
+  "insHumanSub": "Instrument and reagent documents are separate",
+  "insOther": "Other manufacturer",
+  "insOtherSub": "Match by exact model and IFU",
+  "libTitle": "Library",
+  "libSubtitle": "Your knowledge in one place.",
+  "libBooks": "Books and guides",
+  "libBooksSub": "PDF · language · revision · size",
+  "libPacks": "Offline packs",
+  "libPacksSub": "Installed and upcoming packs",
+  "libSavedSub": "Bookmarked tests",
+  "libResearchSub": "Question, plan, real data and sources",
+  "libSources": "Sources and licences",
+  "libSourcesSub": "Review and reuse conditions",
+  "booksEmptyTitle": "No books yet",
+  "booksEmptyBody": "Books are added only with confirmed distribution rights. A PDF you add yourself stays for personal study and isn't shared.",
+  "packsInstalled": "Installed",
+  "packsCoreTitle": "Core content",
+  "packsVersion": "Version {version}",
+  "@packsVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsSize": "Size: {size}",
+  "@packsSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "packsLanguages": "Languages: {languages}",
+  "@packsLanguages": {
+    "placeholders": {
+      "languages": {
+        "type": "String"
+      }
+    }
+  },
+  "packsLicence": "Licence: {licence}",
+  "@packsLicence": {
+    "placeholders": {
+      "licence": {
+        "type": "String"
+      }
+    }
+  },
+  "packsVerified": "Integrity verified (SHA-256)",
+  "packsUpcoming": "Upcoming packs",
+  "packsUpcomingBody": "The size is shown before any download. Packs are published only after content review.",
+  "packsBiochem": "Biochemistry essentials",
+  "packsSpecimensQc": "Specimens and QC",
+  "packsMicroscopy": "Microscopy atlas",
+  "packsNotPublished": "Not published yet",
+  "savedEmptyTitle": "No bookmarks yet",
+  "savedEmptyBody": "Select Save on a test card to keep it here.",
+  "sourcesTitle": "Sources and licences",
+  "sourcesContent": "Analyte cards",
+  "sourcesMethods": "Calculators, QC and preanalytics",
+  "sourcesBody": "Every published claim links to its original source, access date, scope and review status.",
+  "researchTitle": "Research workspace",
+  "researchQuestion": "Topic or research question",
+  "researchQuestionHint": "Enter a topic",
+  "researchNotes": "Aim and notes",
+  "researchNotesHint": "Your own data and sources",
+  "researchSave": "Save draft",
+  "researchSaved": "Draft saved on this device",
+  "researchOutline": "Outline structure",
+  "researchStep1": "Question and aim",
+  "researchStep2": "Literature review",
+  "researchStep3": "Methods and real data",
+  "researchStep4": "Results, limitations and conclusions",
+  "researchNoFabrication": "LabGuide never generates results, patient data or citations. Use only your own data and sources.",
+  "learnTitle": "Learn with understanding",
+  "learnHeroTag": "Visual biochemistry",
+  "learnHeroTitle": "From molecule to practice",
+  "learnHeroBody": "Topics, mechanisms and knowledge checks.",
+  "learnHeroCta": "Explore topics",
+  "learnClassesSub": "Teacher → assignment → student → results",
+  "learnQuiz": "Explained quiz",
+  "learnQuizSub": "{count, plural, one{{count} practice question} other{{count} practice questions}}",
+  "@learnQuizSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "learnExam": "Exam mode",
+  "learnExamSub": "Time, topic and questions",
+  "learnLessonPlan": "Lesson plan",
+  "learnLessonPlanSub": "Teacher workspace",
+  "quizProgress": "Question {current} of {total}",
+  "@quizProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "quizCorrect": "Correct.",
+  "quizIncorrect": "This answer is incorrect.",
+  "quizNext": "Next",
+  "quizFinish": "See result",
+  "quizDoneTitle": "Practice complete",
+  "quizScore": "{correct} of {total} correct",
+  "@quizScore": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "quizRestart": "Try again",
+  "quizBasis": "Basis: {basis}",
+  "@quizBasis": {
+    "placeholders": {
+      "basis": {
+        "type": "String"
+      }
+    }
+  },
+  "quizReviewNote": "Practice questions are pending expert review.",
+  "quizMistakes": "Review your mistakes",
+  "quizNoMistakes": "No mistakes — well done.",
+  "quizYourAnswer": "Your answer",
+  "quizCorrectAnswer": "Correct answer",
+  "quizChooseTopic": "Choose a topic",
+  "quizTopicMixed": "Mixed: {count} random questions",
+  "@quizTopicMixed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizTopicGeneral": "Laboratory calculations",
+  "quizQuestionCount": "{count, plural, =1{1 question} other{{count} questions}}",
+  "@quizQuestionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizOtherTopic": "Another topic",
+  "quizTopicMistakes": "Review my mistakes",
+  "quizMastered": "{correct} of {total} correct last time",
+  "@quizMastered": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "examTitle": "Exam mode",
+  "examBody": "Timed exams and result history come with the learning module. The practice questions are available now.",
+  "examOpenPractice": "Open practice questions",
+  "classesTitle": "Classes and assignments",
+  "classesSignInTitle": "Sign in to use classes",
+  "classesSignInBody": "Creating, joining and submitting assignments is tied to an account. Reading content stays open without sign-in.",
+  "classesSignIn": "Sign in",
+  "classesUnavailableTitle": "The class server isn't connected yet",
+  "classesUnavailableBody": "Nothing is sent or stored. When it's connected, teachers see only their own classes and students see only their own results — checked on the server.",
+  "profileTitle": "Profile and settings",
+  "profileGuest": "Guest",
+  "profileGuestSub": "Content is open without an account",
+  "profileDemoSession": "Demo session · debug build",
+  "profileRole": "Role",
+  "profileRoleSub": "Home adapts to your role",
+  "profileLanguage": "Language",
+  "profileAppearance": "Appearance",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "profilePurchase": "Subscription and restore",
+  "profilePurchaseSub": "Free · Pro",
+  "profilePrivacy": "Privacy and help",
+  "profilePrivacySub": "Data and account controls",
+  "profileSignIn": "Sign in with email",
+  "profileSignOut": "Sign out",
+  "profileVersion": "Version {version}",
+  "@profileVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "purchaseTitle": "LabGuide Pro",
+  "purchaseFree": "Free: demo and basic cards.",
+  "purchasePro": "Pro, monthly or yearly: complete published packs, extended learning and laboratory tools.",
+  "purchaseNotice": "Store products aren't connected. Prices will come from the App Store / Google Play in your currency. Nothing is charged here, and features that aren't built yet are not sold.",
+  "purchaseSubscribe": "Subscribe",
+  "purchaseRestore": "Restore purchases",
+  "privacyTitle": "Privacy and help",
+  "privacyBody": "This build sends no data to a server. Settings, bookmarks and drafts are stored only on this device.",
+  "privacyTerms": "Terms of use",
+  "privacyTermsSub": "Final text to be prepared",
+  "privacyDeleteLocal": "Delete local data",
+  "privacyDeleteLocalSub": "Settings, bookmarks and drafts on this device",
+  "privacyDeleteConfirmTitle": "Delete local data?",
+  "privacyDeleteConfirmBody": "Settings, bookmarks and drafts on this device will be removed. This can't be undone.",
+  "privacyDeleted": "Local data deleted",
+  "termsTitle": "Terms of use",
+  "termsBody": "Final terms, the privacy policy and clinical-use boundaries will be prepared before release. LabGuide is a reference and learning tool: it doesn't diagnose, prescribe or replace your laboratory's procedures.",
+  "citePage": "p. {page}",
+  "@citePage": {
+    "placeholders": {
+      "page": {
+        "type": "String"
+      }
+    }
+  },
+  "rightsUnknown": "Distribution rights not confirmed",
+  "rightsPersonal": "Personal study only — not distributed",
+  "rightsPermitted": "Distribution permission recorded",
+  "rightsDenied": "Distribution not permitted",
+  "catBiochemistry": "Biochemistry",
+  "catClinicalLab": "Clinical laboratory",
+  "catInstruments": "Instruments",
+  "catMethods": "Methods",
+  "catTests": "Test questions",
+  "kindBook": "Book",
+  "kindManual": "Manual",
+  "kindMethod": "Method",
+  "kindIfu": "IFU",
+  "kindArticle": "Article",
+  "kindQuestionSet": "Question set",
+  "kindWebsite": "Website",
+  "libAccessOpen": "Open licence · {licence}",
+  "@libAccessOpen": {
+    "placeholders": {
+      "licence": {
+        "type": "String"
+      }
+    }
+  },
+  "libAccessFree": "Free to read · link only",
+  "libAccessCatalog": "Catalogue record only",
+  "libOpenSource": "Open the official page",
+  "libChecked": "Page and licence checked: {date}",
+  "@libChecked": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "libItemPack": "Offline pack · {size}",
+  "@libItemPack": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "libItemNoPack": "Not available as a shared offline pack",
+  "libItemSupersedes": "Newer edition of: {title}",
+  "@libItemSupersedes": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "libReview": "Review queue",
+  "libReviewSub": "Source discrepancies and drafts",
+  "reviewDiscrepancies": "Source discrepancies",
+  "reviewDiscrepanciesBody": "When older and newer sources disagree, both positions are listed here for expert review. Neither is published as fact until resolved.",
+  "reviewNoDiscrepancies": "No open discrepancies.",
+  "reviewDraftQuestions": "Draft questions: {count}",
+  "@reviewDraftQuestions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewDraftCards": "Cards awaiting expert review: {count}",
+  "@reviewDraftCards": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewCatalog": "Catalogued materials: {count}",
+  "@reviewCatalog": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewField": "Field: {field}",
+  "@reviewField": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "quizDraftTag": "Draft · not reviewed",
+  "lessonsTitle": "Lesson topics"
+}

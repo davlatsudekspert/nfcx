@@ -1,0 +1,18 @@
+{
+  "pack_id": "core",
+  "version": "2026.10.08-dev.3",
+  "min_schema": 1,
+  "languages": [
+    "uz",
+    "ru",
+    "en"
+  ],
+  "licence": "LabGuide draft content — internal review copy, not for redistribution",
+  "files": [
+    {
+      "path": "pack.json",
+      "size": 734418,
+      "sha256": "25a1d3a8171ebe0e1bb80043c46593117dc97e0e22cba94615954073856746e1"
+    }
+  ]
+}
