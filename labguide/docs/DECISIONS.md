@@ -228,3 +228,11 @@ WHO/IDF diabet hisoboti en/ru, ZiyoNET darsliklari, lex.uz hujjatlari) va faqat 
   (masalan, “ISO 15189 asosida”) olib tashlandi. Interfeys tilidagi materiallar birinchi.
 - Topilmadi/kiritilmadi: NCBI “Clinical Methods” (sahifa reCAPTCHA bilan yopiq), TMA
   kutubxonasi (sahifalar ishlamaydi), GEOTAR-Media katalogi.
+
+## D-25. CI yana nfcx’da; public repo va Codemagic bekor (2026-10-08)
+Egasi GitHub to‘lovini tiklashini aytdi; Codemagic varianti ham bekor qilindi
+(`codemagic.yaml` yozilib, commit qilinmasdan o‘chirildi). Shuning uchun D-21 (alohida public
+repo) amalga oshirilmaydi: workflow nfcx ildizidagi `.github/workflows/labguide-ios.yml` ga
+qaytarildi (Android sinov APK job’i qo‘shildi, secretlar `LABGUIDE_* || NOVA_*`),
+`labguide/.github` olib tashlandi. To‘lov tiklanguncha CI ishga tushmaydi; kod va testlar
+konteynerda tekshiriladi.

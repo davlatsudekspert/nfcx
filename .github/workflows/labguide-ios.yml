@@ -1,6 +1,7 @@
 # LabGuide: testlar, Android sinov APK, iOS build (Mac'siz) va TestFlight.
 #
-# Public repo — GitHub'ning standart runnerlari (macOS ham) bepul.
+# Faqat `labguide/` papkasidagi ilova (NFCSTORE ga tegmaydi).
+# Android sinov APK'lari debug kalit bilan imzolanadi — do'kon uchun emas.
 #
 # Rejimlar (workflow_dispatch -> mode):
 #   build      — Linux'da analyze + test, macOS'da imzosiz iOS release build
@@ -12,13 +13,12 @@
 #   bundle ID ro'yxatdan o'tkaziladi (yo'q bo'lsa) va shu jamoa
 #   sertifikati bilan App Store profili yaratiladi (yo'q bo'lsa).
 #   App Store Connect'dagi ILOVA YOZUVINI API yaratib bera olmaydi —
-#   uni egasi qo'lda yaratadi (docs/IOS_TESTFLIGHT.md).
+#   uni egasi qo'lda yaratadi (labguide/docs/IOS_TESTFLIGHT.md).
 #
-# Secretlar (repo Settings → Secrets and variables → Actions):
-#   IOS_CERTIFICATE_BASE64, IOS_CERTIFICATE_PASSWORD, APPSTORE_KEY_ID,
-#   APPSTORE_ISSUER_ID, APPSTORE_PRIVATE_KEY. Ilova profili secret emas —
-#   API'dan olinadi. Imzosiz build secretsiz ishlaydi.
-name: LabGuide build
+# Secretlar: avval LABGUIDE_*, bo'lmasa shu jamoaning mavjud NOVA_*
+# secretlari (Apple Distribution sertifikati va App Store Connect API
+# kaliti jamoa bo'yicha umumiy). Ilova profili secret emas — API'dan olinadi.
+name: LabGuide iOS
 
 on:
   workflow_dispatch:
@@ -32,10 +32,11 @@ on:
         description: "testflight uchun: bundle ID va App Store profilini API orqali yaratish (yo'q bo'lsa)"
         type: boolean
         default: false
-  # main'ga har push: testlar, imzosiz iOS build va Android APK.
+  # Workflow'ni ro'yxatdan o'tkazish va birinchi imzosiz tekshiruv:
+  # faqat shu fayl o'zgarganda ishlaydi.
   push:
-    branches: [main]
-    paths-ignore: ['docs/**', '**.md']
+    branches: [claude/new-session-xqozot]
+    paths: [.github/workflows/labguide-ios.yml]
 
 concurrency:
   group: labguide-ios-${{ github.ref }}
@@ -53,6 +54,9 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: labguide
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -75,6 +79,9 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: labguide
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -86,7 +93,6 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      # Debug kalit bilan imzolangan sinov APK'lari — do'kon uchun emas.
       - name: Android release APK (sinov)
         run: |
           set -euo pipefail
@@ -94,7 +100,7 @@ jobs:
           flutter build apk --release --split-per-abi \
             --build-number="${{ github.run_number }}"
           cd build/app/outputs/flutter-apk
-          VERSION=$(grep '^version:' "$GITHUB_WORKSPACE/pubspec.yaml" | sed 's/version: *//; s/+.*//')
+          VERSION=$(grep '^version:' "$GITHUB_WORKSPACE/labguide/pubspec.yaml" | sed 's/version: *//; s/+.*//')
           for f in app-*-release.apk; do mv "$f" "LabGuide-$VERSION-${f#app-}"; done
           sha256sum LabGuide-*.apk | tee SHA256SUMS.txt
           {
@@ -105,8 +111,8 @@ jobs:
         with:
           name: labguide-android-${{ github.run_number }}
           path: |
-            build/app/outputs/flutter-apk/LabGuide-*.apk
-            build/app/outputs/flutter-apk/SHA256SUMS.txt
+            labguide/build/app/outputs/flutter-apk/LabGuide-*.apk
+            labguide/build/app/outputs/flutter-apk/SHA256SUMS.txt
           retention-days: 30
 
   ios:
@@ -115,6 +121,7 @@ jobs:
     timeout-minutes: 75
     defaults:
       run:
+        working-directory: labguide
         shell: bash
     steps:
       - uses: actions/checkout@v4
@@ -176,11 +183,11 @@ jobs:
       - name: Secretlar
         if: env.MODE == 'testflight'
         env:
-          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          API_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-          API_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          CERTIFICATE_BASE64: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_BASE64 || secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_PASSWORD || secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.LABGUIDE_APPSTORE_PRIVATE_KEY || secrets.NOVA_APPSTORE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           MISSING=""
@@ -189,7 +196,7 @@ jobs:
           [ -n "$API_KEY_ID" ]           || MISSING="$MISSING APPSTORE_KEY_ID"
           [ -n "$API_ISSUER_ID" ]        || MISSING="$MISSING APPSTORE_ISSUER_ID"
           [ -n "$API_PRIVATE_KEY" ]      || MISSING="$MISSING APPSTORE_PRIVATE_KEY"
-          [ -z "$MISSING" ] || { echo "::error::Yetishmayotgan secret(lar):$MISSING"; exit 1; }
+          [ -z "$MISSING" ] || { echo "::error::Yetishmayotgan secret(lar) (LABGUIDE_* yoki NOVA_*):$MISSING"; exit 1; }
 
           umask 077
           W="$RUNNER_TEMP/lg-signing"; mkdir -p "$W"
@@ -297,7 +304,7 @@ jobs:
                       if a['attributes']['bundleId'] == BUNDLE]
               if not apps:
                   print(f"::error::App Store Connect'da {BUNDLE} uchun ilova yozuvi yo'q. "
-                        "App Store Connect -> Apps -> + -> New App (docs/IOS_TESTFLIGHT.md).")
+                        "App Store Connect -> Apps -> + -> New App (labguide/docs/IOS_TESTFLIGHT.md).")
                   sys.exit(1)
               app = apps[0]
               builds = call('GET', '/v1/builds', {'filter[app]': app['id'], 'limit': 200,
@@ -339,15 +346,15 @@ jobs:
       - name: App Store Connect — sozlash (ixtiyoriy)
         if: env.MODE == 'testflight' && env.APPLE_SETUP == 'true'
         env:
-          API_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
         run: '"$ASC_PY" "$ASC_SCRIPT" setup'
 
       - name: App Store Connect — tekshiruv va profil
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
         run: |
           set -euo pipefail
           "$ASC_PY" "$ASC_SCRIPT" precheck
@@ -356,7 +363,7 @@ jobs:
       - name: Keychain va profil o'rnatish
         if: env.MODE == 'testflight'
         env:
-          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          CERTIFICATE_PASSWORD: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_PASSWORD || secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
         run: |
           set -euo pipefail
           umask 077
@@ -451,15 +458,15 @@ jobs:
         continue-on-error: true
         with:
           name: labguide-ios-${{ env.IOS_VERSION }}-${{ env.IOS_BUILD_NUMBER }}
-          path: LabGuide-iOS.ipa
+          path: labguide/LabGuide-iOS.ipa
           retention-days: 14
 
       # Faqat TestFlight'ga topshirish. Review/reliz chaqiruvlari YO'Q.
       - name: TestFlight'ga yuklash
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
         run: |
           set -euo pipefail
           xcrun altool --validate-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
@@ -469,8 +476,8 @@ jobs:
       - name: TestFlight processing holati
         if: env.MODE == 'testflight'
         env:
-          API_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
         run: '"$ASC_PY" "$ASC_SCRIPT" status'
 
       - name: Tozalash

@@ -68,8 +68,8 @@ kelmagan**.
 
 **Bajarilmagan tekshiruvlar** (o‘tdi deb hisoblanmaydi):
 - iOS build / simulator — macOS va Xcode kerak (bu konteyner Linux). CI tayyor
-  (`.github/workflows/build.yml`, actionlint toza), lekin hali bir marta ham ishga tushmagan:
-  nfcx’da Actions to‘lov sababli to‘xtagan; public `labguide` repo yaratilishi kutilmoqda (D-21).
+  (nfcx `.github/workflows/labguide-ios.yml`, actionlint toza), lekin hali bir marta ham
+  ishga tushmagan: nfcx’da Actions to‘lov sababli to‘xtagan (D-25).
 - Android emulator yoki haqiqiy qurilmada ishga tushirish — konteynerda KVM yo‘q.
   Haqiqiy qurilma tekshiruvi alohida qayd etilishi kerak.
 - Screen reader (TalkBack/VoiceOver) bilan qo‘lda tekshiruv.
@@ -85,11 +85,10 @@ kelmagan**.
 
 ## Blockerlar va foydalanuvchidan kerak bo‘ladigan narsalar
 
-- **Public `labguide` repo** (D-21): github.com/new → nomi `labguide`, Public, bo‘sh (README/
-  litsenziyasiz); Claude GitHub App’ga shu repoga ruxsat. Keyin kod tarix bilan ko‘chiriladi.
-- **TestFlight:** repo secretlari va App Store Connect’da ilova yozuvi —
-  [IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md).
-
+- **GitHub Actions to‘lovi** (D-25): nfcx’da Actions to‘xtagan; tiklangach iOS/Android CI
+  `.github/workflows/labguide-ios.yml` orqali ishlaydi.
+- **TestFlight:** App Store Connect’da `uz.labguide.app` ilova yozuvini qo‘lda yaratish; secretlar
+  NFCSTORE’niki (`NOVA_*`) — [IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md).
 - **Domla materiallari** (kitob, qo‘llanma, metodika, testlar) — hali kelmagan; kelganda
   tarqatish huquqi haqida ma’lumot ham kerak.
 - Mustaqil reviewer(lar): kim va qaysi analitlar.
