@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/utils/resume_refresher.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -200,26 +201,15 @@ const kSessionResumeGap = Duration(seconds: 60);
 DateTime Function() sessionResumeClock = DateTime.now;
 
 final sessionResumeRefreshProvider = Provider<void>((ref) {
-  final obs = _ResumeRefresher(ref);
+  final obs = ResumeRefresher(
+    gap: kSessionResumeGap,
+    clock: () => sessionResumeClock(),
+    when: () => ref.read(sessionProvider) is SessionActive,
+    onResume: () => ref.read(sessionProvider.notifier).refresh(),
+  );
   WidgetsBinding.instance.addObserver(obs);
   ref.onDispose(() => WidgetsBinding.instance.removeObserver(obs));
 });
-
-class _ResumeRefresher with WidgetsBindingObserver {
-  _ResumeRefresher(this._ref) : _last = sessionResumeClock();
-  final Ref _ref;
-  DateTime _last;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) return;
-    if (_ref.read(sessionProvider) is! SessionActive) return;
-    final now = sessionResumeClock();
-    if (now.difference(_last) < kSessionResumeGap) return;
-    _last = now;
-    _ref.read(sessionProvider.notifier).refresh();
-  }
-}
 
 /// Qulaylik: joriy foydalanuvchi yoki `null`.
 final currentUserProvider = Provider<User?>((ref) {

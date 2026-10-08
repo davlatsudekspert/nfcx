@@ -121,6 +121,7 @@ class Prefs {
   static const _kNotif = 'nova.notif.';
   static const _kCatalogFav = 'nova.catalogFavorites';
   static const _kSavedReels = 'nova.savedReels';
+  static const _kAppFlags = 'nova.appFlags';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -243,4 +244,10 @@ class Prefs {
   List<String> get savedReels => _p.getStringList(_kSavedReels) ?? const [];
   Future<void> setSavedReels(List<String> keys) =>
       _p.setStringList(_kSavedReels, keys);
+
+  /// Server kalitlarining (`/api/app/config`) oxirgi muvaffaqiyatli
+  /// javobi — JSON. Ilova tarmoqsiz ochilsa ham oxirgi holat bilan
+  /// boshlanadi.
+  String? get appFlagsJson => _p.getString(_kAppFlags);
+  Future<void> setAppFlagsJson(String v) => _p.setString(_kAppFlags, v);
 }

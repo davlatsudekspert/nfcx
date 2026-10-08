@@ -6,6 +6,7 @@ import '../design/motion/motion.dart';
 import '../design/theme/app_theme.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../routing/router.dart';
+import 'app_flags.dart';
 import 'providers.dart';
 import '../features/settings/app_lock.dart';
 import '../features/auth/session.dart';
@@ -27,6 +28,9 @@ class NovaApp extends ConsumerWidget {
     ref.watch(appLockSessionGuardProvider);
     // Fondan qaytganda sessiya (NFC ID, Premium) yangilanadi, ≥60 s.
     ref.watch(sessionResumeRefreshProvider);
+    // Server kalitlari (`/api/app/config`) — ochilishda va fondan
+    // qaytganda; xato bo'lsa hammasi o'chiq (yoki oxirgi saqlangani).
+    ref.watch(appFlagsWatcherProvider);
     // iPhone + kirgan + IAP kaliti yoqilgan: StoreKit'ning ochiq
     // tranzaksiyalari ilova ochilishidanoq tinglanadi
     // (`features/premium/iap_controller.dart`). Android'da hech narsa.

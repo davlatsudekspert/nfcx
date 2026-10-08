@@ -9,6 +9,7 @@ import 'package:nfcstore_nova/core/network/api_client.dart';
 import 'package:nfcstore_nova/core/storage/secure_store.dart';
 import 'package:nfcstore_nova/core/utils/result.dart';
 import 'package:nfcstore_nova/data/models/models.dart';
+import 'package:nfcstore_nova/data/repositories/app_config_repository.dart';
 import 'package:nfcstore_nova/data/repositories/auth_repository.dart';
 import 'package:nfcstore_nova/data/repositories/discover_repository.dart';
 import 'package:nfcstore_nova/data/repositories/iap_repository.dart';
@@ -188,6 +189,25 @@ class FakeIapRepository extends IapRepository {
   Future<Result<IapConfig>> config() async => Ok(cfg);
 }
 
+/// Server kalitlari — tarmoqqa chiqmaydi. Sukut bo'yicha hammasi o'chiq
+/// (`showcase` serverdagidek yoqiq); [fail] — server javob bermaydi.
+class FakeAppConfigRepository extends AppConfigRepository {
+  FakeAppConfigRepository({
+    this.flags = const AppFlags(showcase: true),
+    this.fail = false,
+  }) : super(ApiClient());
+
+  AppFlags flags;
+  bool fail;
+  int calls = 0;
+
+  @override
+  Future<Result<AppFlags>> config() async {
+    calls++;
+    return fail ? const Err(AppError(AppErrorKind.offline)) : Ok(flags);
+  }
+}
+
 /// Test uchun tayyor `ProviderContainer` overridelari.
 Future<List<Override>> testOverrides({bool signedIn = true}) async {
   SharedPreferences.setMockInitialValues({});
@@ -200,6 +220,7 @@ Future<List<Override>> testOverrides({bool signedIn = true}) async {
     savesRepositoryProvider.overrideWithValue(FakeSavesRepository()),
     // Oxirida: ba'zi sinovlar ro'yxatni INDEKS bo'yicha almashtiradi.
     iapRepositoryProvider.overrideWithValue(FakeIapRepository()),
+    appConfigRepositoryProvider.overrideWithValue(FakeAppConfigRepository()),
   ];
 }
 
