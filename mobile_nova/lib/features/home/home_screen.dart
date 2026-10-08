@@ -1416,6 +1416,11 @@ class _AutoplayFeedState extends State<_AutoplayFeed> {
     });
   }
 
+  /// Kartadagi "⋯" dan muallif bloklandi — lenta qayta o'qiladi
+  /// (server bloklanganlarni bermaydi).
+  void _onBlocked() => ProviderScope.containerOf(context, listen: false)
+      .invalidate(homeFeedProvider);
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1430,9 +1435,10 @@ class _AutoplayFeedState extends State<_AutoplayFeed> {
                     child: FeedCard(
                       post: widget.posts[i],
                       activeVideo: _dominant == i,
+                      onBlocked: _onBlocked,
                     ),
                   )
-                : FeedCard(post: widget.posts[i]),
+                : FeedCard(post: widget.posts[i], onBlocked: _onBlocked),
           ),
       ],
     );

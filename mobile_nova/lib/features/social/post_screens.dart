@@ -32,12 +32,14 @@ import '../profile/profile_screen.dart';
 import 'comments.dart';
 import 'engagement.dart';
 import 'image_viewer.dart';
+import 'media_carousel.dart';
 import 'reels_screen.dart';
 import 'story_viewer.dart';
 import 'media_frame.dart';
 import 'content_rules.dart';
 import 'moderation.dart';
 import '../shop/store_policy.dart';
+import '../showcase/showcase_extras.dart';
 import 'music_picker.dart';
 import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
@@ -340,7 +342,19 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     ),
                 ],
               ),
-              if (p.mediaUrls.isNotEmpty) ...[
+              // KARUSEL — bir nechta rasm (ko'rgazma posti).
+              if (!p.isVideo && p.mediaUrls.length > 1) ...[
+                const SizedBox(height: Gap.lg),
+                MediaCarousel(
+                  key: const ValueKey('post-carousel'),
+                  urls: p.mediaUrls,
+                  keyPrefix: 'post-carousel',
+                  borderRadius: R.gentle,
+                  background: t.surface2,
+                  onTap: (i) =>
+                      openImageViewer(context, p.mediaUrls, initial: i),
+                ),
+              ] else if (p.mediaUrls.isNotEmpty) ...[
                 const SizedBox(height: Gap.lg),
                 // LENTA BILAN BIR XIL QUTI. Ilgari lentada
                 // `AspectRatio(4 / 3)`, bu yerda `AspectRatio(1)`
@@ -395,6 +409,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                     ),
                   ],
                 ),
+              ],
+              // KO'RGAZMA: sarlavha, narx, tovar va havola.
+              if (ShowcaseExtras.hasAny(p)) ...[
+                const SizedBox(height: Gap.lg),
+                ShowcaseExtras(post: p, keyPrefix: 'post-showcase'),
               ],
               if (p.music != null) ...[
                 const SizedBox(height: Gap.lg),

@@ -16,11 +16,14 @@ import '../home/widgets/avatar.dart';
 import '../home/widgets/identity_card.dart';
 import 'engagement.dart';
 import 'image_viewer.dart';
+import 'media_carousel.dart';
 import 'media_frame.dart';
+import 'moderation.dart';
 import 'music_picker.dart' show MusicChip;
 import 'post_contact_bar.dart';
 import 'time_ago.dart';
 import '../../design/icons/nova_icons.dart';
+import '../showcase/showcase_extras.dart';
 
 /// LENTA KARTASI — LAYK, IZOH, ULASHISH VA OBUNA.
 ///
@@ -32,7 +35,11 @@ import '../../design/icons/nova_icons.dart';
 ///
 /// Endpointlarning hammasi serverda allaqachon bor edi.
 class FeedCard extends ConsumerWidget {
-  const FeedCard({super.key, required this.post, this.activeVideo});
+  const FeedCard(
+      {super.key, required this.post, this.activeVideo, this.onBlocked});
+
+  /// Muallif "⋯" menyusidan bloklandi — lenta yangilansin.
+  final VoidCallback? onBlocked;
 
   /// Lentadagi DOMINANT karta shumi.
   ///
@@ -146,15 +153,18 @@ class FeedCard extends ConsumerWidget {
                           // Usiz bugungi post bilan bir yillik post
                           // lentada farq qilmasdi.
                           if (post.createdAt != null)
-                            Text(
-                              '${post.code.isEmpty && !post.featured ? '' : ' · '}'
-                              '${timeAgo(post.createdAt!, l)}',
-                              key: const ValueKey('feed-time'),
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontFamily: AppType.sans,
-                                fontSize: 11,
-                                color: t.text3,
+                            Flexible(
+                              child: Text(
+                                '${post.code.isEmpty && !post.featured ? '' : ' · '}'
+                                '${timeAgo(post.createdAt!, l)}',
+                                key: const ValueKey('feed-time'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: AppType.sans,
+                                  fontSize: 11,
+                                  color: t.text3,
+                                ),
                               ),
                             ),
                         ],
@@ -173,9 +183,57 @@ class FeedCard extends ConsumerWidget {
                       .toggle(post.code,
                           following: following, company: post.isCompany)),
                 ),
+              // "⋯" — SHIKOYAT VA BLOKLASH (UGC talabi) lentaning o'zida,
+              // post tafsilotidagi varaqning aynan o'zi.
+              if (!mine && post.id > 0)
+                Semantics(
+                  button: true,
+                  label: l.reportTitle,
+                  excludeSemantics: true,
+                  child: InkResponse(
+                    key: const ValueKey('feed-more'),
+                    radius: 22,
+                    onTap: () => showContentActions(
+                      context,
+                      ref,
+                      target: post.isCompany
+                          ? ReportTarget.companyPost
+                          : ReportTarget.post,
+                      targetId: '${post.id}',
+                      ownerCode: post.code,
+                      blockKind:
+                          post.isCompany ? BlockKind.company : BlockKind.record,
+                      blockId: post.code,
+                      keyPrefix: 'feed',
+                      onBlocked: onBlocked,
+                    ),
+                    // Balandligi avatar bilan bir xil (38) — sarlavha
+                    // qatori va karta balandligi o'zgarmaydi.
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 0, 8),
+                      child: Icon(Icons.more_horiz_rounded,
+                          size: 22, color: t.text2),
+                    ),
+                  ),
+                ),
             ],
           ),
-          if (media.isNotEmpty) ...[
+          // KARUSEL — bir nechta RASM (ko'rgazma posti): yon tomonga
+          // surish, ostida nuqtalar. Video post avvalgidek bitta media.
+          if (media.isNotEmpty && !post.isVideo && post.mediaUrls.length > 1) ...[
+            const SizedBox(height: Gap.md),
+            // Bosish — o'sha rasm butun ekranda (ikki marta bosib layk
+            // bu yerda yo'q: surish va bosish bilan to'qnashmasin).
+            MediaCarousel(
+              key: const ValueKey('feed-carousel'),
+              urls: post.mediaUrls,
+              keyPrefix: 'feed-carousel',
+              borderRadius: R.gentle,
+              background: t.surface2,
+              onTap: (i) =>
+                  openImageViewer(context, post.mediaUrls, initial: i),
+            ),
+          ] else if (media.isNotEmpty) ...[
             const SizedBox(height: Gap.md),
             // Quti media shakliga MOSLASHADI. Ilgari bu yerda
             // `AspectRatio(4 / 3)` + `cover` turardi: tik rasm usti
@@ -227,6 +285,11 @@ class FeedCard extends ConsumerWidget {
                 showMuteVideo: true,
               ),
             ),
+          ],
+          // KO'RGAZMA: sarlavha, narx, tovar va havola — ixcham.
+          if (ShowcaseExtras.hasAny(post)) ...[
+            const SizedBox(height: Gap.md),
+            ShowcaseExtras(post: post, keyPrefix: 'feed-showcase'),
           ],
           // Postdagi musiqa — bosilsa tinglash va «Shu musiqani ishlatish».
           if (post.music != null) ...[
