@@ -1,0 +1,1720 @@
+{
+ "pack_id": "core",
+ "schema_version": 1,
+ "content_version": "2026.10.08-dev.1",
+ "groups": [
+  {
+   "id": "carbohydrate",
+   "names": {
+    "uz": "Uglevod almashinuvi",
+    "ru": "Углеводный обмен",
+    "en": "Carbohydrate metabolism"
+   }
+  },
+  {
+   "id": "kidney",
+   "names": {
+    "uz": "Buyrak funksiyasi",
+    "ru": "Функция почек",
+    "en": "Kidney function"
+   }
+  },
+  {
+   "id": "liver",
+   "names": {
+    "uz": "Jigar",
+    "ru": "Печень",
+    "en": "Liver"
+   }
+  },
+  {
+   "id": "lipids",
+   "names": {
+    "uz": "Lipidlar",
+    "ru": "Липиды",
+    "en": "Lipids"
+   }
+  },
+  {
+   "id": "proteins",
+   "names": {
+    "uz": "Oqsillar va yallig‘lanish",
+    "ru": "Белки и воспаление",
+    "en": "Proteins and inflammation"
+   }
+  },
+  {
+   "id": "electrolytes",
+   "names": {
+    "uz": "Elektrolitlar va minerallar",
+    "ru": "Электролиты и минералы",
+    "en": "Electrolytes and minerals"
+   }
+  },
+  {
+   "id": "enzymes",
+   "names": {
+    "uz": "Fermentlar",
+    "ru": "Ферменты",
+    "en": "Enzymes"
+   }
+  },
+  {
+   "id": "urine",
+   "names": {
+    "uz": "Siydik tahlili",
+    "ru": "Анализ мочи",
+    "en": "Urinalysis"
+   }
+  }
+ ],
+ "analytes": [
+  {
+   "id": "glucose-plasma-fasting",
+   "status": "draft",
+   "content_state": "sourced_sample",
+   "names": {
+    "uz": "Och qoringa plazma glyukozasi",
+    "ru": "Глюкоза плазмы натощак",
+    "en": "Fasting plasma glucose"
+   },
+   "tagline": {
+    "uz": "Natija → kontekst → tushuncha",
+    "ru": "Результат → контекст → понимание",
+    "en": "Result → context → understanding"
+   },
+   "synonyms": [
+    "FPG",
+    "glucose",
+    "glyukoza",
+    "глюкоза",
+    "qand",
+    "сахар крови",
+    "blood sugar",
+    "ГПН"
+   ],
+   "group": "carbohydrate",
+   "specimen": {
+    "uz": "Plazma",
+    "ru": "Плазма",
+    "en": "Plasma"
+   },
+   "population": {
+    "uz": "Kattalar, homilador bo‘lmagan",
+    "ru": "Взрослые, небеременные",
+    "en": "Adults, not pregnant"
+   },
+   "method": null,
+   "units": [
+    "mg/dL",
+    "mmol/L"
+   ],
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "claims": [
+    {
+     "section": "purpose",
+     "source_ids": [
+      "medline-glucose"
+     ],
+     "locator": "What is it used for?",
+     "text": {
+      "uz": "Prediabet va diabetni skrining qilish, glyukoza yuqori yoki pastligini ko‘rsatuvchi belgilar sababini aniqlash va glyukozaga ta’sir qiluvchi ayrim uzoq muddatli dorilarning nojo‘ya ta’sirini kuzatish uchun.",
+      "ru": "Скрининг предиабета и диабета, выяснение причины симптомов повышенной или пониженной глюкозы и контроль побочных эффектов некоторых длительно принимаемых лекарств, влияющих на глюкозу.",
+      "en": "Screening for prediabetes and diabetes, finding the cause of symptoms of high or low glucose, and monitoring side effects of some long-term medicines that affect glucose."
+     }
+    },
+    {
+     "section": "high_result",
+     "source_ids": [
+      "medline-glucose"
+     ],
+     "locator": "What do the results mean?",
+     "text": {
+      "uz": "Eng ko‘p uchraydigan sabablar — prediabet va diabet. Boshqa mumkin bo‘lgan sabablar: qalqonsimon bez faolligining oshishi (gipertireoz), oshqozonosti bezi muammolari (jumladan pankreatit), jarrohlik, juda og‘ir kasallik yoki jarohat stressi, buyrak usti bezi muammolari va ayrim dorilar.",
+      "ru": "Самые частые причины — предиабет и диабет. Другие возможные причины: повышенная функция щитовидной железы (гипертиреоз), болезни поджелудочной железы (включая панкреатит), стресс при операции, очень тяжёлой болезни или травме, болезни надпочечников и некоторые лекарства.",
+      "en": "Prediabetes and diabetes are the most common causes. Other possible causes include an overactive thyroid gland (hyperthyroidism), pancreatic problems including pancreatitis, stress from surgery, very serious illness or trauma, adrenal gland problems and certain medicines."
+     }
+    },
+    {
+     "section": "low_result",
+     "source_ids": [
+      "medline-glucose"
+     ],
+     "locator": "What do the results mean?",
+     "text": {
+      "uz": "Diabeti bor odamlarda: ayrim diabet dorilari va glyukozani pasaytiruvchi boshqa dorilar, yetarli ovqatlanmaslik (ayniqsa diabet dorisidan keyin), odatdagidan ko‘proq jismoniy faollik. Diabet bo‘lmasa, past glyukoza kam uchraydi; mumkin bo‘lgan sabablar: jigar yoki buyrak kasalligi, buyrak usti bezi yetishmovchiligi, ayrim gipofiz kasalliklari, qalqonsimon bez faolligining pasayishi (gipotireoz), to‘yib ovqatlanmaslik, ayrim dorilar va alkogolga qaramlik.",
+      "ru": "При диабете: некоторые лекарства от диабета и другие препараты, снижающие глюкозу, недостаточное питание (особенно после приёма лекарства от диабета), физическая нагрузка больше обычной. Без диабета низкая глюкоза встречается редко; возможные причины: болезни печени или почек, недостаточность надпочечников, некоторые заболевания гипофиза, сниженная функция щитовидной железы (гипотиреоз), истощение, некоторые лекарства и расстройство, связанное с употреблением алкоголя.",
+      "en": "With diabetes: some diabetes medicines and other glucose-lowering medicines, not eating enough (especially after taking diabetes medicine) and more physical activity than usual. Without diabetes, low glucose is uncommon; possible causes include liver or kidney disease, underactive adrenal glands, some pituitary disorders, an underactive thyroid gland (hypothyroidism), malnutrition, certain medicines and alcohol use disorder."
+     }
+    },
+    {
+     "section": "limitations",
+     "source_ids": [
+      "medline-glucose"
+     ],
+     "locator": "What do the results mean?",
+     "text": {
+      "uz": "Natijaning ma’nosi qaysi test qilingani, boshqa tahlillar natijalari va kasallik tarixiga bog‘liq.",
+      "ru": "Значение результата зависит от вида теста, результатов других анализов и анамнеза.",
+      "en": "What a result means depends on which test was done, other test results and the medical history."
+     }
+    }
+   ],
+   "notes": {
+    "preanalytics": {
+     "uz": "Probirka, saqlash va ajratish shartlari aniq reagent IFU va mahalliy SOP ga bog‘lanadi. Bu namunada universal vaqt, harorat yoki apparat parametri berilmagan.",
+     "ru": "Пробирка, хранение и отделение образца привязываются к конкретной IFU реагента и локальной SOP. Универсальные время, температура и параметры прибора здесь не задаются.",
+     "en": "Tube, storage and separation conditions are tied to the exact reagent IFU and local SOP. No universal times, temperatures or instrument settings are given here."
+    }
+   },
+   "reference_intervals": [],
+   "decision_limits": [
+    {
+     "label": {
+      "uz": "Prediabet oralig‘i",
+      "ru": "Диапазон предиабета",
+      "en": "Prediabetes range"
+     },
+     "unit": "mg/dL",
+     "low": 100,
+     "high": 125,
+     "population": {
+      "uz": "Homilador bo‘lmagan kattalar, kamida 8 soat ochlik",
+      "ru": "Небеременные взрослые, голодание не менее 8 часов",
+      "en": "Nonpregnant adults, at least 8 hours of fasting"
+     },
+     "source_ids": [
+      "niddk-diagnosis"
+     ]
+    },
+    {
+     "label": {
+      "uz": "Diabet chegarasi",
+      "ru": "Порог диабета",
+      "en": "Diabetes threshold"
+     },
+     "unit": "mg/dL",
+     "low": 126,
+     "high": null,
+     "population": {
+      "uz": "Homilador bo‘lmagan kattalar, kamida 8 soat ochlik",
+      "ru": "Небеременные взрослые, голодание не менее 8 часов",
+      "en": "Nonpregnant adults, at least 8 hours of fasting"
+     },
+     "note": {
+      "uz": "Tashxis odatda takroriy test bilan tasdiqlanadi. Homiladorlikda mezonlar boshqacha.",
+      "ru": "Диагноз обычно подтверждают повторным тестом. При беременности критерии другие.",
+      "en": "Diagnosis usually requires a repeat test. Pregnancy uses different criteria."
+     },
+     "source_ids": [
+      "niddk-diagnosis"
+     ]
+    }
+   ],
+   "source_ids": [
+    "medline-glucose",
+    "niddk-diagnosis"
+   ],
+   "related": [
+    "hba1c",
+    "ogtt",
+    "fructosamine"
+   ],
+   "conversion": {
+    "molar_mass_g_per_mol": 180.156,
+    "basis": "C6H12O6; IUPAC standard atomic weights C 12.011, H 1.008, O 15.999"
+   },
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   },
+   "instrument_binding": {
+    "manufacturer": null,
+    "model": null,
+    "reagent_ref": null,
+    "ifu_revision": null,
+    "calibrator_lot": null
+   }
+  },
+  {
+   "id": "hba1c",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Glikirlangan gemoglobin (HbA1c)",
+    "ru": "Гликированный гемоглобин (HbA1c)",
+    "en": "Glycated haemoglobin (HbA1c)"
+   },
+   "synonyms": [
+    "HbA1c",
+    "A1c",
+    "glikozillangan gemoglobin",
+    "гликозилированный гемоглобин",
+    "glycated hemoglobin",
+    "glycohemoglobin"
+   ],
+   "group": "carbohydrate",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ogtt",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Glyukozaga tolerantlik testi (OGTT)",
+    "ru": "Пероральный глюкозотолерантный тест (ПГТТ)",
+    "en": "Oral glucose tolerance test (OGTT)"
+   },
+   "synonyms": [
+    "OGTT",
+    "ПГТТ",
+    "ГТТ",
+    "glucose tolerance",
+    "glyukoza yuklama"
+   ],
+   "group": "carbohydrate",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "fructosamine",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Fruktozamin",
+    "ru": "Фруктозамин",
+    "en": "Fructosamine"
+   },
+   "synonyms": [
+    "fructosamine",
+    "фруктозамин"
+   ],
+   "group": "carbohydrate",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "creatinine",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Kreatinin",
+    "ru": "Креатинин",
+    "en": "Creatinine"
+   },
+   "synonyms": [
+    "creatinine",
+    "креатинин",
+    "kreatinin",
+    "Cr",
+    "Crea"
+   ],
+   "group": "kidney",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "urea",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Mochevina",
+    "ru": "Мочевина",
+    "en": "Urea"
+   },
+   "synonyms": [
+    "urea",
+    "мочевина",
+    "mochevina",
+    "karbamid"
+   ],
+   "group": "kidney",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "egfr",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Koptokcha filtratsiyasi tezligi (eGFR)",
+    "ru": "Расчётная скорость клубочковой фильтрации (рСКФ)",
+    "en": "Estimated glomerular filtration rate (eGFR)"
+   },
+   "synonyms": [
+    "eGFR",
+    "GFR",
+    "СКФ",
+    "рСКФ",
+    "KFT",
+    "CKD-EPI"
+   ],
+   "group": "kidney",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "uric-acid",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Siydik kislotasi",
+    "ru": "Мочевая кислота",
+    "en": "Uric acid"
+   },
+   "synonyms": [
+    "uric acid",
+    "urat",
+    "ураты",
+    "мочевая кислота"
+   ],
+   "group": "kidney",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "alt",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Alaninaminotransferaza (ALT)",
+    "ru": "Аланинаминотрансфераза (АЛТ)",
+    "en": "Alanine aminotransferase (ALT)"
+   },
+   "synonyms": [
+    "ALT",
+    "ALAT",
+    "АЛТ",
+    "АлАТ",
+    "GPT",
+    "SGPT"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ast",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Aspartataminotransferaza (AST)",
+    "ru": "Аспартатаминотрансфераза (АСТ)",
+    "en": "Aspartate aminotransferase (AST)"
+   },
+   "synonyms": [
+    "AST",
+    "ASAT",
+    "АСТ",
+    "АсАТ",
+    "GOT",
+    "SGOT"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "alp",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Ishqoriy fosfataza (ALP)",
+    "ru": "Щелочная фосфатаза (ЩФ)",
+    "en": "Alkaline phosphatase (ALP)"
+   },
+   "synonyms": [
+    "ALP",
+    "ALKP",
+    "ЩФ",
+    "щелочная фосфатаза"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ggt",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Gamma-glutamiltransferaza (GGT)",
+    "ru": "Гамма-глутамилтрансфераза (ГГТ)",
+    "en": "Gamma-glutamyl transferase (GGT)"
+   },
+   "synonyms": [
+    "GGT",
+    "GGTP",
+    "ГГТ",
+    "ГГТП",
+    "γ-GT",
+    "gamma GT"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "bilirubin-total",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Umumiy bilirubin",
+    "ru": "Общий билирубин",
+    "en": "Total bilirubin"
+   },
+   "synonyms": [
+    "bilirubin",
+    "билирубин",
+    "TBIL"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "bilirubin-direct",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "To‘g‘ri (bog‘langan) bilirubin",
+    "ru": "Прямой (связанный) билирубин",
+    "en": "Direct (conjugated) bilirubin"
+   },
+   "synonyms": [
+    "direct bilirubin",
+    "conjugated bilirubin",
+    "прямой билирубин",
+    "DBIL"
+   ],
+   "group": "liver",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "cholesterol-total",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Umumiy xolesterin",
+    "ru": "Общий холестерин",
+    "en": "Total cholesterol"
+   },
+   "synonyms": [
+    "cholesterol",
+    "холестерин",
+    "холестерол",
+    "xolesterol",
+    "TC"
+   ],
+   "group": "lipids",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "hdl-c",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "YuZLP xolesterini (HDL-C)",
+    "ru": "Холестерин ЛПВП",
+    "en": "HDL cholesterol"
+   },
+   "synonyms": [
+    "HDL",
+    "HDL-C",
+    "ЛПВП",
+    "YuZLP"
+   ],
+   "group": "lipids",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ldl-c",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "PZLP xolesterini (LDL-C)",
+    "ru": "Холестерин ЛПНП",
+    "en": "LDL cholesterol"
+   },
+   "synonyms": [
+    "LDL",
+    "LDL-C",
+    "ЛПНП",
+    "PZLP"
+   ],
+   "group": "lipids",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "triglycerides",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Triglitseridlar",
+    "ru": "Триглицериды",
+    "en": "Triglycerides"
+   },
+   "synonyms": [
+    "TG",
+    "ТГ",
+    "triglycerides",
+    "триглицериды"
+   ],
+   "group": "lipids",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "non-hdl-c",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Non-HDL xolesterin",
+    "ru": "Холестерин не-ЛПВП",
+    "en": "Non-HDL cholesterol"
+   },
+   "synonyms": [
+    "non-HDL",
+    "не-ЛПВП",
+    "non HDL"
+   ],
+   "group": "lipids",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "albumin",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Albumin",
+    "ru": "Альбумин",
+    "en": "Albumin"
+   },
+   "synonyms": [
+    "albumin",
+    "альбумин",
+    "ALB"
+   ],
+   "group": "proteins",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "total-protein",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Umumiy oqsil",
+    "ru": "Общий белок",
+    "en": "Total protein"
+   },
+   "synonyms": [
+    "total protein",
+    "общий белок",
+    "oqsil",
+    "TP"
+   ],
+   "group": "proteins",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "crp",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "C-reaktiv oqsil (CRP)",
+    "ru": "С-реактивный белок (СРБ)",
+    "en": "C-reactive protein (CRP)"
+   },
+   "synonyms": [
+    "CRP",
+    "СРБ",
+    "C reaktiv oqsil"
+   ],
+   "group": "proteins",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "sodium",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Natriy (Na)",
+    "ru": "Натрий (Na)",
+    "en": "Sodium (Na)"
+   },
+   "synonyms": [
+    "Na",
+    "natriy",
+    "натрий",
+    "sodium"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "potassium",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Kaliy (K)",
+    "ru": "Калий (K)",
+    "en": "Potassium (K)"
+   },
+   "synonyms": [
+    "K",
+    "kaliy",
+    "калий",
+    "potassium"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "chloride",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Xlor (Cl)",
+    "ru": "Хлор (Cl)",
+    "en": "Chloride (Cl)"
+   },
+   "synonyms": [
+    "Cl",
+    "xlor",
+    "хлор",
+    "хлориды",
+    "chloride"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "calcium",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Kalsiy (Ca)",
+    "ru": "Кальций (Ca)",
+    "en": "Calcium (Ca)"
+   },
+   "synonyms": [
+    "Ca",
+    "kalsiy",
+    "кальций",
+    "calcium"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "magnesium",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Magniy (Mg)",
+    "ru": "Магний (Mg)",
+    "en": "Magnesium (Mg)"
+   },
+   "synonyms": [
+    "Mg",
+    "magniy",
+    "магний",
+    "magnesium"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "phosphate",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Fosfat (noorganik fosfor)",
+    "ru": "Неорганический фосфор (фосфат)",
+    "en": "Phosphate (inorganic phosphorus)"
+   },
+   "synonyms": [
+    "phosphate",
+    "phosphorus",
+    "фосфор",
+    "фосфат",
+    "fosfor",
+    "PO4"
+   ],
+   "group": "electrolytes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "amylase",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Amilaza",
+    "ru": "Амилаза",
+    "en": "Amylase"
+   },
+   "synonyms": [
+    "amylase",
+    "амилаза",
+    "α-amylase",
+    "diastaza",
+    "диастаза"
+   ],
+   "group": "enzymes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "lipase",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Lipaza",
+    "ru": "Липаза",
+    "en": "Lipase"
+   },
+   "synonyms": [
+    "lipase",
+    "липаза"
+   ],
+   "group": "enzymes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ldh",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Laktatdegidrogenaza (LDH)",
+    "ru": "Лактатдегидрогеназа (ЛДГ)",
+    "en": "Lactate dehydrogenase (LDH)"
+   },
+   "synonyms": [
+    "LDH",
+    "LD",
+    "ЛДГ"
+   ],
+   "group": "enzymes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "ck",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Kreatinkinaza (CK)",
+    "ru": "Креатинкиназа (КК)",
+    "en": "Creatine kinase (CK)"
+   },
+   "synonyms": [
+    "CK",
+    "CPK",
+    "КК",
+    "КФК",
+    "креатинфосфокиназа"
+   ],
+   "group": "enzymes",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "urine-chemistry",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Siydikning kimyoviy tahlili",
+    "ru": "Химическое исследование мочи",
+    "en": "Urine chemistry (dipstick)"
+   },
+   "synonyms": [
+    "dipstick",
+    "test poloska",
+    "тест-полоски",
+    "ОАМ",
+    "umumiy siydik tahlili",
+    "urinalysis"
+   ],
+   "group": "urine",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "urine-microscopy",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Siydik cho‘kmasi mikroskopiyasi",
+    "ru": "Микроскопия осадка мочи",
+    "en": "Urine sediment microscopy"
+   },
+   "synonyms": [
+    "sediment",
+    "осадок мочи",
+    "cho‘kma",
+    "microscopy"
+   ],
+   "group": "urine",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  },
+  {
+   "id": "urine-acr",
+   "status": "draft",
+   "content_state": "structure_only",
+   "names": {
+    "uz": "Albumin/kreatinin nisbati (siydik)",
+    "ru": "Альбумин-креатининовое соотношение (моча)",
+    "en": "Urine albumin-to-creatinine ratio (ACR)"
+   },
+   "synonyms": [
+    "ACR",
+    "UACR",
+    "АКС",
+    "microalbumin",
+    "микроальбумин",
+    "mikroalbumin"
+   ],
+   "group": "urine",
+   "sections": [
+    "purpose",
+    "physiology",
+    "high_result",
+    "low_result",
+    "preanalytics",
+    "interference",
+    "related_tests",
+    "limitations"
+   ],
+   "review": {
+    "reviewer_id": null,
+    "reviewed_at": null,
+    "state": "pending"
+   },
+   "translation_review": {
+    "uz": "pending",
+    "ru": "pending",
+    "en": "pending"
+   }
+  }
+ ],
+ "sources": [
+  {
+   "id": "medline-glucose",
+   "kind": "web",
+   "title": "Blood Glucose Test",
+   "publisher": "MedlinePlus · U.S. National Library of Medicine",
+   "url": "https://medlineplus.gov/lab-tests/blood-glucose-test/",
+   "accessed": "2026-10-08",
+   "source_date": "2023-07-17",
+   "jurisdiction": "US",
+   "note": "Page updated 2023-07-17.",
+   "reuse_rights": "verify_before_distribution"
+  },
+  {
+   "id": "niddk-diagnosis",
+   "kind": "web",
+   "title": "Diabetes Tests & Diagnosis",
+   "publisher": "NIDDK · National Institutes of Health",
+   "url": "https://www.niddk.nih.gov/health-information/diabetes/overview/tests-diagnosis",
+   "accessed": "2026-10-08",
+   "source_date": "2022-07-01",
+   "jurisdiction": "US",
+   "note": "Last reviewed July 2022; the threshold table cites the American Diabetes Association.",
+   "reuse_rights": "verify_before_distribution"
+  }
+ ],
+ "quiz": [
+  {
+   "id": "dilution-equation",
+   "review_state": "pending",
+   "source_ids": [],
+   "correct_index": 0,
+   "prompt": {
+    "uz": "Suyultirishda yakuniy konsentratsiya uchun qaysi tenglama ishlatiladi?",
+    "ru": "Какое уравнение используется для расчёта разведения?",
+    "en": "Which equation is used for a dilution?"
+   },
+   "basis": {
+    "uz": "Miqdoriy konsentratsiya ta’rifi: c = n / V. Faqat erituvchi qo‘shilsa, n o‘zgarmaydi.",
+    "ru": "Определение молярной концентрации: c = n / V. При добавлении только растворителя n не меняется.",
+    "en": "Definition of amount concentration: c = n / V. Adding only solvent leaves n unchanged."
+   },
+   "options": [
+    {
+     "text": {
+      "uz": "C₁V₁ = C₂V₂",
+      "ru": "C₁V₁ = C₂V₂",
+      "en": "C₁V₁ = C₂V₂"
+     },
+     "explanation": {
+      "uz": "To‘g‘ri: erituvchi qo‘shilganda modda miqdori saqlanadi — oldin n = C₁V₁, keyin n = C₂V₂.",
+      "ru": "Верно: при добавлении растворителя количество вещества сохраняется — до n = C₁V₁, после n = C₂V₂.",
+      "en": "Correct: adding solvent conserves the amount of solute — n = C₁V₁ before and n = C₂V₂ after."
+     }
+    },
+    {
+     "text": {
+      "uz": "C₁ + V₁ = C₂ + V₂",
+      "ru": "C₁ + V₁ = C₂ + V₂",
+      "en": "C₁ + V₁ = C₂ + V₂"
+     },
+     "explanation": {
+      "uz": "Konsentratsiya va hajm turli birlikda — ularni qo‘shib bo‘lmaydi. Saqlanadigan kattalik n = C·V.",
+      "ru": "Концентрацию и объём нельзя складывать — у них разные единицы. Сохраняется n = C·V.",
+      "en": "Concentration and volume have different units and can't be added. The conserved quantity is n = C·V."
+     }
+    },
+    {
+     "text": {
+      "uz": "C₁V₂ = C₂ / V₁",
+      "ru": "C₁V₂ = C₂ / V₁",
+      "en": "C₁V₂ = C₂ / V₁"
+     },
+     "explanation": {
+      "uz": "O‘lchamlar mos emas: chap tomonda miqdor, o‘ng tomonda esa hajmga bo‘lingan konsentratsiya.",
+      "ru": "Размерности не совпадают: слева количество вещества, справа концентрация, делённая на объём.",
+      "en": "The dimensions don't match: the left side is an amount, the right side is concentration divided by volume."
+     }
+    }
+   ]
+  },
+  {
+   "id": "unit-factor",
+   "review_state": "pending",
+   "source_ids": [],
+   "correct_index": 1,
+   "prompt": {
+    "uz": "Boshqa moddaning mg/dL → mmol/L koeffitsiyentini ishlatish mumkinmi?",
+    "ru": "Можно ли использовать коэффициент mg/dL → mmol/L другого вещества?",
+    "en": "Can another analyte’s mg/dL → mmol/L factor be reused?"
+   },
+   "basis": {
+    "uz": "Molyar konsentratsiya = massa konsentratsiyasi / molyar massa.",
+    "ru": "Молярная концентрация = массовая концентрация / молярная масса.",
+    "en": "Molar concentration = mass concentration / molar mass."
+   },
+   "options": [
+    {
+     "text": {
+      "uz": "Har doim",
+      "ru": "Всегда",
+      "en": "Always"
+     },
+     "explanation": {
+      "uz": "Molyar massalar farq qiladi, demak koeffitsiyent ham: glyukoza ≈ 18,0 mg/dL har 1 mmol/L ga, kreatinin ≈ 11,3 mg/dL.",
+      "ru": "Молярные массы различаются, значит и коэффициенты: глюкоза ≈ 18,0 mg/dL на 1 mmol/L, креатинин ≈ 11,3 mg/dL.",
+      "en": "Molar masses differ, so the factors differ: glucose ≈ 18.0 mg/dL per 1 mmol/L, creatinine ≈ 11.3 mg/dL."
+     }
+    },
+    {
+     "text": {
+      "uz": "Yo‘q, moddaning molyar massasi kerak",
+      "ru": "Нет, нужна молярная масса вещества",
+      "en": "No, the analyte’s molar mass is needed"
+     },
+     "explanation": {
+      "uz": "To‘g‘ri: mmol/L = (mg/dL × 10) / molyar massa (g/mol). Har bir modda o‘z molyar massasini talab qiladi.",
+      "ru": "Верно: mmol/L = (mg/dL × 10) / молярная масса (г/моль). Для каждого вещества нужна своя молярная масса.",
+      "en": "Correct: mmol/L = (mg/dL × 10) / molar mass (g/mol). Each substance needs its own molar mass."
+     }
+    },
+    {
+     "text": {
+      "uz": "Faqat siydikda",
+      "ru": "Только в моче",
+      "en": "Only for urine"
+     },
+     "explanation": {
+      "uz": "Namuna turi koeffitsiyentni o‘zgartirmaydi — uni moddaning molyar massasi belgilaydi.",
+      "ru": "Тип образца не меняет коэффициент — его определяет молярная масса вещества.",
+      "en": "The specimen type doesn't change the factor — the substance’s molar mass does."
+     }
+    }
+   ]
+  },
+  {
+   "id": "instrument-instructions",
+   "review_state": "pending",
+   "source_ids": [],
+   "correct_index": 2,
+   "prompt": {
+    "uz": "Apparat yo‘riqnomasini tanlashda nima muhim?",
+    "ru": "Что важно при выборе инструкции к прибору?",
+    "en": "What matters when selecting instrument instructions?"
+   },
+   "basis": {
+    "uz": "Ishlab chiqaruvchi yo‘riqnomalari aniq model va hujjat versiyasiga bog‘liq.",
+    "ru": "Инструкции производителя относятся к конкретной модели и версии документа.",
+    "en": "Manufacturer instructions are specific to a model and document revision."
+   },
+   "options": [
+    {
+     "text": {
+      "uz": "Faqat firma nomi",
+      "ru": "Только производитель",
+      "en": "Manufacturer alone"
+     },
+     "explanation": {
+      "uz": "Bir firmaning turli modellari turli tartib va sozlamalarga ega bo‘lishi mumkin.",
+      "ru": "Разные модели одного производителя могут иметь разные процедуры и настройки.",
+      "en": "Different models from one manufacturer can use different procedures and settings."
+     }
+    },
+    {
+     "text": {
+      "uz": "Faqat qopqoq rangi",
+      "ru": "Только цвет крышки",
+      "en": "Cap colour alone"
+     },
+     "explanation": {
+      "uz": "Qopqoq rangi probirka turini bildiradi, apparat tartibini emas.",
+      "ru": "Цвет крышки обозначает тип пробирки, а не процедуру прибора.",
+      "en": "Cap colour identifies a tube type, not the instrument procedure."
+     }
+    },
+    {
+     "text": {
+      "uz": "Model va tegishli hujjat versiyasi",
+      "ru": "Модель и версия документа",
+      "en": "Model and relevant document revision"
+     },
+     "explanation": {
+      "uz": "To‘g‘ri: tartib aniq modelga va yo‘riqnoma (hamda reagent IFU) ning amaldagi versiyasiga mos bo‘lishi kerak.",
+      "ru": "Верно: процедура должна соответствовать точной модели и действующей версии инструкции (и IFU реагента).",
+      "en": "Correct: the procedure must match the exact model and the current revision of the instructions (and the reagent IFU)."
+     }
+    }
+   ]
+  }
+ ],
+ "ifu_records": [],
+ "library": [],
+ "lessons": [],
+ "discrepancies": []
+}
