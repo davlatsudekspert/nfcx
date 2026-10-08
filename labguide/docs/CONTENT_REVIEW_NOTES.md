@@ -40,3 +40,17 @@ Manbalar va qoidalar: [DECISIONS.md](DECISIONS.md) D-19.
   tekshirishda eritrotsitlar yorilishi), lekin so‘zni ishlatmaydi.
 - O‘zbekcha tibbiy atamalar (masalan, “oshqozonosti bezi”, “buyrak usti bezi”) — o‘zbek tilidagi
   darsliklar bilan solishtirilishi kerak (domla materiallari kelgach).
+
+## 2-sessiya o‘zgarishlari — reviewer e’tibori uchun
+- **Tarjima sharhi** bo‘yicha ma’no tuzatishlari: kalsiy (og‘ir kasal *yoki* jarrohlik),
+  siydikdagi bilirubin (“erta belgisi bo‘lishi mumkin”), yassi epiteliy va kristallar
+  (“bo‘lishi mumkin”), ruscha “натощак” faqat manbada “fasting” bo‘lgan joylarda.
+- **Mashq noto‘g‘ri variantlari** (D-31): 40 savoldagi 76 variant uzunlik bo‘yicha
+  muvozanatlash uchun qayta yozildi; to‘g‘ri variantlar va manbalar o‘zgarmagan. 4 ta izoh
+  moslashtirildi: `bilirubin-direct-q1` (1), `crp-q1` (2), `cholesterol-total-q1` (2),
+  `hdl-c-q1` (0). Qisqa qoldirilgan: `sodium-q1` “Diabetes insipidus”, `potassium-q2`
+  “Addison disease” (uzaytirish noaniqlik tug‘dirardi).
+- **Hisoblangan mmol/L** (glyukoza, OGTT): manbada faqat mg/dL; ekranda “hisoblangan” deb
+  belgilangan va izoh bor — reviewer yaxlitlashni (1 kasr) tasdiqlashi kerak.
+- Fruktozamin (`niddk-a1c`) va ALT (`medline-ast`) kartalaridan hech bir da’voda
+  keltirilmagan manbalar olib tashlandi.

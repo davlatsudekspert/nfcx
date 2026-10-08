@@ -1,6 +1,6 @@
 # LabGuide — progress
 
-Yangi sessiya shu fayldan boshlaydi. Oxirgi yangilanish: **2026-10-08, 1-sessiya**.
+Yangi sessiya shu fayldan boshlaydi. Oxirgi yangilanish: **2026-10-08, 2-sessiya (mustaqil sharh tuzatishlari)**.
 
 ## Qisqacha holat
 
@@ -53,28 +53,43 @@ kelmagan**.
 - Domla materiallari: `LibraryItem`, `SourceRef` (sahifa), `Discrepancy`, `Lesson`, tarqatish
   huquqi qaydi, alohida kitob paketlari; [CONTENT_INTAKE.md](CONTENT_INTAKE.md).
 
-## Haqiqiy tekshiruv natijalari (2026-10-08, shu konteynerda)
+### 2-sessiya: to‘rtta mustaqil sharh bo‘yicha tuzatishlar (D-27 … D-31)
+- **Tarjima:** paket, ARB va kalkulyator izohlarida ma’no va atama xatolari (och qolish,
+  2-tip, bevosita bilirubin, JSST, контроль качества, рСКФ, мг/дл…), uz/ru da o‘nlik vergul,
+  en da amerikancha imlo.
+- **QC (D-27, D-30):** chegaradagi qiymat (5.4 vs 5.0/0.2) endi buzilish emas; rad etilgan
+  seriya keyingi qoidalar va statistikada ishlatilmaydi; saqlash xatosi ko‘rsatiladi; maqsad
+  manbasi, amal qilish sanasi, kuzatilgan x̄/SD, bekor qilish; seriya vaqti; daraja nomi;
+  zaxira nusxa/tiklash; o‘qilmagan ma’lumotni qutqarish; kiritilgandagi xulosa (audit);
+  CSV da daraja xulosasi va formula injection himoyasi.
+- **Kalkulyatorlar:** eskirgan natija o‘chadi; kiritilgan qiymatlar natija ostida; birlik
+  chalkashligi eslatmasi; AG da qisman natija; manfiy natija eslatmasi; “1,500” ikki ma’noli.
+- **Qobiq/accessibility (D-28):** TalkBack tap amali; profildan kirish oqimi; past ekran;
+  tab xotirasi va qayta bosishda tepaga; WCAG 1.4.11 chegara kontrasti; OTP avtomatik
+  tekshiruv; maxfiylik matnlari; qoralamalar avtosaqlash; Android release imzo (key.properties).
+- **Kontent (D-29, D-31):** qat’iyroq validator; qaror chegaralari alohida bloklarda va
+  hisoblangan mmol/L; kirillcha qidiruv; savol manbasi; to‘g‘ri javob uzunligi bo‘yicha
+  bilinmaydi (61/71 → 21/71).
+
+## Haqiqiy tekshiruv natijalari (2026-10-08, shu konteynerda va GitHub Actions’da)
 
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **208 / 208 o‘tdi** (unit 134: auth/settings 14, content 36, core logic 25, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 32, QC model 9, Westgard qoidalari 14; widget oqimlari 43 (kalkulyatorlar 9, QC 2); layout matritsa 31) |
-| Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 48 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
-| Tap target | iOS 44×44 va labeled tap target guideline’lari (Bosh, Tahlillar) — o‘tdi |
-| Kontrast | Palitra juftliklari ≥ 4.5:1 (light va dark) — o‘tdi |
-| `flutter build apk --debug` | ✓ `app-debug.apk` |
-| `flutter build apk --release --split-per-abi` | ✓ arm64-v8a 19.3 MB, armeabi-v7a 16.8 MB, x86_64 20.7 MB (debug kalit bilan imzolangan — do‘kon uchun emas) |
-| Release binarida demo OTP | `strings libapp.so`: `DemoOtpAdapter` 0, `_DemoChallenge` 0, `UnconfiguredOtpAdapter` 1 |
-| Vizual tekshiruv | `tool/screenshots` — 22 ta ekran rasmi (light/dark, uz/ru/en, 320 px, planshet) ko‘rib chiqildi |
+| `flutter test` | **259 / 259 o‘tdi** (unit 165: auth/settings 14, kontent 54, core logic 26, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 35, QC model 14, Westgard qoidalari 18; widget 94: oqimlar, kalkulyatorlar 13, QC 4, grafik 2, TalkBack amallari, sarlavha, tab xotirasi, qoralamalar, layout matritsa 34) |
+| Layout matritsa | 30 konfiguratsiya × 48 yo‘l + past ekran (844×390 ×1.0/×2.0, 320×568 ×2.0) uchala tilda — layout xatosi yo‘q, ro‘yxat maydoni ekranning ≥ 30 % i |
+| Yangi testlar | Har bir tuzatilgan xato uchun test tuzatishsiz **yiqilishi** tekshirildi (TalkBack, past ekran, sarlavha, tab xotirasi) |
+| Kontrast | Matn ≥ 4.5:1, boshqaruv chegaralari ≥ 3:1 (light va dark) |
+| GitHub Actions run #2, #5 (build) | ✓ testlar, Android release APK (sinov), **imzosiz iOS release build (macOS, Xcode)** |
+| GitHub Actions run #3 (testflight) | Sertifikat va API kalit (NOVA_*) o‘qildi, bundle ID/profil bosqichi o‘tdi; **App Store Connect’da ilova yozuvi yo‘qligi sababli to‘xtadi** |
+| GitHub Actions run #4 | 1 test yiqildi (kalkulyator yorlig‘i o‘zgargan, test keyingi commit’da yangilangan) — run #5 da tuzalgan |
+| Vizual tekshiruv | `tool/screenshots` — 37 ta ekran rasmi, yangi ekranlar (SI chegaralar, birlik eslatmasi, AG, landshaft, kirillcha qidiruv, QC) ko‘rib chiqildi |
 
 **Bajarilmagan tekshiruvlar** (o‘tdi deb hisoblanmaydi):
-- iOS build / simulator — macOS va Xcode kerak (bu konteyner Linux). CI tayyor
-  (nfcx `.github/workflows/labguide-ios.yml`, actionlint toza), lekin hali bir marta ham
-  ishga tushmagan: nfcx’da Actions to‘lov sababli to‘xtagan (D-25).
+- TestFlight’ga yuklash — App Store Connect ilova yozuvi kutilmoqda (pastda).
 - Android emulator yoki haqiqiy qurilmada ishga tushirish — konteynerda KVM yo‘q.
-  Haqiqiy qurilma tekshiruvi alohida qayd etilishi kerak.
-- Screen reader (TalkBack/VoiceOver) bilan qo‘lda tekshiruv.
-- Mustaqil tibbiy ekspert review’i — hech bir karta tasdiqlanmagan.
+- Screen reader (TalkBack/VoiceOver) bilan qo‘lda tekshiruv (avtomatik semantik testlar bor).
+- Mustaqil tibbiy ekspert review’i — hech bir karta va savol tasdiqlanmagan.
 
 ## Ulanmagan xizmatlar
 
@@ -86,17 +101,16 @@ kelmagan**.
 
 ## Blockerlar va foydalanuvchidan kerak bo‘ladigan narsalar
 
-- **GitHub Actions to‘lovi** (D-25): nfcx’da Actions to‘xtagan; tiklangach iOS/Android CI
-  `.github/workflows/labguide-ios.yml` orqali ishlaydi.
-- **TestFlight:** App Store Connect’da `uz.labguide.app` ilova yozuvini qo‘lda yaratish; secretlar
-  NFCSTORE’niki (`NOVA_*`) — [IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md).
+- **TestFlight:** App Store Connect → Apps → + → New App, Bundle ID `uz.labguide.app`,
+  SKU `labguide-ios`. Secretlar tayyor (NOVA_*; ASC_* nomlari ham qabul qilinadi). Shundan
+  keyin workflow `mode: testflight` bilan yuklaydi — [IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md).
+- **Google Play:** upload kaliti (`LABGUIDE_ANDROID_KEYSTORE_*` secretlari) — bo‘lmasa APK
+  faqat sinov uchun (debug kalit).
 - **Domla materiallari** (kitob, qo‘llanma, metodika, testlar) — hali kelmagan; kelganda
   tarqatish huquqi haqida ma’lumot ham kerak.
-- Mustaqil reviewer(lar): kim va qaysi analitlar.
+- Mustaqil reviewer(lar): kim va qaysi analitlar/savollar.
 - Aniq apparat modellari, reagent REF va IFU versiyalari (kalibrlash uchun).
-- E bosqich uchun: email provayder, backend hosting, App Store Connect va Play Console
-  hisoblari, imzolash kalitlari. Bular sir — repoga qo‘yilmaydi.
-- Bundle ID `uz.labguide.app` (D-16) — App Store Connect’da ilova yozuvi shu ID bilan ochiladi.
+- E bosqich uchun: email provayder, backend hosting. Sirlar repoga qo‘yilmaydi.
 
 ## Ishga tushirish
 
