@@ -135,6 +135,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   /// qarab — [musicPickerSpec] izohiga qarang.
   Future<void> _pickMusic() async {
     final l = L.of(context);
+    // Audio ham serverda avtomatik tekshiriladi — rasm kabi avval
+    // kontent qoidalari va ANIQ rozilik (`ensureContentRules`). Rozilik
+    // bo'lmasa fayl tanlash oynasi ham ochilmaydi.
+    if (!await ensureContentRules(context, ref) || !mounted) return;
     final spec = musicPickerSpec();
     final picked = await FilePicker.pickFiles(
       type: spec.type,
