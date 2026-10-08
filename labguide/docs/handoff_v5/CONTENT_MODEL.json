@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "record_kind": "analyte_template",
+  "id": "glucose-plasma-fasting",
+  "status": "draft",
+  "names": {"uz": "Och qoringa plazma glyukozasi", "ru": "Глюкоза плазмы натощак", "en": "Fasting plasma glucose"},
+  "synonyms": ["FPG", "glucose", "glyukoza", "глюкоза"],
+  "group": "carbohydrate-metabolism",
+  "specimen": "plasma",
+  "population": {"age_group": "adult", "pregnancy": "not_pregnant"},
+  "method": null,
+  "units": ["mg/dL", "mmol/L"],
+  "reference_intervals": [],
+  "decision_limits": [],
+  "sections": ["purpose", "physiology", "high_result", "low_result", "preanalytics", "interference", "related_tests", "limitations"],
+  "claims": [],
+  "sources": [
+    {"id": "medline-glucose", "url": "https://medlineplus.gov/lab-tests/blood-glucose-test/", "accessed": "2026-10-08", "reuse_rights": "verify_before_distribution"},
+    {"id": "niddk-diagnosis", "url": "https://www.niddk.nih.gov/health-information/diabetes/overview/tests-diagnosis", "accessed": "2026-10-08", "reuse_rights": "verify_before_distribution"}
+  ],
+  "review": {"reviewer_id": null, "reviewed_at": null, "state": "pending"},
+  "translation_review": {"uz": "pending", "ru": "pending", "en": "pending"},
+  "instrument_binding": {"manufacturer": null, "model": null, "reagent_ref": null, "ifu_revision": null, "calibrator_lot": null},
+  "implementation_note": "Template only. Every populated claim needs source_id, source locator, scope and review status. Publish only approved records; distinguish reference intervals from decision limits."
+}

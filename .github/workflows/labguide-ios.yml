@@ -1,0 +1,447 @@
+# LabGuide iOS (Mac'siz): GitHub macOS runnerida build va TestFlight.
+#
+# Faqat `labguide/` papkasidagi ilova (NFCSTORE ga tegmaydi).
+#
+# Rejimlar (workflow_dispatch -> mode):
+#   build      — Linux'da analyze + test, macOS'da imzosiz iOS release build
+#                (loyiha iOS SDK bilan kompilyatsiya bo'lishini tekshiradi).
+#   testflight — yuqoridagi + imzolangan IPA va TestFlight'ga YUKLASH.
+#                App Store review'ga YUBORILMAYDI, reliz QILINMAYDI.
+#
+# apple_setup=true (faqat testflight bilan): App Store Connect API orqali
+#   bundle ID ro'yxatdan o'tkaziladi (yo'q bo'lsa) va shu jamoa
+#   sertifikati bilan App Store profili yaratiladi (yo'q bo'lsa).
+#   App Store Connect'dagi ILOVA YOZUVINI API yaratib bera olmaydi —
+#   uni egasi qo'lda yaratadi (labguide/docs/IOS_TESTFLIGHT.md).
+#
+# Secretlar: avval LABGUIDE_*, bo'lmasa shu jamoaning mavjud NOVA_*
+# secretlari (Apple Distribution sertifikati va App Store Connect API
+# kaliti jamoa bo'yicha umumiy). Ilova profili secret emas — API'dan olinadi.
+name: LabGuide iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "build — imzosiz tekshiruv; testflight — imzo + TestFlight'ga yuklash"
+        type: choice
+        options: [build, testflight]
+        default: build
+      apple_setup:
+        description: "testflight uchun: bundle ID va App Store profilini API orqali yaratish (yo'q bo'lsa)"
+        type: boolean
+        default: false
+  # Workflow'ni ro'yxatdan o'tkazish va birinchi imzosiz tekshiruv:
+  # faqat shu fayl o'zgarganda ishlaydi.
+  push:
+    branches: [claude/new-session-xqozot]
+    paths: [.github/workflows/labguide-ios.yml]
+
+concurrency:
+  group: labguide-ios-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.6
+  MODE: ${{ inputs.mode || 'build' }}
+  APPLE_SETUP: ${{ inputs.apple_setup || false }}
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: labguide
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Analyze va testlar
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          flutter analyze
+          flutter test > "$RUNNER_TEMP/test.log" 2>&1 || {
+            grep -B4 -A40 -E "EXCEPTION CAUGHT|Expected:|\[E\]" "$RUNNER_TEMP/test.log" | head -200
+            tail -5 "$RUNNER_TEMP/test.log"; exit 1; }
+          tail -1 "$RUNNER_TEMP/test.log"
+          echo "- Linux testlar: $(tail -1 "$RUNNER_TEMP/test.log")" >> "$GITHUB_STEP_SUMMARY"
+
+  ios:
+    needs: tests
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: labguide
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # App Store Connect Xcode 26 / iOS 26 SDK bilan qurilgan buildni
+      # talab qiladi — eng yangi barqaror Xcode tanlanadi.
+      - name: Xcode tanlash
+        run: |
+          set -euo pipefail
+          XCODE=$(printf '%s\n' /Applications/Xcode_*.app | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | head -1 | awk '{print $2}' | cut -d. -f1)
+          [ "$MAJOR" -ge 26 ] || echo "::warning::Xcode $MAJOR — App Store Connect Xcode 26+ talab qilishi mumkin"
+          echo "- Xcode: $(xcodebuild -version | head -1)" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Loyiha ma'lumotlari
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          IDS=$(grep -o 'PRODUCT_BUNDLE_IDENTIFIER = [^;]*' ios/Runner.xcodeproj/project.pbxproj \
+            | sed 's/.*= //; s/"//g' | grep -v 'RunnerTests' | sort -u)
+          [ "$(echo "$IDS" | wc -l | tr -d ' ')" = 1 ] || { echo "::error::Runner bundle ID bitta emas: $IDS"; exit 1; }
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' ios/Runner/Info.plist)
+          [ "$NAME" = "LabGuide" ] || { echo "::error::Ilova nomi '$NAME'"; exit 1; }
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "IOS_BUNDLE_ID=$IDS" >> "$GITHUB_ENV"
+          echo "IOS_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "IOS_BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "- Ilova: **LabGuide** \`$IDS\` v$VERSION · rejim: **$MODE**" >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- IMZOSIZ TEKSHIRUV ----------
+      - name: iOS release build (imzosiz)
+        if: env.MODE == 'build'
+        run: |
+          set -euo pipefail
+          flutter build ios --release --no-codesign \
+            --build-name="$IOS_VERSION" --build-number="$IOS_BUILD_NUMBER"
+          APP=build/ios/iphoneos/Runner.app
+          PB=/usr/libexec/PlistBuddy
+          ID=$($PB -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+          MIN=$($PB -c 'Print :MinimumOSVersion' "$APP/Info.plist")
+          SDK=$($PB -c 'Print :DTSDKName' "$APP/Info.plist")
+          LOC=$($PB -c 'Print :CFBundleLocalizations' "$APP/Info.plist" | tr -d ' \n{}' | sed 's/Array//')
+          test -f "$APP/Frameworks/App.framework/App"
+          {
+            echo "## iOS: imzosiz release build muvaffaqiyatli"
+            echo "- \`$ID\` · MinimumOSVersion $MIN · SDK $SDK · tillar: $LOC"
+            echo "- Hajmi (Runner.app): $(du -sh "$APP" | cut -f1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------- TESTFLIGHT ----------
+      - name: Secretlar
+        if: env.MODE == 'testflight'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_BASE64 || secrets.NOVA_IOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_PASSWORD || secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.LABGUIDE_APPSTORE_PRIVATE_KEY || secrets.NOVA_APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          MISSING=""
+          [ -n "$CERTIFICATE_BASE64" ]   || MISSING="$MISSING IOS_CERTIFICATE_BASE64"
+          [ -n "$CERTIFICATE_PASSWORD" ] || MISSING="$MISSING IOS_CERTIFICATE_PASSWORD"
+          [ -n "$API_KEY_ID" ]           || MISSING="$MISSING APPSTORE_KEY_ID"
+          [ -n "$API_ISSUER_ID" ]        || MISSING="$MISSING APPSTORE_ISSUER_ID"
+          [ -n "$API_PRIVATE_KEY" ]      || MISSING="$MISSING APPSTORE_PRIVATE_KEY"
+          [ -z "$MISSING" ] || { echo "::error::Yetishmayotgan secret(lar) (LABGUIDE_* yoki NOVA_*):$MISSING"; exit 1; }
+
+          umask 077
+          W="$RUNNER_TEMP/lg-signing"; mkdir -p "$W"
+          echo "SIGN_DIR=$W" >> "$GITHUB_ENV"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$W/distribution.p12"
+          CERT_PEM=$( (openssl pkcs12 -in "$W/distribution.p12" -nokeys -clcerts -passin env:CERTIFICATE_PASSWORD 2>/dev/null \
+                     || openssl pkcs12 -legacy -in "$W/distribution.p12" -nokeys -clcerts -passin env:CERTIFICATE_PASSWORD) )
+          SERIAL=$(printf '%s' "$CERT_PEM" | openssl x509 -noout -serial | cut -d= -f2)
+          TEAM=$(printf '%s' "$CERT_PEM" | openssl x509 -noout -subject -nameopt multiline | awk -F' = ' '/organizationalUnitName/{print $2; exit}')
+          [ -n "$TEAM" ] || { echo "::error::Sertifikatdan Team ID o'qilmadi"; exit 1; }
+          echo "CERT_SERIAL=$SERIAL" >> "$GITHUB_ENV"
+          echo "IOS_TEAM_ID=$TEAM" >> "$GITHUB_ENV"
+          echo "Team: $TEAM"
+
+          KEYDIR="$HOME/.appstoreconnect/private_keys"; mkdir -p "$KEYDIR"
+          KEYFILE="$KEYDIR/AuthKey_$API_KEY_ID.p8"
+          if printf '%s' "$API_PRIVATE_KEY" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$API_PRIVATE_KEY" > "$KEYFILE"
+          else
+            BODY=$(printf '%s' "$API_PRIVATE_KEY" | tr -d ' \r\n')
+            if printf '%s' "$BODY" | base64 --decode | grep -aq 'BEGIN PRIVATE KEY'; then
+              printf '%s' "$BODY" | base64 --decode > "$KEYFILE"
+            else
+              { echo '-----BEGIN PRIVATE KEY-----'; printf '%s\n' "$BODY" | fold -w 64; echo '-----END PRIVATE KEY-----'; } > "$KEYFILE"
+            fi
+          fi
+          openssl pkey -in "$KEYFILE" -noout || { echo "::error::APPSTORE_PRIVATE_KEY yaroqli .p8 emas"; exit 1; }
+          echo "ASC_KEY_FILE=$KEYFILE" >> "$GITHUB_ENV"
+
+          python3 -m venv "$W/venv"
+          "$W/venv/bin/pip" install --quiet pyjwt cryptography
+          echo "ASC_PY=$W/venv/bin/python" >> "$GITHUB_ENV"
+          cat > "$W/asc.py" <<'PY'
+          import base64, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+          import jwt
+          PKEY = open(os.environ['ASC_KEY_FILE']).read()
+          BUNDLE = os.environ['IOS_BUNDLE_ID']
+          PROFILE_NAME = 'LabGuide AppStore CI'
+          def token():
+              now = int(time.time())
+              return jwt.encode({'iss': os.environ['API_ISSUER_ID'], 'iat': now, 'exp': now + 1100,
+                                 'aud': 'appstoreconnect-v1'}, PKEY, algorithm='ES256',
+                                headers={'kid': os.environ['API_KEY_ID'], 'typ': 'JWT'})
+          def call(method, path, params=None, body=None):
+              url = 'https://api.appstoreconnect.apple.com' + path
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              data = json.dumps(body).encode() if body is not None else None
+              req = urllib.request.Request(url, data=data, method=method, headers={
+                  'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json'})
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      raw = r.read()
+                      return json.loads(raw) if raw else {}
+              except urllib.error.HTTPError as e:
+                  print(f'::error::App Store Connect {method} {path} -> {e.code}: {e.read().decode()[:500]}')
+                  sys.exit(1)
+          def env_out(**kv):
+              with open(os.environ['GITHUB_ENV'], 'a') as f:
+                  for k, v in kv.items():
+                      f.write(f'{k}={v}\n')
+          def summary(line):
+              open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(line + '\n')
+          def bundle_ids():
+              return [b for b in call('GET', '/v1/bundleIds', {'filter[identifier]': BUNDLE, 'limit': 50})['data']
+                      if b['attributes']['identifier'] == BUNDLE]
+          def our_cert():
+              serial = os.environ['CERT_SERIAL'].upper().lstrip('0')
+              certs = call('GET', '/v1/certificates', {'limit': 200})['data']
+              m = [c for c in certs if c['attributes'].get('serialNumber', '').upper().lstrip('0') == serial]
+              if not m:
+                  print("::error::CI sertifikati App Store Connect ro'yxatida yo'q"); sys.exit(1)
+              return m[0]
+          def active_profiles(bid, cert_id):
+              out = []
+              for p in call('GET', f'/v1/bundleIds/{bid}/profiles', {'limit': 50})['data']:
+                  a = p['attributes']
+                  if a.get('profileState') != 'ACTIVE' or a.get('profileType') != 'IOS_APP_STORE':
+                      continue
+                  pc = call('GET', f"/v1/profiles/{p['id']}/certificates", {'limit': 50})['data']
+                  if any(c['id'] == cert_id for c in pc):
+                      out.append(p)
+              return out
+          cmd = sys.argv[1]
+          if cmd == 'setup':
+              ids = bundle_ids()
+              if ids:
+                  bid = ids[0]['id']
+                  summary(f'- Bundle ID `{BUNDLE}`: allaqachon bor')
+              else:
+                  bid = call('POST', '/v1/bundleIds', body={'data': {'type': 'bundleIds', 'attributes': {
+                      'identifier': BUNDLE, 'name': 'LabGuide', 'platform': 'IOS'}}})['data']['id']
+                  summary(f'- Bundle ID `{BUNDLE}`: **ro\'yxatdan o\'tkazildi**')
+              cert = our_cert()
+              if active_profiles(bid, cert['id']):
+                  summary('- App Store profili: allaqachon bor (ACTIVE)')
+              else:
+                  p = call('POST', '/v1/profiles', body={'data': {
+                      'type': 'profiles', 'attributes': {'name': PROFILE_NAME, 'profileType': 'IOS_APP_STORE'},
+                      'relationships': {'bundleId': {'data': {'type': 'bundleIds', 'id': bid}},
+                                        'certificates': {'data': [{'type': 'certificates', 'id': cert['id']}]}}}})['data']
+                  summary(f"- App Store profili **yaratildi**: {p['attributes']['name']}")
+          elif cmd == 'precheck':
+              apps = [a for a in call('GET', '/v1/apps', {'filter[bundleId]': BUNDLE})['data']
+                      if a['attributes']['bundleId'] == BUNDLE]
+              if not apps:
+                  print(f"::error::App Store Connect'da {BUNDLE} uchun ilova yozuvi yo'q. "
+                        "App Store Connect -> Apps -> + -> New App (labguide/docs/IOS_TESTFLIGHT.md).")
+                  sys.exit(1)
+              app = apps[0]
+              builds = call('GET', '/v1/builds', {'filter[app]': app['id'], 'limit': 200,
+                                                  'sort': '-uploadedDate', 'fields[builds]': 'version'})['data']
+              nums = sorted(int(b['attributes']['version']) for b in builds if b['attributes']['version'].isdigit())
+              nxt = max(nums + [0]) + 1
+              print(f"App: {app['attributes']['name']} ({app['id']}), oxirgi buildlar: {nums[-5:]}, yangi: {nxt}")
+              env_out(ASC_APP_ID=app['id'], IOS_BUILD_NUMBER=nxt)
+              summary(f"- App Store Connect ilovasi: **{app['attributes']['name']}** · build {nxt}")
+          elif cmd == 'profile':
+              ids = bundle_ids()
+              if not ids:
+                  print(f"::error::Bundle ID {BUNDLE} ro'yxatdan o'tmagan (apple_setup=true bilan ishga tushiring)"); sys.exit(1)
+              profs = active_profiles(ids[0]['id'], our_cert()['id'])
+              if not profs:
+                  print("::error::ACTIVE App Store profili yo'q (apple_setup=true bilan ishga tushiring)"); sys.exit(1)
+              profs.sort(key=lambda p: p['attributes'].get('expirationDate', ''), reverse=True)
+              a = profs[0]['attributes']
+              open(sys.argv[2], 'wb').write(base64.b64decode(a['profileContent']))
+              print(f"Profil: {a['name']} {a['uuid']} muddati {a['expirationDate'][:10]}")
+          elif cmd == 'status':
+              app, num, ver = os.environ['ASC_APP_ID'], os.environ['IOS_BUILD_NUMBER'], os.environ['IOS_VERSION']
+              deadline, state, build = time.time() + 1800, 'NOT_VISIBLE_YET', None
+              while time.time() < deadline:
+                  data = call('GET', '/v1/builds', {'filter[app]': app, 'filter[version]': num,
+                                                    'filter[preReleaseVersion.version]': ver})['data']
+                  if data:
+                      build = data[0]; state = build['attributes']['processingState']
+                      print('processingState:', state)
+                      if state != 'PROCESSING':
+                          break
+                  time.sleep(30)
+              summary(f'- TestFlight build {ver} ({num}): processingState **{state}**')
+              if state in ('INVALID', 'FAILED'):
+                  sys.exit(1)
+          PY
+          echo "ASC_SCRIPT=$W/asc.py" >> "$GITHUB_ENV"
+
+      - name: App Store Connect — sozlash (ixtiyoriy)
+        if: env.MODE == 'testflight' && env.APPLE_SETUP == 'true'
+        env:
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: '"$ASC_PY" "$ASC_SCRIPT" setup'
+
+      - name: App Store Connect — tekshiruv va profil
+        if: env.MODE == 'testflight'
+        env:
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          "$ASC_PY" "$ASC_SCRIPT" precheck
+          "$ASC_PY" "$ASC_SCRIPT" profile "$SIGN_DIR/profile.mobileprovision"
+
+      - name: Keychain va profil o'rnatish
+        if: env.MODE == 'testflight'
+        env:
+          CERTIFICATE_PASSWORD: ${{ secrets.LABGUIDE_IOS_CERTIFICATE_PASSWORD || secrets.NOVA_IOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          security cms -D -i "$SIGN_DIR/profile.mobileprovision" > "$SIGN_DIR/profile.plist"
+          PB=/usr/libexec/PlistBuddy
+          UUID=$($PB -c 'Print :UUID' "$SIGN_DIR/profile.plist")
+          PNAME=$($PB -c 'Print :Name' "$SIGN_DIR/profile.plist")
+          APPID=$($PB -c 'Print :Entitlements:application-identifier' "$SIGN_DIR/profile.plist")
+          [ "$APPID" = "$IOS_TEAM_ID.$IOS_BUNDLE_ID" ] || { echo "::error::Profil $APPID uchun"; exit 1; }
+          echo "IOS_PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
+          echo "IOS_PROFILE_NAME=$PNAME" >> "$GITHUB_ENV"
+          KC="$SIGN_DIR/build.keychain-db"
+          KCP=$(openssl rand -hex 32); echo "::add-mask::$KCP"
+          security create-keychain -p "$KCP" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCP" "$KC"
+          security import "$SIGN_DIR/distribution.p12" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCP" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" "$HOME/Library/Keychains/login.keychain-db"
+          security find-identity -v -p codesigning "$KC" | grep -q 'Apple Distribution' \
+            || { echo "::error::Apple Distribution identity topilmadi"; exit 1; }
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$SIGN_DIR/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          rm -f "$SIGN_DIR/distribution.p12"
+
+      # Imzo sozlamasi faqat runner'dagi nusxada — commit qilinmaydi.
+      - name: Runner imzosini sozlash (vaqtinchalik)
+        if: env.MODE == 'testflight'
+        run: |
+          set -euo pipefail
+          ruby -rxcodeproj - <<'RUBY'
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          target = project.targets.find { |t| t.name == 'Runner' } or raise 'Runner target missing'
+          target.build_configurations.each do |c|
+            c.build_settings['DEVELOPMENT_TEAM'] = ENV.fetch('IOS_TEAM_ID')
+            c.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+            c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+            c.build_settings['CODE_SIGN_IDENTITY[sdk=iphoneos*]'] = 'Apple Distribution'
+            c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV.fetch('IOS_PROFILE_NAME')
+          end
+          project.save
+          RUBY
+          python3 - <<'PY'
+          import os, plistlib
+          plistlib.dump({'method': 'app-store-connect', 'destination': 'export',
+                         'teamID': os.environ['IOS_TEAM_ID'], 'signingStyle': 'manual',
+                         'signingCertificate': 'Apple Distribution',
+                         'provisioningProfiles': {os.environ['IOS_BUNDLE_ID']: os.environ['IOS_PROFILE_NAME']},
+                         'manageAppVersionAndBuildNumber': False, 'uploadSymbols': True},
+                        open(os.environ['SIGN_DIR'] + '/ExportOptions.plist', 'wb'))
+          PY
+
+      - name: Imzolangan IPA
+        if: env.MODE == 'testflight'
+        run: |
+          set -euo pipefail
+          flutter build ipa --release \
+            --build-name="$IOS_VERSION" --build-number="$IOS_BUILD_NUMBER" \
+            --export-options-plist="$SIGN_DIR/ExportOptions.plist"
+          test "$(find build/ios/ipa -maxdepth 1 -name '*.ipa' | wc -l | tr -d ' ')" = 1
+          cp build/ios/ipa/*.ipa LabGuide-iOS.ipa
+
+      - name: IPA tekshiruvi
+        if: env.MODE == 'testflight'
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/ipa-check"; mkdir -p "$D"
+          unzip -q LabGuide-iOS.ipa -d "$D"
+          APP="$D/Payload/Runner.app"
+          codesign --verify --deep --strict "$APP"
+          codesign -d --entitlements :- "$APP" > "$D/ent.plist" 2>/dev/null
+          python3 - "$D" <<'PY'
+          import os, plistlib, sys
+          d = sys.argv[1]
+          p = plistlib.load(open(d + '/Payload/Runner.app/Info.plist', 'rb'))
+          e = plistlib.load(open(d + '/ent.plist', 'rb'))
+          assert p['CFBundleIdentifier'] == os.environ['IOS_BUNDLE_ID']
+          assert p['CFBundleDisplayName'] == 'LabGuide'
+          assert p['CFBundleShortVersionString'] == os.environ['IOS_VERSION']
+          assert p['CFBundleVersion'] == str(os.environ['IOS_BUILD_NUMBER'])
+          assert p.get('ITSAppUsesNonExemptEncryption') is False
+          assert int(p['DTSDKName'].removeprefix('iphoneos').split('.')[0]) >= 26, p['DTSDKName']
+          assert e['application-identifier'] == os.environ['IOS_TEAM_ID'] + '.' + os.environ['IOS_BUNDLE_ID']
+          assert not e.get('get-task-allow', True)
+          msg = (f"IPA: {p['CFBundleIdentifier']} {p['CFBundleShortVersionString']} ({p['CFBundleVersion']}), "
+                 f"SDK {p['DTSDKName']}, min iOS {p['MinimumOSVersion']}")
+          print(msg); open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write('- ' + msg + '\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: env.MODE == 'testflight'
+        continue-on-error: true
+        with:
+          name: labguide-ios-${{ env.IOS_VERSION }}-${{ env.IOS_BUILD_NUMBER }}
+          path: labguide/LabGuide-iOS.ipa
+          retention-days: 14
+
+      # Faqat TestFlight'ga topshirish. Review/reliz chaqiruvlari YO'Q.
+      - name: TestFlight'ga yuklash
+        if: env.MODE == 'testflight'
+        env:
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --validate-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+          xcrun altool --upload-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
+          echo "- Yuklash: **muvaffaqiyatli**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: TestFlight processing holati
+        if: env.MODE == 'testflight'
+        env:
+          API_KEY_ID: ${{ secrets.LABGUIDE_APPSTORE_KEY_ID || secrets.NOVA_APPSTORE_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID }}
+        run: '"$ASC_PY" "$ASC_SCRIPT" status'
+
+      - name: Tozalash
+        if: always()
+        run: |
+          [ -n "${SIGN_DIR:-}" ] && security delete-keychain "$SIGN_DIR/build.keychain-db" 2>/dev/null || true
+          rm -rf "${SIGN_DIR:-/nonexistent}" "$HOME/.appstoreconnect/private_keys" \
+                 "$HOME/Library/MobileDevice/Provisioning Profiles/${IOS_PROFILE_UUID:-none}.mobileprovision"

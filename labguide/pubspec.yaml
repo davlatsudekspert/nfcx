@@ -1,0 +1,54 @@
+name: labguide
+description: "LabGuide — biokimyo va laboratoriya ma'lumotnomasi (UZ/RU/EN)."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.5
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # Flutter 3.47 Material kutubxonasini `material_ui` paketiga ko'chiryapti;
+  # go_router 18 ham shu paketga o'tgan. Ilova bitta MaterialApp/Theme
+  # turidan foydalanishi uchun `package:flutter/material.dart` emas,
+  # `package:material_ui/material_ui.dart` import qilinadi.
+  material_ui: ^1.6.0
+  # Har bir tab o'z stackini saqlashi uchun StatefulShellRoute.indexedStack.
+  go_router: ^18.0.2
+  # Sozlamalar, rol, xatcho'plar — maxfiy bo'lmagan lokal holat.
+  # Sessiya tokenlari keyingi bosqichda flutter_secure_storage'ga tushadi.
+  shared_preferences: ^2.5.6
+  # Kontent paketi manifestidagi sha256 ni tekshirish.
+  crypto: ^3.0.7
+  intl: ^0.20.2
+  url_launcher: ^6.3.3
+  cupertino_ui: ^1.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/content/core/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-500.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
