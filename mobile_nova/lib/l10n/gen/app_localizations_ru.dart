@@ -3616,4 +3616,79 @@ class LRu extends L {
   String showcaseImageN(int n, int total) {
     return 'Фото $n из $total';
   }
+
+  @override
+  String get showcasePhotos => 'Фото';
+
+  @override
+  String get showcasePhotosHint =>
+      '1–5 фото. Первое станет обложкой. Видео не добавляется.';
+
+  @override
+  String get showcaseAddPhoto => 'Добавить фото';
+
+  @override
+  String get showcaseRemovePhoto => 'Убрать фото';
+
+  @override
+  String get showcaseTitleLabel => 'Заголовок';
+
+  @override
+  String get showcaseDescLabel => 'Описание';
+
+  @override
+  String get showcasePriceLabel => 'Цена, сум (необязательно)';
+
+  @override
+  String get showcaseLinkLabel =>
+      'Ссылка YouTube или Instagram (необязательно)';
+
+  @override
+  String get showcaseFromCatalog => 'Выбрать из каталога';
+
+  @override
+  String get showcaseCatalogEmpty => 'В каталоге пока нет товаров';
+
+  @override
+  String showcaseCatalogPicked(String name) {
+    return 'Товар: $name';
+  }
+
+  @override
+  String get showcaseCatalogRemove => 'Убрать товар';
+
+  @override
+  String get showcaseSlideSeconds => 'Смена фото через';
+
+  @override
+  String showcaseSeconds(int n) {
+    return '$n с';
+  }
+
+  @override
+  String get showcasePublish => 'Опубликовать в витрине';
+
+  @override
+  String showcaseUploading(int n, int total) {
+    return 'Загрузка фото $n/$total…';
+  }
+
+  @override
+  String get errShowcaseNoImages => 'Выберите хотя бы одно фото';
+
+  @override
+  String get errShowcaseTooManyImages => 'Не больше 5 фото';
+
+  @override
+  String get errShowcaseTitleLong => 'Заголовок — не длиннее 80 символов';
+
+  @override
+  String get errShowcaseBadPrice => 'Укажите цену только цифрами';
+
+  @override
+  String get errShowcasePriceHigh => 'Слишком большая цена';
+
+  @override
+  String get errShowcaseBadLink =>
+      'Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)';
 }

@@ -3594,4 +3594,78 @@ class LEn extends L {
   String showcaseImageN(int n, int total) {
     return 'Photo $n of $total';
   }
+
+  @override
+  String get showcasePhotos => 'Photos';
+
+  @override
+  String get showcasePhotosHint =>
+      '1–5 photos. The first one is the cover. Videos aren’t supported.';
+
+  @override
+  String get showcaseAddPhoto => 'Add photo';
+
+  @override
+  String get showcaseRemovePhoto => 'Remove photo';
+
+  @override
+  String get showcaseTitleLabel => 'Title';
+
+  @override
+  String get showcaseDescLabel => 'Description';
+
+  @override
+  String get showcasePriceLabel => 'Price, UZS (optional)';
+
+  @override
+  String get showcaseLinkLabel => 'YouTube or Instagram link (optional)';
+
+  @override
+  String get showcaseFromCatalog => 'Pick from catalog';
+
+  @override
+  String get showcaseCatalogEmpty => 'No catalog items yet';
+
+  @override
+  String showcaseCatalogPicked(String name) {
+    return 'Product: $name';
+  }
+
+  @override
+  String get showcaseCatalogRemove => 'Remove product';
+
+  @override
+  String get showcaseSlideSeconds => 'Slide duration';
+
+  @override
+  String showcaseSeconds(int n) {
+    return '$n s';
+  }
+
+  @override
+  String get showcasePublish => 'Publish to showcase';
+
+  @override
+  String showcaseUploading(int n, int total) {
+    return 'Uploading photo $n/$total…';
+  }
+
+  @override
+  String get errShowcaseNoImages => 'Pick at least one photo';
+
+  @override
+  String get errShowcaseTooManyImages => 'No more than 5 photos';
+
+  @override
+  String get errShowcaseTitleLong => 'Title must be 80 characters or less';
+
+  @override
+  String get errShowcaseBadPrice => 'Enter the price using digits only';
+
+  @override
+  String get errShowcasePriceHigh => 'The price is too high';
+
+  @override
+  String get errShowcaseBadLink =>
+      'Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted';
 }

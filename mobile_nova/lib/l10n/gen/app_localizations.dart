@@ -6500,6 +6500,138 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'{n}-rasm, jami {total}'**
   String showcaseImageN(int n, int total);
+
+  /// No description provided for @showcasePhotos.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasmlar'**
+  String get showcasePhotos;
+
+  /// No description provided for @showcasePhotosHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'1–5 ta rasm. Birinchisi muqova bo‘ladi. Video qo‘shilmaydi.'**
+  String get showcasePhotosHint;
+
+  /// No description provided for @showcaseAddPhoto.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm qo‘shish'**
+  String get showcaseAddPhoto;
+
+  /// No description provided for @showcaseRemovePhoto.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasmni olib tashlash'**
+  String get showcaseRemovePhoto;
+
+  /// No description provided for @showcaseTitleLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sarlavha'**
+  String get showcaseTitleLabel;
+
+  /// No description provided for @showcaseDescLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tavsif'**
+  String get showcaseDescLabel;
+
+  /// No description provided for @showcasePriceLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx, so‘m (ixtiyoriy)'**
+  String get showcasePriceLabel;
+
+  /// No description provided for @showcaseLinkLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'YouTube yoki Instagram havolasi (ixtiyoriy)'**
+  String get showcaseLinkLabel;
+
+  /// No description provided for @showcaseFromCatalog.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalogdan tanlash'**
+  String get showcaseFromCatalog;
+
+  /// No description provided for @showcaseCatalogEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katalogda hali tovar yo‘q'**
+  String get showcaseCatalogEmpty;
+
+  /// Tanlangan katalog tovari.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tovar: {name}'**
+  String showcaseCatalogPicked(String name);
+
+  /// No description provided for @showcaseCatalogRemove.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tovarni olib tashlash'**
+  String get showcaseCatalogRemove;
+
+  /// No description provided for @showcaseSlideSeconds.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm almashish vaqti'**
+  String get showcaseSlideSeconds;
+
+  /// Soniya.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} s'**
+  String showcaseSeconds(int n);
+
+  /// No description provided for @showcasePublish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rgazmaga joylash'**
+  String get showcasePublish;
+
+  /// Yuklash jarayoni.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm {n}/{total} yuklanmoqda…'**
+  String showcaseUploading(int n, int total);
+
+  /// No description provided for @errShowcaseNoImages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kamida bitta rasm tanlang'**
+  String get errShowcaseNoImages;
+
+  /// No description provided for @errShowcaseTooManyImages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘pi bilan 5 ta rasm'**
+  String get errShowcaseTooManyImages;
+
+  /// No description provided for @errShowcaseTitleLong.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sarlavha 80 belgidan oshmasin'**
+  String get errShowcaseTitleLong;
+
+  /// No description provided for @errShowcaseBadPrice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narxni faqat raqamlar bilan yozing'**
+  String get errShowcaseBadPrice;
+
+  /// No description provided for @errShowcasePriceHigh.
+  ///
+  /// In uz, this message translates to:
+  /// **'Narx juda katta'**
+  String get errShowcasePriceHigh;
+
+  /// No description provided for @errShowcaseBadLink.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi'**
+  String get errShowcaseBadLink;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

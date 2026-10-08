@@ -3574,4 +3574,78 @@ class LUz extends L {
   String showcaseImageN(int n, int total) {
     return '$n-rasm, jami $total';
   }
+
+  @override
+  String get showcasePhotos => 'Rasmlar';
+
+  @override
+  String get showcasePhotosHint =>
+      '1–5 ta rasm. Birinchisi muqova bo‘ladi. Video qo‘shilmaydi.';
+
+  @override
+  String get showcaseAddPhoto => 'Rasm qo‘shish';
+
+  @override
+  String get showcaseRemovePhoto => 'Rasmni olib tashlash';
+
+  @override
+  String get showcaseTitleLabel => 'Sarlavha';
+
+  @override
+  String get showcaseDescLabel => 'Tavsif';
+
+  @override
+  String get showcasePriceLabel => 'Narx, so‘m (ixtiyoriy)';
+
+  @override
+  String get showcaseLinkLabel => 'YouTube yoki Instagram havolasi (ixtiyoriy)';
+
+  @override
+  String get showcaseFromCatalog => 'Katalogdan tanlash';
+
+  @override
+  String get showcaseCatalogEmpty => 'Katalogda hali tovar yo‘q';
+
+  @override
+  String showcaseCatalogPicked(String name) {
+    return 'Tovar: $name';
+  }
+
+  @override
+  String get showcaseCatalogRemove => 'Tovarni olib tashlash';
+
+  @override
+  String get showcaseSlideSeconds => 'Rasm almashish vaqti';
+
+  @override
+  String showcaseSeconds(int n) {
+    return '$n s';
+  }
+
+  @override
+  String get showcasePublish => 'Ko‘rgazmaga joylash';
+
+  @override
+  String showcaseUploading(int n, int total) {
+    return 'Rasm $n/$total yuklanmoqda…';
+  }
+
+  @override
+  String get errShowcaseNoImages => 'Kamida bitta rasm tanlang';
+
+  @override
+  String get errShowcaseTooManyImages => 'Ko‘pi bilan 5 ta rasm';
+
+  @override
+  String get errShowcaseTitleLong => 'Sarlavha 80 belgidan oshmasin';
+
+  @override
+  String get errShowcaseBadPrice => 'Narxni faqat raqamlar bilan yozing';
+
+  @override
+  String get errShowcasePriceHigh => 'Narx juda katta';
+
+  @override
+  String get errShowcaseBadLink =>
+      'Faqat https:// bilan boshlanadigan YouTube (youtube.com, youtu.be) yoki Instagram (instagram.com) havolasi qabul qilinadi';
 }

@@ -46,6 +46,7 @@ import '../features/shop/nfc_id_market.dart';
 import '../features/shop/shop_screens.dart';
 import '../features/shop/store_policy.dart'
     show isAppStoreBuild, showNewsEntry, showNotificationSettings;
+import '../features/showcase/showcase_composer.dart';
 import '../features/social/post_screens.dart';
 import '../features/social/reels_screen.dart';
 import '../features/social/story_viewer.dart';
@@ -375,6 +376,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.reelCreate,
         builder: (_, __) => const ComposerScreen(kind: ComposerKind.reel),
+      ),
+      // KO'RGAZMA YARATISH — faqat rasm (1–5), video tanlab bo'lmaydi.
+      GoRoute(
+        path: Routes.showcaseCreate,
+        builder: (_, __) => const ShowcaseComposerScreen(),
       ),
       GoRoute(
         path: Routes.giftOffers,

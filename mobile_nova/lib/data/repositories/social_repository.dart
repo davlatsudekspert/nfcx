@@ -162,6 +162,36 @@ class SocialRepository {
         Post.fromJson(((j['post'] ?? j) as Map).cast<String, dynamic>()));
   }
 
+  /// KO'RGAZMA POSTI (shartnoma §3) — mavjud post manzillari:
+  /// shaxsiy `POST /api/records/:code/posts`, kompaniya
+  /// `POST /api/companies/:id/posts`.
+  ///
+  /// Server javobida post bo'lsa u qaytadi (masalan `pending: true` —
+  /// tekshiruv kutilmoqda), bo'lmasa `null`.
+  Future<Result<Post?>> createShowcase({
+    required String code,
+    required bool company,
+    required ShowcaseDraft draft,
+  }) async {
+    if (draft.mediaUrls.isEmpty) {
+      return const Err(AppError(
+        AppErrorKind.validation,
+        code: 'bad_image',
+        detail: "ko'rgazma uchun kamida bitta rasm majburiy",
+      ));
+    }
+    final res = await _api.post<Map<String, dynamic>>(
+      company ? '/api/companies/$code/posts' : '/api/records/$code/posts',
+      draft.toJson(company: company),
+    );
+    return res.map((j) {
+      final raw = j['post'] ?? j['item'];
+      if (raw is! Map) return null;
+      final p = Post.fromJson(raw.cast<String, dynamic>());
+      return company ? p.copyWithKind(authorKind: 'company') : p;
+    });
+  }
+
   /// Videolar — backend'da `videos` alohida turadi va Reels shundan quriladi.
   Future<Result<List<Post>>> videosOf(String code) async {
     final res = await _api.get<Map<String, dynamic>>('/api/records/$code/videos');
@@ -497,3 +527,54 @@ class ReelsPage {
 final socialRepositoryProvider = Provider<SocialRepository>(
   (ref) => SocialRepository(ref.watch(apiProvider)),
 );
+
+/// Ko'rgazma posti uchun yuboriladigan ma'lumot (shartnoma §3).
+class ShowcaseDraft {
+  const ShowcaseDraft({
+    required this.mediaUrls,
+    this.title = '',
+    this.text = '',
+    this.priceUzs,
+    this.catalogItemId,
+    this.linkUrl = '',
+    this.musicId,
+    this.musicStart = 0,
+    this.imageSeconds = 5,
+  });
+
+  /// Serverdagi NISBIY yo'llar (`/uploads/...`), 1..5 ta, faqat rasm.
+  final List<String> mediaUrls;
+  final String title;
+  final String text;
+  final int? priceUzs;
+
+  /// Kompaniya katalogidagi tovarning SATR id'si (UUID).
+  final String? catalogItemId;
+  final String linkUrl;
+  final int? musicId;
+  final int musicStart;
+  final int imageSeconds;
+
+  /// Kontent qoidalari versiyasi — server rozilikni shu bilan yozadi.
+  static const rulesVersion = '2026-10';
+
+  Map<String, dynamic> toJson({required bool company}) => {
+        'showcase': true,
+        'mediaUrls': mediaUrls,
+        // Eski tekshiruv (`imageUrl` majburiy) bilan ham mos: muqova.
+        'imageUrl': mediaUrls.first,
+        'text': text,
+        // Mavjud post maydoni — eski server tavsifni shundan o'qiydi.
+        'caption': text,
+        'title': title,
+        'priceUzs': priceUzs,
+        if (company && catalogItemId != null && catalogItemId!.isNotEmpty)
+          'catalogItemId': catalogItemId,
+        if (linkUrl.isNotEmpty) 'linkUrl': linkUrl,
+        if (musicId != null) 'musicId': musicId,
+        if (musicId != null) 'musicStart': musicStart,
+        'imageSeconds': imageSeconds,
+        'agreed': true,
+        'rulesVersion': rulesVersion,
+      };
+}
