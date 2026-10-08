@@ -17,6 +17,12 @@
 #      "Generate certificate" (Apple Distribution) — yoki mavjud .p12.
 #   4. Build → `nova-ios-testflight` workflow → branch `claude/nova-release-1.1.0`.
 #
+# ANDROID (nova-android-play) uchun qo'shimcha bir martalik sozlash:
+#   5. Settings → Code signing identities → Android keystores → Nova upload
+#      keystore (.jks) — Reference name: `nova_upload`.
+#   6. Application → Environment variables → guruh `google_play`:
+#      GCLOUD_SERVICE_ACCOUNT_CREDENTIALS = Play service account JSON (Secret).
+#
 # Hech qanday maxfiy kalit bu faylda YO'Q — hammasi Codemagic integratsiyasida.
 
 workflows:
@@ -119,3 +125,68 @@ workflows:
           - NFCSTORE Internal
           - NFCSTORE Testers
         submit_to_app_store: false
+
+  nova-android-play:
+    name: NFCSTORE Android → Play (Internal testing)
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      flutter: 3.35.5
+      java: 17
+      android_signing:
+        - nova_upload
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: uz.nfcstore.nova
+        # Play'da 311 bor — undan pastga tushmaydi.
+        MIN_VERSION_CODE: "312"
+    triggering:
+      events: []   # faqat qo'lda
+    scripts:
+      - name: Target tekshiruvi
+        script: |
+          set -euo pipefail
+          cd mobile_nova
+          grep -q 'applicationId = "uz.nfcstore.nova"' android/app/build.gradle.kts \
+            || { echo "applicationId uz.nfcstore.nova emas"; exit 1; }
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          echo "APP_VERSION_NAME=$VERSION" >> "$CM_ENV"
+          echo "TARGET = $PACKAGE_NAME @ $(git rev-parse --short HEAD) (v$VERSION)"
+
+      - name: versionCode (Play'dan)
+        script: |
+          set -euo pipefail
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" 2>/dev/null || echo 0)
+          NEXT=$(python3 -c "import sys; v=[int(x) for x in sys.argv[1:] if x.strip().isdigit()]; print(max(v)+1)" "$LATEST" "$((MIN_VERSION_CODE-1))")
+          echo "Play oxirgi: $LATEST → yangi versionCode $NEXT"
+          echo "VERSION_CODE=$NEXT" >> "$CM_ENV"
+
+      - name: Imzo (upload key)
+        script: |
+          set -euo pipefail
+          cat > mobile_nova/android/key.properties <<PROPS
+          storeFile=$CM_KEYSTORE_PATH
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          keyPassword=$CM_KEY_PASSWORD
+          PROPS
+
+      - name: AAB
+        script: |
+          set -euo pipefail
+          cd mobile_nova
+          flutter pub get --enforce-lockfile
+          flutter build appbundle --release \
+            --build-name="$APP_VERSION_NAME" --build-number="$VERSION_CODE" \
+            --dart-define=NOVA_VERSION="$APP_VERSION_NAME" --dart-define=NOVA_BUILD="$VERSION_CODE"
+          rm -f android/key.properties
+
+    artifacts:
+      - mobile_nova/build/app/outputs/bundle/release/*.aab
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: false
