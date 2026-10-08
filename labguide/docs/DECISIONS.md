@@ -90,6 +90,8 @@ ruxsati (sana + dalil) qayd etilmaguncha to‘liq kitob paketi rad etiladi. Tart
 va profile → `UnconfiguredOtpAdapter` (hech narsa qabul qilmaydi). `DemoOtpAdapter` release
 bayrog‘i bilan yaratilsa xato beradi. Demo email sessiyasi qayta ochilganda tiklanmaydi.
 Production adapter E bosqichda: kod va limitlar serverda, token secure storage’da.
+Hozirgi `auth.session = email:<manzil>` belgisi vaqtinchalik: E bosqichda sessiya faqat
+secure storage’dagi server tokeni server tomonidan tasdiqlangandan keyin tiklanadi.
 
 ## D-14. Tab nomlari va kenglik siyosati
 Tab nomi 11 px, katta shrift sozlamasida 1.15 gacha kattalashadi. Teng ulushga sig‘masa

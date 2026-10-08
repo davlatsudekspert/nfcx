@@ -113,6 +113,7 @@ class _LgPageState extends State<LgPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _TopBar(
+                  horizontal: horizontal,
                   title: widget.title,
                   collapsed: pinned && collapsed,
                   showBack: canPop,
@@ -285,6 +286,7 @@ class _RenderMeasureHeight extends RenderProxyBox {
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
+    required this.horizontal,
     required this.title,
     required this.collapsed,
     required this.showBack,
@@ -293,6 +295,8 @@ class _TopBar extends StatelessWidget {
     required this.duration,
   });
 
+  /// Kontent bilan bir xil gorizontal chegara (planshetda markazlashadi).
+  final double horizontal;
   final String title;
   final bool collapsed;
   final bool showBack;
@@ -305,7 +309,6 @@ class _TopBar extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final p = LgPalette.of(context);
     final text = Theme.of(context).textTheme;
-    final gutter = LgSpace.gutter(MediaQuery.sizeOf(context).width);
     final showTitle = collapsed || (!showBrand && !showBack);
 
     final Widget leading = showBack
@@ -337,7 +340,7 @@ class _TopBar extends StatelessWidget {
     return ColoredBox(
       color: p.bg,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(gutter - 6, 10, gutter - 8, 8),
+        padding: EdgeInsets.fromLTRB(horizontal - 6, 10, horizontal - 8, 8),
         child: Row(
           children: [
             leading,
