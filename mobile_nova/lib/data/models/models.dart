@@ -1389,9 +1389,39 @@ class Post {
     this.imageSeconds = 10,
     this.views = 0,
     this.contact,
+    this.showcase = false,
+    this.title = '',
+    this.priceUzs,
+    this.linkUrl = '',
+    this.catalogItem,
+    this.pending = false,
   });
 
   final int id;
+
+  // ── KO'RGAZMA (showcase, shartnoma §3) ─────────────────────────────
+
+  /// Ko'rgazma posti: 1–5 rasm karusel, sarlavha, narx, tovar/havola.
+  final bool showcase;
+
+  /// Ko'rgazma sarlavhasi (≤ 80 belgi); bo'lmasa bo'sh.
+  final String title;
+
+  /// Narx — faqat so'mda, butun son; `null` — narxsiz.
+  final int? priceUzs;
+
+  /// YouTube / Instagram havolasi — faqat tashqarida ochiladi.
+  final String linkUrl;
+
+  /// Biriktirilgan katalog tovari (faqat kompaniya posti).
+  final PostCatalogItem? catalogItem;
+
+  /// Media hali tekshirilmagan — faqat EGASIGA keladi, boshqalar
+  /// bu postni umuman ko'rmaydi.
+  final bool pending;
+
+  /// Ko'rgazma bo'limida chiqadimi: ko'rgazma posti yoki rasmli reel.
+  bool get inShowcase => !isVideo && (showcase || reel);
 
   /// Biznes postidagi "Bog'lanish" (telefon, Telegram, xarita) — faqat
   /// FAOL kompaniya postida keladi ([PostContact]); bo'lmasa `null`.
@@ -1475,6 +1505,12 @@ class Post {
         imageSeconds: imageSeconds,
         views: views,
         contact: contact,
+        showcase: showcase,
+        title: title,
+        priceUzs: priceUzs,
+        linkUrl: linkUrl,
+        catalogItem: catalogItem,
+        pending: pending,
       );
 
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
@@ -1501,16 +1537,26 @@ class Post {
         imageSeconds: imageSeconds,
         views: views ?? this.views,
         contact: contact,
+        showcase: showcase,
+        title: title,
+        priceUzs: priceUzs,
+        linkUrl: linkUrl,
+        catalogItem: catalogItem,
+        pending: pending,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
     final media = <String>[];
-    final raw = j['media'] ?? j['images'] ?? j['mediaUrls'];
-    if (raw is List) {
+    // Birinchi BO'SH BO'LMAGAN ro'yxat: ko'rgazma `mediaUrls` beradi,
+    // eski javoblar `media`/`images`. Bo'sh `media: []` keyingisini
+    // yashirmasin.
+    for (final raw in [j['media'], j['images'], j['mediaUrls']]) {
+      if (raw is! List) continue;
       for (final e in raw) {
         if (e is String && e.isNotEmpty) media.add(mediaUrl(e));
         if (e is Map && e['url'] != null) media.add(_u(e['url']));
       }
+      if (media.isNotEmpty) break;
     }
     // BO'SH SATR — `null` EMAS.
     //
@@ -1562,6 +1608,61 @@ class Post {
       imageSeconds: _i(j['imageSeconds'], 10).clamp(3, 60),
       views: _i(j['viewCount'] ?? j['views']),
       contact: PostContact.fromJson(j['contact']),
+      showcase: _b(j['showcase']),
+      title: _s(j['title']).trim(),
+      priceUzs: _priceOrNull(j['priceUzs']),
+      linkUrl: _externalLink(j['linkUrl']),
+      catalogItem: PostCatalogItem.tryParse(j['catalogItem']),
+      pending: _b(j['pending']),
+    );
+  }
+}
+
+/// TASHQI havola (YouTube/Instagram) — media EMAS, shuning uchun `_u`
+/// (server bazasini ulash) dan o'tmaydi; faqat bo'sh joylar olinadi.
+String _externalLink(dynamic v) => v == null ? '' : '$v'.trim();
+
+/// Narx: butun son yoki `null` (yo'q, bo'sh, manfiy yoki buzuq).
+int? _priceOrNull(dynamic v) {
+  if (v == null) return null;
+  final n = v is num ? v : num.tryParse('$v'.trim());
+  if (n == null || n < 0) return null;
+  return n.toInt();
+}
+
+/// Ko'rgazma postiga biriktirilgan katalog tovari (`post.catalogItem`).
+///
+/// [id] — kompaniya katalogidagi SATR id (UUID); server raqam bersa ham
+/// satrga aylantiriladi. [companyId] — ilovadagi `/catalog/:companyId/
+/// :itemId` manzilidagi ommaviy kompaniya identifikatori.
+class PostCatalogItem {
+  const PostCatalogItem({
+    required this.id,
+    required this.companyId,
+    this.name = '',
+    this.priceUzs,
+    this.image = '',
+  });
+
+  final String id;
+  final String companyId;
+  final String name;
+  final int? priceUzs;
+  final String image;
+
+  /// Buzuq yoki to'liq bo'lmagan qiymat (`null`, id/kompaniyasiz) —
+  /// `null`: tovar tugmasi chizilmaydi.
+  static PostCatalogItem? tryParse(dynamic v) {
+    if (v is! Map) return null;
+    final id = _s(v['id']).trim();
+    final company = _s(v['companyId']).trim();
+    if (id.isEmpty || company.isEmpty) return null;
+    return PostCatalogItem(
+      id: id,
+      companyId: company,
+      name: _s(v['name']),
+      priceUzs: _priceOrNull(v['priceUzs']),
+      image: _u(v['image']),
     );
   }
 }
