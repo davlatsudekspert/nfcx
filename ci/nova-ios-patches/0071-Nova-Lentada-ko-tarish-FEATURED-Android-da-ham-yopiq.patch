@@ -1,0 +1,254 @@
+From 9a528b2cf44de81148d8799ff2fcb598ce44a47e Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 18:47:33 +0000
+Subject: [PATCH 71/72] Nova: "Lentada ko'tarish" (FEATURED) Android'da ham
+ yopiq
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Narx va "reklama saytda rasmiylashtiriladi" yozuvi olib tashlangach
+FEATURED ekranida faqat kunlar ro'yxati qoladi — foydali narsa yo'q.
+iPhone'dagidek:
+
+- Yangi `showFeaturedEntry` (`false`, `store_policy.dart`).
+- Post ostidagi "Lentada ko'tarish" tugmasi Android'da ham chizilmaydi.
+- `/featured/:kind/:id` ikkala platformada bosh sahifaga buriladi.
+- iPhone'dagi Apple consumable "Ko'tarish" (IAP) o'zgarmagan.
+- Sinovlar: tugma va marshrut kalit ortida; Android router sinovida
+  `/featured/...` -> `/`.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../lib/features/shop/store_policy.dart       | 11 +++++++++++
+ .../lib/features/social/featured_screen.dart  | 19 ++++++++++++++-----
+ .../lib/features/social/post_screens.dart     |  9 +++++----
+ mobile_nova/lib/routing/router.dart           | 12 +++++++++---
+ mobile_nova/test/app_store_market_test.dart   | 11 +++++++++--
+ mobile_nova/test/app_store_policy_test.dart   | 16 +++++++++++++---
+ mobile_nova/test/store_policy_test.dart       |  3 ++-
+ 7 files changed, 63 insertions(+), 18 deletions(-)
+
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index 6dc16a7..ddc85f2 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -114,6 +114,17 @@ bool get showDigitalPrices => false;
+ /// (`StoreNotice(physical: true)`, `kShowSiteNotice` bilan).
+ bool get showDigitalSiteHints => false;
+ 
++/// "LENTADA KO'TARISH" (FEATURED) EKRANIGA KIRISH YO'LI BO'LSINMI.
++///
++/// Ekran faqat paketlar (muddat + narx) va "reklama saytda
++/// rasmiylashtiriladi" yozuvidan iborat edi. Narx va yozuv olib
++/// tashlangach (`showDigitalPrices`, `showDigitalSiteHints`) unda
++/// foydali narsa qolmaydi — iPhone'dagidek Android'da ham post
++/// ostidagi tugma chizilmaydi, `/featured/...` esa bosh sahifaga
++/// buriladi (`router.dart`). iPhone'dagi Apple consumable "Ko'tarish"
++/// (`boost_controller.dart`) bunga aloqasiz — u ilova ichidagi xarid.
++bool get showFeaturedEntry => false;
++
+ /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
+ class OrderKind {
+   static const nfcId = 'card_purchase';
+diff --git a/mobile_nova/lib/features/social/featured_screen.dart b/mobile_nova/lib/features/social/featured_screen.dart
+index a7e20f1..499a140 100644
+--- a/mobile_nova/lib/features/social/featured_screen.dart
++++ b/mobile_nova/lib/features/social/featured_screen.dart
+@@ -15,6 +15,14 @@ import '../business/business_screens.dart' show formatMoney;
+ 
+ /// POSTNI LENTADA KO'TARISH — NFCSTORE FEATURED.
+ ///
++/// ## HOZIR HECH QAYERDA OCHILMAYDI
++///
++/// 2026-10-08 dan narx va "saytda rasmiylashtiriladi" yozuvi Android'da
++/// ham yo'q (Google Play to'lov qoidasi, `store_policy.dart`). Ularsiz
++/// ekran bo'sh qoladi, shuning uchun kirish yo'li ham, marshrut ham
++/// yopiq (`showFeaturedEntry`). Ekran kalit qaytarilgan kun uchun
++/// saqlanadi.
++///
+ /// ## ILOVA SLOTNI YOQMAYDI
+ ///
+ /// Bu ekran faqat KUTILAYOTGAN buyurtma ochadi va to'lov
+@@ -90,12 +98,13 @@ class _FeaturedScreenState extends ConsumerState<FeaturedScreen> {
+                 const SizedBox(height: Gap.md),
+                 StoreNotice(text: l.storeBuyOnSiteAd),
+               ] else ...[
+-                // PAKETLAR VA NARXLAR KO'RINADI — xarid esa saytda.
++                // PAKETLAR — muddat; narx va sayt yozuvi faqat
++                // `showDigitalPrices` / `showDigitalSiteHints` bilan.
+                 //
+                 // Sabab `lib/features/shop/store_policy.dart` da:
+                 // Google Play raqamli xizmatni o'z to'lov tizimisiz
+-                // sotishga ruxsat bermaydi. Ro'yxatni yashirish
+-                // shart emas — u ma'lumot, xarid emas.
++                // sotishga ham, tashqi to'lovga yo'naltirishga ham
++                // ruxsat bermaydi.
+                 SectionHeader(title: l.featuredPick),
+                 for (final p in o.packages)
+                   Padding(
+@@ -150,8 +159,8 @@ class _PackageTile extends StatelessWidget {
+             ),
+           ),
+           // Narx do'kon bilan BIR XIL ko'rinishda — ikki joyda
+-          // ikki xil yozilishi odamni ikkilantirardi. iPhone'da
+-          // raqamli narx yo'q (`store_policy.dart`).
++          // ikki xil yozilishi odamni ikkilantirardi. Raqamli narx
++          // ikkala platformada yo'q (`store_policy.dart`).
+           if (showDigitalPrices)
+             Text(
+               formatMoney(pack.price, 'UZS'),
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index c3038f4..40f8c51 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -279,10 +279,11 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                     // to'siladi (403), lekin tugmani ko'rsatib
+                     // keyin rad etish — odamni bekorga yugurtirish.
+                     //
+-                    // iPhone'da YO'Q: ekran faqat pullik xizmat
++                    // iPhone'da ham, Android'da ham YO'Q
++                    // (`showFeaturedEntry`): ekran faqat pullik xizmat
+                     // xaridi, narx va sayt yozuvisiz u bo'sh qoladi
+-                    // (`store_policy.dart`). Ko'tarilgan postlar
+-                    // lentada iPhone'da ham ko'rinadi.
++                    // (Google Play to'lov qoidasi, `store_policy.dart`).
++                    // Ko'tarilgan postlar lentada ko'rinaveradi.
+                     //
+                     // iPhone'da — Apple consumable orqali "Ko'tarish"
+                     // varag'i, faqat server kaliti (`boostEnabled`)
+@@ -297,7 +298,7 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                         size: 38,
+                         onPressed: () => showBoostSheet(context, ref, p),
+                       ),
+-                    if (!isAppStoreBuild)
++                    if (showFeaturedEntry)
+                       NovaIconButton(
+                         icon: Icons.trending_up_rounded,
+                         tooltip: l.featuredTitle,
+diff --git a/mobile_nova/lib/routing/router.dart b/mobile_nova/lib/routing/router.dart
+index be642fe..b002594 100644
+--- a/mobile_nova/lib/routing/router.dart
++++ b/mobile_nova/lib/routing/router.dart
+@@ -45,7 +45,11 @@ import '../features/premium/boost_sheet.dart' show BoostCreditsScreen;
+ import '../features/shop/nfc_id_market.dart';
+ import '../features/shop/shop_screens.dart';
+ import '../features/shop/store_policy.dart'
+-    show isAppStoreBuild, showNewsEntry, showNotificationSettings;
++    show
++        isAppStoreBuild,
++        showFeaturedEntry,
++        showNewsEntry,
++        showNotificationSettings;
+ import '../features/showcase/showcase_composer.dart';
+ import '../features/showcase/showcase_screen.dart';
+ import '../features/social/post_screens.dart';
+@@ -340,10 +344,12 @@ final routerProvider = Provider<GoRouter>((ref) {
+           builder: (_, __) => const NfcIdMarketScreen()),
+       GoRoute(path: Routes.nfcScan, builder: (_, __) => const NfcScanScreen()),
+       GoRoute(path: Routes.nfcWrite, builder: (_, __) => const NfcWriteScreen()),
+-      // FEATURED (lentada pullik ko'tarish) — iPhone'da yo'q.
++      // FEATURED (lentada pullik ko'tarish) — iPhone'da ham, Android'da
++      // ham yo'q (`showFeaturedEntry`): narx va "saytda oling" yozuvisiz
++      // ekran bo'sh qoladi (Google Play to'lov qoidasi).
+       GoRoute(
+         path: '/featured/:kind/:id',
+-        redirect: _closedOnIos(Routes.home),
++        redirect: (_, __) => showFeaturedEntry ? null : Routes.home,
+         builder: (_, st) => FeaturedScreen(
+           targetKind: st.pathParameters['kind'] ?? 'post',
+           targetId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+diff --git a/mobile_nova/test/app_store_market_test.dart b/mobile_nova/test/app_store_market_test.dart
+index eb1ae3b..ba99602 100644
+--- a/mobile_nova/test/app_store_market_test.dart
++++ b/mobile_nova/test/app_store_market_test.dart
+@@ -298,10 +298,17 @@ void main() {
+       }
+     }, variant: _ios);
+ 
+-    testWidgets('Android: o‘zgarmagan — ekranlar ochiladi', (tester) async {
++    /// FEATURED Android'da ham yopiq (2026-10-08, Google Play to'lov
++    /// qoidasi): narx va sayt yozuvisiz ekran bo'sh qoladi
++    /// (`showFeaturedEntry`). Qolganlari Android'da ochiladi.
++    const closedOnAndroid = {'/featured/post/5': Routes.home};
++
++    testWidgets('Android: FEATURED yopiq, qolgan ekranlar ochiladi',
++        (tester) async {
+       final r = await boot(tester);
+       for (final p in closed.keys) {
+-        expect((await go(tester, r, p)).path, p, reason: p);
++        final at = await go(tester, r, p);
++        expect(at.path, closedOnAndroid[p] ?? p, reason: p);
+       }
+       final biz = await go(tester, r, Routes.businessOnboardCustom);
+       expect(biz.queryParameters['mode'], 'custom');
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index a519a5b..3dd7de8 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -40,6 +40,7 @@ void main() {
+       expect(isAppStoreBuild, isFalse);
+       expect(showDigitalPrices, isFalse);
+       expect(showDigitalSiteHints, isFalse);
++      expect(showFeaturedEntry, isFalse);
+     });
+ 
+     test('iPhone: raqamli narx va sayt yozuvi yo‘q', () {
+@@ -48,7 +49,8 @@ void main() {
+         expect(isAppStoreBuild, isTrue);
+         expect(showDigitalPrices, isFalse);
+         expect(showDigitalSiteHints, isFalse);
+-        } finally {
++        expect(showFeaturedEntry, isFalse);
++      } finally {
+         debugDefaultTargetPlatformOverride = null;
+       }
+     });
+@@ -171,18 +173,26 @@ void main() {
+       }
+     });
+ 
+-    test('"Lentada ko‘tarish" tugmasi iPhone’da yo‘q', () {
++    test('"Lentada ko‘tarish" tugmasi `showFeaturedEntry` ortida', () {
+       final src = read('lib/features/social/post_screens.dart');
+       final at = src.indexOf('Routes.featured(');
+       expect(at, greaterThan(0));
+       final before = src.substring(0, at);
+-      final guard = before.lastIndexOf('if (!isAppStoreBuild)');
++      final guard = before.lastIndexOf('if (showFeaturedEntry)');
+       final button = before.lastIndexOf('NovaIconButton(');
+       expect(guard, greaterThan(0), reason: 'kalit yo‘q');
+       expect(guard, lessThan(button),
+           reason: 'kalit aynan shu tugmadan oldin turishi kerak');
+     });
+ 
++    test('`/featured` marshruti `showFeaturedEntry` bilan yopiq', () {
++      final src = read('lib/routing/router.dart');
++      final at = src.indexOf("path: '/featured/:kind/:id'");
++      expect(at, greaterThan(0));
++      final route = src.substring(at, src.indexOf('builder:', at));
++      expect(route, contains('showFeaturedEntry ? null : Routes.home'));
++    });
++
+     /// Avval faqat Android'da chiziladigan "(sayt orqali)", "saytdagi
+     /// chegirma" va "o'z nomini sotib oling" matnlari endi ikkala
+     /// platformada ham kalit (`showDigitalPrices` / `showDigitalSiteHints`)
+diff --git a/mobile_nova/test/store_policy_test.dart b/mobile_nova/test/store_policy_test.dart
+index 5600682..930dee5 100644
+--- a/mobile_nova/test/store_policy_test.dart
++++ b/mobile_nova/test/store_policy_test.dart
+@@ -116,9 +116,10 @@ void main() {
+   /// yozuvi va narx ham shunga kiradi. Apple 3.1.1 iPhone'da buni
+   /// avvaldan talab qiladi. Jismoniy tovar (NFC karta) yozuvi QOLADI.
+   group('raqamli xarid — Android va iPhone', () {
+-    testWidgets('kalitlar: narx va sayt yozuvi yo‘q', (tester) async {
++    testWidgets('kalitlar: narx, sayt yozuvi va FEATURED yo‘q', (tester) async {
+       expect(showDigitalPrices, isFalse);
+       expect(showDigitalSiteHints, isFalse);
++      expect(showFeaturedEntry, isFalse);
+       for (final kind in [
+         OrderKind.nfcId,
+         OrderKind.premium,
+-- 
+2.43.0
+

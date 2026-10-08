@@ -1,0 +1,858 @@
+From 27b1fc830124e92f943a87d4007d620f6ab36c8a Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 18:47:27 +0000
+Subject: [PATCH 70/72] Nova: Android'da ham raqamli mahsulot narxi va "saytda
+ oling" yozuvi yo'q
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Google Play to'lov qoidasi: ilova ichidagi raqamli xizmat uchun
+foydalanuvchini Play Billing'dan boshqa to'lov usuliga yo'naltirish
+taqiqlangan. Android endi iPhone kabi:
+
+- `showDigitalPrices` ikkala platformada `false`: NFC ID, darajalar,
+  Premium, o'z nomi, FEATURED paketlari va raqamli buyurtma summasi
+  ko'rinmaydi. Jismoniy karta (do'kon, katalog) narxi qoladi.
+- Yangi `showDigitalSiteHints` (`false`): `StoreNotice` raqamli xarid
+  uchun hech narsa chizmaydi (jismoniy karta yozuvi qoladi), taklif
+  ekranidagi "(saytdagi xaridlarga chegirma)" yo'q.
+- `plan_limit_reached` xatosi ikkala platformada neytral ("(sayt
+  orqali)"siz).
+- NFC ID holati "Sotuvda/Sotilgan" emas — "Bo'sh/Egallangan".
+- Biznes tarif kartasi: tarif nomi, "sotib oling", "tarifni oshiring"
+  Android'da ham yo'q (kalit allaqachon `showDigitalPrices` edi).
+- Sinovlar: store_policy_test'ga Android+iPhone vidjet sinovlari
+  (FEATURED, NFC ID, NFC ID buyurtmasi, Premium, StoreNotice) — narx
+  ham, tashqi xarid chaqirig'i ham yo'q; boshqa sinovlar yangi
+  qoidaga moslandi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/lib/design/widgets/states.dart    |  14 +-
+ .../lib/features/settings/invite_screen.dart  |  11 +-
+ .../lib/features/shop/nfc_id_market.dart      |  11 +-
+ .../lib/features/shop/store_policy.dart       |  40 ++++-
+ mobile_nova/test/app_store_policy_test.dart   |  82 +++++----
+ mobile_nova/test/business_plan_test.dart      |  96 ++++++-----
+ mobile_nova/test/invite_test.dart             |  10 +-
+ mobile_nova/test/nfc_id_market_test.dart      |  12 +-
+ mobile_nova/test/orders_app_store_test.dart   |  25 ++-
+ mobile_nova/test/store_policy_test.dart       | 160 ++++++++++++++++++
+ 10 files changed, 340 insertions(+), 121 deletions(-)
+
+diff --git a/mobile_nova/lib/design/widgets/states.dart b/mobile_nova/lib/design/widgets/states.dart
+index cc30954..e3aff66 100644
+--- a/mobile_nova/lib/design/widgets/states.dart
++++ b/mobile_nova/lib/design/widgets/states.dart
+@@ -11,12 +11,6 @@ import 'buttons.dart';
+ import 'surfaces.dart';
+ import 'brand_icon.dart';
+ 
+-/// iPhone (App Store) — raqamli xaridga ishora yo'q.
+-///
+-/// `shop/store_policy.dart` dagi `isAppStoreBuild` bilan AYNAN bir
+-/// xil. Nusxa ataylab: dizayn qatlami `features/` ni import qilmaydi.
+-bool get _appStore => defaultTargetPlatform == TargetPlatform.iOS;
+-
+ /// Xato KALITINI joriy tildagi jumlaga aylantiradi.
+ ///
+ /// Server kalitiga aniq javob bo'lsa o'sha ishlatiladi; bo'lmasa xato
+@@ -83,9 +77,11 @@ String describeError(L l, AppError e) => switch (e.code) {
+       'video_uploads_disabled' => l.errVideoUploadsDisabled,
+       // Avtomatik tekshiruv navbatga yozilmadi (503) — fayl saqlanmadi.
+       'moderation_unavailable' => l.errModerationUnavailable,
+-      // iPhone'da "(sayt orqali)" degan xarid ishorasi yo'q —
+-      // `shop/store_policy.dart` dagi `isAppStoreBuild` izohi.
+-      'plan_limit_reached' => _appStore ? l.errPlanLimitIos : l.errPlanLimit,
++      // "(sayt orqali)" degan xarid ishorasi YO'Q — iPhone'da (Apple
++      // 3.1.1) ham, Android'da ham (Google Play to'lov qoidasi,
++      // 2026-10-08): `shop/store_policy.dart` dagi
++      // `showDigitalSiteHints` izohi. Neytral matn ikkala platformada.
++      'plan_limit_reached' => l.errPlanLimitIos,
+       // Server 413 yoki ilovaning oldindan tekshiruvi (100 MB).
+       'too_large' => l.errFileTooLarge,
+       // AVTOMATIK FILTR rasm yoki videoni rad etdi — SABAB aytiladi, aks holda
+diff --git a/mobile_nova/lib/features/settings/invite_screen.dart b/mobile_nova/lib/features/settings/invite_screen.dart
+index 24c249d..d8c7a93 100644
+--- a/mobile_nova/lib/features/settings/invite_screen.dart
++++ b/mobile_nova/lib/features/settings/invite_screen.dart
+@@ -13,7 +13,7 @@ import '../../design/widgets/states.dart';
+ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../profile/profile_repository.dart';
+-import '../shop/store_policy.dart' show isAppStoreBuild, kShowSiteNotice;
++import '../shop/store_policy.dart' show kShowSiteNotice, showDigitalSiteHints;
+ 
+ /// `GET /api/referrals/summary`.
+ final referralSummaryProvider =
+@@ -30,9 +30,10 @@ String inviteShareText(L l, String link) => l.inviteShareText(link);
+ /// Shaxsiy havola (`https://nfcstore.uz/i/<kod>`), nusxa olish va
+ /// ulashish, natija ("N do'st · +M oy Premium") va qanday ishlashi.
+ ///
+-/// iPHONE'DA chegirma yoki narx HAQIDA HECH NARSA YO'Q (Apple 3.1.1):
+-/// saytdagi 10% chegirma faqat Android'da va faqat sayt yozuvlari
+-/// yoqilgan bo'lsa (`kShowSiteNotice`) tilga olinadi.
++/// Chegirma yoki narx HAQIDA HECH NARSA YO'Q — iPhone'da (Apple 3.1.1)
++/// ham, Android'da ham (Google Play to'lov qoidasi, 2026-10-08):
++/// saytdagi 10% chegirma — ilovadan tashqaridagi xaridga undov. U faqat
++/// `showDigitalSiteHints` va `kShowSiteNotice` yoqilganda tilga olinadi.
+ class InviteScreen extends ConsumerWidget {
+   const InviteScreen({super.key});
+ 
+@@ -66,7 +67,7 @@ class _InviteBody extends StatelessWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+     final text = Theme.of(context).textTheme;
+-    final siteDiscount = !isAppStoreBuild && kShowSiteNotice;
++    final siteDiscount = showDigitalSiteHints && kShowSiteNotice;
+ 
+     return NovaScroll(
+       children: [
+diff --git a/mobile_nova/lib/features/shop/nfc_id_market.dart b/mobile_nova/lib/features/shop/nfc_id_market.dart
+index 30d4e33..ca4db25 100644
+--- a/mobile_nova/lib/features/shop/nfc_id_market.dart
++++ b/mobile_nova/lib/features/shop/nfc_id_market.dart
+@@ -66,20 +66,21 @@ String tierLabel(L l, String tier) => idTierLabel(l, tier);
+ 
+ /// Kod holati bitta so'zda + rang.
+ ///
+-/// iPhone'da savdo so'zi yo'q: "Sotuvda"/"Sotilgan" o'rniga
+-/// "Bo'sh"/"Egallangan" — ilovada sotilmaydigan raqamli mahsulotga
+-/// ishora bo'lmasin (`store_policy.dart`). Holatning o'zi qoladi.
++/// Savdo so'zi yo'q (iPhone'da ham, 2026-10-08 dan Android'da ham):
++/// "Sotuvda"/"Sotilgan" o'rniga "Bo'sh"/"Egallangan" — ilovada
++/// sotilmaydigan raqamli mahsulotga ishora bo'lmasin
++/// (`showDigitalPrices`, `store_policy.dart`). Holatning o'zi qoladi.
+ ({String text, Color color}) quoteState(L l, NfcTokens t, IdQuote q) {
+   if (q.taken) {
+     return (
+-      text: isAppStoreBuild ? l.idStateTakenIos : l.idStateTaken,
++      text: showDigitalPrices ? l.idStateTaken : l.idStateTakenIos,
+       color: t.text3
+     );
+   }
+   if (q.reserved) return (text: l.idStateReserved, color: t.warn);
+   if (q.purchasable) {
+     return (
+-      text: isAppStoreBuild ? l.idStateAvailableIos : l.idStateAvailable,
++      text: showDigitalPrices ? l.idStateAvailable : l.idStateAvailableIos,
+       color: t.accent2
+     );
+   }
+diff --git a/mobile_nova/lib/features/shop/store_policy.dart b/mobile_nova/lib/features/shop/store_policy.dart
+index ddce891..6dc16a7 100644
+--- a/mobile_nova/lib/features/shop/store_policy.dart
++++ b/mobile_nova/lib/features/shop/store_policy.dart
+@@ -22,7 +22,9 @@ import '../../l10n/gen/app_localizations.dart';
+ //
+ //   jismoniy karta   -> Payme/Click bemalol
+ //   NFC ID, Premium,
+-//   FEATURED         -> xarid tugmasi YO'Q
++//   FEATURED         -> xarid tugmasi YO'Q, narx YO'Q va "saytda
++//                       oling" yozuvi ham YO'Q (2026-10-08,
++//                       `showDigitalPrices` / `showDigitalSiteHints`)
+ //
+ // ANTI-STEERING. Xarid o'rnida saytga BOSILADIGAN HAVOLA ham
+ // qo'yilmaydi — Google buni ham taqiqlaydi ("apps may not lead users
+@@ -49,6 +51,11 @@ const kSiteHost = 'nfcstore.uz';
+ /// NFC ID ni qayerdan olishini umuman bilmay qoladi. Play rad
+ /// etsa — shu kalit `false` qilinadi va ilova qayta yig'iladi.
+ ///
++/// 2026-10-08: RAQAMLI mahsulot (NFC ID, Premium, o'z nomi, FEATURED)
++/// yozuvi Android'da ham olib tashlandi (`showDigitalSiteHints`).
++/// Kalit endi faqat JISMONIY tovar yozuvini (`physical: true`) va
++/// Sozlamalardagi sayt kartasini (jismoniy karta, katalog) boshqaradi.
++///
+ /// ## NIMA UCHUN KALIT, KODNI O'CHIRISH EMAS
+ ///
+ /// Rad etish kelsa, tuzatish bir necha ekranni qayta yozishni
+@@ -75,7 +82,8 @@ const kShowSiteNotice = true;
+ /// Egasining qarori (2026-09-27): iPhone versiyasida raqamli
+ /// mahsulot (NFC ID, Premium, o'z nomi, FEATURED) NARXI va SAYT
+ /// YOZUVI ko'rsatilmaydi. ID bo'sh yoki bandligi, sotib olingan
+-/// narsaning holati ko'rinaveradi. ANDROID O'ZGARMAYDI.
++/// narsaning holati ko'rinaveradi. 2026-10-08 dan Android ham shunday
++/// (`showDigitalPrices`, Google Play to'lov qoidasi).
+ ///
+ /// Jismoniy tovar (NFC karta, katalogdagi mahsulotlar) bu qoidadan
+ /// tashqarida — Apple 3.1.5(a) ularni tashqi to'lov bilan sotishni
+@@ -85,9 +93,26 @@ const kShowSiteNotice = true;
+ /// `debugDefaultTargetPlatformOverride` bilan iPhone sinaladi.
+ bool get isAppStoreBuild => defaultTargetPlatform == TargetPlatform.iOS;
+ 
+-/// Raqamli mahsulot narxi ko'rsatilsinmi. Android'da — ha,
+-/// iPhone'da — yo'q (`isAppStoreBuild`).
+-bool get showDigitalPrices => !isAppStoreBuild;
++/// Raqamli mahsulot narxi ko'rsatilsinmi — IKKALA PLATFORMADA YO'Q.
++///
++/// Ilgari Android'da narx ko'rinardi (iPhone'da — yo'q). 2026-10-08:
++/// Google Play to'lov qoidasi ("Payments" policy) ilova ichidagi
++/// raqamli xizmat uchun foydalanuvchini Play Billing'dan boshqa to'lov
++/// usuliga YO'NALTIRISHNI taqiqlaydi. Xarid ilovada yo'q, demak narx
++/// ham, "saytda rasmiylashtiriladi" yozuvi ham faqat tashqi to'lovga
++/// ishora bo'lib qoladi. Android endi iPhone kabi: NFC ID, Premium,
++/// o'z nomi va FEATURED (ko'tarish) narxi KO'RSATILMAYDI.
++///
++/// Jismoniy tovar (NFC karta, stiker, katalog) bu qoidadan tashqarida
++/// — uning narxi ikkala platformada ham ko'rinadi.
++bool get showDigitalPrices => false;
++
++/// RAQAMLI xaridni saytga yo'naltiruvchi yozuv bo'lsinmi —
++/// `StoreNotice` (jismoniy bo'lmasa), "to'lovni yakunlang", sayt
++/// chegirmasi, "(sayt orqali)". IKKALA PLATFORMADA YO'Q — sabab
++/// `showDigitalPrices` izohida. Jismoniy tovar yozuvi qoladi
++/// (`StoreNotice(physical: true)`, `kShowSiteNotice` bilan).
++bool get showDigitalSiteHints => false;
+ 
+ /// Buyurtma turlari (`web_orders.kind`) — server bilan bir xil nom.
+ class OrderKind {
+@@ -235,8 +260,9 @@ class StoreNotice extends StatelessWidget {
+     // qismi avvalgidek ishlaydi, chunki bu shunchaki izoh
+     // kartasi edi.
+     if (!kShowSiteNotice) return const SizedBox.shrink();
+-    // iPhone'da raqamli xarid haqida yozuv YO'Q (`isAppStoreBuild`).
+-    if (isAppStoreBuild && !physical) return const SizedBox.shrink();
++    // Raqamli xarid haqida yozuv YO'Q — iPhone'da ham, Android'da ham
++    // (`showDigitalSiteHints`, Google Play to'lov qoidasi).
++    if (!physical && !showDigitalSiteHints) return const SizedBox.shrink();
+ 
+     final t = context.tokens;
+     return Container(
+diff --git a/mobile_nova/test/app_store_policy_test.dart b/mobile_nova/test/app_store_policy_test.dart
+index c732ba4..a519a5b 100644
+--- a/mobile_nova/test/app_store_policy_test.dart
++++ b/mobile_nova/test/app_store_policy_test.dart
+@@ -19,27 +19,36 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ 
+ import 'helpers.dart';
+ 
+-/// APP STORE (iPhone) — RAQAMLI XARIDGA ISHORA YO'Q.
++/// RAQAMLI XARIDGA ISHORA YO'Q — iPhone'da HAM, Android'da HAM.
+ ///
+ /// Egasining qarori (2026-09-27): iPhone versiyasida NFC ID,
+ /// Premium, o'z nomi va FEATURED NARXI hamda "saytda oling" YOZUVI
+-/// ko'rsatilmaydi (Apple 3.1.1 / 3.1.3(f)). ANDROID O'ZGARMAYDI —
+-/// shuning uchun har tekshiruv ikki tomonlama: Android'da BOR,
+-/// iPhone'da YO'Q. Bittasi yolg'iz sinalsa, "hammasi yashirildi" yoki
+-/// "hech narsa o'zgarmadi" xatosi ko'rinmay qolardi.
++/// ko'rsatilmaydi (Apple 3.1.1 / 3.1.3(f)).
++///
++/// 2026-10-08: Android ham shunday — Google Play to'lov qoidasi
++/// raqamli xizmat uchun Play Billing'dan boshqa to'lov usuliga
++/// yo'naltirishni taqiqlaydi. Shuning uchun har tekshiruv IKKALA
++/// platformada: raqamli narx YO'Q, tashqi xaridga chaqiriq YO'Q.
++/// Jismoniy tovar (NFC karta) yozuvi va narxi ikkalasida QOLADI —
++/// busiz "hammasi yashirildi" xatosi ko'rinmay qolardi.
++final _both = TargetPlatformVariant(
++    const {TargetPlatform.android, TargetPlatform.iOS});
++
+ void main() {
+   group('platforma kaliti', () {
+-    test('Android (standart): narx va yozuv bor', () {
++    test('Android (standart): raqamli narx va sayt yozuvi yo‘q', () {
+       expect(isAppStoreBuild, isFalse);
+-      expect(showDigitalPrices, isTrue);
++      expect(showDigitalPrices, isFalse);
++      expect(showDigitalSiteHints, isFalse);
+     });
+ 
+-    test('iPhone: raqamli narx yo‘q', () {
++    test('iPhone: raqamli narx va sayt yozuvi yo‘q', () {
+       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+       try {
+         expect(isAppStoreBuild, isTrue);
+         expect(showDigitalPrices, isFalse);
+-      } finally {
++        expect(showDigitalSiteHints, isFalse);
++        } finally {
+         debugDefaultTargetPlatformOverride = null;
+       }
+     });
+@@ -52,24 +61,19 @@ void main() {
+           home: Scaffold(body: child),
+         ));
+ 
+-    testWidgets('Android: raqamli xarid yozuvi ko‘rinadi', (tester) async {
+-      await pump(tester, const StoreNotice(text: 'RAQAMLI'));
+-      expect(find.text('RAQAMLI'), findsOneWidget);
+-      expect(find.text(kSiteHost), findsOneWidget);
+-    });
+-
+-    testWidgets('iPhone: raqamli xarid yozuvi YO‘Q', (tester) async {
++    testWidgets('raqamli xarid yozuvi YO‘Q (Android va iPhone)',
++        (tester) async {
+       await pump(tester, const StoreNotice(text: 'RAQAMLI'));
+       expect(find.text('RAQAMLI'), findsNothing);
+       expect(find.text(kSiteHost), findsNothing);
+-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++    }, variant: _both);
+ 
+-    testWidgets('iPhone: JISMONIY karta yozuvi qoladi (3.1.5(a))',
++    testWidgets('JISMONIY karta yozuvi qoladi (Android va iPhone)',
+         (tester) async {
+       await pump(tester, const StoreNotice(text: 'JISMONIY', physical: true));
+       expect(find.text('JISMONIY'), findsOneWidget);
+       expect(find.text(kSiteHost), findsOneWidget);
+-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++    }, variant: _both);
+   });
+ 
+   group('NFC ID darajalari', () {
+@@ -108,15 +112,7 @@ void main() {
+       return L.delegate.load(const Locale('uz'));
+     }
+ 
+-    testWidgets('Android: narxlar ko‘rinadi', (tester) async {
+-      final l = await pump(tester);
+-      expect(tester.takeException(), isNull);
+-      expect(find.byKey(const ValueKey('tier-tile-gold')), findsOneWidget);
+-      expect(find.text(formatMoney(500000, 'UZS')), findsOneWidget);
+-      expect(find.textContaining(l.tierPriceFromSuffix), findsOneWidget);
+-    });
+-
+-    testWidgets('iPhone: darajalar bor, narx YO‘Q, "Sotuvda emas" qoladi',
++    testWidgets('darajalar bor, narx YO‘Q, "Sotuvda emas" qoladi',
+         (tester) async {
+       final l = await pump(tester);
+       expect(tester.takeException(), isNull);
+@@ -124,14 +120,14 @@ void main() {
+       expect(find.byKey(const ValueKey('tier-tile-exclusive')), findsOneWidget);
+       expect(find.text(formatMoney(500000, 'UZS')), findsNothing);
+       expect(find.textContaining(l.tierPriceFromSuffix), findsNothing);
+-      // Narx emas, holat — iPhone'da ham ko'rinadi.
++      // Narx emas, holat — ikkala platformada ko'rinadi.
+       expect(find.text(l.idStateNotForSale), findsOneWidget);
+-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++    }, variant: _both);
+   });
+ 
+   /// Barcha raqamli narx joylari kalitdan o'tadi. Yangi narx qo'shilib,
+-  /// kalit unutilsa — iPhone'da narx qaytib chiqadi va App Store rad
+-  /// etadi. Widget testi har ekranni qamrab olmaydi, shuning uchun
++  /// kalit unutilsa — narx qaytib chiqadi va App Store ham, Google Play
++  /// ham rad etadi. Widget testi har ekranni qamrab olmaydi, shuning uchun
+   /// manba tekshiriladi.
+   group('manba qo‘riqchisi', () {
+     String read(String p) => File(p).readAsStringSync();
+@@ -162,7 +158,7 @@ void main() {
+           'showDigitalPrices ? l.bizPremiumHint : l.bizPremiumHintIos',
+         ],
+         'lib/design/widgets/states.dart': [
+-          '_appStore ? l.errPlanLimitIos : l.errPlanLimit',
++          "'plan_limit_reached' => l.errPlanLimitIos,",
+           // `plan_locked` endi hamma platformada neytral (post bepul).
+           'l.errPublishUnavailable',
+         ],
+@@ -187,7 +183,25 @@ void main() {
+           reason: 'kalit aynan shu tugmadan oldin turishi kerak');
+     });
+ 
+-    test('iPhone matnlarida xarid va sayt ishorasi yo‘q', () {
++    /// Avval faqat Android'da chiziladigan "(sayt orqali)", "saytdagi
++    /// chegirma" va "o'z nomini sotib oling" matnlari endi ikkala
++    /// platformada ham kalit (`showDigitalPrices` / `showDigitalSiteHints`)
++    /// ortida — kalitsiz qaytsa Android'da yana chiqib qolardi.
++    test('xarid / sayt matnlari faqat kalit ortida', () {
++      expect(read('lib/design/widgets/states.dart'),
++          isNot(contains('l.errPlanLimit,')));
++      expect(read('lib/features/settings/invite_screen.dart'),
++          contains('showDigitalSiteHints && kShowSiteNotice'));
++      final forms = read('lib/features/business/business_forms.dart');
++      for (final k in ['l.bizPlanFreeBody', 'l.bizPlanPremiumBody']) {
++        final at = forms.indexOf(k);
++        expect(at, greaterThan(0), reason: k);
++        expect(forms.substring(0, at).lastIndexOf('if (showDigitalPrices) ...['),
++            greaterThan(0), reason: '$k kalitsiz');
++      }
++    });
++
++    test('neytral (iPhone va Android) matnlarda xarid va sayt ishorasi yo‘q', () {
+       const keys = [
+         'errPlanLimitIos',
+         'errPublishUnavailable',
+diff --git a/mobile_nova/test/business_plan_test.dart b/mobile_nova/test/business_plan_test.dart
+index ac0b27e..89c7b58 100644
+--- a/mobile_nova/test/business_plan_test.dart
++++ b/mobile_nova/test/business_plan_test.dart
+@@ -1,3 +1,4 @@
++import 'package:flutter/foundation.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_localizations/flutter_localizations.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -25,8 +26,9 @@ import 'helpers.dart';
+ ///   o'z nomi — cheksiz. Mavjud tovarlar o'chmaydi.
+ ///
+ /// Ilova limitni OLDINDAN ko'rsatadi ("3 / 5"), limitda formani
+-/// ochmaydi va keyingi qadamni aytadi. Play qoidasi: xarid tugmasi va
+-/// saytga bosiladigan havola YO'Q — manzil faqat matn.
++/// ochmaydi. Xarid tugmasi, tarif nomi, "sotib oling" va sayt yozuvi
++/// YO'Q — iPhone'da ham, Android'da ham (Google Play to'lov qoidasi,
++/// 2026-10-08, `store_policy.dart`).
+ class _Repo extends BusinessRepository {
+   _Repo(this.n) : super(ApiClient());
+   final int n;
+@@ -73,6 +75,10 @@ Future<void> _pump(WidgetTester tester, Business b, int n) async {
+   await settle(tester, frames: 8);
+ }
+ 
++/// Android va iPhone — qoida ikkalasida bir xil.
++final _both = TargetPlatformVariant(
++    const {TargetPlatform.android, TargetPlatform.iOS});
++
+ void main() {
+   test('server tarifi o‘qiladi', () {
+     final p = _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}).plan;
+@@ -83,69 +89,69 @@ void main() {
+     expect([legacy.limited, legacy.canPost], [false, true]);
+   });
+ 
+-  testWidgets('bepul: 3 / 5, Premium 25 ta va o‘z nomi haqida aytiladi',
++  // RAQAMLI TARIF (Premium, o'z nomi) HAQIDA XARID CHAQIRIG'I YO'Q —
++  // iPhone'da (egasi, 2026-09-27, Apple 3.1.1) va Android'da ham
++  // (2026-10-08, Google Play to'lov qoidasi, `store_policy.dart`).
++  // Limit va hisoblagich qoladi; "sotib oling / tarifni oshiring /
++  // saytda" — yo'q. Har test ikkala platformada.
++  testWidgets('bepul: 3 / 5 — hajm va hisoblagich, tarif nomi va xarid yo‘q',
+       (tester) async {
+     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
+     final l = await L.delegate.load(const Locale('uz'));
+     expect(tester.takeException(), isNull);
+     expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
+-    expect(find.text(l.bizPlanFreeTitle(5)), findsOneWidget);
+-    expect(find.text(l.bizPlanFreeBody(25)), findsOneWidget);
+-    expect(find.byType(StoreNotice), findsOneWidget);
++    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
++    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
++    expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
++    expect(find.text(l.bizPlanStoreNotice), findsNothing);
++    expect(find.text(kSiteHost), findsNothing);
++    expect(find.textContaining('Premium'), findsNothing);
++    expect(find.textContaining('istoriya'), findsNothing);
+     expect(find.byKey(const ValueKey('plan-limit-reached')), findsNothing);
+ 
+     await tester.tap(find.byKey(const ValueKey('catalog-add')));
+     await settle(tester, frames: 8);
+     expect(find.text('FORM'), findsOneWidget, reason: 'limit to‘lmagan — forma ochiladi');
+-  });
++  }, variant: _both);
+ 
+-  testWidgets('bepul: 5 / 5 — forma ochilmaydi, keyingi qadam aytiladi',
++  testWidgets('bepul: 5 / 5 — forma ochilmaydi, limit aytiladi, xarid chaqirig‘i yo‘q',
+       (tester) async {
+     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 5);
+     final l = await L.delegate.load(const Locale('uz'));
++    expect(tester.takeException(), isNull);
+     expect(find.text(l.bizPlanUsage(5, 5)), findsOneWidget);
+     expect(find.byKey(const ValueKey('plan-limit-reached')), findsOneWidget);
++    expect(find.text(l.bizPlanLimitReachedIos), findsOneWidget);
++    expect(find.text(l.bizPlanLimitReached), findsNothing);
++    expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
+     expect(find.text('Tovar 0'), findsOneWidget, reason: 'mavjudlari joyida');
+ 
+     await tester.tap(find.byKey(const ValueKey('catalog-add')));
+     await settle(tester, frames: 10);
+     expect(find.text('FORM'), findsNothing);
+-    expect(find.byType(StoreNotice), findsNWidgets(2), reason: 'varaqda ham');
+-    // Saytga BOSILADIGAN havola yo'q — faqat matn.
+-    expect(find.widgetWithText(TextButton, kSiteHost), findsNothing);
+-  });
+-
+-  // iPHONE (egasining qarori, 2026-09-27): limit va hisoblagich
+-  // qoladi, "sotib oling / tarifni oshiring / saytda" — YO'Q
+-  // (Apple 3.1.1, `store_policy.dart`). Android yuqoridagi testlarda.
+-  testWidgets('iPhone: 5 / 5 — limit aytiladi, xarid chaqirig‘i yo‘q',
+-      (tester) async {
+-    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 5);
+-    final l = await L.delegate.load(const Locale('uz'));
+-    expect(tester.takeException(), isNull);
+-    expect(find.text(l.bizPlanUsage(5, 5)), findsOneWidget);
+-    expect(find.text(l.bizPlanLimitReachedIos), findsOneWidget);
+-    expect(find.text(l.bizPlanLimitReached), findsNothing);
+-    expect(find.text(l.bizPlanFreeBody(25)), findsNothing);
++    // Varaqda ham sayt yozuvi yo'q — na matn, na havola.
+     expect(find.text(l.bizPlanStoreNotice), findsNothing);
+     expect(find.text(kSiteHost), findsNothing);
+-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
++    expect(find.widgetWithText(TextButton, kSiteHost), findsNothing);
++  }, variant: _both);
+ 
+-  testWidgets('Premium: 25 ta, cheksiz uchun o‘z nomi', (tester) async {
++  testWidgets('Premium: 25 ta — tarif nomi va "o‘z nomini sotib oling" yo‘q',
++      (tester) async {
+     await _pump(tester, _biz({'premium': true, 'itemLimit': 25, 'canPost': true}), 12);
+     final l = await L.delegate.load(const Locale('uz'));
+-    expect(find.text(l.bizPlanPremiumTitle(25)), findsOneWidget);
++    expect(find.text(l.bizPlanLimitTitle(25)), findsOneWidget);
++    expect(find.text(l.bizPlanPremiumTitle(25)), findsNothing);
+     expect(find.text(l.bizPlanUsage(12, 25)), findsOneWidget);
+-    expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
+-  });
++    expect(find.text(l.bizPlanPremiumBody), findsNothing);
++  }, variant: _both);
+ 
+   testWidgets('eski server Premium limitini aytmasa — va‘da berilmaydi',
+       (tester) async {
+     await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'canPost': false}), 2);
+     final l = await L.delegate.load(const Locale('uz'));
+     expect(find.textContaining('25'), findsNothing);
+-    expect(find.text(l.bizPlanPremiumBody), findsOneWidget);
+-  });
++    expect(find.text(l.bizPlanPremiumBody), findsNothing);
++  }, variant: _both);
+ 
+   // Post va istoriya hammaga bepul (egasining qarori, 2026-10-04):
+   // sinov davrida "Sinov davri: hozircha cheklov yo'q" degan yozuv
+@@ -159,21 +165,21 @@ void main() {
+     expect(find.textContaining('Sinov'), findsNothing);
+   });
+ 
+-  testWidgets('iPhone: sarlavhada tarif nomi yo‘q — faqat katalog hajmi',
+-      (tester) async {
+-    await _pump(tester, _biz({'free': true, 'itemLimit': 5, 'premiumItemLimit': 25, 'canPost': false}), 3);
+-    final l = await L.delegate.load(const Locale('uz'));
+-    expect(find.text(l.bizPlanLimitTitle(5)), findsOneWidget);
+-    expect(find.text(l.bizPlanFreeTitle(5)), findsNothing);
+-    expect(find.text(l.bizPlanUsage(3, 5)), findsOneWidget);
+-    expect(find.textContaining('Premium'), findsNothing);
+-    expect(find.textContaining('istoriya'), findsNothing);
+-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+-
+   test('server xatolari tushunarli matnga aylanadi', () async {
+     final l = await L.delegate.load(const Locale('uz'));
+-    expect(describeError(l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached')),
+-        l.errPlanLimit);
++    // "(sayt orqali)" yo'q — iPhone'da ham, Android'da ham (Google Play
++    // to'lov qoidasi): neytral matn ikkala platformada.
++    for (final p in [TargetPlatform.android, TargetPlatform.iOS]) {
++      debugDefaultTargetPlatformOverride = p;
++      try {
++        final msg = describeError(
++            l, const AppError(AppErrorKind.conflict, code: 'plan_limit_reached'));
++        expect(msg, l.errPlanLimitIos, reason: '$p');
++        expect(msg.toLowerCase(), isNot(contains('sayt')), reason: '$p');
++      } finally {
++        debugDefaultTargetPlatformOverride = null;
++      }
++    }
+     // `plan_locked` — eski server qoidasi; post bepul, xato NEYTRAL.
+     expect(describeError(l, const AppError(AppErrorKind.forbidden, code: 'plan_locked')),
+         l.errPublishUnavailable);
+diff --git a/mobile_nova/test/invite_test.dart b/mobile_nova/test/invite_test.dart
+index e84e274..4d7f271 100644
+--- a/mobile_nova/test/invite_test.dart
++++ b/mobile_nova/test/invite_test.dart
+@@ -76,7 +76,10 @@ void main() {
+         ActivityKind.referral);
+   });
+ 
+-  testWidgets('Android: havola, nusxa/ulashish, natija, chegirma eslatmasi',
++  /// Saytdagi chegirma eslatmasi Android'da ham YO'Q (2026-10-08, Google
++  /// Play to'lov qoidasi: ilovadan tashqaridagi xaridga undov,
++  /// `showDigitalSiteHints`).
++  testWidgets('Android: havola, nusxa/ulashish, natija; chegirma eslatmasi yo‘q',
+       (tester) async {
+     final shared = <String>[];
+     shareInvokerOverride = (text, _) async => shared.add(text);
+@@ -85,7 +88,10 @@ void main() {
+     final l = await _uz();
+     expect(find.text('https://nfcstore.uz/i/ALI77'), findsOneWidget);
+     expect(find.text(l.inviteStats(3, 2)), findsOneWidget);
+-    expect(find.text('${l.inviteStep3} ${l.inviteSiteDiscount}'), findsOneWidget);
++    expect(find.text(l.inviteStep3), findsOneWidget);
++    expect(find.textContaining(l.inviteSiteDiscount), findsNothing);
++    expect(find.textContaining('chegirma'), findsNothing);
++    expect(find.textContaining("so'm"), findsNothing);
+     expect(find.text(l.inviteTrialNote), findsOneWidget);
+ 
+     await tester.tap(find.byKey(const ValueKey('invite-share')));
+diff --git a/mobile_nova/test/nfc_id_market_test.dart b/mobile_nova/test/nfc_id_market_test.dart
+index a66d323..97f5371 100644
+--- a/mobile_nova/test/nfc_id_market_test.dart
++++ b/mobile_nova/test/nfc_id_market_test.dart
+@@ -39,10 +39,12 @@ void main() {
+     });
+     final t = NfcTokens.fallback;
+ 
+-    test('egasi bor kod — sotilgan', () {
++    // Savdo so'zi ("Sotilgan"/"Sotuvda") yo'q — Android'da ham
++    // (Google Play to'lov qoidasi, `showDigitalPrices`).
++    test('egasi bor kod — egallangan', () {
+       final s = quoteState(l, t,
+           const IdQuote(code: 'VIP001', taken: true, reason: 'already_taken'));
+-      expect(s.text, l.idStateTaken);
++      expect(s.text, l.idStateTakenIos);
+     });
+ 
+     test('boshqa odam band qilgan — sotilgan EMAS, band', () {
+@@ -54,13 +56,13 @@ void main() {
+           const IdQuote(
+               code: 'QWE321', reason: 'reserved_pending_payment'));
+       expect(s.text, l.idStateReserved);
+-      expect(s.text, isNot(l.idStateTaken));
++      expect(s.text, isNot(l.idStateTakenIos));
+     });
+ 
+-    test('bo\'sh kod — sotuvda', () {
++    test('bo\'sh kod — bo\'sh', () {
+       final s = quoteState(l, t,
+           const IdQuote(code: 'QWE321', purchasable: true, amount: 49000));
+-      expect(s.text, l.idStateAvailable);
++      expect(s.text, l.idStateAvailableIos);
+       expect(s.color, t.accent2);
+     });
+ 
+diff --git a/mobile_nova/test/orders_app_store_test.dart b/mobile_nova/test/orders_app_store_test.dart
+index 9b0593f..a1f8ced 100644
+--- a/mobile_nova/test/orders_app_store_test.dart
++++ b/mobile_nova/test/orders_app_store_test.dart
+@@ -102,18 +102,21 @@ final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
+ 
+ void main() {
+   group('summa qoidasi (`showOrderAmount`)', () {
+-    test('Android: hamma turda summa bor', () {
++    /// 2026-10-08: Google Play to'lov qoidasi — raqamli buyurtma summasi
++    /// Android'da ham yo'q (`showDigitalPrices`). Jismoniy karta — bor.
++    test('Android: raqamli va noma’lum tur — summa yo‘q; jismoniy karta — bor',
++        () {
+       for (final k in [
+         OrderKind.nfcId,
+         OrderKind.premium,
+         OrderKind.premiumFollow,
+         OrderKind.auction,
+         OrderKind.featured,
+-        OrderKind.physicalCard,
+         'yangi_tur',
+       ]) {
+-        expect(showOrderAmount(k), isTrue, reason: k);
++        expect(showOrderAmount(k), isFalse, reason: k);
+       }
++      expect(showOrderAmount(OrderKind.physicalCard), isTrue);
+       expect(showOrdersEntry, isTrue);
+     });
+ 
+@@ -175,10 +178,12 @@ void main() {
+       final l = await _pumpOrders(tester, _orders);
+       expect(tester.takeException(), isNull);
+ 
+-      // Faollar — summasi va tarjima qilingan holati bilan.
++      // Faollar — tarjima qilingan holati bilan. Summa faqat JISMONIY
++      // kartada: raqamli (NFC ID) summa Android'da ham yo'q (Google
++      // Play to'lov qoidasi, `showDigitalPrices`).
+       expect(_order(62), findsOneWidget);
+       expect(_order(63), findsOneWidget);
+-      expect(find.text(formatMoney(500000, 'UZS')), findsOneWidget);
++      expect(find.text(formatMoney(500000, 'UZS')), findsNothing);
+       expect(find.text(formatMoney(120000, 'UZS')), findsOneWidget);
+       expect(find.text(l.payStatusPaid), findsOneWidget);
+       expect(find.text(l.payStatusPending), findsOneWidget);
+@@ -202,7 +207,8 @@ void main() {
+       expect(_order(61), findsOneWidget);
+       expect(_order(64), findsOneWidget);
+       expect(find.text(l.payStatusCancelled), findsNWidgets(2));
+-      expect(find.text(formatMoney(149000, 'UZS')), findsOneWidget);
++      // Bekor qilingan NFC ID — raqamli: summa yo'q.
++      expect(find.text(formatMoney(149000, 'UZS')), findsNothing);
+       expect(find.text(l.payKindPremium), findsOneWidget);
+       // Faollar tepada qoladi.
+       expect(tester.getTopLeft(_order(63)).dy,
+@@ -367,13 +373,14 @@ void main() {
+       }, variant: ios ? _ios : TargetPlatformVariant.only(TargetPlatform.android));
+     }
+ 
+-    test('ID holati: iPhone’da savdo so‘zi yo‘q', () {
++    test('ID holati: iPhone’da ham, Android’da ham savdo so‘zi yo‘q', () {
+       final l = LUz();
+       final t = NfcTokens.ivory;
+       const free = IdQuote(code: 'VIP777', purchasable: true);
+       const taken = IdQuote(code: 'VIP001', taken: true);
+-      expect(quoteState(l, t, free).text, l.idStateAvailable);
+-      expect(quoteState(l, t, taken).text, l.idStateTaken);
++      // Android (2026-10-08, Google Play to'lov qoidasi).
++      expect(quoteState(l, t, free).text, l.idStateAvailableIos);
++      expect(quoteState(l, t, taken).text, l.idStateTakenIos);
+       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+       try {
+         expect(quoteState(l, t, free).text, l.idStateAvailableIos);
+diff --git a/mobile_nova/test/store_policy_test.dart b/mobile_nova/test/store_policy_test.dart
+index f64925c..5600682 100644
+--- a/mobile_nova/test/store_policy_test.dart
++++ b/mobile_nova/test/store_policy_test.dart
+@@ -1,7 +1,54 @@
+ import 'dart:io';
+ 
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/featured_repository.dart';
++import 'package:nfcstore_nova/features/business/business_screens.dart'
++    show formatMoney;
++import 'package:nfcstore_nova/features/settings/settings_subscreens.dart'
++    show PremiumScreen;
++import 'package:nfcstore_nova/features/shop/nfc_id_market.dart';
+ import 'package:nfcstore_nova/features/shop/store_policy.dart';
++import 'package:nfcstore_nova/features/social/featured_screen.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++
++import 'helpers.dart';
++
++/// Android va iPhone — raqamli xarid qoidasi ikkalasida bir xil.
++final _both = TargetPlatformVariant(
++    const {TargetPlatform.android, TargetPlatform.iOS});
++
++/// Ekranni ochadi va o'zbekcha matnlarni qaytaradi.
++Future<L> _pump(WidgetTester tester, Widget screen,
++    {List<Override> overrides = const []}) async {
++  tester.view.physicalSize = const Size(393 * 3, 1600 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  await tester.pumpWidget(ProviderScope(
++    overrides: [...await testOverrides(), ...overrides],
++    child: wrapScreen(screen),
++  ));
++  await settle(tester);
++  return L.delegate.load(const Locale('uz'));
++}
++
++/// Raqamli xaridni saytga yo'naltiruvchi har qanday yozuv yo'qligi.
++void _expectNoSiteCta(L l) {
++  for (final s in [
++    l.storeBuyOnSiteId,
++    l.storeBuyOnSiteAd,
++    l.storeBuyOnSitePremium,
++    l.storeBuyOnSiteBizName,
++    l.bizPlanStoreNotice,
++    kSiteHost,
++  ]) {
++    expect(find.text(s), findsNothing, reason: s);
++  }
++  expect(find.textContaining('sayt'), findsNothing);
++}
+ 
+ /// ILOVA ICHIDA RAQAMLI TOVAR SOTILMAYDI.
+ ///
+@@ -60,6 +107,119 @@ void main() {
+     });
+   });
+ 
++  /// RAQAMLI MAHSULOT: NARX YO'Q, TASHQI XARIDGA CHAQIRIQ YO'Q —
++  /// iPhone'da HAM, Android'da HAM.
++  ///
++  /// Google Play to'lov qoidasi (2026-10-08): ilova ichidagi raqamli
++  /// xizmat uchun foydalanuvchini Play Billing'dan boshqa to'lov
++  /// usuliga yo'naltirish taqiqlangan — "saytda rasmiylashtiriladi"
++  /// yozuvi va narx ham shunga kiradi. Apple 3.1.1 iPhone'da buni
++  /// avvaldan talab qiladi. Jismoniy tovar (NFC karta) yozuvi QOLADI.
++  group('raqamli xarid — Android va iPhone', () {
++    testWidgets('kalitlar: narx va sayt yozuvi yo‘q', (tester) async {
++      expect(showDigitalPrices, isFalse);
++      expect(showDigitalSiteHints, isFalse);
++      for (final kind in [
++        OrderKind.nfcId,
++        OrderKind.premium,
++        OrderKind.premiumFollow,
++        OrderKind.auction,
++        OrderKind.featured,
++        'yangi_mahsulot',
++      ]) {
++        expect(showOrderAmount(kind), isFalse, reason: kind);
++      }
++      // Jismoniy karta — narxi ko'rinadi.
++      expect(showOrderAmount(OrderKind.physicalCard), isTrue);
++    }, variant: _both);
++
++    testWidgets('StoreNotice: raqamli — hech narsa, jismoniy — matn',
++        (tester) async {
++      final l0 = LUz();
++      final l = await _pump(
++        tester,
++        Column(children: [
++          StoreNotice(text: l0.storeBuyOnSiteId),
++          StoreNotice(text: l0.storeBuyOnSiteAd),
++          StoreNotice(text: l0.storeBuyOnSitePremium),
++          StoreNotice(text: l0.storeBuyOnSitePhysical, physical: true),
++        ]),
++      );
++      expect(find.text(l.storeBuyOnSiteId), findsNothing);
++      expect(find.text(l.storeBuyOnSiteAd), findsNothing);
++      expect(find.text(l.storeBuyOnSitePremium), findsNothing);
++      expect(find.text(l.storeBuyOnSitePhysical), findsOneWidget);
++      expect(find.text(kSiteHost), findsOneWidget, reason: 'faqat jismoniy');
++    }, variant: _both);
++
++    testWidgets('FEATURED (Ko‘tarish): paket narxi va sayt yozuvi yo‘q',
++        (tester) async {
++      final l = await _pump(
++        tester,
++        const FeaturedScreen(targetKind: 'post', targetId: 5),
++        overrides: [
++          featuredPackagesProvider.overrideWith((ref) async =>
++              const FeaturedOffer(enabled: true, packages: [
++                FeaturedPackage(days: 3, price: 30000),
++                FeaturedPackage(days: 7, price: 60000),
++              ])),
++        ],
++      );
++      expect(tester.takeException(), isNull);
++      // Ekran haqiqatan yuklangan — paketlar (muddat) chizilgan.
++      expect(find.text(l.featuredDays(3)), findsOneWidget);
++      expect(find.text(formatMoney(30000, 'UZS')), findsNothing);
++      expect(find.text(formatMoney(60000, 'UZS')), findsNothing);
++      _expectNoSiteCta(l);
++    }, variant: _both);
++
++    testWidgets('NFC ID: narx va sayt yozuvi yo‘q', (tester) async {
++      final l = await _pump(
++        tester,
++        const NfcIdBuyScreen(code: 'VIP777'),
++        overrides: [
++          idQuoteProvider('VIP777').overrideWith((ref) async => const IdQuote(
++              code: 'VIP777', purchasable: true, tier: 'gold', amount: 490000)),
++        ],
++      );
++      expect(tester.takeException(), isNull);
++      // Holat ko'rinadi (savdo so'zisiz) — narx esa yo'q.
++      expect(find.text(l.idStateAvailableIos), findsOneWidget);
++      expect(find.text(formatMoney(490000, 'UZS')), findsNothing);
++      expect(find.text(l.idStateAvailable), findsNothing);
++      _expectNoSiteCta(l);
++    }, variant: _both);
++
++    testWidgets('NFC ID buyurtmasi (kutilmoqda): summa va "to‘lovni yakunlang" yo‘q',
++        (tester) async {
++      final l = await _pump(
++        tester,
++        const NfcIdOrderScreen(orderId: 9),
++        overrides: [
++          idOrderProvider(9).overrideWith((ref) async => const Order(
++              id: 9,
++              status: 'pending',
++              total: 490000,
++              kind: OrderKind.nfcId,
++              code: 'VIP777')),
++        ],
++      );
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.idOrderPending), findsOneWidget);
++      expect(find.text(formatMoney(490000, 'UZS')), findsNothing);
++      expect(find.text(l.idPendingHint), findsNothing);
++      _expectNoSiteCta(l);
++    }, variant: _both);
++
++    testWidgets('Premium: narx va sayt yozuvi yo‘q', (tester) async {
++      final l = await _pump(tester, const PremiumScreen());
++      expect(tester.takeException(), isNull);
++      expect(find.text(l.premiumCheck), findsOneWidget);
++      expect(find.textContaining(l.premiumPerMonth), findsNothing);
++      _expectNoSiteCta(l);
++    }, variant: _both);
++  });
++
+   group('ekranlarda xarid tugmasi yo\'q', () {
+     final files = {
+       'NFC ID': 'lib/features/shop/nfc_id_market.dart',
+-- 
+2.43.0
+

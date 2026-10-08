@@ -1,0 +1,85 @@
+From 097539b688af0d9a67ee8f8e909628306b86f8aa Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Thu, 8 Oct 2026 18:54:31 +0000
+Subject: [PATCH 72/72] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20tabga=20q?=
+ =?UTF-8?q?aytganda=20yangilanish=20sinovi=20(10=20daqiqa)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+`showcaseClock` bilan: tab almashtirib qaytilganda 9:59 da
+`/api/showcase` qayta so'ralmaydi, yuklangandan 10 daqiqadan oshganda
+so'raladi; yangi ro'yxat yuklangan vaqtdan sanaladi (1 daqiqadan keyin
+yana so'ralmaydi).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/test/showcase_screen_test.dart | 52 ++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 2c08299..ab98680 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -300,6 +300,58 @@ void main() {
+     expect(r.social.cursors.where((c) => c != null), ['c1']);
+   });
+ 
++  /// TABGA QAYTISH: ro'yxat `kShowcaseStaleAfter` (10 daqiqa) dan eski
++  /// bo'lsa `/api/showcase` qayta so'raladi, yangi bo'lsa — yo'q.
++  ///
++  /// Soat `showcaseClock` orqali boshqariladi (haqiqiy 10 daqiqa
++  /// kutilmaydi). Kursorsiz `showcasePage()` chaqiruvi — 1-sahifa,
++  /// ya'ni `/api/showcase` ning o'zi.
++  testWidgets(
++      'tabga qaytish: 10 daqiqadan oshsa /api/showcase qayta so‘raladi, '
++      'oldin — yo‘q', (tester) async {
++    final loaded = DateTime(2026, 10, 8, 12);
++    var now = loaded;
++    showcaseClock = () => now;
++    addTearDown(() => showcaseClock = DateTime.now);
++
++    final r = await _pump(tester, pages: [
++      ReelsPage(items: [_post(id: 11), _post(id: 12)]),
++    ]);
++    int fetches() => r.social.cursors.where((c) => c == null).length;
++    // Birinchi ochilish. Faol profil (`activeProfileProvider`) testda
++    // kechroq aniqlanadi va ro'yxat bir marta qayta quriladi — shuning
++    // uchun mutlaq son emas, shu nuqtadan keyingi FARQ tekshiriladi.
++    await settle(tester, frames: 8);
++    final base = fetches();
++    expect(base, greaterThanOrEqualTo(1), reason: 'birinchi ochilish');
++
++    Future<void> leaveAndReturn(Duration after) async {
++      r.c.read(activeTabProvider.notifier).state = 0;
++      await settle(tester, frames: 4);
++      now = now.add(after);
++      r.c.read(activeTabProvider.notifier).state = kShowcaseTab;
++      await settle(tester, frames: 8);
++    }
++
++    // 9 daqiqa 59 soniya — ro'yxat hali yangi: so'rov YO'Q.
++    await leaveAndReturn(const Duration(minutes: 9, seconds: 59));
++    expect(fetches(), base, reason: '10 daqiqa o‘tmagan — qayta so‘ralmaydi');
++    expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
++
++    // Yuklangandan 10 daqiqa 1 soniya — eskirgan: qayta so'raladi.
++    await leaveAndReturn(const Duration(seconds: 2));
++    expect(fetches(), base + 1,
++        reason: '10 daqiqadan oshdi — /api/showcase qayta');
++    expect(now.difference(loaded), greaterThan(kShowcaseStaleAfter));
++    expect(tester.takeException(), isNull);
++    expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
++
++    // Yangi ro'yxat yuklangan vaqtdan sanaladi: 1 daqiqadan keyin — yo'q.
++    await leaveAndReturn(const Duration(minutes: 1));
++    expect(fetches(), base + 1,
++        reason: 'yangi yuklangan ro‘yxat qayta so‘ralmaydi');
++  });
++
+   testWidgets('musiqa: bitta audio egasi, mixWithOthers false',
+       (tester) async {
+     final v = FakeVideoPlatform();
+-- 
+2.43.0
+
