@@ -1366,6 +1366,12 @@ abstract class AppLocalizations {
   /// **'Level {label}'**
   String qcLevel(String label);
 
+  /// No description provided for @qcLevelNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Level “{label}”'**
+  String qcLevelNamed(String label);
+
   /// No description provided for @qcLevelsCount.
   ///
   /// In en, this message translates to:
@@ -1435,7 +1441,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcErrLevel.
   ///
   /// In en, this message translates to:
-  /// **'Level {label}: enter the mean and an SD greater than zero.'**
+  /// **'{label}: enter the mean and an SD greater than zero.'**
   String qcErrLevel(String label);
 
   /// No description provided for @qcAccept.
@@ -1501,7 +1507,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcErrRunInvalid.
   ///
   /// In en, this message translates to:
-  /// **'Level {label}: not a number.'**
+  /// **'{label}: not a number.'**
   String qcErrRunInvalid(String label);
 
   /// No description provided for @qcRunHistory.
@@ -1525,7 +1531,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcChartSemantics.
   ///
   /// In en, this message translates to:
-  /// **'Levey–Jennings chart, level {label}: {count} values'**
+  /// **'Levey–Jennings chart, {label}: {count} values'**
   String qcChartSemantics(String label, int count);
 
   /// No description provided for @qcDeleteRun.
@@ -1609,7 +1615,7 @@ abstract class AppLocalizations {
   /// No description provided for @qcErrNotFinite.
   ///
   /// In en, this message translates to:
-  /// **'Level {label}: the value is too large or too small.'**
+  /// **'{label}: the value is too large or too small.'**
   String qcErrNotFinite(String label);
 
   /// No description provided for @qcLevelName.

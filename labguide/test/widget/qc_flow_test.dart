@@ -4,6 +4,7 @@ import 'package:labguide/core/storage/kv_store.dart';
 import 'package:labguide/features/qc/qc_controller.dart';
 import 'package:labguide/features/qc/qc_model.dart';
 import 'package:labguide/features/qc/qc_rules.dart';
+import 'package:labguide/features/qc/qc_screens.dart';
 import 'package:labguide/features/settings/settings_controller.dart';
 import 'package:labguide/l10n/gen/app_localizations_en.dart';
 import 'package:material_ui/material_ui.dart';
@@ -43,11 +44,11 @@ void main() {
     await tester.enterText(f.at(4), '5,0');
     await tester.enterText(f.at(5), '0');
     await _tap(tester, find.text(en.qcSave));
-    expect(find.text(en.qcErrLevel('1')), findsOneWidget);
+    expect(find.text(en.qcErrLevel(en.qcLevel('1'))), findsOneWidget);
     // Juda katta SD (1e400 = cheksiz) ham qabul qilinmaydi.
     await tester.enterText(f.at(5), '1e400');
     await _tap(tester, find.text(en.qcSave));
-    expect(find.text(en.qcErrLevel('1')), findsOneWidget);
+    expect(find.text(en.qcErrLevel(en.qcLevel('1'))), findsOneWidget);
     await tester.enterText(f.at(5), '0.2');
     await tester.enterText(f.at(8), '15');
     await tester.enterText(f.at(9), '0.5');
@@ -96,7 +97,10 @@ void main() {
     // Cheksiz qiymat saqlanmaydi, tugma “osilib” qolmaydi.
     await tester.enterText(levelFields.first, '1e400');
     await _tap(tester, find.text(en.qcSaveRun));
-    expect(find.text(en.qcErrNotFinite('Low')), findsOneWidget);
+    expect(
+      find.text(en.qcErrNotFinite(qcLevelName('Low', en))),
+      findsOneWidget,
+    );
     await tester.enterText(levelFields.first, '');
 
     // Yangi lot: maqsad almashtiriladi, eski maqsad tarixda ko'rinadi.

@@ -198,12 +198,14 @@ final shots = <Shot>[
       var f = find.byType(TextField);
       await t.enterText(f.at(0), 'Glyukoza');
       await t.enterText(f.at(1), 'mmol/L');
-      await t.enterText(f.at(2), 'GL-2611');
-      await t.enterText(f.at(3), '5.5');
-      await t.enterText(f.at(4), '0.15');
-      await t.enterText(f.at(5), 'GH-2611');
-      await t.enterText(f.at(6), '16.0');
-      await t.enterText(f.at(7), '0.45');
+      await t.enterText(f.at(2), 'Past');
+      await t.enterText(f.at(3), 'GL-2611');
+      await t.enterText(f.at(4), '5.5');
+      await t.enterText(f.at(5), '0.15');
+      await t.enterText(f.at(6), 'Yuqori');
+      await t.enterText(f.at(7), 'GH-2611');
+      await t.enterText(f.at(8), '16.0');
+      await t.enterText(f.at(9), '0.45');
       await tapFirstText(t, 'Saqlash');
       // Ko'rgazma uchun seriyalar: oxirgisi 2-2s bilan rad etiladi.
       for (final (a, b) in [
@@ -237,6 +239,46 @@ final shots = <Shot>[
     size: const Size(390, 3400),
   ),
   shot('32_library_books', '/library/books', size: const Size(390, 2600)),
+  shot(
+    '33_osmolality_unit_check_en',
+    '/lab/calculators/osmolality',
+    lang: AppLanguage.en,
+    size: const Size(390, 1500),
+    act: (t) async {
+      final f = find.byType(TextField);
+      await t.enterText(f.at(0), '140');
+      await t.enterText(f.at(1), '90');
+      await t.enterText(f.at(2), '5');
+      await tapFirstText(t, 'Calculate');
+    },
+  ),
+  shot(
+    '34_anion_gap_partial_ru',
+    '/lab/calculators/anion-gap',
+    lang: AppLanguage.ru,
+    size: const Size(390, 1700),
+    act: (t) async {
+      final f = find.byType(TextField);
+      for (final (i, v) in ['140', '104', '24', '4', '24'].indexed) {
+        await t.enterText(f.at(i), v);
+      }
+      await tapFirstText(t, 'Рассчитать');
+    },
+  ),
+  shot(
+    '35_glucose_si_limits_uz',
+    '/tests/analyte/glucose-plasma-fasting',
+    size: const Size(390, 3600),
+  ),
+  shot('36_home_landscape', '/home', size: const Size(844, 390)),
+  shot(
+    '37_search_cyrillic_uz',
+    '/tests',
+    act: (t) async {
+      await t.enterText(find.byType(TextField).first, 'сийдик');
+      await t.pumpAndSettle();
+    },
+  ),
   shot(
     '29_calc_sources_en',
     '/lab/calculators/hba1c',

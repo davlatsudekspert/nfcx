@@ -305,6 +305,14 @@
       }
     }
   },
+  "qcLevelNamed": "Level “{label}”",
+  "@qcLevelNamed": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
   "qcLevelsCount": "{count, plural, =1{1 level} other{{count} levels}}",
   "@qcLevelsCount": {
     "placeholders": {
@@ -330,7 +338,7 @@
   "qcTargetNote": "Westgard et al. (1981) calculate the mean and SD from the laboratory’s own control measurements — initially about 20 (one run a day), then revised as more data accumulate. The app does not supply these values.",
   "qcManufacturerWarning": "Manufacturer’s values are a guide only; Westgard’s lessons recommend limits calculated from your own control data — the assay sheet’s ranges are often too wide.",
   "qcErrName": "Enter the test name.",
-  "qcErrLevel": "Level {label}: enter the mean and an SD greater than zero.",
+  "qcErrLevel": "{label}: enter the mean and an SD greater than zero.",
   "@qcErrLevel": {
     "placeholders": {
       "label": {
@@ -348,7 +356,7 @@
   "qcNote": "Note (optional)",
   "qcSaveRun": "Save run",
   "qcErrRunEmpty": "Enter at least one control value.",
-  "qcErrRunInvalid": "Level {label}: not a number.",
+  "qcErrRunInvalid": "{label}: not a number.",
   "@qcErrRunInvalid": {
     "placeholders": {
       "label": {
@@ -359,7 +367,7 @@
   "qcRunHistory": "Runs",
   "qcStats": "Observed",
   "qcChartLegend": "● in control   ▲ warning   ■ rejected",
-  "qcChartSemantics": "Levey–Jennings chart, level {label}: {count} values",
+  "qcChartSemantics": "Levey–Jennings chart, {label}: {count} values",
   "@qcChartSemantics": {
     "placeholders": {
       "label": {
@@ -407,7 +415,7 @@
   },
   "qcRulesSource": "Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.",
   "qcErrSave": "Couldn’t save. Please try again.",
-  "qcErrNotFinite": "Level {label}: the value is too large or too small.",
+  "qcErrNotFinite": "{label}: the value is too large or too small.",
   "@qcErrNotFinite": {
     "placeholders": {
       "label": {

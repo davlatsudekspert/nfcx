@@ -340,3 +340,11 @@ Mustaqil sharh (review B) asosida:
   Eski yozuvlarda bu maydon yo‘q — ko‘rsatilmaydi (taxmin qilinmaydi).
 - Xato kiritilgan maqsadni “Oxirgi o‘zgarishni bekor qilish” bilan qaytarish mumkin (tasdiq
   bilan); seriyalar qayta baholanadi.
+
+## D-31. Mashq variantlari: to‘g‘ri javob uzunligi bo‘yicha bilinmasin (2026-10-08)
+71 savolning 61 tasida to‘g‘ri javob eng uzun variant edi — talaba o‘qimasdan topardi.
+40 savoldagi 76 ta noto‘g‘ri variant uch tilda qayta yozildi (keng tarqalgan xato tushunchalar;
+yangi son, chegara yoki klinik fakt qo‘shilmagan; 72 tasida izoh o‘zgarmagan, 4 tasida faqat
+basis dagi faktlar bilan moslashtirilgan). Endi 21/71 (en), uz va ru da ham ≤ 50 % — test
+buni nazorat qiladi. To‘g‘ri variantlar, savol matni, manbalar va `correct_index` o‘zgarmagan.
+Savollar baribir draft — mustaqil review kerak.

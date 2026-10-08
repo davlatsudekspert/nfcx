@@ -1,7 +1,7 @@
 {
  "pack_id": "core",
  "schema_version": 1,
- "content_version": "2026.10.08-dev.5",
+ "content_version": "2026.10.08-dev.6",
  "groups": [
   {
    "id": "carbohydrate",
@@ -7919,9 +7919,9 @@
    "options": [
     {
      "text": {
-      "uz": "Har doim",
-      "ru": "Всегда",
-      "en": "Always"
+      "uz": "Ha, bitta koeffitsiyent barcha moddalarga mos keladi",
+      "ru": "Да, один коэффициент подходит для всех веществ",
+      "en": "Yes, one conversion factor fits every analyte"
      },
      "explanation": {
       "uz": "Molyar massalar farq qiladi, demak koeffitsiyent ham: glyukoza ≈ 18,0 mg/dL har 1 mmol/L ga, kreatinin ≈ 11,3 mg/dL.",
@@ -7943,9 +7943,9 @@
     },
     {
      "text": {
-      "uz": "Faqat siydikda",
-      "ru": "Только в моче",
-      "en": "Only for urine"
+      "uz": "Faqat ikkalasi ham siydikda o‘lchansa",
+      "ru": "Только если оба измеряются в моче",
+      "en": "Only when both are measured in urine"
      },
      "explanation": {
       "uz": "Namuna turi koeffitsiyentni o‘zgartirmaydi — uni moddaning molyar massasi belgilaydi.",
@@ -7973,9 +7973,9 @@
    "options": [
     {
      "text": {
-      "uz": "Faqat firma nomi",
-      "ru": "Только производитель",
-      "en": "Manufacturer alone"
+      "uz": "Modeldan qat’i nazar, faqat firma nomi",
+      "ru": "Только производитель, независимо от модели",
+      "en": "Manufacturer name, regardless of model"
      },
      "explanation": {
       "uz": "Bir firmaning turli modellari turli tartib va sozlamalarga ega bo‘lishi mumkin.",
@@ -7985,9 +7985,9 @@
     },
     {
      "text": {
-      "uz": "Faqat qopqoq rangi",
-      "ru": "Только цвет крышки",
-      "en": "Cap color alone"
+      "uz": "Faqat ishlatiladigan probirkalar qopqog‘i rangi",
+      "ru": "Только цвет крышек используемых пробирок",
+      "en": "Only the cap color of the tubes used"
      },
      "explanation": {
       "uz": "Qopqoq rangi probirka turini bildiradi, apparat tartibini emas.",
@@ -8035,9 +8035,9 @@
    "options": [
     {
      "text": {
-      "uz": "HbA1c ni odatdagidek ishlatish — gemoglobin variantlari unga ta’sir qilmaydi.",
-      "ru": "Использовать HbA1c как обычно — варианты гемоглобина на него не влияют.",
-      "en": "Use A1C as usual — hemoglobin variants do not affect it."
+      "uz": "HbA1c ni odatdagidek ishlatish — gemoglobin variantlari unga ta’sir qilmaydi, shuning uchun fruktozamin kabi muqobil test kerak emas.",
+      "ru": "Использовать HbA1c как обычно — варианты гемоглобина на него не влияют, поэтому альтернативный тест, например фруктозамин, не нужен.",
+      "en": "Use A1C as usual — hemoglobin variants do not affect it, so no alternative test such as fructosamine is needed."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: gemoglobinopatiyalar variant va usulga qarab HbA1c ni soxta oshirishi yoki pasaytirishi mumkin.",
@@ -8059,9 +8059,9 @@
     },
     {
      "text": {
-      "uz": "Xalaqitni yo‘qotish uchun HbA1c ni tunda och qolgandan keyin qayta topshirish.",
-      "ru": "Повторить HbA1c после ночного голодания, чтобы устранить помеху.",
-      "en": "Repeat A1C after an overnight fast to remove the interference."
+      "uz": "Xalaqitni yo‘qotish uchun HbA1c ni tunda och qolgandan keyin qayta topshirish va odatdagidek baholash.",
+      "ru": "Повторить HbA1c после ночного голодания, чтобы устранить помеху, и оценить его как обычно.",
+      "en": "Repeat A1C after an overnight fast to remove the interference, then interpret it as usual."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: HbA1c uchun och qolish shart emas; bu bemorlarda muammo ovqat emas, balki anemiya, eritrotsitlar almashinuvining tezlashishi, gemoliz va qon quyishlardir.",
@@ -8101,9 +8101,9 @@
    "options": [
     {
      "text": {
-      "uz": "Hech narsa — bitta HbA1c natijasi yetarli.",
-      "ru": "Ничего — одного результата HbA1c достаточно.",
-      "en": "Nothing — one A1C result is enough."
+      "uz": "Boshqa hech narsa — diabet oralig‘idagi bitta HbA1c natijasi yetarli.",
+      "ru": "Больше ничего — одного HbA1c в диапазоне диабета достаточно.",
+      "en": "Nothing more — a single A1C in the diabetes range is enough."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: aniq belgilar bo‘lmasa, tashxis ikkinchi o‘lchov bilan tasdiqlanishi kerak.",
@@ -8113,9 +8113,9 @@
     },
     {
      "text": {
-      "uz": "Tasdiqlash uchun bemor yonida ishlaydigan (point-of-care) HbA1c qurilmasidan foydalanish.",
-      "ru": "Для подтверждения использовать прибор HbA1c по месту оказания помощи (point-of-care).",
-      "en": "Use a point-of-care A1C device for confirmation."
+      "uz": "Natijani darhol bemor yonida ishlaydigan (point-of-care) HbA1c qurilmasi bilan tasdiqlash.",
+      "ru": "Сразу подтвердить результат на приборе HbA1c по месту оказания помощи (point-of-care).",
+      "en": "Confirm the result right away with a point-of-care A1C device at the bedside."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: point-of-care natijalari tashxis uchun ishlatilmasligi kerak.",
@@ -8365,9 +8365,9 @@
    "options": [
     {
      "text": {
-      "uz": "Homiladorlik diabetini tashxislashning standart testi sifatida.",
-      "ru": "Как стандартный тест для диагностики гестационного диабета.",
-      "en": "As the standard test to diagnose gestational diabetes."
+      "uz": "Homilador ayollarda — homiladorlik diabetini tashxislashning standart testi sifatida.",
+      "ru": "У беременных — как стандартный тест для диагностики гестационного диабета.",
+      "en": "In pregnant patients, as the standard test used to diagnose gestational diabetes."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: homiladorlik diabeti glyukoza skrining testi yoki OGTT bilan tekshiriladi.",
@@ -8377,9 +8377,9 @@
     },
     {
      "text": {
-      "uz": "Barcha bemorlarda HbA1c ning odatiy o‘rnini bosuvchi sifatida.",
-      "ru": "Как обычная замена HbA1c у всех пациентов.",
-      "en": "As a routine replacement for A1C in all patients."
+      "uz": "Barcha bemorlarda — diabetni boshqarishda HbA1c ning odatiy o‘rnini bosuvchi sifatida.",
+      "ru": "У всех пациентов — как обычная замена HbA1c при ведении диабета.",
+      "en": "In all patients, as a routine replacement for A1C in diabetes management."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: HbA1c diabetni boshqarishdagi asosiy test bo‘lib qoladi; fruktozamin ma’lum holatlar uchun taklif etiladi.",
@@ -8555,9 +8555,9 @@
    "options": [
     {
      "text": {
-      "uz": "Qondagi umumiy oqsilni",
-      "ru": "Общий белок в крови",
-      "en": "Total protein in the blood"
+      "uz": "Qondagi umumiy oqsilni — mochevina azoti hosil bo‘ladigan manbani",
+      "ru": "Общий белок в крови, из которого образуется азот мочевины",
+      "en": "Total protein in the blood, from which urea nitrogen is formed"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: oqsillar parchalanganda mochevina azoti hosil bo‘ladi, test esa oqsilning o‘zini emas, mochevina azotini o‘lchaydi.",
@@ -8567,9 +8567,9 @@
     },
     {
      "text": {
-      "uz": "Mushakdan ajraladigan kreatininni",
-      "ru": "Креатинин, образующийся в мышцах",
-      "en": "Creatinine released from muscle"
+      "uz": "Kreatininni — mushakdan ajralib, buyraklar orqali chiqariladigan chiqindi mahsulotni",
+      "ru": "Креатинин — продукт обмена, который образуется в мышцах и выводится почками",
+      "en": "Creatinine, a waste product released from muscle and removed by the kidneys"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: kreatinin — buyraklar chiqaradigan boshqa chiqindi mahsulot va alohida test bilan o‘lchanadi.",
@@ -8617,9 +8617,9 @@
    "options": [
     {
      "text": {
-      "uz": "Yuqori BUN har doim buyrak kasalligini anglatadi.",
-      "ru": "Повышенный BUN всегда означает болезнь почек.",
-      "en": "A high BUN always means kidney disease."
+      "uz": "Yuqori BUN, odam qancha suyuqlik ichganidan qat’i nazar, har doim buyrak kasalligini anglatadi.",
+      "ru": "Повышенный BUN всегда означает болезнь почек, независимо от того, сколько человек пил.",
+      "en": "A high BUN always means kidney disease, whatever the person’s fluid intake has been."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba suvsizlanish kabi buyrakdan tashqari sabablarni ham keltiradi.",
@@ -8641,9 +8641,9 @@
     },
     {
      "text": {
-      "uz": "Suvsizlanish odatda BUN ni pasaytiradi.",
-      "ru": "Обезвоживание обычно снижает BUN.",
-      "en": "Dehydration typically lowers BUN."
+      "uz": "Suvsizlanish odatda BUN ni oshirmaydi, balki pasaytiradi, shuning uchun bu yuqori natija albatta davolash kerak bo‘lgan buyrak kasalligini aks ettiradi.",
+      "ru": "Обезвоживание обычно не повышает, а снижает BUN, поэтому этот высокий результат указывает на болезнь почек, требующую лечения.",
+      "en": "Dehydration typically lowers BUN rather than raising it, so this high result must reflect a kidney disease needing treatment."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: past BUN sabablari — ovqatda oqsil kamligi, to‘yib ovqatlanmaslik va jigar kasalligi.",
@@ -8745,9 +8745,9 @@
    "options": [
     {
      "text": {
-      "uz": "Kreatinin asosidagi eGFR bunday bemorlarda to‘liq ishonchli.",
-      "ru": "рСКФ по креатинину у таких пациентов полностью надёжна.",
-      "en": "Creatinine-based eGFR is fully reliable in these patients."
+      "uz": "Kreatinin asosidagi eGFR to‘liq ishonchli bo‘lib qoladi, chunki mushak massasi kreatininga ta’sir qilmaydi.",
+      "ru": "рСКФ по креатинину остаётся полностью надёжной, так как мышечная масса никак не влияет на креатинин.",
+      "en": "Creatinine-based eGFR stays fully reliable, because muscle mass does not affect creatinine."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: mushak massasi kreatininga ta’sir qiladi, shuning uchun bunday holatlarda eGFR ishonchsiz bo‘lishi mumkin.",
@@ -8757,9 +8757,9 @@
     },
     {
      "text": {
-      "uz": "eGFR o‘rniga faqat BUN ishlatiladi.",
-      "ru": "Вместо рСКФ используют только BUN.",
-      "en": "BUN alone should replace eGFR."
+      "uz": "eGFR o‘rniga buyrak faoliyatini baholash uchun faqat BUN ishlatiladi.",
+      "ru": "Вместо рСКФ для оценки функции почек используют только BUN.",
+      "en": "eGFR is dropped and BUN alone is used to judge kidney function."
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbada BUN o‘rinbosar sifatida emas, qo‘shimcha test sifatida keltirilgan.",
@@ -9071,9 +9071,9 @@
    "options": [
     {
      "text": {
-      "uz": "ALT qanchalik yuqori bo‘lsa, jigarning shikastlangan qismi shunchalik katta",
-      "ru": "Чем выше АЛТ, тем больше повреждённая часть печени",
-      "en": "The higher the ALT, the larger the damaged part of the liver"
+      "uz": "ALT qanchalik yuqori bo‘lsa, jigarning shikastlangan ulushi ham shunchalik katta bo‘ladi",
+      "ru": "Чем выше АЛТ, тем большая доля печени повреждена",
+      "en": "The higher the ALT, the larger the share of the liver that has been damaged"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbaga ko‘ra qondagi ALT miqdori jigar shikastlanish darajasi bilan bog‘liq emas.",
@@ -9095,9 +9095,9 @@
     },
     {
      "text": {
-      "uz": "ALT yuqoriligi sirrozni tasdiqlaydi",
-      "ru": "Повышение АЛТ подтверждает цирроз",
-      "en": "A high ALT confirms cirrhosis"
+      "uz": "ALT yuqoriligi shikastlanish sababi sirroz ekanini tasdiqlaydi",
+      "ru": "Высокая АЛТ подтверждает, что причиной повреждения является цирроз",
+      "en": "A high ALT confirms that cirrhosis is the cause of the damage"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: sirroz ko‘plab mumkin bo‘lgan sabablardan biri (gepatit, infeksiya, dorilar, zaharlar va boshqalar); ALTning o‘zi tashxis qo‘ymaydi.",
@@ -9149,9 +9149,9 @@
     },
     {
      "text": {
-      "uz": "ALTga dorilar, jismoniy mashqlar va yosh ta’sir qilmaydi",
-      "ru": "На АЛТ не влияют лекарства, физическая нагрузка и возраст",
-      "en": "ALT is not affected by medicines, exercise or age"
+      "uz": "ALTga dorilar, jismoniy mashqlar va yosh ta’sir qilmaydi, shuning uchun uning har qanday o‘zgarishi faqat jigarni aks ettiradi",
+      "ru": "На АЛТ не влияют лекарства, физическая нагрузка и возраст, поэтому любое её изменение отражает только печень",
+      "en": "ALT is not affected by medicines, exercise or age, so any change in it reflects the liver alone"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba yosh, jins, vazn, dorilar, qo‘shimchalar va jadal mashqlar ALT natijasiga ta’sir qilishini aytadi.",
@@ -9161,9 +9161,9 @@
     },
     {
      "text": {
-      "uz": "ALT faqat jigar saratonida qonga chiqadi",
-      "ru": "АЛТ выходит в кровь только при раке печени",
-      "en": "ALT is released only when liver cancer is present"
+      "uz": "ALT faqat jigar saratonida qonga chiqadi, shuning uchun uning yuqoriligi boshqa shikastlanishga emas, o‘smaga ishora qiladi",
+      "ru": "АЛТ выходит в кровь только при раке печени, поэтому её повышение указывает на опухоль, а не на другое повреждение",
+      "en": "ALT is released only when liver cancer is present, so a high ALT points to a tumor rather than other damage"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: ALT jigar hujayralari har qanday sababdan shikastlanganda chiqadi; saraton sabablardan faqat biri.",
@@ -9203,9 +9203,9 @@
    "options": [
     {
      "text": {
-      "uz": "AST faqat eritrotsitlarda hosil bo‘ladi",
-      "ru": "АСТ образуется только в эритроцитах",
-      "en": "AST is made only by red blood cells"
+      "uz": "AST faqat eritrotsitlarda hosil bo‘ladi, shuning uchun qondagi har qanday AST aynan ulardan keladi",
+      "ru": "АСТ образуется только в эритроцитах, поэтому любая АСТ в крови происходит из них",
+      "en": "AST is made only by red blood cells, so any AST in the blood comes from them"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbaga ko‘ra AST asosan jigarda, shuningdek yurak, mushaklar va boshqa to‘qimalarda bo‘ladi.",
@@ -9227,9 +9227,9 @@
     },
     {
      "text": {
-      "uz": "AST faqat och qolinmaganda oshadi",
-      "ru": "АСТ повышается только при несоблюдении голодания",
-      "en": "AST rises only when fasting instructions are not followed"
+      "uz": "AST faqat bemor qon olishdan oldin ko‘rsatmaga ko‘ra och qolmay, ovqat yeganida oshadi",
+      "ru": "АСТ повышается только тогда, когда пациент поел перед взятием крови вместо предписанного голодания",
+      "en": "AST rises only when the patient has eaten before the blood draw instead of fasting as instructed"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba och qolishni boshqa tahlillar bilan bog‘liq tayyorgarlik sifatida eslatadi, AST oshishi sababi sifatida emas.",
@@ -9327,9 +9327,9 @@
    "options": [
     {
      "text": {
-      "uz": "O‘t yo‘llari tiqilishi tasdiqlangan",
-      "ru": "Закупорка желчных протоков подтверждена",
-      "en": "A bile duct blockage is confirmed"
+      "uz": "Boshqa jigar testlari me’yorda bo‘lsa ham, o‘t yo‘llari tiqilishi tasdiqlangan",
+      "ru": "Закупорка желчных протоков подтверждена, даже при нормальных остальных печёночных пробах",
+      "en": "A bile duct blockage is confirmed, even though the other liver tests are normal"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: jigar testlari me’yorda bo‘lsa, manba jigardan tashqari, ya’ni suyak sababini ehtimolroq deb ko‘rsatadi.",
@@ -9339,9 +9339,9 @@
     },
     {
      "text": {
-      "uz": "Yagona izoh — laboratoriya xatosi",
-      "ru": "Единственное объяснение — лабораторная ошибка",
-      "en": "The only explanation is a laboratory error"
+      "uz": "Yagona izoh — laboratoriya o‘lchovidagi xato",
+      "ru": "Единственное объяснение — ошибка лабораторного измерения",
+      "en": "The only explanation is an error in the laboratory measurement"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba bu holatda suyak kasalligi bo‘lishi mumkinligini aytadi.",
@@ -9413,9 +9413,9 @@
     },
     {
      "text": {
-      "uz": "ALPga yosh ta’sir qilmaydi, demak kasallik bor",
-      "ru": "Возраст не влияет на ЩФ, значит, есть болезнь",
-      "en": "Age does not affect ALP, so disease must be present"
+      "uz": "Yosh ALPga ta’sir qilmaydi, demak yuqori qiymat albatta suyak yoki jigar kasalligini bildiradi",
+      "ru": "Возраст не влияет на ЩФ, поэтому высокое значение обязательно означает болезнь костей или печени",
+      "en": "Age does not affect ALP, so a high value must mean bone or liver disease"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbaga ko‘ra yosh (suyak o‘sishi), homiladorlik, dorilar va yog‘li ovqat ALPga ta’sir qiladi.",
@@ -9517,9 +9517,9 @@
    "options": [
     {
      "text": {
-      "uz": "GGT qondagi alkogol konsentratsiyasini bevosita o‘lchaydi",
-      "ru": "ГГТ напрямую измеряет концентрацию алкоголя в крови",
-      "en": "GGT directly measures the blood alcohol concentration"
+      "uz": "GGT qondagi alkogol konsentratsiyasini bevosita o‘lchaydi, shuning uchun yaqinda qancha ichilganini ko‘rsatadi",
+      "ru": "ГГТ напрямую измеряет концентрацию алкоголя в крови, поэтому показывает, сколько человек недавно выпил",
+      "en": "GGT directly measures the blood alcohol concentration, so it shows how much a person drank recently"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: GGT — ferment; alkogol uning darajasini oshiradi, lekin test alkogolning o‘zini o‘lchamaydi.",
@@ -9529,9 +9529,9 @@
     },
     {
      "text": {
-      "uz": "Alkogol ichilgandan keyin GGT pasayadi",
-      "ru": "После употребления алкоголя ГГТ снижается",
-      "en": "GGT falls after drinking alcohol"
+      "uz": "Alkogol ichilgandan keyin GGT pasayadi, shuning uchun past GGT ko‘p alkogol ichishga ishora qiladi",
+      "ru": "После употребления алкоголя ГГТ снижается, поэтому низкая ГГТ указывает на злоупотребление алкоголем",
+      "en": "GGT falls after drinking alcohol, so a low GGT points to heavy drinking"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbaga ko‘ra alkogol GGTni oshiradi; ovqatdan keyin esa GGT pasayadi.",
@@ -9645,9 +9645,9 @@
    "options": [
     {
      "text": {
-      "uz": "Ha, yuqori bilirubin har doim jigar kasalligini bildiradi",
-      "ru": "Да, высокий билирубин всегда означает болезнь печени",
-      "en": "Yes, high bilirubin always means liver disease"
+      "uz": "Ha — yuqori bilirubin har doim jigar kasalligini bildiradi, shuning uchun boshqa sabablar va qo‘shimcha tekshiruvlar kerak emas",
+      "ru": "Да — высокий билирубин всегда означает болезнь печени, поэтому другие причины и дополнительные исследования можно не рассматривать",
+      "en": "Yes — a high bilirubin always means liver disease, so other causes and further tests need not be considered"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: sabablar orasida gemolitik anemiya va o‘t yo‘llari tiqilishi ham bor.",
@@ -9657,9 +9657,9 @@
     },
     {
      "text": {
-      "uz": "Ha, agar bemorda sariqlik ham bo‘lsa",
-      "ru": "Да, если у пациента есть желтуха",
-      "en": "Yes, if the patient is also jaundiced"
+      "uz": "Ha, agar bemorda sariqlik ham bo‘lsa, chunki sariqlik sabab jigarda ekanini isbotlaydi",
+      "ru": "Да, если у пациента есть желтуха, так как желтуха доказывает, что причина в печени",
+      "en": "Yes, if the patient is also jaundiced, because jaundice proves the liver is the cause"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: sariqlik bilirubin ortiqchaligini ko‘rsatadi, lekin uning sababini aniqlash uchun boshqa tekshiruvlar kerak.",
@@ -9707,9 +9707,9 @@
    "options": [
     {
      "text": {
-      "uz": "Ular barcha laboratoriyalar uchun bir xil",
-      "ru": "Они одинаковы для всех лабораторий",
-      "en": "They are the same for every laboratory"
+      "uz": "Ular barcha laboratoriyalarda bir xil, shuning uchun istalgan laboratoriya oralig‘ini qo‘llash mumkin",
+      "ru": "Они одинаковы во всех лабораториях, поэтому можно применять интервал любой лаборатории",
+      "en": "They are the same in every laboratory, so any laboratory range can be applied"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manbaga ko‘ra me’yoriy qiymatlar laboratoriyadan laboratoriyaga farq qiladi.",
@@ -9719,14 +9719,14 @@
     },
     {
      "text": {
-      "uz": "Chaqaloqlar va kattalar uchun bir xil",
-      "ru": "Они одинаковы для новорождённых и взрослых",
-      "en": "They are the same for newborns and adults"
+      "uz": "Ular faqat jinsga bog‘liq, chaqaloqlar va kattalar uchun esa bir xil",
+      "ru": "Они зависят только от пола и одинаковы для новорождённых и взрослых",
+      "en": "They depend only on sex and are the same for newborns and adults"
      },
      "explanation": {
-      "uz": "Noto‘g‘ri: natija chaqaloq yoki bolada tekshirilayotganiga qarab farq qiladi.",
-      "ru": "Неверно: нормальные результаты зависят от того, проводится ли тест у младенца или ребёнка.",
-      "en": "Incorrect: normal results vary depending on whether the test is done on an infant or child."
+      "uz": "Noto‘g‘ri: natija laboratoriyaga hamda tahlil chaqaloq yoki bolada o‘tkazilayotganiga qarab ham farq qiladi.",
+      "ru": "Неверно: нормальные результаты зависят также от лаборатории и от того, проводится ли тест у младенца или ребёнка.",
+      "en": "Incorrect: normal results also vary by laboratory and by whether the test is done on an infant or child."
      }
     },
     {
@@ -9781,9 +9781,9 @@
     },
     {
      "text": {
-      "uz": "U organizmdan tezroq chiqariladi",
-      "ru": "Он быстрее выводится из организма",
-      "en": "It is removed from the body faster"
+      "uz": "U organizmdan odatdagidan tezroq chiqariladi",
+      "ru": "Он выводится из организма быстрее обычного",
+      "en": "It is removed from the body faster than normal"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: tiqilish bilirubinning o‘t orqali chiqishiga to‘sqinlik qiladi.",
@@ -9793,9 +9793,9 @@
     },
     {
      "text": {
-      "uz": "Organizm bilirubin hosil qilishni to‘xtatadi",
-      "ru": "Организм перестаёт образовывать билирубин",
-      "en": "The body stops producing bilirubin"
+      "uz": "Organizm bilirubin hosil qilishni butunlay to‘xtatadi",
+      "ru": "Организм полностью перестаёт образовывать билирубин",
+      "en": "The body stops producing bilirubin altogether"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: bilirubin eritrotsitlarning odatiy parchalanishida hosil bo‘lishda davom etadi.",
@@ -9831,9 +9831,9 @@
    "options": [
     {
      "text": {
-      "uz": "Albumin eski eritrotsitlarni parchalaydi",
-      "ru": "Альбумин разрушает старые эритроциты",
-      "en": "Albumin breaks down old red blood cells"
+      "uz": "Albumin qonda aylanib yurgan eski eritrotsitlarni parchalaydi",
+      "ru": "Альбумин разрушает старые эритроциты, циркулирующие в крови",
+      "en": "Albumin breaks down old red blood cells as they circulate in the blood"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba albuminning bunday vazifasini ko‘rsatmaydi.",
@@ -9843,9 +9843,9 @@
     },
     {
      "text": {
-      "uz": "Albumin qon ivishini ta’minlovchi asosiy oqsil",
-      "ru": "Альбумин — главный белок свёртывания крови",
-      "en": "Albumin is the main blood-clotting protein"
+      "uz": "Albumin qon ivishini ta’minlovchi asosiy oqsil, shuning uchun u kam bo‘lsa, suyuqlik va qon tomirlardan sizib chiqadi",
+      "ru": "Альбумин — главный белок свёртывания крови, поэтому при его недостатке жидкость и кровь просачиваются из сосудов",
+      "en": "Albumin is the main blood-clotting protein, so when it is low, fluid and blood seep out of the vessels"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba albuminni suyuqlikni tomirlarda ushlab turuvchi va moddalarni tashuvchi oqsil sifatida tavsiflaydi.",
@@ -10021,9 +10021,9 @@
    "options": [
     {
      "text": {
-      "uz": "To‘yib ovqatlanmaslik",
-      "ru": "Недостаточное питание",
-      "en": "Malnutrition"
+      "uz": "To‘yib ovqatlanmaslik — ovqat bilan oqsil kam olinishi",
+      "ru": "Недостаточное питание с низким поступлением белка с пищей",
+      "en": "Malnutrition, with too little protein taken in from food"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: to‘yib ovqatlanmaslik umumiy oqsil pastligi sabablari qatorida keltirilgan.",
@@ -10033,9 +10033,9 @@
     },
     {
      "text": {
-      "uz": "Seliakiya",
-      "ru": "Целиакия",
-      "en": "Celiac disease"
+      "uz": "Ichakda oziq moddalarning so‘rilishini buzadigan seliakiya kasalligi",
+      "ru": "Целиакия — болезнь, нарушающая всасывание питательных веществ в кишечнике",
+      "en": "Celiac disease, which impairs the absorption of nutrients from the gut"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: seliakiya malabsorbsiya sindromi sifatida past umumiy oqsil sabablari qatorida keltirilgan.",
@@ -10083,9 +10083,9 @@
    "options": [
     {
      "text": {
-      "uz": "Bakterial infeksiyani tasdiqlaydi",
-      "ru": "Подтверждает бактериальную инфекцию",
-      "en": "It confirms a bacterial infection"
+      "uz": "Bakterial infeksiyani tasdiqlaydi, ammo uning qayerda joylashganini ko‘rsatmaydi",
+      "ru": "Подтверждает бактериальную инфекцию, хотя не показывает, где она находится",
+      "en": "It confirms a bacterial infection, although it cannot show where it is located"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: CRP virusli infeksiyalar, autoimmun kasalliklar, chekish va boshqa holatlarda ham oshishi mumkin.",
@@ -10107,14 +10107,14 @@
     },
     {
      "text": {
-      "uz": "Qaysi a’zo yallig‘langanini aniqlaydi",
-      "ru": "Указывает, какой орган воспалён",
-      "en": "It identifies which organ is inflamed"
+      "uz": "Qaysi a’zo yallig‘langanini va bunga nima sabab bo‘lganini aniqlaydi",
+      "ru": "Указывает, какой орган воспалён и что вызвало воспаление",
+      "en": "It identifies which organ is inflamed and what is causing it"
      },
      "explanation": {
-      "uz": "Noto‘g‘ri: manbaga ko‘ra CRP yallig‘lanish qayerda ekanini ko‘rsatmaydi.",
-      "ru": "Неверно: по источнику СРБ не показывает, где находится воспаление.",
-      "en": "Incorrect: the source says CRP does not show where the inflammation is."
+      "uz": "Noto‘g‘ri: manbaga ko‘ra CRP yallig‘lanish qayerda ekanini ham, uning sababini ham ko‘rsatmaydi.",
+      "ru": "Неверно: по источнику СРБ не показывает ни места воспаления, ни его причины.",
+      "en": "Incorrect: the source says CRP does not show where the inflammation is or what is causing it."
      }
     }
    ]
@@ -10161,9 +10161,9 @@
     },
     {
      "text": {
-      "uz": "hs-CRP yurakda hosil bo‘ladigan boshqa oqsilni o‘lchaydi",
-      "ru": "hs-CRP измеряет другой белок, который вырабатывает сердце",
-      "en": "hs-CRP measures a different protein made by the heart"
+      "uz": "hs-CRP yurakda hosil bo‘ladigan va yurak kasalliklari xavfini ko‘rsatadigan boshqa oqsilni o‘lchaydi",
+      "ru": "hs-CRP измеряет другой белок, который вырабатывается сердцем и указывает на риск болезней сердца",
+      "en": "hs-CRP measures a different protein, made by the heart, that signals heart disease risk"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: ikkala test ham jigarda hosil bo‘ladigan CRPni o‘lchaydi.",
@@ -10173,9 +10173,9 @@
     },
     {
      "text": {
-      "uz": "Sepsisda davolash bo‘yicha qaror qabul qilish uchun hs-CRP qo‘llaniladi",
-      "ru": "Решения о лечении при сепсисе принимают по hs-CRP",
-      "en": "hs-CRP is the test used to make treatment decisions in sepsis"
+      "uz": "Sepsisda davolash bo‘yicha qarorlar hs-CRP bilan qabul qilinadi, chunki u oddiy CRPga qaraganda kichikroq o‘zgarishlarni aniqlaydi",
+      "ru": "Решения о лечении при сепсисе принимают по hs-CRP, так как он выявляет более мелкие изменения, чем стандартный СРБ",
+      "en": "hs-CRP is the test used for treatment decisions in sepsis, because it detects smaller changes than CRP"
      },
      "explanation": {
       "uz": "Noto‘g‘ri: manba sepsisdagi qarorlarni oddiy CRP testi bilan bog‘laydi; hs-CRP yurak kasalliklari xavfini baholash uchun.",
@@ -10211,9 +10211,9 @@
    "options": [
     {
      "text": {
-      "uz": "Faqat LDL xolesterinni",
-      "ru": "Только холестерин ЛПНП",
-      "en": "Only LDL cholesterol"
+      "uz": "HDL qismisiz, faqat LDL xolesterinni",
+      "ru": "Только холестерин ЛПНП, без фракции ЛПВП",
+      "en": "Only the LDL cholesterol, without the HDL fraction"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. LDL alohida ko‘rsatiladi; umumiy xolesterin esa umumiy miqdor bo‘lib, HDL ni ham, LDL ni ham o‘z ichiga oladi.",
@@ -10235,14 +10235,14 @@
     },
     {
      "text": {
-      "uz": "Qondagi triglitseridlar miqdorini",
-      "ru": "Количество триглицеридов в крови",
-      "en": "The amount of triglycerides in the blood"
+      "uz": "Qondagi yog‘larning umumiy miqdorini, jumladan triglitseridlar va xolesterinni",
+      "ru": "Общее количество жиров в крови, включая триглицериды и холестерин",
+      "en": "The total amount of fat in the blood, including triglycerides and cholesterol"
      },
      "explanation": {
-      "uz": "Noto‘g‘ri. Triglitseridlar — yog‘ turi bo‘lib, o‘sha tahlilda alohida ko‘rsatkich sifatida beriladi.",
-      "ru": "Неверно. Триглицериды — вид жира, который в том же анализе указывается отдельным показателем.",
-      "en": "Incorrect. Triglycerides are a type of fat reported as a separate value in the same panel."
+      "uz": "Noto‘g‘ri. Umumiy xolesterin faqat xolesterinni qamraydi; triglitseridlar — yog‘ turi bo‘lib, o‘sha tahlilda alohida ko‘rsatkich sifatida beriladi.",
+      "ru": "Неверно. Общий холестерин включает только холестерин; триглицериды — вид жира, который в том же анализе указывается отдельным показателем.",
+      "en": "Incorrect. Total cholesterol covers cholesterol only; triglycerides are a type of fat reported as a separate value in the same panel."
      }
     }
    ]
@@ -10335,21 +10335,21 @@
    "options": [
     {
      "text": {
-      "uz": "U arteriyalarda xolesterin to‘planishining asosiy manbai",
-      "ru": "Это главный источник отложений холестерина в артериях",
-      "en": "It is the main source of cholesterol buildup in the arteries"
+      "uz": "U xolesterinni jigardan olib chiqib, arteriyalar va organizmning boshqa to‘qimalariga yetkazib beradi",
+      "ru": "Он переносит холестерин из печени и доставляет его в артерии и другие ткани",
+      "en": "It carries cholesterol away from the liver and delivers it to the arteries and other tissues"
      },
      "explanation": {
-      "uz": "Noto‘g‘ri. Bu LDL ga tegishli tavsif.",
-      "ru": "Неверно. Это описание относится к ЛПНП.",
-      "en": "Incorrect. This describes LDL."
+      "uz": "Noto‘g‘ri. HDL xolesterinni teskari yo‘nalishda — organizmning boshqa qismlaridan jigarga qaytaradi, jigar esa uni chiqaradi.",
+      "ru": "Неверно. ЛПВП переносит холестерин в обратном направлении — из других частей тела в печень, которая его выводит.",
+      "en": "Incorrect. HDL carries cholesterol in the opposite direction — from other parts of the body back to the liver, which removes it."
      }
     },
     {
      "text": {
-      "uz": "U energiya uchun yog‘ hujayralarida saqlanadigan yog‘ turi",
-      "ru": "Это вид жира, запасаемый в жировых клетках для энергии",
-      "en": "It is a type of fat stored in fat cells for energy"
+      "uz": "U yog‘ hujayralarida saqlanadigan va organizm energiya uchun sarflaydigan yog‘ turi",
+      "ru": "Это вид жира, который запасается в жировых клетках и расходуется организмом для энергии",
+      "en": "It is a type of fat stored in fat cells, which the body uses for energy"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Bu triglitseridlarga tegishli tavsif.",
@@ -10401,9 +10401,9 @@
    "options": [
     {
      "text": {
-      "uz": "Muntazam aerob jismoniy mashqlar",
-      "ru": "Регулярные аэробные нагрузки",
-      "en": "Regular aerobic exercise"
+      "uz": "Haftada bir necha marta muntazam aerob jismoniy mashqlar",
+      "ru": "Регулярные аэробные физические нагрузки несколько раз в неделю",
+      "en": "Regular aerobic exercise done several times each week"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, muntazam mashqlar HDL ni oshirishi mumkin.",
@@ -10425,9 +10425,9 @@
     },
     {
      "text": {
-      "uz": "Ortiqcha vaznni yo‘qotish",
-      "ru": "Снижение избыточного веса",
-      "en": "Losing excess weight"
+      "uz": "Parhez va mashqlar orqali ortiqcha vaznni yo‘qotish",
+      "ru": "Снижение избыточного веса с помощью диеты и нагрузок",
+      "en": "Losing excess weight through diet and exercise"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, vazn yo‘qotish HDL ni oshirishi mumkin.",
@@ -10463,9 +10463,9 @@
    "options": [
     {
      "text": {
-      "uz": "LDL qon namunasida to‘g‘ridan-to‘g‘ri o‘lchangan",
-      "ru": "ЛПНП измерен непосредственно в образце крови",
-      "en": "LDL was measured directly in the blood sample"
+      "uz": "LDL boshqa ko‘rsatkichlardan baholanmay, namunada to‘g‘ridan-to‘g‘ri o‘lchangan",
+      "ru": "ЛПНП измерен непосредственно в образце, а не рассчитан по другим показателям",
+      "en": "LDL was measured directly in the sample, not estimated from other values"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba “to‘g‘ridan-to‘g‘ri” o‘lchashni hisoblangan qiymatdan alohida usul sifatida tilga oladi.",
@@ -10487,9 +10487,9 @@
     },
     {
      "text": {
-      "uz": "Namuna ikki marta tekshirilib, o‘rtacha qiymat olingan",
-      "ru": "Образец исследовали дважды и взяли среднее",
-      "en": "The sample was analysed twice and averaged"
+      "uz": "Namuna ikki marta tekshirilib, ikki LDL natijasining o‘rtachasi olingan",
+      "ru": "Образец исследовали дважды и взяли среднее из двух результатов ЛПНП",
+      "en": "The sample was analyzed twice and the two LDL results were averaged"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba bunday narsani aytmaydi; “hisoblangan” boshqa lipid ko‘rsatkichlaridan baholashni bildiradi.",
@@ -10591,9 +10591,9 @@
    "options": [
     {
      "text": {
-      "uz": "Rabdomioliz",
-      "ru": "Рабдомиолиз",
-      "en": "Rhabdomyolysis"
+      "uz": "Rabdomioliz (mushak yemirilishi)",
+      "ru": "Рабдомиолиз (разрушение мышц)",
+      "en": "Rhabdomyolysis (muscle breakdown)"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Triglitseridlar haqidagi manba ularni mushak yemirilishi bilan bog‘lamaydi.",
@@ -10615,9 +10615,9 @@
     },
     {
      "text": {
-      "uz": "Qonda qand miqdorining pasayishi",
-      "ru": "Снижение сахара в крови",
-      "en": "Low blood sugar"
+      "uz": "Qonda qand miqdorining pasayishi (gipoglikemiya)",
+      "ru": "Снижение сахара в крови (гипогликемия)",
+      "en": "Low blood sugar (hypoglycemia)"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba triglitseridlarni bu holat bilan bog‘lamaydi.",
@@ -10653,9 +10653,9 @@
    "options": [
     {
      "text": {
-      "uz": "Yuqori triglitseridlar har doim qorin og‘rig‘iga sabab bo‘ladi, tahlil esa sababni tasdiqlaydi",
-      "ru": "Высокие триглицериды всегда вызывают боль в животе, а анализ подтверждает причину",
-      "en": "High triglycerides always cause abdominal pain, and the test confirms the cause"
+      "uz": "Yuqori triglitseridlar har doim qorin og‘rig‘iga sabab bo‘ladi, shuning uchun tahlil og‘riq sababini tasdiqlash uchun kerak",
+      "ru": "Высокие триглицериды всегда вызывают боль в животе, поэтому анализ нужен, чтобы подтвердить причину боли",
+      "en": "High triglycerides always cause abdominal pain, so the test is needed to confirm the cause of the pain"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, yuqori triglitseridlar odatda belgi bermaydi.",
@@ -10665,9 +10665,9 @@
     },
     {
      "text": {
-      "uz": "Triglitseridlarni faqat o‘tkir kasallik paytida o‘lchash mumkin",
-      "ru": "Триглицериды можно измерить только во время острого заболевания",
-      "en": "Triglycerides can only be measured during an acute illness"
+      "uz": "Triglitseridlarni faqat pankreatit kabi o‘tkir kasallik paytida o‘lchash mumkin",
+      "ru": "Триглицериды можно измерить только во время острого заболевания, например панкреатита",
+      "en": "Triglycerides can only be measured during an acute illness such as pancreatitis"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, tahlil muntazam ko‘rik doirasida ham buyurilishi mumkin.",
@@ -10719,9 +10719,9 @@
    "options": [
     {
      "text": {
-      "uz": "LDL xolesterin plyus HDL xolesterin",
-      "ru": "Холестерин ЛПНП плюс холестерин ЛПВП",
-      "en": "LDL cholesterol plus HDL cholesterol"
+      "uz": "LDL xolesterin va HDL xolesterin yig‘indisi",
+      "ru": "Сумма холестерина ЛПНП и холестерина ЛПВП",
+      "en": "The sum of LDL cholesterol and HDL cholesterol"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Non-HDL HDL ni o‘z ichiga olmaydi.",
@@ -10793,9 +10793,9 @@
     },
     {
      "text": {
-      "uz": "U “yaxshi” xolesterin — HDL ni ham o‘z ichiga oladi",
-      "ru": "Он включает и «хороший» холестерин ЛПВП",
-      "en": "It also includes HDL, the “good” cholesterol"
+      "uz": "U “yaxshi” xolesterin — HDL ni ham umumiy miqdorga qo‘shib hisoblaydi",
+      "ru": "Он также учитывает «хороший» холестерин ЛПВП как часть общего итога",
+      "en": "It also counts HDL, the “good” cholesterol, as part of its total"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. HDL umumiy xolesterindan ayiriladi.",
@@ -10805,9 +10805,9 @@
     },
     {
      "text": {
-      "uz": "U faqat triglitseridlarni o‘lchaydi",
-      "ru": "Он измеряет только триглицериды",
-      "en": "It measures only triglycerides"
+      "uz": "U xolesterinni emas, faqat triglitseridlarni o‘lchaydi",
+      "ru": "Он измеряет только триглицериды, а не холестерин",
+      "en": "It measures only triglycerides, not cholesterol"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Non-HDL xolesterin ko‘rsatkichi, triglitseridlar esa alohida o‘lchanadi.",
@@ -10843,9 +10843,9 @@
    "options": [
     {
      "text": {
-      "uz": "Faqat amilaza har doim yetarli, lipaza kerak emas",
-      "ru": "Одной амилазы всегда достаточно, липаза не нужна",
-      "en": "Amylase alone is always sufficient, so lipase is not needed"
+      "uz": "Faqat amilaza har doim yetarli, shuning uchun lipazani buyurish shart emas",
+      "ru": "Одной амилазы всегда достаточно, поэтому липазу назначать не нужно",
+      "en": "Amylase alone is always sufficient, so lipase does not need to be ordered"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, lipaza ko‘pincha amilaza bilan birga buyuriladi va aniqroq hisoblanadi.",
@@ -10867,9 +10867,9 @@
     },
     {
      "text": {
-      "uz": "Siydikdagi amilaza qondagidan oldin o‘zgaradi, shuning uchun faqat siydikni tekshirish kerak",
-      "ru": "Амилаза мочи меняется раньше, чем в крови, поэтому нужно исследовать только мочу",
-      "en": "Urine amylase changes before blood amylase, so only urine should be tested"
+      "uz": "Siydikdagi amilaza qondagidan oldin o‘zgaradi, shuning uchun pankreatitda faqat siydik namunasini tekshirish kerak",
+      "ru": "Амилаза мочи меняется раньше, чем амилаза крови, поэтому при панкреатите нужно исследовать только мочу",
+      "en": "Urine amylase changes before blood amylase, so only a urine sample should be tested for pancreatitis"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, o‘zgarishlar siydikdan oldin qonda paydo bo‘ladi.",
@@ -10905,9 +10905,9 @@
    "options": [
     {
      "text": {
-      "uz": "Chunki qondagi amilazani o‘lchab bo‘lmaydi",
-      "ru": "Потому что амилазу в крови измерить нельзя",
-      "en": "Because blood amylase cannot be measured"
+      "uz": "Chunki amilazani qonda o‘lchab bo‘lmaydi va faqat siydik namunasi qoladi",
+      "ru": "Потому что амилазу нельзя измерить в крови и остаётся только моча",
+      "en": "Because amylase cannot be measured in blood, leaving urine as the only usable sample"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba qondagi amilaza tahlilini asosiy tahlillardan biri sifatida tasvirlaydi.",
@@ -10917,9 +10917,9 @@
     },
     {
      "text": {
-      "uz": "Chunki amilaza siydikda faqat kechasi paydo bo‘ladi",
-      "ru": "Потому что амилаза появляется в моче только ночью",
-      "en": "Because amylase appears in urine only at night"
+      "uz": "Chunki amilaza siydikda faqat kechasi paydo bo‘ladi va uni qamrab olish uchun butun kunlik yig‘ish kerak",
+      "ru": "Потому что амилаза появляется в моче только ночью, и чтобы её учесть, нужен сбор мочи за полные сутки",
+      "en": "Because amylase appears in urine only at night, and a full-day collection is needed to include it"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba bunday narsani aytmaydi; u miqdor kun davomida o‘zgarishini aytadi.",
@@ -10967,9 +10967,9 @@
    "options": [
     {
      "text": {
-      "uz": "Lipazaning har qanday oshishi o‘tkir pankreatitni tasdiqlaydi",
-      "ru": "Любое повышение липазы подтверждает острый панкреатит",
-      "en": "Any rise in lipase confirms acute pancreatitis"
+      "uz": "Lipazaning har qanday oshishi, bemor qanday dori qabul qilishidan qat’i nazar, o‘tkir pankreatitni tasdiqlaydi",
+      "ru": "Любое повышение липазы подтверждает острый панкреатит, независимо от принимаемых лекарств",
+      "en": "Any rise in lipase confirms acute pancreatitis, whatever medicines the patient is taking"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Odatda juda yuqori daraja o‘tkir pankreatit belgisi; boshqa ko‘p holatlar va dorilar ham lipazaga ta’sir qiladi.",
@@ -10979,9 +10979,9 @@
     },
     {
      "text": {
-      "uz": "Dorilar lipazaga ta’sir qilmaydi, demak kasallik bor",
-      "ru": "Лекарства не влияют на липазу, значит, есть болезнь",
-      "en": "Medicines do not affect lipase, so a disease must be present"
+      "uz": "Kodein va diuretiklar kabi dorilar lipazaga ta’sir qilmaydi, demak davolanishi kerak bo‘lgan kasallik albatta bor",
+      "ru": "Такие лекарства, как кодеин и диуретики, не влияют на липазу, значит, обязательно есть болезнь, требующая лечения",
+      "en": "Medicines such as codeine and diuretics do not affect lipase, so a disease needing treatment must be present"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, ko‘plab dorilar lipaza darajasiga ta’sir qilishi mumkin.",
@@ -11157,9 +11157,9 @@
    "options": [
     {
      "text": {
-      "uz": "Chunki LDH faqat yurakda bo‘ladi",
-      "ru": "Потому что ЛДГ есть только в сердце",
-      "en": "Because LDH is found only in the heart"
+      "uz": "Chunki LDH faqat yurakda bo‘ladi, organizmning boshqa a’zolarini tekshirish uchun esa boshqa tahlillar kerak",
+      "ru": "Потому что ЛДГ есть только в сердце, а для проверки других органов нужны другие анализы",
+      "en": "Because LDH is found only in the heart, and other tests are needed to check other organs"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra, LDH deyarli barcha to‘qimalarda bo‘ladi.",
@@ -11169,9 +11169,9 @@
     },
     {
      "text": {
-      "uz": "Chunki LDH ni qonda o‘lchab bo‘lmaydi",
-      "ru": "Потому что ЛДГ нельзя измерить в крови",
-      "en": "Because LDH cannot be measured in blood"
+      "uz": "Chunki LDH ni qonda o‘lchab bo‘lmaydi, u faqat boshqa natijalardan taxmin qilinadi",
+      "ru": "Потому что ЛДГ нельзя измерить в крови — её лишь оценивают по другим результатам",
+      "en": "Because LDH cannot be measured in blood and is only estimated from other results"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. LDH odatda qon namunasida o‘lchanadi.",
@@ -11367,9 +11367,9 @@
     },
     {
      "text": {
-      "uz": "Yetarli suyuqlik ichmaslik tufayli suvsizlanish",
-      "ru": "Обезвоживание из-за недостаточного питья",
-      "en": "Dehydration from not drinking enough"
+      "uz": "Uzoq vaqt davomida yetarli miqdorda suyuqlik ichmaslik tufayli kelib chiqqan suvsizlanish",
+      "ru": "Обезвоживание из-за того, что человек долгое время пьёт недостаточно жидкости",
+      "en": "Dehydration from not drinking enough fluids over a long period"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Yetarli suyuqlik ichmaslikdan kelib chiqqan suvsizlanish manbada natriy yuqoriligining sabablari qatorida berilgan.",
@@ -11475,9 +11475,9 @@
    "options": [
     {
      "text": {
-      "uz": "Tahlildan oldin och qolmaslik",
-      "ru": "Отсутствие голодания перед анализом",
-      "en": "Not fasting before the test"
+      "uz": "Tahlildan oldin bir necha soat och qolmaslik",
+      "ru": "Отсутствие голодания в течение нескольких часов перед анализом",
+      "en": "Not fasting for several hours before the test"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra kaliy tahlili uchun maxsus tayyorgarlik kerak emas; och qolish faqat boshqa tahlillar buyurilganda talab qilinishi mumkin.",
@@ -11487,9 +11487,9 @@
     },
     {
      "text": {
-      "uz": "Tahlildan oldingi kunlarda tabiiy qora qizilmiya iste’mol qilish",
-      "ru": "Употребление натуральной чёрной лакрицы в дни перед анализом",
-      "en": "Eating natural black licorice in the days before the test"
+      "uz": "Qon tahlilidan oldingi kunlarda ko‘p miqdorda tabiiy qora qizilmiya iste’mol qilish",
+      "ru": "Употребление большого количества натуральной чёрной лакрицы в дни перед анализом крови",
+      "en": "Eating a lot of natural black licorice in the days leading up to the blood test"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbada qizilmiya kaliyni oshirishi emas, pasaytirishi mumkinligi aytilgan.",
@@ -11537,9 +11537,9 @@
    "options": [
     {
      "text": {
-      "uz": "Hujayralardan kaliy chiqishiga olib keladigan kuyishlar yoki jarrohlik",
-      "ru": "Ожоги или операции, при которых клетки высвобождают калий",
-      "en": "Burns or surgery that make cells release potassium"
+      "uz": "Hujayralardan qonga kaliy chiqishiga olib keladigan kuyishlar yoki jarrohlik",
+      "ru": "Ожоги или операции, при которых клетки высвобождают калий в кровь",
+      "en": "Burns or surgery that make cells release potassium into the blood"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Bular kaliy yuqoriligining sabablari qatorida keltirilgan.",
@@ -11673,9 +11673,9 @@
     },
     {
      "text": {
-      "uz": "Natija buyrak kasalligini tasdiqlaydi",
-      "ru": "Результат подтверждает болезнь почек",
-      "en": "The result confirms kidney disease"
+      "uz": "Natija bemor qanday dori qabul qilishidan qat’i nazar buyrak kasalligini tasdiqlaydi",
+      "ru": "Результат подтверждает болезнь почек, независимо от принимаемых лекарств",
+      "en": "The result confirms kidney disease, whatever medicines the patient is taking"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Me’yordan tashqari xlorid har doim ham kasallikni anglatmaydi va unga ko‘plab omillar ta’sir qiladi.",
@@ -11685,9 +11685,9 @@
     },
     {
      "text": {
-      "uz": "Antatsidlar xloridga ta’sir qilmaydi, demak natija albatta kasallikni ko‘rsatadi",
-      "ru": "Антациды не влияют на хлорид, значит результат обязательно указывает на болезнь",
-      "en": "Antacids cannot affect chloride, so the result must reflect disease"
+      "uz": "Antatsidlar xlorid natijasini o‘zgartira olmaydi, shuning uchun bu natija albatta davolash kerak bo‘lgan buyrak yoki boshqa kasallikni ko‘rsatadi",
+      "ru": "Антациды не могут изменить хлорид, поэтому этот результат обязательно указывает на болезнь почек или другую болезнь, требующую лечения",
+      "en": "Antacids cannot change chloride results, so this abnormal value must reflect kidney or other disease that needs treatment"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbada antatsidlar me’yordan tashqari natijaga sabab bo‘lishi mumkinligi aniq aytilgan.",
@@ -12061,9 +12061,9 @@
     },
     {
      "text": {
-      "uz": "Bu buyrak yetishmovchiligini tasdiqlaydi",
-      "ru": "Это подтверждает почечную недостаточность",
-      "en": "It confirms kidney failure"
+      "uz": "Bu buyrak yetishmovchiligini tasdiqlaydi, chunki kattalarda qiymat pastroq bo‘lardi",
+      "ru": "Это подтверждает почечную недостаточность, ведь у взрослых значение было бы ниже",
+      "en": "It confirms kidney failure, since an adult would have a lower value"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Natija belgilar, kasallik tarixi va boshqa tahlillar bilan birga baholanadi; bitta natija tashxisni tasdiqlamaydi.",
@@ -12073,9 +12073,9 @@
     },
     {
      "text": {
-      "uz": "Javobda «fosfor» deb yozilgan, bu esa fosfatdan boshqa ko‘rsatkich",
-      "ru": "В бланке указан «фосфор», а это другой показатель, чем фосфат",
-      "en": "The report says “phosphorus”, which is a different measure from phosphate"
+      "uz": "Javobda «fosfor» deb yozilgan, bu esa qondagi fosfatdan boshqa ko‘rsatkich",
+      "ru": "В бланке указан «фосфор», а это другой показатель крови, чем фосфат",
+      "en": "The report says “phosphorus”, which is a different blood measure from phosphate"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manbaga ko‘ra «fosfor» va «fosfat» atamalari bir xil ma’noni anglatadi.",
@@ -12173,9 +12173,9 @@
    "options": [
     {
      "text": {
-      "uz": "Shu bitta natija asosida surunkali buyrak kasalligi tashxisini qo‘yish",
-      "ru": "Поставить диагноз хронической болезни почек по одному этому результату",
-      "en": "Diagnose chronic kidney disease from this single result"
+      "uz": "Shu bitta natija asosida surunkali buyrak kasalligi tashxisini qo‘yish, chunki siydikdagi ko‘p oqsil hech qachon vaqtinchalik bo‘lmaydi",
+      "ru": "Поставить диагноз хронической болезни почек по одному этому результату, так как большое количество белка в моче не бывает временным",
+      "en": "Diagnose chronic kidney disease from this single result, because a large amount of protein in urine is never a temporary finding"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Ko‘p oqsil har doim ham davolash kerak bo‘lgan kasallikni bildirmaydi; tashxis uchun qo‘shimcha tahlillar zarur.",
@@ -12185,9 +12185,9 @@
     },
     {
      "text": {
-      "uz": "Natijani e’tiborsiz qoldirish, chunki siydikdagi oqsil doim zararsiz",
-      "ru": "Не обращать внимания, поскольку белок в моче всегда безвреден",
-      "en": "Ignore it, because urine protein is always harmless"
+      "uz": "Natijani e’tiborsiz qoldirish, chunki mashqdan keyingi siydikdagi oqsil doim zararsiz va kuzatuvni talab qilmaydi",
+      "ru": "Не обращать внимания, поскольку белок в моче после нагрузки всегда безвреден и не требует наблюдения",
+      "en": "Ignore it, because protein in urine after exercise is always harmless and needs no follow-up"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Doimiy yuqori oqsil, ehtimol, buyrak kasalligi yoki shikastlanishi belgisi.",
@@ -12247,9 +12247,9 @@
     },
     {
      "text": {
-      "uz": "Bu buyrak kasalligini tasdiqlaydi",
-      "ru": "Это подтверждает болезнь почек",
-      "en": "It confirms kidney disease"
+      "uz": "Bu buyrak kasalligini tasdiqlaydi, shuning uchun takroriy namuna yoki qo‘shimcha tahlillar kerak emas",
+      "ru": "Это подтверждает болезнь почек, поэтому повторный образец и дополнительные исследования не нужны",
+      "en": "It confirms kidney disease, so no repeat sample or further tests are needed"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Me’yordan tashqari natija har doim ham kasallikni anglatmaydi; tashxis uchun qo‘shimcha tahlillar kerak bo‘lishi mumkin.",
@@ -12259,9 +12259,9 @@
     },
     {
      "text": {
-      "uz": "Yassi hujayralar buyrak kanalchalari hujayralaridir, demak kanalchalar shikastlangan",
-      "ru": "Плоские клетки — это клетки почечных канальцев, значит, канальцы повреждены",
-      "en": "Squamous cells are kidney tubular cells, so the tubules are damaged"
+      "uz": "Yassi hujayralar buyrak kanalchalari hujayralari bilan bir xil, shuning uchun ularning ko‘pligi kanalchalar shikastlanganini bildiradi",
+      "ru": "Плоские клетки — то же самое, что клетки почечных канальцев, поэтому их обилие означает повреждение канальцев",
+      "en": "Squamous cells are the same as kidney tubular cells, so a large number of them means the tubules are damaged"
      },
      "explanation": {
       "uz": "Noto‘g‘ri. Manba yassi hujayralar va buyrak kanalchalari hujayralarini siydik yo‘llarini qoplovchi alohida turlar sifatida ajratadi.",

@@ -261,6 +261,29 @@ void main() {
     });
   });
 
+  test('the correct option is not a giveaway by length (≤ 50 %)', () {
+    // Test-wiseness: to'g'ri javob ko'pincha eng uzun variant bo'lsa,
+    // talaba o'qimasdan topadi. Avval 71 tadan 61 tasida shunday edi.
+    final pack = parse(packJson());
+    for (final lang in ['uz', 'ru', 'en']) {
+      var longest = 0;
+      for (final q in pack.quiz) {
+        final lengths = [for (final o in q.options) o.text.of(lang).length];
+        final correct = lengths[q.correctIndex];
+        final others = [
+          for (final (i, n) in lengths.indexed)
+            if (i != q.correctIndex) n,
+        ];
+        if (others.every((n) => correct > n)) longest++;
+      }
+      expect(
+        longest / pack.quiz.length,
+        lessThanOrEqualTo(0.5),
+        reason: '$lang: $longest / ${pack.quiz.length}',
+      );
+    }
+  });
+
   group('content integrity rules', () {
     Map<String, Object?> base() => packJson();
 
@@ -740,7 +763,7 @@ void main() {
       expect(ids('мочевая кислота', lang: 'ru').first, 'uric-acid');
     });
 
-        test('ignores case, apostrophe variants, ё and hyphens', () {
+    test('ignores case, apostrophe variants, ё and hyphens', () {
       expect(ids('To‘g‘ri bilirubin').first, 'bilirubin-direct');
       expect(ids("to'g'ri bilirubin").first, 'bilirubin-direct');
       expect(ids('togri bilirubin').first, 'bilirubin-direct');

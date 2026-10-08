@@ -443,10 +443,35 @@ class _ResultView extends StatelessWidget {
           CalcFail(issue: CalcIssue.outsideValidity) => tgLimitMsg,
           CalcFail() => l.errNotPositive,
         };
-    String line(CalcOutcome<double> o, String unit, int d) => switch (o) {
-      CalcOk(:final value) => '${n(value, d)} $unit',
-      final CalcFail<double> f => calcErrorText(l, f, unitOf, locale),
-    };
+    // Ixtiyoriy qator: natija — oddiy ko'rsatkich; xato — kichik
+    // ogohlantirish (asosiy natijadan yirik ko'rinmasin).
+    Widget line(String label, CalcOutcome<double> o, String unit, int d) =>
+        switch (o) {
+          CalcOk(:final value) => LgMetric(
+            label: label,
+            value: '${n(value, d)} $unit',
+          ),
+          final CalcFail<double> f => Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: p.line.withValues(alpha: 0.7)),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: text.bodyMedium),
+                const SizedBox(height: 2),
+                Text(
+                  calcErrorText(l, f, unitOf, locale),
+                  style: text.bodySmall!.copyWith(color: p.amber),
+                ),
+              ],
+            ),
+          ),
+        };
     final checks = <String>[];
 
     final children = <Widget>[];
@@ -478,9 +503,9 @@ class _ResultView extends StatelessWidget {
           Text(l.resAnionGap, style: text.titleSmall),
           headline('${n(r.gap, 1)} mmol/L'),
           if (r.gapWithPotassium case final o?)
-            LgMetric(label: l.resAnionGapK, value: line(o, 'mmol/L', 1)),
+            line(l.resAnionGapK, o, 'mmol/L', 1),
           if (r.albuminCorrected case final o?)
-            LgMetric(label: l.resAnionGapAlb, value: line(o, 'mmol/L', 1)),
+            line(l.resAnionGapAlb, o, 'mmol/L', 1),
         ]);
       case final LipidResult r:
         final unit = unitOf(CalcField.totalCholesterol);

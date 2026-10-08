@@ -704,6 +704,11 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String qcLevelNamed(String label) {
+    return '$label daraja';
+  }
+
+  @override
   String qcLevelsCount(int count) {
     return '$count ta daraja';
   }
@@ -750,7 +755,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String qcErrLevel(String label) {
-    return '$label-daraja: o‘rtacha va noldan katta SD kiriting.';
+    return '$label: o‘rtacha va noldan katta SD kiriting.';
   }
 
   @override
@@ -785,7 +790,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String qcErrRunInvalid(String label) {
-    return '$label-daraja: son emas.';
+    return '$label: son emas.';
   }
 
   @override
@@ -799,7 +804,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String qcChartSemantics(String label, int count) {
-    return 'Levey–Jennings grafigi, $label-daraja: $count ta qiymat';
+    return 'Levey–Jennings grafigi, $label: $count ta qiymat';
   }
 
   @override
@@ -851,7 +856,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String qcErrNotFinite(String label) {
-    return '$label-daraja: qiymat juda katta yoki juda kichik.';
+    return '$label: qiymat juda katta yoki juda kichik.';
   }
 
   @override

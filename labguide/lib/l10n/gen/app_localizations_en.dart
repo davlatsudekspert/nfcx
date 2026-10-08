@@ -703,6 +703,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String qcLevelNamed(String label) {
+    return 'Level “$label”';
+  }
+
+  @override
   String qcLevelsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -756,7 +761,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String qcErrLevel(String label) {
-    return 'Level $label: enter the mean and an SD greater than zero.';
+    return '$label: enter the mean and an SD greater than zero.';
   }
 
   @override
@@ -791,7 +796,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String qcErrRunInvalid(String label) {
-    return 'Level $label: not a number.';
+    return '$label: not a number.';
   }
 
   @override
@@ -805,7 +810,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String qcChartSemantics(String label, int count) {
-    return 'Levey–Jennings chart, level $label: $count values';
+    return 'Levey–Jennings chart, $label: $count values';
   }
 
   @override
@@ -857,7 +862,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String qcErrNotFinite(String label) {
-    return 'Level $label: the value is too large or too small.';
+    return '$label: the value is too large or too small.';
   }
 
   @override

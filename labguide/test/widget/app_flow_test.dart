@@ -535,7 +535,7 @@ void main() {
     expect(find.text(en.quizCorrect), findsOneWidget);
     await tapText(tester, en.quizNext);
     // 2-savol: noto'g'ri.
-    await tapText(tester, 'Always');
+    await tapText(tester, 'Yes, one conversion factor fits every analyte');
     expect(find.text(en.quizIncorrect), findsOneWidget);
     expect(find.text(en.quizYourAnswer), findsOneWidget);
     await tapText(tester, en.quizNext);

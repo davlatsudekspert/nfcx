@@ -28,6 +28,11 @@ const kQcChartRuns = 30;
 /// Tarixda dastlab ko'rsatiladigan seriyalar soni (qolgani — tugma bilan).
 const _kHistoryRuns = 50;
 
+/// Daraja nomi: raqam bo'lsa “1-daraja”, nom bo'lsa “Past daraja”
+/// (avval “Past-daraja” chiqardi).
+String qcLevelName(String label, AppLocalizations l) =>
+    RegExp(r'^\d+$').hasMatch(label) ? l.qcLevel(label) : l.qcLevelNamed(label);
+
 String verdictLabel(QcVerdict v, AppLocalizations l) => switch (v) {
   QcVerdict.accept => l.qcAccept,
   QcVerdict.warning => l.qcWarning,
@@ -337,7 +342,7 @@ class _QcNewSetScreenState extends State<QcNewSetScreen> {
           !mean.isFinite ||
           !sd.isFinite ||
           !(sd > 0)) {
-        setState(() => _error = l.qcErrLevel('${i + 1}'));
+        setState(() => _error = l.qcErrLevel(l.qcLevel('${i + 1}')));
         return;
       }
       final label = f.label.text.trim();
@@ -507,11 +512,11 @@ class _QcSetScreenState extends State<QcSetScreen> {
       if (raw.trim().isEmpty) continue;
       final v = parseDecimal(raw);
       if (v == null) {
-        setState(() => _error = l.qcErrRunInvalid(level.label));
+        setState(() => _error = l.qcErrRunInvalid(qcLevelName(level.label, l)));
         return;
       }
       if (!v.isFinite) {
-        setState(() => _error = l.qcErrNotFinite(level.label));
+        setState(() => _error = l.qcErrNotFinite(qcLevelName(level.label, l)));
         return;
       }
       values[level.id] = v;
@@ -681,7 +686,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
       for (final level in set.levels) ...[
         LgSectionTitle(
           [
-            l.qcLevel(level.label),
+            qcLevelName(level.label, l),
             if (level.lot.isNotEmpty) '${l.qcLot} ${level.lot}',
           ].join(' · '),
           trailing: IconButton(
@@ -722,7 +727,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
                         LjPoint(r.run.values[level.id]!, markFor(r, level.id)),
                     ],
                     semanticLabel: l.qcChartSemantics(
-                      level.label,
+                      qcLevelName(level.label, l),
                       period.length,
                     ),
                   ),
@@ -794,7 +799,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
       for (final level in set.levels)
         LgField(
           label: [
-            l.qcLevel(level.label),
+            qcLevelName(level.label, l),
             if (set.unit.isNotEmpty) set.unit,
           ].join(', '),
           controller: _ctrl(level.id),
@@ -1114,7 +1119,7 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
     );
     return LgPage(
       title: l.qcChangeTarget,
-      subtitle: '${set.name} · ${l.qcLevel(level.label)}',
+      subtitle: '${set.name} · ${qcLevelName(level.label, l)}',
       children: [
         LgNotice(l.qcChangeTargetBody, kind: NoticeKind.info),
         LgField(

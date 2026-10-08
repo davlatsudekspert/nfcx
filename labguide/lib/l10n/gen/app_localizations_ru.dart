@@ -709,6 +709,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String qcLevelNamed(String label) {
+    return 'Уровень «$label»';
+  }
+
+  @override
   String qcLevelsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -766,7 +771,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String qcErrLevel(String label) {
-    return 'Уровень $label: введите среднее и SD больше нуля.';
+    return '$label: введите среднее и SD больше нуля.';
   }
 
   @override
@@ -801,7 +806,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String qcErrRunInvalid(String label) {
-    return 'Уровень $label: не число.';
+    return '$label: не число.';
   }
 
   @override
@@ -815,7 +820,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String qcChartSemantics(String label, int count) {
-    return 'График Леви–Дженнингса, уровень $label: значений $count';
+    return 'График Леви–Дженнингса, $label: значений $count';
   }
 
   @override
@@ -867,7 +872,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String qcErrNotFinite(String label) {
-    return 'Уровень $label: значение слишком велико или слишком мало.';
+    return '$label: значение слишком велико или слишком мало.';
   }
 
   @override
