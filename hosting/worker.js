@@ -1584,7 +1584,8 @@ async function companyApi(request, env, url) {
     const row = await env.DB.prepare(
       `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at, media_json, publish_at) VALUES (?,?,?,?,?,?,?)
        RETURNING id, image_url, video_url, caption, created_at, media_json, publish_at`
-    ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), nowIso,
+    ).bind(id, media.imageUrl, media.videoUrl,
+      String(body?.caption || (showcaseIn && typeof body?.text === 'string' ? body.text : '') || '').slice(0, 600), nowIso,
       mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? companyPostsTs(plan.ms) : null).first();
     const extras = await apiMusic.savePostExtras(env, 'company_post', Number(row.id), extrasIn.extras);
     if (tagsIn.ids.length) await apiProductTags.saveProductTags(env, Number(row.id), tagsIn.ids, nowIso);
@@ -6768,7 +6769,8 @@ async function recordsApi(request, env, url) {
       if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
       const imageUrl = mediaIn.provided ? String(mediaIn.imageUrl || '') : String(body?.imageUrl || '');
       const videoUrl = mediaIn.provided ? String(mediaIn.videoUrl || '') : String(body?.videoUrl || '');
-      const caption = String(body?.caption || '').slice(0, 600);
+      // Ko'rgazma (shartnoma §3) tavsifni `text` bilan ham yuborishi mumkin.
+      const caption = String(body?.caption || (showcaseIn && typeof body?.text === 'string' ? body.text : '') || '').slice(0, 600);
       const okImg = imageUrl.startsWith('/uploads/') && !/[^\w\-./]/.test(imageUrl);
       const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl)
         && !/^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i.test(videoUrl);

@@ -35,6 +35,11 @@ check('1) first image = imageUrl', [p1.imageUrl, p1.videoUrl], ['/uploads/sc1.jp
 const extras = sqlite.prepare(`SELECT showcase, title, price_uzs, catalog_item_id, link_url, image_seconds FROM post_extras WHERE post_kind = 'post' AND post_id = ?`).get(p1.id);
 check('1) stored (catalog ignored for personal)', { ...extras }, { showcase: 1, title: 'Choynak', price_uzs: 125000, catalog_item_id: null, link_url: 'https://youtu.be/abc123', image_seconds: 7 });
 
+r = await post({ showcase: true, mediaUrls: ['/uploads/tx.jpg'], text: 'matn maydoni' });
+check('1) `text` alias for caption', [r.status, r.body?.caption], [201, 'matn maydoni']);
+r = await cpost({ showcase: true, mediaUrls: ['/uploads/tx2.jpg'], text: 'biznes matni' });
+check('1) company `text` alias', [r.status, r.body?.post?.caption], [201, 'biznes matni']);
+
 // ═══ 2. Tekshiruv ═══
 const bad = async (label, json, err) => {
   const x = await post({ ...SC, ...json });
