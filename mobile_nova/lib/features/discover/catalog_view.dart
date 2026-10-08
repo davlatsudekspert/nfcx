@@ -21,11 +21,13 @@ import '../../design/widgets/contact_buttons.dart';
 import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
-import '../business/business_providers.dart' show storefrontProvider;
+import '../business/business_providers.dart'
+    show myBusinessesProvider, storefrontProvider;
 import '../business/business_screens.dart' show formatMoney;
 import '../business/store_catalog.dart' show showOrderSheet;
 import '../social/image_viewer.dart';
 import '../social/media_frame.dart' show mediaImage;
+import '../social/moderation.dart';
 import 'listing_labels.dart';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1137,6 +1139,11 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
         ).actions();
     final canOrder = seller?.ordersEnabled ?? false;
 
+    // O'z kompaniyamning tovari — shikoyat/bloklash menyusi yo'q.
+    final mine = ref.watch(myBusinessesProvider).valueOrNull?.any(
+            (c) => c.companyId == p.companyId) ??
+        false;
+
     return NovaScaffold(
       showBack: true,
       actions: [
@@ -1146,6 +1153,24 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
           onPressed: () =>
               ref.read(catalogFavoritesProvider.notifier).toggle(p.key),
         ),
+        // SHIKOYAT (UGC talabi) — tovarning o'zi `catalog_item` sifatida;
+        // sotuvchini bloklash ham shu menyuda.
+        if (!mine)
+          NovaIconButton(
+            key: const ValueKey('listing-more'),
+            icon: Icons.more_horiz_rounded,
+            tooltip: l.reportTitle,
+            onPressed: () => showContentActions(
+              context,
+              ref,
+              target: ReportTarget.catalogItem,
+              targetId: p.id,
+              ownerCode: p.companyId,
+              blockKind: BlockKind.company,
+              blockId: p.companyId,
+              keyPrefix: 'listing',
+            ),
+          ),
       ],
       body: NovaScroll(
         children: [

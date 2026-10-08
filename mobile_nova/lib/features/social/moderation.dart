@@ -68,7 +68,11 @@ enum ReportTarget {
 
   /// Izoh — alohida tur. Ilgari izoh shikoyati `post` bo'lib ketardi va
   /// izoh ID'si post ID'si deb o'qilardi: shikoyat BOSHQA postga tushardi.
-  comment('comment');
+  comment('comment'),
+
+  /// Katalog tovari (kompaniya katalogi, `targetId` — tovarning satr
+  /// id'si). Shartnoma §5: serverga 2026-10 da qo'shilgan.
+  catalogItem('catalog_item');
 
   const ReportTarget(this.wire);
   final String wire;
