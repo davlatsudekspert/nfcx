@@ -102,9 +102,10 @@ shunda ham sig‘masa masshtab 1.0. Matn hech qachon 11 px dan kichraymaydi va q
 Narxlar qotirilmagan (store’dan olinadi), qurilma soni taklifi `AppConfig.maxActiveDevicesProposal = 2`.
 Xarid/tiklash tugmalari store ulanmaguncha o‘chirilgan va “hali mavjud emas” deb yozilgan.
 
-## D-16. Bundle ID: `uz.labguide.labguide`
-`flutter create --org uz.labguide` natijasi. Do‘konga birinchi yuklashdan oldin egasi bilan
-kelishib o‘zgartirish mumkin (keyin o‘zgartirib bo‘lmaydi).
+## D-16. Bundle ID / applicationId: `uz.labguide.app` (2026-10-08)
+`flutter create` bergan `uz.labguide.labguide` hech qayerda ro‘yxatdan o‘tmasdan oldin toza
+`uz.labguide.app` ga almashtirildi (Android namespace/applicationId, Kotlin paketi, iOS
+PRODUCT_BUNDLE_IDENTIFIER). App Store / Play’da ro‘yxatdan o‘tgach o‘zgartirib bo‘lmaydi.
 
 ## D-17. Muhitga oid (repoga kirmaydi)
 Bulut konteynerida Maven Central 429 qaytardi; `~/.gradle/init.d/maven-mirror.gradle`

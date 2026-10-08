@@ -1,4 +1,4 @@
-package uz.labguide.labguide
+package uz.labguide.app
 
 import io.flutter.embedding.android.FlutterActivity
 

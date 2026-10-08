@@ -70,7 +70,7 @@ kelmagan**.
 - Aniq apparat modellari, reagent REF va IFU versiyalari (kalibrlash uchun).
 - E bosqich uchun: email provayder, backend hosting, App Store Connect va Play Console
   hisoblari, imzolash kalitlari. Bular sir — repoga qo‘yilmaydi.
-- Bundle ID (`uz.labguide.labguide`) — do‘konga birinchi yuklashdan oldin tasdiqlash (D-16).
+- Bundle ID `uz.labguide.app` (D-16) — App Store Connect’da ilova yozuvi shu ID bilan ochiladi.
 
 ## Ishga tushirish
 
