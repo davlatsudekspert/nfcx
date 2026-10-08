@@ -95,12 +95,12 @@ APP_NAME = "NFCSTORE: Social NFC"
 # writer, id) Apple'da avtomatik hisoblanadi — bu yerda TAKRORLANMAYDI, joy
 # qidiruv so'zlariga qoladi. Apple ularni nom bilan birlashtiradi: "nfc" +
 # "reader" -> "NFC reader", "nfc" + "tools" -> "NFC tools" va h.k.
-KEYWORDS_LIST = ['tools', 'scanner', 'tag', 'reels', 'read', 'write', 'sticker', 'scan', 'ntag',
+KEYWORDS_LIST = ['tools', 'scanner', 'tag', 'showcase', 'read', 'write', 'sticker', 'scan', 'ntag',
                  'card', 'business', 'qr', 'vizitka', 'yozish', 'karta', 'contact', 'chip']
 # Ruscha App Store (O'zbekistonda ko'p telefonlar rus tilida).
 KEYWORDS_LIST_RU = ['nfc', 'метки', 'метка', 'сканер', 'запись', 'чтение', 'считыватель', 'визитка',
                     'наклейка', 'tools', 'reader', 'tag', 'карта', 'чип', 'qr', 'бизнес']
-PROMO = "Tap. Share. Connect — your social NFC profile, feed and Reels on an NFC card or sticker."
+PROMO = "Tap. Share. Connect — your social NFC profile, feed and Showcase on an NFC card or sticker."
 SUBTITLE = "NFC Reader & Writer, Social ID"  # 30 belgi — Apple chegarasi
 
 # "What's New" — YANGILANISH matni (birinchi versiyada Apple uni qabul
