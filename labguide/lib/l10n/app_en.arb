@@ -211,6 +211,7 @@
   "analyteConvertUnitsSub": "Analyte-specific factor",
   "analyteMethodCalibration": "Method and calibration",
   "analyteMethodCalibrationSub": "IFU · QC",
+  "analyteCalculatorSub": "Calculator · published formula",
   "analytePractice": "Practise the topic",
   "analytePracticeSub": "Explained questions",
   "analyteRelated": "Related tests",
@@ -593,6 +594,25 @@
   "quizNoMistakes": "No mistakes — well done.",
   "quizYourAnswer": "Your answer",
   "quizCorrectAnswer": "Correct answer",
+  "quizChooseTopic": "Choose a topic",
+  "quizTopicMixed": "Mixed: {count} random questions",
+  "@quizTopicMixed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizTopicGeneral": "Laboratory calculations",
+  "quizQuestionCount": "{count, plural, =1{1 question} other{{count} questions}}",
+  "@quizQuestionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizOtherTopic": "Another topic",
   "examTitle": "Exam mode",
   "examBody": "Timed exams and result history come with the learning module. The practice questions are available now.",
   "examOpenPractice": "Open practice questions",

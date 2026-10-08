@@ -46,6 +46,26 @@ class CalcInfo {
 
 LocalizedText _all(String s) => LocalizedText({'uz': s, 'ru': s, 'en': s});
 
+/// Analit kartasidan tegishli kalkulyatorga o'tish (kiritiladigan analitlar).
+const Map<String, List<ClinicalCalc>> calculatorsByAnalyte = {
+  'creatinine': [ClinicalCalc.egfr],
+  'egfr': [ClinicalCalc.egfr],
+  'urine-acr': [ClinicalCalc.acr],
+  'sodium': [ClinicalCalc.anionGap, ClinicalCalc.osmolality],
+  'chloride': [ClinicalCalc.anionGap],
+  'potassium': [ClinicalCalc.anionGap],
+  'albumin': [ClinicalCalc.calcium, ClinicalCalc.anionGap],
+  'calcium': [ClinicalCalc.calcium],
+  'cholesterol-total': [ClinicalCalc.ldl],
+  'hdl-c': [ClinicalCalc.ldl],
+  'ldl-c': [ClinicalCalc.ldl],
+  'triglycerides': [ClinicalCalc.ldl],
+  'non-hdl-c': [ClinicalCalc.ldl],
+  'glucose-plasma-fasting': [ClinicalCalc.osmolality],
+  'urea': [ClinicalCalc.osmolality],
+  'hba1c': [ClinicalCalc.hba1c],
+};
+
 abstract final class CalcSources {
   static const inker2021 = CalcSource(
     id: 'calc-inker-2021',

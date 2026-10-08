@@ -19,8 +19,12 @@ kelmagan**.
 - 4 rolga mos bosh sahifa; 5 tab (o‘z stacki va scroll holati bilan); profil.
 - Scroll’da ixchamlashadigan katta sarlavha (14 px hysteresis, 200 ms).
 - UZ/RU/EN interfeys (ARB), kontent esa paketda 3 tilda.
-- Kontent: 8 guruh, 35 analit tuzilmasi, manbali glyukoza namunasi (MedlinePlus, NIDDK —
-  2026-10-08 da qayta tekshirildi; mustaqil review **yo‘q**), 3 ta izohli mashq savoli (draft).
+- Kontent (D-19): 8 guruh, **35 analitning hammasi manbali o‘quv kartasi** (MedlinePlus, NIDDK,
+  NHLBI — 52 manba; har da’vo manba va bo‘lim bilan; iqtiboslar sahifalarga qayta solishtirildi).
+  Mustaqil review **yo‘q** — hammasi draft. Ochiq savollar: [CONTENT_REVIEW_NOTES.md](CONTENT_REVIEW_NOTES.md).
+- Mashq: 71 ta izohli savol (draft): mavzu bo‘yicha (guruh), har analit kartasidan (2 ta) yoki
+  aralash 10 ta; natija va xatolar tahlili haqiqiy javoblardan.
+- Analit kartasidan tegishli kalkulyatorga o‘tish (kreatinin → eGFR, lipidlar → LDL va h.k.).
 - Tahlillar atlasi: sinonimli qidiruv, guruh filtri, bo‘sh holat; analit kartasi; xatcho‘p.
 - Lab: kalibrlash (IFU aniq moslik — katalog bo‘sh, parametr berilmaydi), QC, preanalitika,
   apparatlar, mikroskopiya (rasm huquqi kutilmoqda), suyultirish va birlik kalkulyatorlari.
@@ -42,8 +46,8 @@ kelmagan**.
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **168 / 168 o‘tdi** (unit 102: auth/settings 14, content 32, core logic 24, klinik kalkulyatorlar 32; widget oqimlari 35 (kalkulyatorlar 9); layout matritsa 31) |
-| Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 44 ta yo‘l (route) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
+| `flutter test` | **175 / 175 o‘tdi** (unit 105: auth/settings 14, content 35, core logic 24, klinik kalkulyatorlar 32; widget oqimlari 39 (kalkulyatorlar 9); layout matritsa 31) |
+| Layout matritsa | 30 konfiguratsiya: uz/ru/en × 320/390/430/820 px × shrift 1.0/1.35, + 320 px ×2.0, + dark; har birida 47 ta yo‘l (route, eng uzun kartalar va analit testi bilan) va 4 rolning bosh sahifasi — layout xatosi yo‘q; tab nomlari 320 px da sig‘adi. Kalkulyator natijalari 320 px ×2.0 da uchala tilda alohida tekshirildi |
 | Tap target | iOS 44×44 va labeled tap target guideline’lari (Bosh, Tahlillar) — o‘tdi |
 | Kontrast | Palitra juftliklari ≥ 4.5:1 (light va dark) — o‘tdi |
 | `flutter build apk --debug` | ✓ `app-debug.apk` |

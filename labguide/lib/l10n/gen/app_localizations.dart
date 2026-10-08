@@ -988,6 +988,12 @@ abstract class AppLocalizations {
   /// **'IFU · QC'**
   String get analyteMethodCalibrationSub;
 
+  /// No description provided for @analyteCalculatorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculator · published formula'**
+  String get analyteCalculatorSub;
+
   /// No description provided for @analytePractice.
   ///
   /// In en, this message translates to:
@@ -2391,6 +2397,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Correct answer'**
   String get quizCorrectAnswer;
+
+  /// No description provided for @quizChooseTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a topic'**
+  String get quizChooseTopic;
+
+  /// No description provided for @quizTopicMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed: {count} random questions'**
+  String quizTopicMixed(int count);
+
+  /// No description provided for @quizTopicGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'Laboratory calculations'**
+  String get quizTopicGeneral;
+
+  /// No description provided for @quizQuestionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question} other{{count} questions}}'**
+  String quizQuestionCount(int count);
+
+  /// No description provided for @quizOtherTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Another topic'**
+  String get quizOtherTopic;
 
   /// No description provided for @examTitle.
   ///

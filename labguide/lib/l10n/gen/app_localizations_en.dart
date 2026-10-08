@@ -496,6 +496,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyteMethodCalibrationSub => 'IFU · QC';
 
   @override
+  String get analyteCalculatorSub => 'Calculator · published formula';
+
+  @override
   String get analytePractice => 'Practise the topic';
 
   @override
@@ -1264,6 +1267,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quizCorrectAnswer => 'Correct answer';
+
+  @override
+  String get quizChooseTopic => 'Choose a topic';
+
+  @override
+  String quizTopicMixed(int count) {
+    return 'Mixed: $count random questions';
+  }
+
+  @override
+  String get quizTopicGeneral => 'Laboratory calculations';
+
+  @override
+  String quizQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions',
+      one: '1 question',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get quizOtherTopic => 'Another topic';
 
   @override
   String get examTitle => 'Exam mode';

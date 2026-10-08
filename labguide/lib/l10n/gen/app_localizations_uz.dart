@@ -497,6 +497,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get analyteMethodCalibrationSub => 'IFU · QC';
 
   @override
+  String get analyteCalculatorSub => 'Kalkulyator · nashr etilgan formula';
+
+  @override
   String get analytePractice => 'Mavzuni mustahkamlash';
 
   @override
@@ -1265,6 +1268,25 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get quizCorrectAnswer => 'To‘g‘ri javob';
+
+  @override
+  String get quizChooseTopic => 'Mavzuni tanlang';
+
+  @override
+  String quizTopicMixed(int count) {
+    return 'Aralash: $count ta tasodifiy savol';
+  }
+
+  @override
+  String get quizTopicGeneral => 'Laboratoriya hisoblari';
+
+  @override
+  String quizQuestionCount(int count) {
+    return '$count ta savol';
+  }
+
+  @override
+  String get quizOtherTopic => 'Boshqa mavzu';
 
   @override
   String get examTitle => 'Imtihon rejimi';

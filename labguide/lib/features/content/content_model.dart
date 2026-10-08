@@ -203,6 +203,8 @@ class DecisionLimit {
     required this.refs,
     this.low,
     this.high,
+    this.lowExclusive = false,
+    this.highExclusive = false,
     this.note,
   });
 
@@ -211,6 +213,8 @@ class DecisionLimit {
     unit: json['unit']! as String,
     low: (json['low'] as num?)?.toDouble(),
     high: (json['high'] as num?)?.toDouble(),
+    lowExclusive: json['low_exclusive'] as bool? ?? false,
+    highExclusive: json['high_exclusive'] as bool? ?? false,
     population: LocalizedText.fromJson(json['population']),
     note: json['note'] == null ? null : LocalizedText.fromJson(json['note']),
     refs: SourceRef.listFromJson(json),
@@ -219,11 +223,16 @@ class DecisionLimit {
   final LocalizedText label;
   final String unit;
 
-  /// Pastki chegara (kiritilgan). `null` bo'lsa — faqat yuqori chegara.
+  /// Pastki chegara. `null` bo'lsa — faqat yuqori chegara.
   final double? low;
 
-  /// Yuqori chegara (kiritilgan). `null` bo'lsa — "≥ low".
+  /// Yuqori chegara. `null` bo'lsa — faqat pastki chegara.
   final double? high;
+
+  /// Chegara qiymatning o'zi kirmaydi: manba “more than 30” / “less than 60”
+  /// desa `true` (“> 30”, “< 60”); “30 or more” bo'lsa `false` (“≥ 30”).
+  final bool lowExclusive;
+  final bool highExclusive;
   final LocalizedText population;
   final LocalizedText? note;
   final List<SourceRef> refs;

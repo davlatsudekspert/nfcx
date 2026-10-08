@@ -132,3 +132,27 @@ shakli Lynd 2008), HbA1c NGSP↔IFCC (NGSP master tenglamasi) va eAG (ADAG, Nath
 - Formula, cheklov va manba matnlari kod bilan birga `lib/features/tools/calc_info.dart` da:
   formula o‘zgarsa, izoh ham shu commit’da o‘zgaradi. Bibliografiyada faqat tekshirilgan
   maydonlar (muallif, sarlavha, jurnal, yil, DOI) — jild/sahifa yozilmagan.
+
+## D-19. 35 ta analit kartasi — AQSh davlat sahifalaridan, draft holatida (2026-10-08)
+- Manbalar: MedlinePlus lab-test sahifalari (asosiy), NIDDK, NHLBI — jami 52 ta; har birida
+  URL, kirish sanasi va sahifaning yangilangan/ko‘rib chiqilgan sanasi (`source_date`).
+- Matn uch tilda, manbadan o‘z so‘zlarimiz bilan; har bir da’vo manba va bo‘lim nomi
+  (`locator`) bilan. Har da’vo uchun so‘zma-so‘z inglizcha iqtibos yig‘ilib tekshirildi
+  (ilovaga kirmaydi): sahifalar qayta yuklanib, 708 iqtibosdan 704 tasi avtomatik, 2 tasi
+  qo‘lda (havola/bo‘shliq farqi) tasdiqlandi; rasmdan o‘qilgan 2 tasi olib tashlanib,
+  eGFR chegarasi matnli manbalarga (NIDDK CKD tests + eGFR tenglamalari sahifasi) bog‘landi.
+- Referens interval yo‘q. Diagnostik chegara faqat manba aniq bergan joyda: HbA1c, OGTT
+  (NIDDK jadvali), eGFR < 60 va ≤ 15, ACR > 30 mg/g; mikro/makroalbuminuriya — “manba
+  atamasi” sifatida. Qat’iy chegaralar uchun `low_exclusive` / `high_exclusive` qo‘shildi
+  (“< 60”, “> 30” manbadagidek, “≤/≥” emas).
+- Populyatsiya manbadagidek: NIDDK “if you are not pregnant” deydi — yosh aytilmagan, shuning
+  uchun “kattalar” so‘zi olib tashlandi (glyukoza kartasidagi oldingi xatoim ham tuzatildi).
+- Lipid “sog‘lom daraja” jadvallari, xavfga bog‘liq maqsadlar va CRP “sog‘lom miqdor” ataylab
+  kiritilmadi — ular populyatsiya/xavfga bog‘liq va referens intervalga o‘xshaydi.
+- Birlik faqat manba ko‘rsatgan bo‘lsa (fermentlar sahifalarida yo‘q → karta birliksiz).
+- Hammasi `status: draft`, `content_state: sourced_sample`, review `pending` — mustaqil
+  ekspert ko‘rmagan. Manba qayta foydalanish huquqi konservativ (`verify_before_distribution`).
+- Tahririy izohlar `review_note` da (ilovada ko‘rsatilmaydi); ekspert uchun ochiq savollar:
+  [CONTENT_REVIEW_NOTES.md](CONTENT_REVIEW_NOTES.md).
+- Testlar: 68 ta yangi savol (har analitga 2 ta), hammasi draft, manba va mavzu (`topic_ids`)
+  bilan. Mashq endi mavzu bo‘yicha: guruh, bitta analit (kartadan) yoki aralash 10 ta.

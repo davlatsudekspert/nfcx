@@ -79,24 +79,70 @@ void main() {
       }
     });
 
-    test('only glucose is a sourced sample; nothing is reviewer-approved', () {
+    test('every card is a sourced draft; nothing is reviewer-approved', () {
       final pack = parse(packJson());
-      final sourced = pack.analytes
-          .where((a) => a.contentState != ContentState.structureOnly)
-          .map((a) => a.id);
-      expect(sourced, ['glucose-plasma-fasting']);
-      expect(pack.analytes.any((a) => a.isReviewerApproved), isFalse);
-      expect(
-        pack.analytes.any((a) => a.status == ContentStatus.published),
-        isFalse,
-      );
-      // Strukturaviy kartalarda klinik matn yo'q.
+      expect(pack.analytes, hasLength(35));
       for (final a in pack.analytes) {
-        if (a.contentState == ContentState.structureOnly) {
-          expect(a.claims, isEmpty, reason: a.id);
-          expect(a.decisionLimits, isEmpty, reason: a.id);
+        // Manbali o'quv namunasi — mustaqil review hali yo'q.
+        expect(a.contentState, ContentState.sourcedSample, reason: a.id);
+        expect(a.status, ContentStatus.draft, reason: a.id);
+        expect(a.isReviewerApproved, isFalse, reason: a.id);
+        expect(a.claims, isNotEmpty, reason: a.id);
+        // Referens interval faqat laboratoriya blankidan — paketda yo'q.
+        expect(a.referenceIntervals, isEmpty, reason: a.id);
+        for (final c in a.claims) {
+          expect(c.text.values.keys, containsAll(['uz', 'ru', 'en']));
+          for (final r in c.refs) {
+            expect(r.locator, isNotNull, reason: '${a.id} ${c.section}');
+            expect(a.sourceIds, contains(r.sourceId), reason: a.id);
+          }
         }
       }
+    });
+
+    test('quiz: every question is a draft with a source and a topic', () {
+      final pack = parse(packJson());
+      final analyteIds = {for (final a in pack.analytes) a.id};
+      expect(pack.quiz.length, greaterThanOrEqualTo(70));
+      for (final q in pack.quiz) {
+        expect(q.isDraft, isTrue, reason: q.id);
+        for (final t in q.topicIds) {
+          expect(analyteIds, contains(t), reason: q.id);
+        }
+      }
+      // Analit savollari: har birida manba va aniq bir analit mavzusi.
+      final analyteQuestions = pack.quiz.where((q) => q.topicIds.isNotEmpty);
+      expect(analyteQuestions.length, 68);
+      for (final q in analyteQuestions) {
+        expect(q.refs, isNotEmpty, reason: q.id);
+      }
+    });
+
+    test('Uzbek text uses ‘ and ’, never ASCII apostrophes', () {
+      final pack = parse(packJson());
+      final texts = [
+        for (final a in pack.analytes) ...[
+          ?a.tagline?.values['uz'],
+          for (final c in a.claims) c.text.values['uz']!,
+        ],
+        for (final q in pack.quiz) ...[
+          q.prompt.values['uz']!,
+          for (final o in q.options) o.explanation.values['uz']!,
+        ],
+      ];
+      for (final t in texts) {
+        expect(t.contains("'"), isFalse, reason: t);
+      }
+    });
+
+    test('strict decision limits keep the source wording (< 60, > 30)', () {
+      final pack = parse(packJson());
+      final egfr = pack.analyte('egfr')!.decisionLimits;
+      final lt60 = egfr.firstWhere((d) => d.high == 60);
+      expect(lt60.highExclusive, isTrue);
+      final acr = pack.analyte('urine-acr')!.decisionLimits;
+      final gt30 = acr.firstWhere((d) => d.low == 30 && d.high == null);
+      expect(gt30.lowExclusive, isTrue);
     });
 
     test('glucose: decision limits are separate from reference intervals', () {
@@ -225,8 +271,14 @@ void main() {
       final alt = (json['analytes']! as List)
           .cast<Map<String, Object?>>()
           .firstWhere((a) => a['id'] == 'alt');
-      alt['claims'] = glucose(json)['claims'];
+      alt['content_state'] = 'structure_only';
       expect(() => parse(json), throwsFormatException);
+      alt['claims'] = const <Object>[];
+      alt['decision_limits'] = const <Object>[];
+      expect(
+        parse(json).analyte('alt')!.contentState,
+        ContentState.structureOnly,
+      );
     });
 
     test('approved quiz question must cite a source', () {

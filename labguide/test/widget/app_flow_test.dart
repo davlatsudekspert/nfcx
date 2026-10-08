@@ -255,13 +255,58 @@ void main() {
   });
 
   testWidgets('structure-only card shows no clinical text', (tester) async {
-    final s = await makeServices(tester, language: AppLanguage.en);
+    // Paketda bunday karta qolmagan — tekshiruvdan o'tadigan o'zgartirilgan
+    // paket bilan sinaladi (yangi analit avval shu holatda qo'shiladi).
+    final bundle = PatchedPackBundle(rootBundle, (pack) {
+      final alt = (pack['analytes']! as List)
+          .cast<Map<String, Object?>>()
+          .firstWhere((a) => a['id'] == 'alt');
+      alt
+        ..['content_state'] = 'structure_only'
+        ..['claims'] = <Object>[]
+        ..['decision_limits'] = <Object>[];
+    });
+    final s = await makeServices(
+      tester,
+      language: AppLanguage.en,
+      bundle: bundle,
+    );
     await pumpApp(tester, s);
     await goTo(tester, '/tests/analyte/alt');
     expect(find.text(en.analyteStructureOnlyTitle), findsOneWidget);
     expect(find.text(en.statusStructureOnly), findsOneWidget);
     expect(find.text(en.analyteDecisionLimits), findsNothing);
     expect(find.text(en.analyteSampleNotice), findsNothing);
+  });
+
+  testWidgets('sourced card: sample notice, cited claims, strict limits', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s, size: const Size(390, 6000));
+    await goTo(tester, '/tests/analyte/egfr');
+    expect(find.text(en.analyteSampleNotice), findsOneWidget);
+    expect(find.text(en.analyteStructureOnlyTitle), findsNothing);
+    // Manba “less than 60” deydi — “≤ 60” emas.
+    expect(find.textContaining('< 60 mL/min/1.73 m²'), findsWidgets);
+    expect(find.textContaining('≤ 60'), findsNothing);
+    expect(find.textContaining('≤ 15 mL/min/1.73 m²'), findsWidgets);
+    expect(find.textContaining('MedlinePlus'), findsWidgets);
+  });
+
+  testWidgets('analyte practice opens that analyte’s questions in-tab', (
+    tester,
+  ) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s);
+    await goTo(tester, '/tests/analyte/creatinine');
+    await tapText(tester, en.analytePractice);
+    // Eyebrow katta harflarda ko'rsatiladi.
+    expect(find.text(en.quizProgress(1, 2).toUpperCase()), findsOneWidget);
+    expect(find.text(en.quizDraftTag), findsOneWidget);
+    // Mavzu tanlovi yo'q — to'g'ridan-to'g'ri shu analit savollari.
+    expect(find.text(en.quizChooseTopic), findsNothing);
+    expect(find.text('Creatinine'), findsWidgets);
   });
 
   testWidgets('demo OTP flow with validation, attempts and success', (
@@ -403,6 +448,10 @@ void main() {
     final s = await makeServices(tester, language: AppLanguage.en);
     await pumpApp(tester, s);
     await goTo(tester, '/learn/quiz');
+    // Avval mavzu tanlanadi: guruhlar, laboratoriya hisoblari, aralash.
+    expect(find.text(en.quizChooseTopic), findsOneWidget);
+    expect(find.text(en.quizTopicMixed(10)), findsOneWidget);
+    await tapText(tester, en.quizTopicGeneral);
     expect(find.text(en.quizDraftTag), findsOneWidget);
     // 1-savol: to'g'ri.
     await tapText(tester, 'C₁V₁ = C₂V₂');
@@ -418,6 +467,38 @@ void main() {
     await tapText(tester, en.quizFinish);
     expect(find.text(en.quizScore(2, 3)), findsOneWidget);
     expect(find.text(en.quizMistakes), findsOneWidget);
+    // Boshqa mavzu — yana tanlov ro'yxati.
+    await tapText(tester, en.quizOtherTopic);
+    expect(find.text(en.quizChooseTopic), findsOneWidget);
+  });
+
+  testWidgets('creatinine card links to the eGFR calculator', (tester) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s);
+    await goTo(tester, '/tests/analyte/creatinine');
+    await tapText(tester, en.calcEgfr);
+    expect(find.text(en.fieldCreatinine), findsOneWidget);
+    expect(find.text(en.calcFormulaTag), findsOneWidget);
+  });
+
+  testWidgets('quiz by group uses only that group’s questions', (tester) async {
+    final s = await makeServices(tester, language: AppLanguage.en);
+    await pumpApp(tester, s);
+    await goTo(tester, '/learn/quiz');
+    final kidney = s.content.pack!.group('kidney')!.names.of('en');
+    await tapText(tester, kidney);
+    final kidneyIds = {
+      for (final a in s.content.pack!.analytes)
+        if (a.group == 'kidney') a.id,
+    };
+    final expected = s.content.pack!.quiz
+        .where((q) => q.topicIds.any(kidneyIds.contains))
+        .length;
+    expect(expected, greaterThan(0));
+    expect(
+      find.text(en.quizProgress(1, expected).toUpperCase()),
+      findsOneWidget,
+    );
   });
 
   testWidgets('corrupted content pack → error state, no content shown', (
@@ -441,7 +522,10 @@ void main() {
     await goTo(tester, '/library/review');
     expect(find.text(uz.reviewNoDiscrepancies), findsOneWidget);
     expect(find.text(uz.reviewCatalog(0)), findsOneWidget);
-    expect(find.text(uz.reviewDraftQuestions(3)), findsOneWidget);
+    expect(
+      find.text(uz.reviewDraftQuestions(s.content.pack!.quiz.length)),
+      findsOneWidget,
+    );
     await goTo(tester, '/library/packs');
     expect(find.text(uz.packsVerified), findsOneWidget);
   });

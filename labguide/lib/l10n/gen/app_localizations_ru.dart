@@ -502,6 +502,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get analyteMethodCalibrationSub => 'IFU · QC';
 
   @override
+  String get analyteCalculatorSub => 'Калькулятор · опубликованная формула';
+
+  @override
   String get analytePractice => 'Закрепить тему';
 
   @override
@@ -1272,6 +1275,33 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get quizCorrectAnswer => 'Правильный ответ';
+
+  @override
+  String get quizChooseTopic => 'Выберите тему';
+
+  @override
+  String quizTopicMixed(int count) {
+    return 'Вперемешку: $count случайных вопросов';
+  }
+
+  @override
+  String get quizTopicGeneral => 'Лабораторные расчёты';
+
+  @override
+  String quizQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count вопроса',
+      many: '$count вопросов',
+      few: '$count вопроса',
+      one: '$count вопрос',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get quizOtherTopic => 'Другая тема';
 
   @override
   String get examTitle => 'Режим экзамена';

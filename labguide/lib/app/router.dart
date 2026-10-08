@@ -40,6 +40,11 @@ GoRouter buildRouter(
           builder: (context, state) =>
               UnitConverterScreen(analyteId: state.pathParameters['id']),
         ),
+        GoRoute(
+          path: 'quiz',
+          builder: (context, state) =>
+              QuizScreen(analyteId: state.pathParameters['id']),
+        ),
       ],
     ),
   ];
