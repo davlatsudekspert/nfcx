@@ -141,7 +141,7 @@ class RoleCard extends StatelessWidget {
                     selected
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
-                    color: selected ? p.brand : p.line,
+                    color: selected ? p.brand : p.outline,
                   ),
                 ],
               ),

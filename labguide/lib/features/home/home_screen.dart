@@ -9,6 +9,7 @@ import '../auth/ui/role_screen.dart';
 import '../auth/ui/welcome_screen.dart';
 import '../content/ui/content_widgets.dart';
 import '../settings/settings_controller.dart';
+import '../../app/shell.dart';
 
 /// Bosh sahifadagi bitta tezkor amal.
 class HomeAction {
@@ -158,7 +159,7 @@ class HomeScreen extends StatelessWidget {
               body: config.heroBody,
               action: LgButton(
                 label: config.heroCta,
-                onPressed: () => context.go(config.heroLocation),
+                onPressed: () => openInTab(context, config.heroLocation),
               ),
             ),
             const SizedBox(height: 8),
@@ -170,7 +171,7 @@ class HomeScreen extends StatelessWidget {
                     caption: l.actionOpen,
                     icon: config.actions[i].icon,
                     highlighted: i == 0,
-                    onTap: () => context.go(config.actions[i].location),
+                    onTap: () => openInTab(context, config.actions[i].location),
                   ),
               ],
             ),

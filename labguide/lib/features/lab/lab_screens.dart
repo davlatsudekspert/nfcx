@@ -11,6 +11,7 @@ import '../tools/calc_info.dart';
 import '../tools/clinical_calc_screens.dart';
 import 'ifu_matching.dart';
 import 'preanalytics_info.dart';
+import '../../app/shell.dart';
 
 class LabScreen extends StatelessWidget {
   const LabScreen({super.key});
@@ -402,7 +403,7 @@ class MicroscopyScreen extends StatelessWidget {
               child: AnalyteRow(
                 analyte: card,
                 divider: false,
-                onTap: () => context.go('/tests/analyte/${card.id}'),
+                onTap: () => openInTab(context, '/tests/analyte/${card.id}'),
               ),
             );
           },

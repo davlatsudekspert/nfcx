@@ -2728,6 +2728,12 @@ abstract class AppLocalizations {
   /// **'Draft saved on this device'**
   String get researchSaved;
 
+  /// No description provided for @researchAutosave.
+  ///
+  /// In en, this message translates to:
+  /// **'The draft saves automatically on this device as you type.'**
+  String get researchAutosave;
+
   /// No description provided for @researchOutline.
   ///
   /// In en, this message translates to:
@@ -2929,7 +2935,7 @@ abstract class AppLocalizations {
   /// No description provided for @quizTopicMixed.
   ///
   /// In en, this message translates to:
-  /// **'Mixed: {count} random questions'**
+  /// **'{count, plural, =1{Mixed: 1 random question} other{Mixed: {count} random questions}}'**
   String quizTopicMixed(int count);
 
   /// No description provided for @quizTopicGeneral.
@@ -3118,6 +3124,30 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get profileSignOut;
 
+  /// No description provided for @profileRestartSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart setup'**
+  String get profileRestartSetup;
+
+  /// No description provided for @profileSignOutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out?'**
+  String get profileSignOutTitle;
+
+  /// No description provided for @profileSignOutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks, QC records, notes and practice progress stay on this device. If someone else will use it, delete them too.'**
+  String get profileSignOutBody;
+
+  /// No description provided for @profileSignOutDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and delete'**
+  String get profileSignOutDelete;
+
   /// No description provided for @profileVersion.
   ///
   /// In en, this message translates to:
@@ -3169,7 +3199,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyBody.
   ///
   /// In en, this message translates to:
-  /// **'This build sends no data to a server. Settings, bookmarks and drafts are stored only on this device.'**
+  /// **'This version of the app sends no data to a server. Settings, bookmarks, drafts, QC records and practice progress are stored on this device and may be included in the device’s own backup (iCloud or Google).'**
   String get privacyBody;
 
   /// No description provided for @privacyTerms.
@@ -3193,7 +3223,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteLocalSub.
   ///
   /// In en, this message translates to:
-  /// **'Settings, bookmarks and drafts on this device'**
+  /// **'Settings, bookmarks, drafts, QC records and practice progress'**
   String get privacyDeleteLocalSub;
 
   /// No description provided for @privacyDeleteConfirmTitle.
@@ -3205,7 +3235,7 @@ abstract class AppLocalizations {
   /// No description provided for @privacyDeleteConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'Settings, bookmarks and drafts on this device will be removed. This can\'t be undone.'**
+  /// **'Settings, bookmarks, drafts, all QC records (runs and targets) and practice progress on this device will be removed. This can’t be undone — if needed, copy a QC backup first (Lab → Quality control).'**
   String get privacyDeleteConfirmBody;
 
   /// No description provided for @privacyDeleted.

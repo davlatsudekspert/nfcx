@@ -777,6 +777,7 @@
   "researchNotesHint": "Your own data and sources",
   "researchSave": "Save draft",
   "researchSaved": "Draft saved on this device",
+  "researchAutosave": "The draft saves automatically on this device as you type.",
   "researchOutline": "Outline structure",
   "researchStep1": "Question and aim",
   "researchStep2": "Literature review",
@@ -844,7 +845,7 @@
   "quizYourAnswer": "Your answer",
   "quizCorrectAnswer": "Correct answer",
   "quizChooseTopic": "Choose a topic",
-  "quizTopicMixed": "Mixed: {count} random questions",
+  "quizTopicMixed": "{count, plural, =1{Mixed: 1 random question} other{Mixed: {count} random questions}}",
   "@quizTopicMixed": {
     "placeholders": {
       "count": {
@@ -900,6 +901,10 @@
   "profilePrivacySub": "Data and account controls",
   "profileSignIn": "Sign in with email",
   "profileSignOut": "Sign out",
+  "profileRestartSetup": "Restart setup",
+  "profileSignOutTitle": "Sign out?",
+  "profileSignOutBody": "Bookmarks, QC records, notes and practice progress stay on this device. If someone else will use it, delete them too.",
+  "profileSignOutDelete": "Sign out and delete",
   "profileVersion": "Version {version}",
   "@profileVersion": {
     "placeholders": {
@@ -915,13 +920,13 @@
   "purchaseSubscribe": "Subscribe",
   "purchaseRestore": "Restore purchases",
   "privacyTitle": "Privacy and help",
-  "privacyBody": "This build sends no data to a server. Settings, bookmarks and drafts are stored only on this device.",
+  "privacyBody": "This version of the app sends no data to a server. Settings, bookmarks, drafts, QC records and practice progress are stored on this device and may be included in the device’s own backup (iCloud or Google).",
   "privacyTerms": "Terms of use",
   "privacyTermsSub": "Final text to be prepared",
   "privacyDeleteLocal": "Delete local data",
-  "privacyDeleteLocalSub": "Settings, bookmarks and drafts on this device",
+  "privacyDeleteLocalSub": "Settings, bookmarks, drafts, QC records and practice progress",
   "privacyDeleteConfirmTitle": "Delete local data?",
-  "privacyDeleteConfirmBody": "Settings, bookmarks and drafts on this device will be removed. This can't be undone.",
+  "privacyDeleteConfirmBody": "Settings, bookmarks, drafts, all QC records (runs and targets) and practice progress on this device will be removed. This can’t be undone — if needed, copy a QC backup first (Lab → Quality control).",
   "privacyDeleted": "Local data deleted",
   "termsTitle": "Terms of use",
   "termsBody": "Final terms, the privacy policy and clinical-use boundaries will be prepared before release. LabGuide is a reference and learning tool: it doesn't diagnose, prescribe or replace your laboratory's procedures.",

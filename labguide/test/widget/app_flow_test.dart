@@ -336,13 +336,71 @@ void main() {
     await tester.enterText(find.byType(TextField), '12');
     await tapText(tester, uz.otpVerify);
     expect(find.text(uz.otpFormat), findsOneWidget);
+    // 6 raqam kiritilganda o'zi tekshiradi (iOS raqam klaviaturasida
+    // “Done” yo'q).
     await tester.enterText(find.byType(TextField), '000000');
-    await tapText(tester, uz.otpVerify);
+    await tester.pumpAndSettle();
     expect(find.text(uz.otpInvalid(4)), findsOneWidget);
+    // Til almashsa, ekrandagi xato ham yangi tilda.
+    await s.settings.setLanguage(AppLanguage.en);
+    await tester.pumpAndSettle();
+    expect(find.text(en.otpInvalid(4)), findsOneWidget);
+    await s.settings.setLanguage(AppLanguage.uz);
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '123456');
-    await tapText(tester, uz.otpVerify);
+    await tester.pumpAndSettle();
     expect(find.text(uz.rolesTitle), findsOneWidget);
     expect(s.auth.hasAccount, isTrue);
+    // Muvaffaqiyatdan keyin “faol kod yo'q” holati chaqnamaydi.
+    expect(find.text(uz.otpNoActiveCode), findsNothing);
+  });
+
+  testWidgets('signing in from Profile returns to Profile; tabs survive', (
+    tester,
+  ) async {
+    final s = await makeServices(tester);
+    await pumpApp(tester, s);
+    await goTo(tester, '/lab/calculators');
+    // Profil tab ichidan ochiladi (push) — orqaga yo'li bor.
+    await tester.tap(find.byTooltip(uz.actionProfile).first);
+    await tester.pumpAndSettle();
+    await tapText(tester, uz.profileSignIn);
+    await tester.enterText(find.byType(TextField), 'lab@example.com');
+    await tapText(tester, uz.authConsent);
+    await tapText(tester, uz.authGetCode);
+    await tester.enterText(find.byType(TextField), '123456');
+    await tester.pumpAndSettle();
+    expect(s.auth.hasAccount, isTrue);
+    // Profil sahifasi, orqaga tugmasi bor; orqaga — tablar o'z joyida.
+    expect(find.text(uz.profileTitle), findsWidgets);
+    expect(find.byTooltip(uz.actionBack), findsOneWidget);
+    await tester.tap(find.byTooltip(uz.actionBack));
+    await tester.pumpAndSettle();
+    expect(find.text(uz.navLab), findsWidgets);
+    expect(find.text(uz.calcTitle), findsWidgets);
+  });
+
+  testWidgets('account sign out can also delete data on this device', (
+    tester,
+  ) async {
+    final s = await makeServices(tester);
+    await s.bookmarks.toggle('glucose-plasma-fasting');
+    await s.auth.requestCode('lab@example.com');
+    await s.auth.verifyCode('123456');
+    await pumpApp(tester, s);
+    await goTo(tester, '/profile');
+    await tapText(tester, uz.profileSignOut);
+    expect(find.text(uz.profileSignOutBody), findsOneWidget);
+    await tester.tap(find.text(uz.actionCancel));
+    await tester.pumpAndSettle();
+    expect(s.auth.hasAccount, isTrue);
+
+    await tapText(tester, uz.profileSignOut);
+    await tester.tap(find.text(uz.profileSignOutDelete));
+    await tester.pumpAndSettle();
+    expect(s.auth.hasAccount, isFalse);
+    expect(s.bookmarks.ids, isEmpty);
+    expect(s.settings.onboarded, isFalse);
   });
 
   testWidgets('release build: email sign-in is unavailable, guest works', (
@@ -523,7 +581,7 @@ void main() {
     await pumpApp(tester, s);
     await goTo(tester, '/tests/analyte/creatinine');
     await tapText(tester, en.calcEgfr);
-    expect(find.text(en.fieldCreatinine), findsOneWidget);
+    expect(find.text('${en.fieldCreatinine}, µmol/L'), findsOneWidget);
     expect(find.text(en.calcFormulaTag), findsOneWidget);
   });
 
@@ -605,7 +663,9 @@ void main() {
     final s = await makeServices(tester);
     await pumpApp(tester, s);
     await goTo(tester, '/profile');
-    await tapText(tester, uz.profileSignOut);
+    // Mehmon uchun bu “boshidan sozlash” (hisobdan chiqish emas).
+    expect(find.text(uz.profileSignOut), findsNothing);
+    await tapText(tester, uz.profileRestartSetup);
     expect(find.text(uz.welcomeGuest), findsOneWidget);
     expect(s.settings.onboarded, isFalse);
   });
@@ -641,6 +701,21 @@ void main() {
           contrastRatio(fg, bg),
           greaterThanOrEqualTo(4.5),
           reason: '$name ${p == LgPalette.light ? 'light' : 'dark'}',
+        );
+      }
+    }
+  });
+
+  test('control boundaries meet WCAG 1.4.11 (≥ 3:1) in both themes', () {
+    for (final p in [LgPalette.light, LgPalette.dark]) {
+      for (final MapEntry(key: name, value: bg) in {
+        'bg': p.bg,
+        'paper': p.paper,
+      }.entries) {
+        expect(
+          contrastRatio(p.outline, bg),
+          greaterThanOrEqualTo(3),
+          reason: 'outline/$name ${p == LgPalette.light ? 'light' : 'dark'}',
         );
       }
     }

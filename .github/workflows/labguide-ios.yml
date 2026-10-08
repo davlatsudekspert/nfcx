@@ -96,18 +96,50 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-      - name: Android release APK (sinov)
+      # Ixtiyoriy: do'kon (upload) kaliti secretlarda bo'lsa — release imzo va
+      # Google Play uchun AAB. Bo'lmasa APK debug kalit bilan (faqat sinov).
+      - name: Android imzo kaliti (ixtiyoriy)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.LABGUIDE_ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.LABGUIDE_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.LABGUIDE_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.LABGUIDE_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ANDROID_SIGNED=false" >> "$GITHUB_ENV"; exit 0
+          fi
+          for v in KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!v}" ] || { echo "::error::LABGUIDE_ANDROID_$v secret yo'q"; exit 1; }
+          done
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/upload.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+          echo "ANDROID_SIGNED=true" >> "$GITHUB_ENV"
+      - name: Android release APK
         run: |
           set -euo pipefail
           flutter pub get --enforce-lockfile
           flutter build apk --release --split-per-abi \
             --build-number="${{ github.run_number }}"
+          if [ "$ANDROID_SIGNED" = true ]; then
+            flutter build appbundle --release --build-number="${{ github.run_number }}"
+          fi
           cd build/app/outputs/flutter-apk
           VERSION=$(grep '^version:' "$GITHUB_WORKSPACE/labguide/pubspec.yaml" | sed 's/version: *//; s/+.*//')
           for f in app-*-release.apk; do mv "$f" "LabGuide-$VERSION-${f#app-}"; done
           sha256sum LabGuide-*.apk | tee SHA256SUMS.txt
           {
-            echo "## Android: sinov APK'lari (debug kalit bilan imzolangan)"
+            if [ "$ANDROID_SIGNED" = true ]; then
+              echo "## Android: release imzoli APK va AAB (Google Play uchun)"
+            else
+              echo "## Android: sinov APK'lari (debug kalit bilan imzolangan)"
+            fi
             ls -la LabGuide-*.apk | awk '{print "- " $9 " — " $5 " bayt"}'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
@@ -116,6 +148,8 @@ jobs:
           path: |
             labguide/build/app/outputs/flutter-apk/LabGuide-*.apk
             labguide/build/app/outputs/flutter-apk/SHA256SUMS.txt
+            labguide/build/app/outputs/bundle/release/*.aab
+          if-no-files-found: warn
           retention-days: 30
 
   ios:

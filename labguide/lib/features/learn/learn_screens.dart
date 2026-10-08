@@ -10,6 +10,7 @@ import '../auth/ui/welcome_screen.dart';
 import '../content/content_model.dart';
 import '../content/ui/content_widgets.dart';
 import 'quiz_session.dart';
+import '../../app/shell.dart';
 
 class LearnScreen extends StatelessWidget {
   const LearnScreen({super.key});
@@ -29,7 +30,7 @@ class LearnScreen extends StatelessWidget {
           body: l.learnHeroBody,
           action: LgButton(
             label: l.learnHeroCta,
-            onPressed: () => context.go('/tests'),
+            onPressed: () => openInTab(context, '/tests'),
           ),
         ),
         // Dars mavzulari kontent paketidan keladi (hozircha bo'sh — domla
@@ -76,7 +77,7 @@ class LearnScreen extends StatelessWidget {
           title: l.micTitle,
           subtitle: l.labMicroscopySub,
           icon: Icons.biotech_outlined,
-          onTap: () => context.go('/lab/microscopy'),
+          onTap: () => openInTab(context, '/lab/microscopy'),
         ),
         LgRow(
           title: l.learnLessonPlan,

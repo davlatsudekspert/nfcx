@@ -1497,6 +1497,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get researchSaved => 'Черновик сохранён на этом устройстве';
 
   @override
+  String get researchAutosave =>
+      'Черновик автоматически сохраняется на этом устройстве по мере ввода.';
+
+  @override
   String get researchOutline => 'Структура плана';
 
   @override
@@ -1614,7 +1618,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String quizTopicMixed(int count) {
-    return 'Вперемешку: $count случайных вопросов';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Вперемешку: $count случайного вопроса',
+      many: 'Вперемешку: $count случайных вопросов',
+      few: 'Вперемешку: $count случайных вопроса',
+      one: 'Вперемешку: $count случайный вопрос',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1726,6 +1738,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get profileSignOut => 'Выйти';
 
   @override
+  String get profileRestartSetup => 'Начать настройку заново';
+
+  @override
+  String get profileSignOutTitle => 'Выйти из аккаунта?';
+
+  @override
+  String get profileSignOutBody =>
+      'Закладки, записи контроля качества, заметки и результаты тренировок останутся на этом устройстве. Если устройством будет пользоваться кто-то другой, удалите и их.';
+
+  @override
+  String get profileSignOutDelete => 'Выйти и удалить';
+
+  @override
   String profileVersion(String version) {
     return 'Версия $version';
   }
@@ -1755,7 +1780,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'Эта сборка не отправляет данные на сервер. Настройки, закладки и черновики хранятся только на этом устройстве.';
+      'Эта версия приложения не отправляет данные на сервер. Настройки, закладки, черновики, записи контроля качества и результаты тренировок хранятся на этом устройстве и могут попадать в резервную копию самого устройства (iCloud или Google).';
 
   @override
   String get privacyTerms => 'Условия использования';
@@ -1768,14 +1793,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get privacyDeleteLocalSub =>
-      'Настройки, закладки и черновики на этом устройстве';
+      'Настройки, закладки, черновики, записи контроля качества и результаты тренировок';
 
   @override
   String get privacyDeleteConfirmTitle => 'Удалить локальные данные?';
 
   @override
   String get privacyDeleteConfirmBody =>
-      'Настройки, закладки и черновики на этом устройстве будут удалены. Это действие нельзя отменить.';
+      'Настройки, закладки, черновики, все записи контроля качества (серии и целевые значения) и результаты тренировок на этом устройстве будут удалены. Это нельзя отменить — при необходимости сначала сделайте резервную копию контроля качества (Лаборатория → Контроль качества).';
 
   @override
   String get privacyDeleted => 'Локальные данные удалены';

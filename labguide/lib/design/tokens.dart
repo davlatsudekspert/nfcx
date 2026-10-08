@@ -11,6 +11,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
     required this.ink,
     required this.sub,
     required this.line,
+    required this.outline,
     required this.brand,
     required this.onBrand,
     required this.soft,
@@ -34,6 +35,11 @@ class LgPalette extends ThemeExtension<LgPalette> {
 
   /// Ajratuvchi chiziq (kam ishlatiladi).
   final Color line;
+
+  /// Boshqaruv elementlari chegarasi (maydon, ikkinchi darajali tugma,
+  /// tanlanmagan chip, radio) — fon va panelga nisbatan kamida 3:1
+  /// (WCAG 1.4.11).
+  final Color outline;
 
   /// Aksent: kunduzi forest, tunda lime.
   final Color brand;
@@ -62,6 +68,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
     ink: Color(0xFF183A36),
     sub: Color(0xFF536C65),
     line: Color(0xFFDCE4D9),
+    outline: Color(0xFF788C85),
     brand: Color(0xFF194C40),
     onBrand: Color(0xFFF7FAEE),
     soft: Color(0xFFE8EEDB),
@@ -77,6 +84,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
     ink: Color(0xFFECF4E9),
     sub: Color(0xFFAABFB5),
     line: Color(0xFF304641),
+    outline: Color(0xFF6A857B),
     brand: Color(0xFFC5E8A1),
     onBrand: Color(0xFF163222),
     soft: Color(0xFF253F31),
@@ -96,6 +104,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
     Color? ink,
     Color? sub,
     Color? line,
+    Color? outline,
     Color? brand,
     Color? onBrand,
     Color? soft,
@@ -110,6 +119,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
       ink: ink ?? this.ink,
       sub: sub ?? this.sub,
       line: line ?? this.line,
+      outline: outline ?? this.outline,
       brand: brand ?? this.brand,
       onBrand: onBrand ?? this.onBrand,
       soft: soft ?? this.soft,
@@ -129,6 +139,7 @@ class LgPalette extends ThemeExtension<LgPalette> {
       ink: Color.lerp(ink, other.ink, t)!,
       sub: Color.lerp(sub, other.sub, t)!,
       line: Color.lerp(line, other.line, t)!,
+      outline: Color.lerp(outline, other.outline, t)!,
       brand: Color.lerp(brand, other.brand, t)!,
       onBrand: Color.lerp(onBrand, other.onBrand, t)!,
       soft: Color.lerp(soft, other.soft, t)!,

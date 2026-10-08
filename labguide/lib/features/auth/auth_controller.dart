@@ -24,19 +24,31 @@ class EmailSession extends AuthSession {
 }
 
 class AuthController extends ChangeNotifier {
-  AuthController(this._store, this.adapter) : _session = _restore(_store);
+  AuthController(this._store, this.adapter, {DateTime Function()? clock})
+    : _session = _restore(_store),
+      _clock = clock ?? DateTime.now;
 
   final KeyValueStore _store;
   final OtpAuthAdapter adapter;
+  final DateTime Function() _clock;
 
   AuthSession? _session;
   String? _pendingEmail;
   OtpRequestResult? _lastRequest;
+  DateTime? _lastRequestAt;
 
   AuthSession? get session => _session;
   bool get hasAccount => _session is EmailSession;
   String? get pendingEmail => _pendingEmail;
   OtpRequestResult? get lastRequest => _lastRequest;
+
+  /// Qayta yuborish qachondan mumkin — kod yuborilgan vaqtdan hisoblanadi
+  /// (ekran ochilgan vaqtdan emas).
+  DateTime? get resendAvailableAt {
+    final at = _lastRequestAt;
+    final after = _lastRequest?.retryAfter;
+    return at == null || after == null ? null : at.add(after);
+  }
 
   Future<void> continueAsGuest() async {
     _session = const GuestSession();
@@ -49,6 +61,7 @@ class AuthController extends ChangeNotifier {
     if (result.status == OtpRequestStatus.sent) {
       _pendingEmail = normalizeEmail(email);
       _lastRequest = result;
+      _lastRequestAt = _clock();
       notifyListeners();
     }
     return result;

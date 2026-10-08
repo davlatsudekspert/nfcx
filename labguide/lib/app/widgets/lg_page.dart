@@ -7,6 +7,7 @@ import '../../design/widgets/collapse_hysteresis.dart';
 import '../../features/settings/settings_controller.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../app_scope.dart';
+import '../shell.dart';
 
 /// Ilovadagi har bir ekran skeleti.
 ///
@@ -49,8 +50,61 @@ class _LgPageState extends State<LgPage> {
   ScrollDirection _userDirection = ScrollDirection.idle;
   double _largeTitleExtent = 120;
 
+  /// Katta sarlavha o'lchandi; balandlik o'zgarsa (shrift, kenglik) —
+  /// joylashuv qarori (ustida qotirilganmi yoki ro'yxat ichidami) qayta
+  /// ko'riladi.
+  void _measured(double height) {
+    if ((height - _largeTitleExtent).abs() < 0.5) return;
+    _largeTitleExtent = height;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// Kontent o'lchami o'zgardi (masalan, qidiruv natijasi bo'shab qoldi):
+  /// endi scroll qilib bo'lmasa yoki tepada bo'lsa, ixcham sarlavha
+  /// kengaytiriladi — aks holda Android'da u “qotib” qolardi.
+  bool _onMetrics(ScrollMetricsNotification n) {
+    if (n.depth != 0 || n.metrics.axis != Axis.vertical) return false;
+    final m = n.metrics;
+    if (_logic.collapsed &&
+        (m.maxScrollExtent <= 0 || m.pixels <= _logic.topSnap) &&
+        _logic.reset()) {
+      setState(() {});
+    }
+    return false;
+  }
+
+  TabMemory? _tabs;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tabs = TabMemoryScope.maybeOf(context);
+    if (!identical(tabs, _tabs)) {
+      _tabs?.removeListener(_onReselect);
+      _tabs = tabs?..addListener(_onReselect);
+    }
+  }
+
+  /// Faol tab qayta bosildi: shu sahifa ko'rinib turgan tab ildizi bo'lsa,
+  /// ro'yxat tepaga suriladi va sarlavha kengayadi.
+  void _onReselect() {
+    if (!mounted || !_scroll.hasClients || _scroll.offset <= 0) return;
+    if (!TickerMode.valuesOf(context).enabled) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    final duration = LgMotion.of(context, LgMotion.header) * 2;
+    if (duration == Duration.zero) {
+      _scroll.jumpTo(0);
+    } else {
+      _scroll.animateTo(0, duration: duration, curve: Curves.easeOutCubic);
+    }
+    if (_logic.reset()) setState(() {});
+  }
+
   @override
   void dispose() {
+    _tabs?.removeListener(_onReselect);
     _scroll.dispose();
     super.dispose();
   }
@@ -90,10 +144,6 @@ class _LgPageState extends State<LgPage> {
     final insideShell = StatefulNavigationShell.maybeOf(context) != null;
     final canPop = Navigator.of(context).canPop();
 
-    // Rasmli (welcome) sahifada sarlavha kontent bilan birga suriladi;
-    // qolgan sahifalarda katta sarlavha ro'yxat ustida turadi va scroll
-    // yo'nalishiga qarab ixchamlashadi/kengayadi.
-    final pinned = widget.leadingHero == null;
     final largeTitle = _LargeTitle(
       eyebrow: widget.eyebrow,
       title: widget.title,
@@ -109,6 +159,18 @@ class _LgPageState extends State<LgPage> {
             final gutter = LgSpace.gutter(constraints.maxWidth);
             final side = (constraints.maxWidth - LgSpace.maxContentWidth) / 2;
             final horizontal = side > gutter ? side : gutter;
+            // Rasmli (welcome) sahifada sarlavha kontent bilan birga
+            // suriladi. Qolgan sahifalarda katta sarlavha ro'yxat ustida
+            // turadi va scroll yo'nalishiga qarab ixchamlashadi — lekin
+            // past ekranda (landshaft telefon, katta shrift) u joyning katta
+            // qismini egallab, kontentni ko'rinmas qilardi: bunda sarlavha
+            // ham ro'yxat ichiga o'tadi.
+            final available = constraints.maxHeight;
+            final pinned =
+                widget.leadingHero == null &&
+                available >= 420 &&
+                _largeTitleExtent <= available * 0.4;
+            if (!pinned && _logic.collapsed) _logic.reset();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -127,26 +189,32 @@ class _LgPageState extends State<LgPage> {
                     child: _CollapsibleTitle(
                       collapsed: collapsed,
                       duration: duration,
-                      onMeasured: (h) => _largeTitleExtent = h,
+                      onMeasured: _measured,
                       child: largeTitle,
                     ),
                   ),
                 Expanded(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: pinned ? _onScroll : null,
-                    child: Scrollbar(
-                      controller: _scroll,
-                      child: ListView(
+                  child: NotificationListener<ScrollMetricsNotification>(
+                    onNotification: pinned ? _onMetrics : null,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: pinned ? _onScroll : null,
+                      child: Scrollbar(
                         controller: _scroll,
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: EdgeInsets.fromLTRB(
-                          horizontal,
-                          pinned ? 4 : 0,
-                          horizontal,
-                          32 + (insideShell ? 0 : media.padding.bottom),
+                        child: ListView(
+                          controller: _scroll,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: EdgeInsets.fromLTRB(
+                            horizontal,
+                            pinned ? 4 : 0,
+                            horizontal,
+                            32 + (insideShell ? 0 : media.padding.bottom),
+                          ),
+                          children: [
+                            if (!pinned) largeTitle,
+                            ...widget.children,
+                          ],
                         ),
-                        children: [if (!pinned) largeTitle, ...widget.children],
                       ),
                     ),
                   ),
@@ -412,15 +480,20 @@ class _BrandText extends StatelessWidget {
         )..layout(maxWidth: constraints.maxWidth);
         final fits = !painter.didExceedMaxLines;
         painter.dispose();
-        return Semantics(
-          header: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        // Brend sarlavha emas (sahifa sarlavhasi bitta bo'lsin); juda katta
+        // shriftda 1.3 dan oshmaydi va sig'masa kichrayadi — kesilmaydi.
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
                 'LabGuide',
                 maxLines: 1,
+                textScaler: MediaQuery.textScalerOf(context)
+                    .clamp(maxScaleFactor: 1.3),
                 style: text.headlineSmall!.copyWith(
                   fontSize: 23,
                   letterSpacing: -1,
@@ -428,9 +501,9 @@ class _BrandText extends StatelessWidget {
                   color: p.ink,
                 ),
               ),
-              if (fits) Text(l.appTagline, maxLines: 1, style: taglineStyle),
-            ],
-          ),
+            ),
+            if (fits) Text(l.appTagline, maxLines: 1, style: taglineStyle),
+          ],
         );
       },
     );
@@ -455,9 +528,11 @@ class _IconCircle extends StatelessWidget {
     final p = LgPalette.of(context);
     return Tooltip(
       message: tooltip,
+      // onTap Semantics'da ham — excludeSemantics tap amalini olib tashlaydi.
       child: Semantics(
         button: true,
         label: tooltip,
+        onTap: onTap,
         excludeSemantics: true,
         child: InkResponse(
           onTap: onTap,

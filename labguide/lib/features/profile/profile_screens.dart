@@ -10,6 +10,9 @@ import '../../l10n/gen/app_localizations.dart';
 import '../auth/auth_controller.dart';
 import '../auth/ui/role_screen.dart';
 import '../settings/settings_controller.dart';
+import '../../app/shell.dart';
+
+enum _SignOut { keepData, deleteData }
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -20,8 +23,42 @@ class ProfileScreen extends StatelessWidget {
     AppLanguage.en: 'English',
   };
 
+  /// Hisobli foydalanuvchi: chiqishdan oldin shu qurilmadagi ma'lumotni
+  /// ham o'chirish tanlovi (keyingi foydalanuvchi oldingisining QC qaydlari
+  /// va xatcho'plarini ko'rmasligi uchun). Mehmon uchun bu “boshidan
+  /// sozlash” — ma'lumot o'sha odamniki, o'chirilmaydi.
   Future<void> _signOut(BuildContext context) async {
     final services = context.services;
+    if (services.auth.hasAccount) {
+      final l = AppLocalizations.of(context);
+      final choice = await showDialog<_SignOut>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l.profileSignOutTitle),
+          content: Text(l.profileSignOutBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l.actionCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(_SignOut.deleteData),
+              child: Text(l.profileSignOutDelete),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(_SignOut.keepData),
+              child: Text(l.profileSignOut),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) return;
+      if (choice == _SignOut.deleteData) {
+        await services.deleteLocalData(PlatformDispatcher.instance.locales);
+        await services.settings.resetOnboarding();
+        return;
+      }
+    }
     await services.auth.signOut();
     await services.settings.resetOnboarding();
   }
@@ -117,7 +154,7 @@ class ProfileScreen extends StatelessWidget {
               title: l.libPacks,
               subtitle: l.libPacksSub,
               icon: Icons.download_for_offline_outlined,
-              onTap: () => context.go('/library/packs'),
+              onTap: () => openInTab(context, '/library/packs'),
             ),
             LgRow(
               title: l.profilePurchase,
@@ -134,8 +171,10 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             LgButton.secondary(
-              label: l.profileSignOut,
-              icon: Icons.logout_rounded,
+              label: auth.hasAccount ? l.profileSignOut : l.profileRestartSetup,
+              icon: auth.hasAccount
+                  ? Icons.logout_rounded
+                  : Icons.restart_alt_rounded,
               onPressed: () => _signOut(context),
             ),
             const SizedBox(height: 16),

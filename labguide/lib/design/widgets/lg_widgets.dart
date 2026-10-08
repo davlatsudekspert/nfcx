@@ -15,6 +15,7 @@ class LgPressable extends StatefulWidget {
       Radius.circular(LgRadius.button),
     ),
     this.color,
+    this.border,
     this.semanticLabel,
     this.selected,
     this.isButton = true,
@@ -24,6 +25,9 @@ class LgPressable extends StatefulWidget {
   final VoidCallback? onTap;
   final BorderRadius borderRadius;
   final Color? color;
+
+  /// Ixtiyoriy chegara (masalan, tanlanmagan chip).
+  final BoxBorder? border;
   final String? semanticLabel;
   final bool? selected;
   final bool isButton;
@@ -53,6 +57,16 @@ class _LgPressableState extends State<LgPressable> {
         child: widget.child,
       ),
     );
+    if (widget.border case final border?) {
+      body = DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: widget.borderRadius,
+          border: border,
+        ),
+        child: body,
+      );
+    }
     if (_focused) {
       body = DecoratedBox(
         position: DecorationPosition.foreground,
@@ -181,7 +195,7 @@ class LgButton extends StatelessWidget {
       button = DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(LgRadius.button),
-          border: Border.all(color: p.line),
+          border: Border.all(color: p.outline),
         ),
         child: button,
       );
@@ -720,6 +734,8 @@ class LgChoiceChip extends StatelessWidget {
       selected: selected,
       color: selected ? p.brand : p.paper,
       borderRadius: BorderRadius.circular(LgRadius.chip),
+      // Tanlanmagan chip chegarasi ko'rinsin (fon bilan 1.1:1 edi).
+      border: selected ? null : Border.all(color: p.outline),
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           minHeight: kMinTap,

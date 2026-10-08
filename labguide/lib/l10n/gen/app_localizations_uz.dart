@@ -1480,6 +1480,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get researchSaved => 'Qoralama shu qurilmada saqlandi';
 
   @override
+  String get researchAutosave =>
+      'Qoralama yozish davomida shu qurilmada avtomatik saqlanadi.';
+
+  @override
   String get researchOutline => 'Reja tuzilmasi';
 
   @override
@@ -1699,6 +1703,19 @@ class AppLocalizationsUz extends AppLocalizations {
   String get profileSignOut => 'Chiqish';
 
   @override
+  String get profileRestartSetup => 'Sozlashni boshidan boshlash';
+
+  @override
+  String get profileSignOutTitle => 'Hisobdan chiqilsinmi?';
+
+  @override
+  String get profileSignOutBody =>
+      'Xatcho‘plar, QC qaydlari, eslatmalar va mashq natijalari shu qurilmada qoladi. Qurilmadan boshqa odam foydalanadigan bo‘lsa, ularni ham o‘chiring.';
+
+  @override
+  String get profileSignOutDelete => 'Chiqish va o‘chirish';
+
+  @override
   String profileVersion(String version) {
     return 'Versiya $version';
   }
@@ -1728,7 +1745,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'Ilovaning bu versiyasi serverga ma’lumot yubormaydi. Sozlamalar, xatcho‘plar va qoralamalar faqat shu qurilmada saqlanadi.';
+      'Ilovaning bu versiyasi serverga ma’lumot yubormaydi. Sozlamalar, xatcho‘plar, qoralamalar, QC qaydlari va mashq natijalari shu qurilmada saqlanadi; ular qurilmangizning o‘z zaxira nusxasiga (iCloud yoki Google) kirishi mumkin.';
 
   @override
   String get privacyTerms => 'Foydalanish shartlari';
@@ -1741,14 +1758,14 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get privacyDeleteLocalSub =>
-      'Shu qurilmadagi sozlamalar, xatcho‘plar va qoralamalar';
+      'Sozlamalar, xatcho‘plar, qoralamalar, QC qaydlari va mashq natijalari';
 
   @override
   String get privacyDeleteConfirmTitle => 'Lokal ma’lumotlar o‘chirilsinmi?';
 
   @override
   String get privacyDeleteConfirmBody =>
-      'Shu qurilmadagi sozlamalar, xatcho‘plar va qoralamalar o‘chiriladi. Buni qaytarib bo‘lmaydi.';
+      'Shu qurilmadagi sozlamalar, xatcho‘plar, qoralamalar, barcha QC qaydlari (seriyalar va maqsadlar) va mashq natijalari o‘chiriladi. Buni qaytarib bo‘lmaydi — kerak bo‘lsa, avval QC zaxira nusxasini oling (Laboratoriya → Sifat nazorati).';
 
   @override
   String get privacyDeleted => 'Lokal ma’lumotlar o‘chirildi';

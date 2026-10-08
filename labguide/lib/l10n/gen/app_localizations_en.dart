@@ -1485,6 +1485,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get researchSaved => 'Draft saved on this device';
 
   @override
+  String get researchAutosave =>
+      'The draft saves automatically on this device as you type.';
+
+  @override
   String get researchOutline => 'Outline structure';
 
   @override
@@ -1600,7 +1604,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String quizTopicMixed(int count) {
-    return 'Mixed: $count random questions';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mixed: $count random questions',
+      one: 'Mixed: 1 random question',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1710,6 +1720,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileSignOut => 'Sign out';
 
   @override
+  String get profileRestartSetup => 'Restart setup';
+
+  @override
+  String get profileSignOutTitle => 'Sign out?';
+
+  @override
+  String get profileSignOutBody =>
+      'Bookmarks, QC records, notes and practice progress stay on this device. If someone else will use it, delete them too.';
+
+  @override
+  String get profileSignOutDelete => 'Sign out and delete';
+
+  @override
   String profileVersion(String version) {
     return 'Version $version';
   }
@@ -1739,7 +1762,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBody =>
-      'This build sends no data to a server. Settings, bookmarks and drafts are stored only on this device.';
+      'This version of the app sends no data to a server. Settings, bookmarks, drafts, QC records and practice progress are stored on this device and may be included in the device’s own backup (iCloud or Google).';
 
   @override
   String get privacyTerms => 'Terms of use';
@@ -1752,14 +1775,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyDeleteLocalSub =>
-      'Settings, bookmarks and drafts on this device';
+      'Settings, bookmarks, drafts, QC records and practice progress';
 
   @override
   String get privacyDeleteConfirmTitle => 'Delete local data?';
 
   @override
   String get privacyDeleteConfirmBody =>
-      'Settings, bookmarks and drafts on this device will be removed. This can\'t be undone.';
+      'Settings, bookmarks, drafts, all QC records (runs and targets) and practice progress on this device will be removed. This can’t be undone — if needed, copy a QC backup first (Lab → Quality control).';
 
   @override
   String get privacyDeleted => 'Local data deleted';

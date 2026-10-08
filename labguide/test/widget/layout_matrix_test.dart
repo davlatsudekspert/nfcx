@@ -136,6 +136,41 @@ void main() {
     });
   }
 
+  // Past ekran: landshaft telefon va kichik telefon + juda katta shrift.
+  // Sarlavha joyni egallab, ro'yxat 0 px bo'lib qolmasligi kerak.
+  for (final (w, h, scale) in [
+    (844.0, 390.0, 1.0),
+    (844.0, 390.0, 2.0),
+    (320.0, 568.0, 2.0),
+  ]) {
+    testWidgets('short screen keeps content reachable: '
+        '${w.toInt()}×${h.toInt()} ×$scale', (tester) async {
+      for (final lang in AppLanguage.values) {
+        final s = await makeServices(tester, language: lang);
+        await pumpApp(tester, s, size: Size(w, h), textScale: scale);
+        for (final route in [
+          '/home',
+          '/tests',
+          '/tests/analyte/urine-chemistry',
+          '/tests/analyte/glucose-plasma-fasting/units',
+          '/lab/calculators/units',
+          '/lab/qc',
+          '/profile',
+        ]) {
+          await goTo(tester, route);
+          expect(tester.takeException(), isNull, reason: '$lang $route');
+          final list = find.byType(ListView).last;
+          expect(
+            tester.getSize(list).height,
+            greaterThanOrEqualTo(h * 0.3),
+            reason: '$lang $route: list area',
+          );
+        }
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+  }
+
   testWidgets('tab labels fit on one line at 320 px in every language', (
     tester,
   ) async {

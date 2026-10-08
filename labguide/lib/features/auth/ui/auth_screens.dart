@@ -15,6 +15,10 @@ import '../otp_auth.dart';
 bool _fromProfile(BuildContext context) =>
     GoRouterState.of(context).matchedLocation.startsWith('/profile');
 
+/// Xato matni joriy til bilan har safar qayta quriladi — til almashsa,
+/// ekrandagi xato ham yangi tilda chiqadi.
+typedef _Msg = String Function(AppLocalizations l);
+
 class EmailScreen extends StatefulWidget {
   const EmailScreen({super.key});
 
@@ -27,9 +31,9 @@ class _EmailScreenState extends State<EmailScreen> {
   bool _consent = false;
   bool _busy = false;
   bool _serviceUnavailable = false;
-  String? _emailError;
-  String? _consentError;
-  String? _formError;
+  _Msg? _emailError;
+  _Msg? _consentError;
+  _Msg? _formError;
 
   @override
   void initState() {
@@ -45,10 +49,11 @@ class _EmailScreenState extends State<EmailScreen> {
   }
 
   Future<void> _submit() async {
-    final l = AppLocalizations.of(context);
     setState(() {
-      _emailError = isValidEmail(_email.text) ? null : l.authEmailInvalid;
-      _consentError = _consent ? null : l.authConsentRequired;
+      _emailError = isValidEmail(_email.text)
+          ? null
+          : (l) => l.authEmailInvalid;
+      _consentError = _consent ? null : (l) => l.authConsentRequired;
       _formError = null;
     });
     if (_emailError != null || _consentError != null) return;
@@ -60,19 +65,24 @@ class _EmailScreenState extends State<EmailScreen> {
     setState(() => _busy = false);
     switch (result.status) {
       case OtpRequestStatus.sent:
-        await context.push('$base/otp');
+        final verified = await context.push<bool>('$base/otp');
+        // Profildan kirilgan bo'lsa — profilga qaytiladi (tablar va ularning
+        // steklari saqlanadi; `go('/profile')` ularni tashlab yuborardi).
+        if (verified == true && mounted && _fromProfile(context)) {
+          context.pop();
+        }
       case OtpRequestStatus.invalidEmail:
-        setState(() => _emailError = l.authEmailInvalid);
+        setState(() => _emailError = (l) => l.authEmailInvalid);
       case OtpRequestStatus.rateLimited:
-        setState(
-          () => _formError = l.authRateLimited(
-            (result.retryAfter ?? Duration.zero).inSeconds.clamp(1, 3600),
-          ),
+        final seconds = (result.retryAfter ?? Duration.zero).inSeconds.clamp(
+          1,
+          3600,
         );
+        setState(() => _formError = (l) => l.authRateLimited(seconds));
       case OtpRequestStatus.unavailable:
         setState(() => _serviceUnavailable = true);
       case OtpRequestStatus.failed:
-        setState(() => _formError = l.authGenericError);
+        setState(() => _formError = (l) => l.authGenericError);
     }
   }
 
@@ -116,7 +126,7 @@ class _EmailScreenState extends State<EmailScreen> {
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.email],
-              errorText: _emailError,
+              errorText: _emailError?.call(l),
               onSubmitted: (_) => _submit(),
             ),
           ),
@@ -156,11 +166,12 @@ class _EmailScreenState extends State<EmailScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 12, bottom: 4),
               child: Text(
-                _consentError!,
+                _consentError!(l),
                 style: text.bodySmall!.copyWith(color: p.danger),
               ),
             ),
-          if (_formError != null) LgNotice(_formError!, kind: NoticeKind.error),
+          if (_formError != null)
+            LgNotice(_formError!(l), kind: NoticeKind.error),
           const SizedBox(height: 10),
           LgButton(label: l.authGetCode, busy: _busy, onPressed: _submit),
           LgButton.link(
@@ -183,23 +194,30 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   final _code = TextEditingController();
   bool _busy = false;
-  String? _error;
+  _Msg? _error;
   Timer? _ticker;
   DateTime? _resendAt;
+
+  /// Ekran ochilgandagi email: muvaffaqiyatli tekshiruvdan keyin
+  /// controller uni tozalaydi, lekin chiqish animatsiyasi paytida ekran
+  /// “faol kod yo'q” holatiga o'tib ketmasligi kerak.
+  String? _email;
 
   @override
   void initState() {
     super.initState();
-    _armResend(context.services.auth.lastRequest?.retryAfter);
+    final auth = context.services.auth;
+    _email = auth.pendingEmail;
+    _armResend(auth.resendAvailableAt);
   }
 
-  void _armResend(Duration? after) {
+  void _armResend(DateTime? at) {
     _ticker?.cancel();
-    if (after == null || after <= Duration.zero) {
+    if (at == null || !at.isAfter(DateTime.now())) {
       _resendAt = null;
       return;
     }
-    _resendAt = DateTime.now().add(after);
+    _resendAt = at;
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {});
@@ -222,10 +240,10 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _verify() async {
-    final l = AppLocalizations.of(context);
+    if (_busy) return;
     final code = _code.text.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(code)) {
-      setState(() => _error = l.otpFormat);
+      setState(() => _error = (l) => l.otpFormat);
       return;
     }
     setState(() {
@@ -238,26 +256,32 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _busy = false);
     switch (result.status) {
       case OtpVerifyStatus.verified:
-        context.go(fromProfile ? '/profile' : '/welcome/role');
+        if (fromProfile) {
+          // Email ekrani natijani olib, profilga qaytaradi.
+          context.pop(true);
+        } else {
+          context.go('/welcome/role');
+        }
       case OtpVerifyStatus.invalidCode:
-        setState(() => _error = l.otpInvalid(result.attemptsLeft ?? 0));
+        final left = result.attemptsLeft ?? 0;
+        setState(() => _error = (l) => l.otpInvalid(left));
       case OtpVerifyStatus.expired:
-        setState(() => _error = l.otpExpired);
+        setState(() => _error = (l) => l.otpExpired);
       case OtpVerifyStatus.tooManyAttempts:
-        setState(() => _error = l.otpTooManyAttempts);
+        setState(() => _error = (l) => l.otpTooManyAttempts);
       case OtpVerifyStatus.noActiveCode:
-        setState(() => _error = l.otpNoActiveCode);
+        setState(() => _error = (l) => l.otpNoActiveCode);
       case OtpVerifyStatus.unavailable:
-        setState(() => _error = l.authUnavailableTitle);
+        setState(() => _error = (l) => l.authUnavailableTitle);
       case OtpVerifyStatus.failed:
-        setState(() => _error = l.authGenericError);
+        setState(() => _error = (l) => l.authGenericError);
     }
   }
 
   Future<void> _resend() async {
     final l = AppLocalizations.of(context);
     final auth = context.services.auth;
-    final email = auth.pendingEmail;
+    final email = _email;
     if (email == null) return;
     final result = await auth.requestCode(email);
     if (!mounted) return;
@@ -265,18 +289,19 @@ class _OtpScreenState extends State<OtpScreen> {
       case OtpRequestStatus.sent:
         _code.clear();
         setState(() => _error = null);
-        _armResend(result.retryAfter);
+        _armResend(auth.resendAvailableAt);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(content: Text(l.otpResent)));
       case OtpRequestStatus.rateLimited:
-        _armResend(result.retryAfter);
+        final after = result.retryAfter;
+        _armResend(after == null ? null : DateTime.now().add(after));
         setState(() {});
       case OtpRequestStatus.unavailable:
-        setState(() => _error = l.authUnavailableTitle);
+        setState(() => _error = (l) => l.authUnavailableTitle);
       case OtpRequestStatus.invalidEmail:
       case OtpRequestStatus.failed:
-        setState(() => _error = l.authGenericError);
+        setState(() => _error = (l) => l.authGenericError);
     }
   }
 
@@ -284,7 +309,7 @@ class _OtpScreenState extends State<OtpScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final auth = context.services.auth;
-    final email = auth.pendingEmail;
+    final email = _email;
     final request = auth.lastRequest;
 
     if (email == null) {
@@ -327,8 +352,12 @@ class _OtpScreenState extends State<OtpScreen> {
           autofillHints: const [AutofillHints.oneTimeCode],
           maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          errorText: _error,
+          errorText: _error?.call(l),
           onSubmitted: (_) => _verify(),
+          // iOS raqam klaviaturasida “Done” yo'q — 6 raqamda o'zi tekshiradi.
+          onChanged: (v) {
+            if (v.length == 6) _verify();
+          },
         ),
         const SizedBox(height: 18),
         LgButton(label: l.otpVerify, busy: _busy, onPressed: _verify),

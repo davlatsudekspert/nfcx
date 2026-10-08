@@ -273,3 +273,36 @@ Mustaqil sharh (review A) topgan xatolar asosida:
   `'` bilan himoyalanadi (CSV formula injection).
 - **Kirish:** “1,500” — ming ajratgichmi yoki o‘nlik vergulmi aniq emas, taxmin qilinmaydi
   (qayta kiritish so‘raladi). `roundHalfUp` juda katta sonlarda int64 ga o‘tmaydi.
+
+## D-28. Qobiq, accessibility va platforma (2026-10-08)
+Mustaqil sharh (review D) natijasida:
+- **TalkBack:** tablar, “Orqaga” va profil tugmasida `excludeSemantics` ichki InkWell'ning tap
+  amalini ham olib tashlagan edi — Android'da ikki marta bosish hech narsa qilmasdi. `onTap`
+  Semantics'ga qaytarildi; test tuzatishsiz yiqiladi.
+- **Profildan kirish:** OTP `context.go('/profile')` tablar va ularning steklarini tashlab
+  yuborardi (orqaga tugmasi yo'q, Android back ilovadan chiqardi). Endi OTP natija bilan
+  yopiladi, email ekrani profilga qaytaradi. Muvaffaqiyatdan keyin “faol kod yo'q” chaqnamaydi;
+  6 raqamda avtomatik tekshiradi (iOS raqam klaviaturasida Done yo'q); qayta yuborish taymeri
+  kod yuborilgan vaqtdan; xato matnlari til almashganda yangilanadi.
+- **Past ekran:** landshaft telefon yoki kichik telefon + katta shriftda katta sarlavha ro'yxatni
+  0 px gacha siqardi. Endi sarlavha ekran balandligining 40 % dan oshsa yoki joy 420 px dan kam
+  bo'lsa, ro'yxat ichiga o'tadi. Telefon portretga **qulflanmadi** (WCAG 1.3.4 — yo'nalishni
+  cheklamaslik). Ixcham sarlavha kontent qisqarganda (natijasiz qidiruv) kengayadi.
+- **Tab xotirasi:** boshqa tabdagi bo'limga havola o'sha tab allaqachon shu bo'lim ichida bo'lsa
+  (ochiq QC to'plami, imtihon) stekni tashlab yubormaydi. Faol tab ildizida qayta bosilsa,
+  ro'yxat tepaga suriladi.
+- **Kontrast:** boshqaruv chegaralari uchun `outline` tokeni (yorug' 3.2:1, qorong'i 4.5:1;
+  WCAG 1.4.11 ≥ 3:1) — maydon, ikkinchi darajali tugma, tanlanmagan chip, rol radiosi.
+- **Brend:** “LabGuide” 200 % shriftda kesilmaydi (1.3 gacha, sig'masa kichrayadi) va sarlavha
+  emas — sahifada bitta sarlavha.
+- **Ma'lumotlar:** “Lokal ma'lumotlarni o'chirish” matni QC qaydlari va mashq natijalarini ham
+  aytadi, avval QC zaxirasini olishni eslatadi. “Faqat shu qurilmada” o'rniga: qurilmaning o'z
+  zaxira nusxasiga (iCloud/Google) kirishi mumkin — zaxira o'chirilmadi, chunki QC tarixi
+  telefon almashganda yo'qolmasligi muhimroq. Mehmon uchun “Chiqish” → “Sozlashni boshidan
+  boshlash”; hisobli foydalanuvchi chiqishda qurilmadagi ma'lumotni ham o'chirishni tanlaydi.
+- **Qoralamalar:** tadqiqot va dars eslatmalari yozish davomida (600 ms) va sahifadan chiqishda
+  avtomatik saqlanadi.
+- **Android:** ishga tushgandan keyingi oyna foni ilova foniga mos; release imzo
+  `android/key.properties` orqali (bo'lmasa — debug kalit, faqat sinov APK); CI'da ixtiyoriy
+  `LABGUIDE_ANDROID_KEYSTORE_*` secretlari bilan release APK + AAB.
+- **Ruscha ko'plik:** `quizTopicMixed` ICU plural.

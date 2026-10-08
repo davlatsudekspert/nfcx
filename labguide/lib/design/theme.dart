@@ -201,11 +201,11 @@ ThemeData buildLgTheme(Brightness brightness) {
       errorStyle: text.bodySmall!.copyWith(color: p.danger),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(LgRadius.field),
-        borderSide: BorderSide(color: p.line),
+        borderSide: BorderSide(color: p.outline),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(LgRadius.field),
-        borderSide: BorderSide(color: p.line),
+        borderSide: BorderSide(color: p.outline),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(LgRadius.field),

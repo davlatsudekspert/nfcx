@@ -29,6 +29,7 @@ GoRouter buildRouter(
   required Listenable refresh,
 }) {
   final rootKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+  final tabMemory = TabMemory();
 
   List<RouteBase> analyteRoutes() => [
     GoRoute(
@@ -116,7 +117,8 @@ GoRouter buildRouter(
         ],
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AppShell(shell: shell),
+        builder: (context, state, shell) =>
+            AppShell(shell: shell, memory: tabMemory, location: state.uri.path),
         branches: [
           StatefulShellBranch(
             routes: [

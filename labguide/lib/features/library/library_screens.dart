@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -13,6 +15,7 @@ import '../content/ui/analyte_screen.dart' show SourceTile, rightsLabel;
 import '../content/ui/content_widgets.dart';
 import '../tools/calc_info.dart';
 import '../tools/clinical_calc_screens.dart';
+import '../../app/shell.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -90,7 +93,7 @@ class SavedScreen extends StatelessWidget {
                   title: l.savedEmptyTitle,
                   message: l.savedEmptyBody,
                   actionLabel: l.featureTests,
-                  onAction: () => context.go('/tests'),
+                  onAction: () => openInTab(context, '/tests'),
                 );
               }
               return Column(
@@ -623,9 +626,27 @@ class _ResearchScreenState extends State<ResearchScreen> {
     text: _store.getString(_notesKey) ?? '',
   );
   bool _showOutline = false;
+  Timer? _autosave;
+
+  /// Yozish to'xtagach qisqa kutib saqlaydi — “Saqlash” bosilmasa ham
+  /// qoralama yo'qolmaydi.
+  void _scheduleAutosave(String _) {
+    _autosave?.cancel();
+    _autosave = Timer(const Duration(milliseconds: 600), _persist);
+  }
+
+  Future<void> _persist() async {
+    await _store.setString(_questionKey, _question.text);
+    await _store.setString(_notesKey, _notes.text);
+  }
 
   @override
   void dispose() {
+    // Sahifadan chiqishda ham saqlanadi.
+    if (_autosave?.isActive ?? false) {
+      _autosave!.cancel();
+      unawaited(_persist());
+    }
     _question.dispose();
     _notes.dispose();
     super.dispose();
@@ -634,8 +655,8 @@ class _ResearchScreenState extends State<ResearchScreen> {
   Future<void> _save() async {
     final l = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    await _store.setString(_questionKey, _question.text);
-    await _store.setString(_notesKey, _notes.text);
+    _autosave?.cancel();
+    await _persist();
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l.researchSaved)));
@@ -653,6 +674,7 @@ class _ResearchScreenState extends State<ResearchScreen> {
           controller: _question,
           hint: l.researchQuestionHint,
           textInputAction: TextInputAction.next,
+          onChanged: _scheduleAutosave,
         ),
         LgField(
           label: l.researchNotes,
@@ -660,8 +682,11 @@ class _ResearchScreenState extends State<ResearchScreen> {
           hint: l.researchNotesHint,
           maxLines: 6,
           keyboardType: TextInputType.multiline,
+          onChanged: _scheduleAutosave,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Text(l.researchAutosave, style: text.bodySmall),
+        const SizedBox(height: 12),
         LgButton(label: l.researchSave, onPressed: _save),
         const SizedBox(height: 10),
         LgButton.secondary(

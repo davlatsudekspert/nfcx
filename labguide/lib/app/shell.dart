@@ -4,21 +4,80 @@ import 'package:material_ui/material_ui.dart';
 import '../design/tokens.dart';
 import '../l10n/gen/app_localizations.dart';
 
+/// Har bir tabning oxirgi manzili va “faol tab qayta bosildi” hodisasi.
+///
+/// Boshqa tabga havola ([openInTab]) shu tab allaqachon o'sha bo'limning
+/// ichida (masalan, ochiq QC to'plami yoki imtihon) bo'lsa, stekni
+/// tashlab yubormaydi.
+class TabMemory extends ChangeNotifier {
+  final Map<int, String> _last = {};
+
+  /// Qayta bosilgan tab indeksi (har bosishda [notifyListeners]).
+  int? reselectedIndex;
+
+  void record(int index, String location) => _last[index] = location;
+
+  /// [location] bo'limining ichidagi oxirgi manzil (bo'lsa).
+  String? lastUnder(String location) {
+    for (final last in _last.values) {
+      if (last == location || last.startsWith('$location/')) return last;
+    }
+    return null;
+  }
+
+  void reselect(int index) {
+    reselectedIndex = index;
+    notifyListeners();
+  }
+}
+
+class TabMemoryScope extends InheritedWidget {
+  const TabMemoryScope({super.key, required this.memory, required super.child});
+
+  final TabMemory memory;
+
+  static TabMemory? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TabMemoryScope>()?.memory;
+
+  @override
+  bool updateShouldNotify(TabMemoryScope oldWidget) =>
+      memory != oldWidget.memory;
+}
+
+/// Boshqa tabdagi bo'limni ochish: o'sha tab allaqachon shu bo'lim ichida
+/// bo'lsa — o'sha joyiga qaytadi (stek saqlanadi), aks holda bo'lim ildizi.
+void openInTab(BuildContext context, String location) {
+  final last = TabMemoryScope.maybeOf(context)?.lastUnder(location);
+  context.go(last ?? location);
+}
+
 /// Besh tabli qobiq. Har bir tab o'z navigation stackini va scroll
 /// holatini saqlaydi (StatefulShellRoute.indexedStack). Pastki menyu
 /// scroll paytida yashirilmaydi — bo'limlarga kirish doim ochiq.
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.shell});
+  const AppShell({
+    super.key,
+    required this.shell,
+    required this.memory,
+    required this.location,
+  });
 
   final StatefulNavigationShell shell;
+  final TabMemory memory;
+
+  /// Joriy manzil (shu tabning oxirgi manzili sifatida eslab qolinadi).
+  final String location;
 
   void _select(int index) {
-    // Faol tab qayta bosilsa — shu tab ildiziga qaytadi.
+    // Faol tab qayta bosilsa — shu tab ildiziga qaytadi; ildizda bo'lsa,
+    // ro'yxat tepaga suriladi (LgPage hodisani tinglaydi).
+    if (index == shell.currentIndex) memory.reselect(index);
     shell.goBranch(index, initialLocation: index == shell.currentIndex);
   }
 
   @override
   Widget build(BuildContext context) {
+    memory.record(shell.currentIndex, location);
     final l = AppLocalizations.of(context);
     final tabs = [
       _Tab(Icons.home_outlined, Icons.home_rounded, l.navHome),
@@ -34,17 +93,20 @@ class AppShell extends StatelessWidget {
     // Android "orqaga": tab ildizida bo'lsa va bu Bosh tab bo'lmasa —
     // avval Bosh tabga qaytadi, keyin ilovadan chiqadi.
     final atBranchRoot = !GoRouter.of(context).canPop();
-    return PopScope(
-      canPop: shell.currentIndex == 0 || !atBranchRoot,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && shell.currentIndex != 0) shell.goBranch(0);
-      },
-      child: Scaffold(
-        body: shell,
-        bottomNavigationBar: _TabBar(
-          tabs: tabs,
-          currentIndex: shell.currentIndex,
-          onSelect: _select,
+    return TabMemoryScope(
+      memory: memory,
+      child: PopScope(
+        canPop: shell.currentIndex == 0 || !atBranchRoot,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && shell.currentIndex != 0) shell.goBranch(0);
+        },
+        child: Scaffold(
+          body: shell,
+          bottomNavigationBar: _TabBar(
+            tabs: tabs,
+            currentIndex: shell.currentIndex,
+            onSelect: _select,
+          ),
         ),
       ),
     );
@@ -171,10 +233,14 @@ class _TabButton extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final color = selected ? p.brand : p.sub;
     final duration = LgMotion.of(context, const Duration(milliseconds: 180));
+    // excludeSemantics ichki InkWell'ning tap amalini ham olib tashlaydi —
+    // shuning uchun onTap shu yerda qayta beriladi (aks holda TalkBack'da
+    // ikki marta bosish hech narsa qilmaydi).
     return Semantics(
       selected: selected,
       button: true,
       label: tab.label,
+      onTap: onTap,
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
