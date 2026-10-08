@@ -225,6 +225,33 @@ void main() {
       expect(back.value, closeTo(100, 1e-9));
     });
 
+    test('µmol/L scale: creatinine 1 mg/dL ≈ 88.4 µmol/L and back', () {
+      final r = convertConcentration(
+        value: 1,
+        from: MassUnit.mgPerDl,
+        molarMass: 113.12,
+        siPerMmol: 1000,
+      );
+      expect(r.value, closeTo(88.40, 0.01));
+      final back = convertConcentration(
+        value: r.value,
+        from: MassUnit.mmolPerL,
+        molarMass: 113.12,
+        siPerMmol: 1000,
+      );
+      expect(back.value, closeTo(1, 1e-12));
+      // Bilirubin: 1 mg/dL ≈ 17.1 µmol/L.
+      expect(
+        convertConcentration(
+          value: 1,
+          from: MassUnit.mgPerDl,
+          molarMass: 584.673,
+          siPerMmol: 1000,
+        ).value,
+        closeTo(17.10, 0.01),
+      );
+    });
+
     test('different molar mass gives a different factor', () {
       final creatinine = convertConcentration(
         value: 1,

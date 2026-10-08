@@ -252,7 +252,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Samples, methods and quality control in one place.';
 
   @override
-  String get homeHeroLabCta => 'Calibration workflow';
+  String get homeHeroLabCta => 'Open quality control';
 
   @override
   String get homeHeroStudentTitle => 'Learn biochemistry with understanding';
@@ -496,6 +496,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyteMethodCalibrationSub => 'IFU · QC';
 
   @override
+  String get analyteCalculatorSub => 'Calculator · published formula';
+
+  @override
   String get analytePractice => 'Practise the topic';
 
   @override
@@ -656,7 +659,188 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qcEmptyBody =>
-      'Control logging and rule checks will be added together with sourced explanations.';
+      'Add a test with its control levels to start a Levey–Jennings chart. Data is stored only on this device.';
+
+  @override
+  String get qcIntro =>
+      'Enter each control level’s target mean and SD, then record every run. The app checks Westgard rules; it never invents target values or results.';
+
+  @override
+  String get qcLoadError =>
+      'Saved QC data could not be read. Nothing was overwritten.';
+
+  @override
+  String get qcAddSet => 'Add test';
+
+  @override
+  String get qcSetName => 'Test name';
+
+  @override
+  String get qcUnit => 'Unit';
+
+  @override
+  String get qcTargetSource => 'Source of the target mean and SD';
+
+  @override
+  String get qcSourceLab => 'Our laboratory’s data';
+
+  @override
+  String get qcSourceManufacturer => 'Manufacturer’s sheet';
+
+  @override
+  String qcLevel(String label) {
+    return 'Level $label';
+  }
+
+  @override
+  String qcLevelsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count levels',
+      one: '1 level',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcRunsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count runs',
+      one: '1 run',
+      zero: 'no runs',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get qcLot => 'Lot';
+
+  @override
+  String get qcMean => 'Target mean';
+
+  @override
+  String get qcSd => 'Target SD';
+
+  @override
+  String get qcAddLevel => 'Add level';
+
+  @override
+  String get qcRemoveLevel => 'Remove level';
+
+  @override
+  String get qcSave => 'Save';
+
+  @override
+  String get qcTargetNote =>
+      'Westgard et al. (1981) calculate the mean and SD from the laboratory’s own control measurements — initially about 20 (one run a day), then revised as more data accumulate. The app does not supply these values.';
+
+  @override
+  String get qcManufacturerWarning =>
+      'Manufacturer’s values are a guide only; Westgard’s lessons recommend limits calculated from your own control data — the assay sheet’s ranges are often too wide.';
+
+  @override
+  String get qcErrName => 'Enter the test name.';
+
+  @override
+  String qcErrLevel(String label) {
+    return 'Level $label: enter the mean and an SD greater than zero.';
+  }
+
+  @override
+  String get qcAccept => 'Accepted';
+
+  @override
+  String get qcWarning => 'Warning';
+
+  @override
+  String get qcReject => 'Rejected';
+
+  @override
+  String get qcAcceptBody => 'No rule violated.';
+
+  @override
+  String get qcLatestRun => 'Latest run';
+
+  @override
+  String get qcNoRunsYet => 'No runs yet — add the first one below.';
+
+  @override
+  String get qcAddRun => 'Add run';
+
+  @override
+  String get qcNote => 'Note (optional)';
+
+  @override
+  String get qcSaveRun => 'Save run';
+
+  @override
+  String get qcErrRunEmpty => 'Enter at least one control value.';
+
+  @override
+  String qcErrRunInvalid(String label) {
+    return 'Level $label: not a number.';
+  }
+
+  @override
+  String get qcRunHistory => 'Runs';
+
+  @override
+  String get qcStats => 'Observed';
+
+  @override
+  String get qcChartLegend => '● in control   ▲ warning   ■ rejected';
+
+  @override
+  String qcChartSemantics(String label, int count) {
+    return 'Levey–Jennings chart, level $label: $count values';
+  }
+
+  @override
+  String get qcDeleteRun => 'Delete run';
+
+  @override
+  String get qcDeleteSet => 'Delete test and all runs';
+
+  @override
+  String get qcConfirmDelete => 'This can’t be undone.';
+
+  @override
+  String get qcSetMissing => 'This test no longer exists.';
+
+  @override
+  String get qcCopyCsv => 'Copy runs as a table (CSV)';
+
+  @override
+  String qcCopied(int count) {
+    return 'Copied $count rows — paste into Excel or Google Sheets';
+  }
+
+  @override
+  String get qcChangeTarget => 'Change target or lot';
+
+  @override
+  String get qcChangeTargetBody =>
+      'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.';
+
+  @override
+  String get qcErrTarget => 'Enter the mean and an SD greater than zero.';
+
+  @override
+  String qcSince(String date) {
+    return 'since $date';
+  }
+
+  @override
+  String qcPreviousTarget(String target, String date) {
+    return 'Previous: $target (from $date)';
+  }
+
+  @override
+  String get qcRulesSource =>
+      'Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.';
 
   @override
   String get preTitle => 'Specimen journey';
@@ -679,6 +863,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get preNotice =>
       'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.';
+
+  @override
+  String get preOrderTitle => 'Order of draw (venepuncture)';
+
+  @override
+  String get preOrderSub =>
+      'WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.';
+
+  @override
+  String preCap(String cap) {
+    return 'Cap: $cap';
+  }
+
+  @override
+  String get preHaemolysisTitle => 'Causes of haemolysis';
+
+  @override
+  String get preTourniquetTitle => 'Tourniquet';
+
+  @override
+  String get preIdTitle => 'Patient identification and labelling';
 
   @override
   String get calcTitle => 'Calculators';
@@ -1130,6 +1335,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sourcesTitle => 'Sources and licences';
 
   @override
+  String get sourcesContent => 'Analyte cards';
+
+  @override
+  String get sourcesMethods => 'Calculators, QC and preanalytics';
+
+  @override
   String get sourcesBody =>
       'Every published claim links to its original source, access date, scope and review status.';
 
@@ -1264,6 +1475,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quizCorrectAnswer => 'Correct answer';
+
+  @override
+  String get quizChooseTopic => 'Choose a topic';
+
+  @override
+  String quizTopicMixed(int count) {
+    return 'Mixed: $count random questions';
+  }
+
+  @override
+  String get quizTopicGeneral => 'Laboratory calculations';
+
+  @override
+  String quizQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions',
+      one: '1 question',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get quizOtherTopic => 'Another topic';
+
+  @override
+  String get quizTopicMistakes => 'Review my mistakes';
+
+  @override
+  String quizMastered(int correct, int total) {
+    return '$correct of $total correct last time';
+  }
 
   @override
   String get examTitle => 'Exam mode';
@@ -1457,6 +1701,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get kindQuestionSet => 'Question set';
+
+  @override
+  String get kindWebsite => 'Website';
+
+  @override
+  String libAccessOpen(String licence) {
+    return 'Open licence · $licence';
+  }
+
+  @override
+  String get libAccessFree => 'Free to read · link only';
+
+  @override
+  String get libAccessCatalog => 'Catalogue record only';
+
+  @override
+  String get libOpenSource => 'Open the official page';
+
+  @override
+  String libChecked(String date) {
+    return 'Page and licence checked: $date';
+  }
 
   @override
   String libItemPack(String size) {

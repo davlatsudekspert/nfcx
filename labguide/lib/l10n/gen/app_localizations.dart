@@ -547,7 +547,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeHeroLabCta.
   ///
   /// In en, this message translates to:
-  /// **'Calibration workflow'**
+  /// **'Open quality control'**
   String get homeHeroLabCta;
 
   /// No description provided for @homeHeroStudentTitle.
@@ -988,6 +988,12 @@ abstract class AppLocalizations {
   /// **'IFU · QC'**
   String get analyteMethodCalibrationSub;
 
+  /// No description provided for @analyteCalculatorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculator · published formula'**
+  String get analyteCalculatorSub;
+
   /// No description provided for @analytePractice.
   ///
   /// In en, this message translates to:
@@ -1291,8 +1297,296 @@ abstract class AppLocalizations {
   /// No description provided for @qcEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Control logging and rule checks will be added together with sourced explanations.'**
+  /// **'Add a test with its control levels to start a Levey–Jennings chart. Data is stored only on this device.'**
   String get qcEmptyBody;
+
+  /// No description provided for @qcIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter each control level’s target mean and SD, then record every run. The app checks Westgard rules; it never invents target values or results.'**
+  String get qcIntro;
+
+  /// No description provided for @qcLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved QC data could not be read. Nothing was overwritten.'**
+  String get qcLoadError;
+
+  /// No description provided for @qcAddSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add test'**
+  String get qcAddSet;
+
+  /// No description provided for @qcSetName.
+  ///
+  /// In en, this message translates to:
+  /// **'Test name'**
+  String get qcSetName;
+
+  /// No description provided for @qcUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get qcUnit;
+
+  /// No description provided for @qcTargetSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source of the target mean and SD'**
+  String get qcTargetSource;
+
+  /// No description provided for @qcSourceLab.
+  ///
+  /// In en, this message translates to:
+  /// **'Our laboratory’s data'**
+  String get qcSourceLab;
+
+  /// No description provided for @qcSourceManufacturer.
+  ///
+  /// In en, this message translates to:
+  /// **'Manufacturer’s sheet'**
+  String get qcSourceManufacturer;
+
+  /// No description provided for @qcLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {label}'**
+  String qcLevel(String label);
+
+  /// No description provided for @qcLevelsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 level} other{{count} levels}}'**
+  String qcLevelsCount(int count);
+
+  /// No description provided for @qcRunsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no runs} =1{1 run} other{{count} runs}}'**
+  String qcRunsCount(int count);
+
+  /// No description provided for @qcLot.
+  ///
+  /// In en, this message translates to:
+  /// **'Lot'**
+  String get qcLot;
+
+  /// No description provided for @qcMean.
+  ///
+  /// In en, this message translates to:
+  /// **'Target mean'**
+  String get qcMean;
+
+  /// No description provided for @qcSd.
+  ///
+  /// In en, this message translates to:
+  /// **'Target SD'**
+  String get qcSd;
+
+  /// No description provided for @qcAddLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add level'**
+  String get qcAddLevel;
+
+  /// No description provided for @qcRemoveLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove level'**
+  String get qcRemoveLevel;
+
+  /// No description provided for @qcSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get qcSave;
+
+  /// No description provided for @qcTargetNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Westgard et al. (1981) calculate the mean and SD from the laboratory’s own control measurements — initially about 20 (one run a day), then revised as more data accumulate. The app does not supply these values.'**
+  String get qcTargetNote;
+
+  /// No description provided for @qcManufacturerWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Manufacturer’s values are a guide only; Westgard’s lessons recommend limits calculated from your own control data — the assay sheet’s ranges are often too wide.'**
+  String get qcManufacturerWarning;
+
+  /// No description provided for @qcErrName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the test name.'**
+  String get qcErrName;
+
+  /// No description provided for @qcErrLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {label}: enter the mean and an SD greater than zero.'**
+  String qcErrLevel(String label);
+
+  /// No description provided for @qcAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepted'**
+  String get qcAccept;
+
+  /// No description provided for @qcWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get qcWarning;
+
+  /// No description provided for @qcReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get qcReject;
+
+  /// No description provided for @qcAcceptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No rule violated.'**
+  String get qcAcceptBody;
+
+  /// No description provided for @qcLatestRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest run'**
+  String get qcLatestRun;
+
+  /// No description provided for @qcNoRunsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet — add the first one below.'**
+  String get qcNoRunsYet;
+
+  /// No description provided for @qcAddRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Add run'**
+  String get qcAddRun;
+
+  /// No description provided for @qcNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get qcNote;
+
+  /// No description provided for @qcSaveRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Save run'**
+  String get qcSaveRun;
+
+  /// No description provided for @qcErrRunEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least one control value.'**
+  String get qcErrRunEmpty;
+
+  /// No description provided for @qcErrRunInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {label}: not a number.'**
+  String qcErrRunInvalid(String label);
+
+  /// No description provided for @qcRunHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get qcRunHistory;
+
+  /// No description provided for @qcStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed'**
+  String get qcStats;
+
+  /// No description provided for @qcChartLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'● in control   ▲ warning   ■ rejected'**
+  String get qcChartLegend;
+
+  /// No description provided for @qcChartSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Levey–Jennings chart, level {label}: {count} values'**
+  String qcChartSemantics(String label, int count);
+
+  /// No description provided for @qcDeleteRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete run'**
+  String get qcDeleteRun;
+
+  /// No description provided for @qcDeleteSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete test and all runs'**
+  String get qcDeleteSet;
+
+  /// No description provided for @qcConfirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'This can’t be undone.'**
+  String get qcConfirmDelete;
+
+  /// No description provided for @qcSetMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'This test no longer exists.'**
+  String get qcSetMissing;
+
+  /// No description provided for @qcCopyCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy runs as a table (CSV)'**
+  String get qcCopyCsv;
+
+  /// No description provided for @qcCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied {count} rows — paste into Excel or Google Sheets'**
+  String qcCopied(int count);
+
+  /// No description provided for @qcChangeTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Change target or lot'**
+  String get qcChangeTarget;
+
+  /// No description provided for @qcChangeTargetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this when a new control lot starts or your laboratory recalculates the mean and SD. The new values apply from now on; earlier runs keep being evaluated against the targets that were in effect then.'**
+  String get qcChangeTargetBody;
+
+  /// No description provided for @qcErrTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the mean and an SD greater than zero.'**
+  String get qcErrTarget;
+
+  /// No description provided for @qcSince.
+  ///
+  /// In en, this message translates to:
+  /// **'since {date}'**
+  String qcSince(String date);
+
+  /// No description provided for @qcPreviousTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous: {target} (from {date})'**
+  String qcPreviousTarget(String target, String date);
+
+  /// No description provided for @qcRulesSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules: Westgard multirule procedure (Westgard JO et al., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). A learning and checking aid — it does not replace your laboratory’s QC procedure.'**
+  String get qcRulesSource;
 
   /// No description provided for @preTitle.
   ///
@@ -1335,6 +1629,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tube colour, time and temperature are tied to the specific tube, method and instructions. No universal parameters are given.'**
   String get preNotice;
+
+  /// No description provided for @preOrderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order of draw (venepuncture)'**
+  String get preOrderTitle;
+
+  /// No description provided for @preOrderSub.
+  ///
+  /// In en, this message translates to:
+  /// **'WHO 2010, Table 2.3 (based on the NCCLS 2003 consensus). Check your laboratory’s current procedure.'**
+  String get preOrderSub;
+
+  /// No description provided for @preCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Cap: {cap}'**
+  String preCap(String cap);
+
+  /// No description provided for @preHaemolysisTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Causes of haemolysis'**
+  String get preHaemolysisTitle;
+
+  /// No description provided for @preTourniquetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tourniquet'**
+  String get preTourniquetTitle;
+
+  /// No description provided for @preIdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Patient identification and labelling'**
+  String get preIdTitle;
 
   /// No description provided for @calcTitle.
   ///
@@ -2152,6 +2482,18 @@ abstract class AppLocalizations {
   /// **'Sources and licences'**
   String get sourcesTitle;
 
+  /// No description provided for @sourcesContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyte cards'**
+  String get sourcesContent;
+
+  /// No description provided for @sourcesMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculators, QC and preanalytics'**
+  String get sourcesMethods;
+
   /// No description provided for @sourcesBody.
   ///
   /// In en, this message translates to:
@@ -2391,6 +2733,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Correct answer'**
   String get quizCorrectAnswer;
+
+  /// No description provided for @quizChooseTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a topic'**
+  String get quizChooseTopic;
+
+  /// No description provided for @quizTopicMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed: {count} random questions'**
+  String quizTopicMixed(int count);
+
+  /// No description provided for @quizTopicGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'Laboratory calculations'**
+  String get quizTopicGeneral;
+
+  /// No description provided for @quizQuestionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question} other{{count} questions}}'**
+  String quizQuestionCount(int count);
+
+  /// No description provided for @quizOtherTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Another topic'**
+  String get quizOtherTopic;
+
+  /// No description provided for @quizTopicMistakes.
+  ///
+  /// In en, this message translates to:
+  /// **'Review my mistakes'**
+  String get quizTopicMistakes;
+
+  /// No description provided for @quizMastered.
+  ///
+  /// In en, this message translates to:
+  /// **'{correct} of {total} correct last time'**
+  String quizMastered(int correct, int total);
 
   /// No description provided for @examTitle.
   ///
@@ -2751,6 +3135,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Question set'**
   String get kindQuestionSet;
+
+  /// No description provided for @kindWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get kindWebsite;
+
+  /// No description provided for @libAccessOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open licence · {licence}'**
+  String libAccessOpen(String licence);
+
+  /// No description provided for @libAccessFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free to read · link only'**
+  String get libAccessFree;
+
+  /// No description provided for @libAccessCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalogue record only'**
+  String get libAccessCatalog;
+
+  /// No description provided for @libOpenSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the official page'**
+  String get libOpenSource;
+
+  /// No description provided for @libChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Page and licence checked: {date}'**
+  String libChecked(String date);
 
   /// No description provided for @libItemPack.
   ///

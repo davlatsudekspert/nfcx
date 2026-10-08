@@ -1,6 +1,7 @@
-# LabGuide iOS (Mac'siz): GitHub macOS runnerida build va TestFlight.
+# LabGuide: testlar, Android sinov APK, iOS build (Mac'siz) va TestFlight.
 #
 # Faqat `labguide/` papkasidagi ilova (NFCSTORE ga tegmaydi).
+# Android sinov APK'lari debug kalit bilan imzolanadi — do'kon uchun emas.
 #
 # Rejimlar (workflow_dispatch -> mode):
 #   build      — Linux'da analyze + test, macOS'da imzosiz iOS release build
@@ -73,6 +74,46 @@ jobs:
             tail -5 "$RUNNER_TEMP/test.log"; exit 1; }
           tail -1 "$RUNNER_TEMP/test.log"
           echo "- Linux testlar: $(tail -1 "$RUNNER_TEMP/test.log")" >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: labguide
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Android release APK (sinov)
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          flutter build apk --release --split-per-abi \
+            --build-number="${{ github.run_number }}"
+          cd build/app/outputs/flutter-apk
+          VERSION=$(grep '^version:' "$GITHUB_WORKSPACE/labguide/pubspec.yaml" | sed 's/version: *//; s/+.*//')
+          for f in app-*-release.apk; do mv "$f" "LabGuide-$VERSION-${f#app-}"; done
+          sha256sum LabGuide-*.apk | tee SHA256SUMS.txt
+          {
+            echo "## Android: sinov APK'lari (debug kalit bilan imzolangan)"
+            ls -la LabGuide-*.apk | awk '{print "- " $9 " — " $5 " bayt"}'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: labguide-android-${{ github.run_number }}
+          path: |
+            labguide/build/app/outputs/flutter-apk/LabGuide-*.apk
+            labguide/build/app/outputs/flutter-apk/SHA256SUMS.txt
+          retention-days: 30
 
   ios:
     needs: tests

@@ -90,32 +90,116 @@ class LearnScreen extends StatelessWidget {
   }
 }
 
+/// Mashq to'plami: mavzu (guruh yoki bitta analit), umumiy laboratoriya
+/// hisoblari yoki aralash tasodifiy savollar.
+class QuizScope {
+  const QuizScope(this.title, this.questions, {this.redraw});
+
+  final String title;
+  final List<QuizQuestion> questions;
+
+  /// Qayta boshlashda yangi to'plam (aralash rejim — yangi tasodifiy savollar).
+  final QuizScope Function()? redraw;
+}
+
+/// Aralash rejimdagi savollar soni.
+const kMixedQuizSize = 10;
+
+/// Analitning guruhi bo'yicha savollar (savolning `topic_ids` i orqali).
+List<QuizQuestion> questionsForGroup(ContentPack pack, String groupId) {
+  final ids = {
+    for (final a in pack.analytes)
+      if (a.group == groupId) a.id,
+  };
+  return [
+    for (final q in pack.quiz)
+      if (q.topicIds.any(ids.contains)) q,
+  ];
+}
+
+List<QuizQuestion> questionsForAnalyte(ContentPack pack, String analyteId) => [
+  for (final q in pack.quiz)
+    if (q.topicIds.contains(analyteId)) q,
+];
+
 class QuizScreen extends StatefulWidget {
-  const QuizScreen({super.key});
+  const QuizScreen({super.key, this.analyteId});
+
+  /// Berilsa — faqat shu analit savollari (analit kartasidan ochilganda).
+  final String? analyteId;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
 
 class _QuizScreenState extends State<QuizScreen> {
+  QuizScope? _scope;
   QuizSession? _session;
+
+  // Bir analit testidan boshqasiga o'tilganda State qayta ishlatilishi
+  // mumkin — sessiya yangi analit uchun qaytadan yig'iladi.
+  @override
+  void didUpdateWidget(QuizScreen old) {
+    super.didUpdateWidget(old);
+    if (old.analyteId != widget.analyteId) {
+      _scope = null;
+      _session = null;
+    }
+  }
+
+  void _start(QuizScope scope) => setState(() {
+    _scope = scope;
+    _session = QuizSession(scope.questions);
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final lang = Localizations.localeOf(context).languageCode;
+    final content = context.services.content;
+    // Paket yuklanishi kutilsa ham sarlavha (analit nomi) yangilanadi.
+    return ListenableBuilder(
+      listenable: content,
+      builder: (context, _) {
+        final analyteId = widget.analyteId;
+        final loaded = content.pack;
+        if (analyteId != null && _session == null && loaded != null) {
+          _scope = QuizScope(
+            loaded.analyte(analyteId)?.names.of(lang) ?? analyteId,
+            questionsForAnalyte(loaded, analyteId),
+          );
+          _session = QuizSession(_scope!.questions);
+        }
+        return _page(context, l);
+      },
+    );
+  }
+
+  Widget _page(BuildContext context, AppLocalizations l) {
+    final analyteId = widget.analyteId;
     return LgPage(
       title: l.learnQuiz,
+      subtitle: _scope?.title,
       children: [
         ContentGate(
           builder: (context, pack) {
-            final session = _session ??= QuizSession(pack.quiz);
+            final session = _session;
+            if (session == null) {
+              return _TopicPicker(pack: pack, onPick: _start);
+            }
             if (session.questions.isEmpty) {
               return LgStateView(kind: StateKind.empty, title: l.learnQuiz);
             }
             return session.finished
                 ? _QuizResult(
                     session: session,
-                    onRestart: () => setState(() => _session = null),
+                    onRestart: () => _start(_scope!.redraw?.call() ?? _scope!),
+                    onOtherTopic: analyteId == null
+                        ? () => setState(() {
+                            _scope = null;
+                            _session = null;
+                          })
+                        : null,
                   )
                 : _QuizQuestion(
                     session: session,
@@ -123,6 +207,87 @@ class _QuizScreenState extends State<QuizScreen> {
                   );
           },
         ),
+      ],
+    );
+  }
+}
+
+class _TopicPicker extends StatelessWidget {
+  const _TopicPicker({required this.pack, required this.onPick});
+
+  final ContentPack pack;
+  final ValueChanged<QuizScope> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final lang = Localizations.localeOf(context).languageCode;
+    final general = [
+      for (final q in pack.quiz)
+        if (q.topicIds.isEmpty) q,
+    ];
+    final groups = [
+      for (final g in pack.groups) (g, questionsForGroup(pack, g.id)),
+    ].where((e) => e.$2.isNotEmpty).toList();
+    final mixedSize = pack.quiz.length < kMixedQuizSize
+        ? pack.quiz.length
+        : kMixedQuizSize;
+    final progress = context.services.quizProgress;
+    String sub(List<QuizQuestion> qs) {
+      final n = qs.length;
+      final m = progress.mastered(qs.map((q) => q.id));
+      return m == 0
+          ? l.quizQuestionCount(n)
+          : '${l.quizQuestionCount(n)} · ${l.quizMastered(m, n)}';
+    }
+
+    final mistakes = {
+      ...progress.mistakes([for (final q in pack.quiz) q.id]),
+    };
+    QuizScope mixed() => QuizScope(
+      l.quizTopicMixed(mixedSize),
+      (List.of(pack.quiz)..shuffle()).take(mixedSize).toList(),
+      redraw: mixed,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LgSectionTitle(l.quizChooseTopic),
+        if (mistakes.isNotEmpty)
+          LgRow(
+            title: l.quizTopicMistakes,
+            subtitle: l.quizQuestionCount(mistakes.length),
+            icon: Icons.replay_rounded,
+            onTap: () => onPick(
+              QuizScope(l.quizTopicMistakes, [
+                for (final q in pack.quiz)
+                  if (mistakes.contains(q.id)) q,
+              ]),
+            ),
+          ),
+        LgRow(
+          title: l.quizTopicMixed(mixedSize),
+          subtitle: l.quizQuestionCount(pack.quiz.length),
+          icon: Icons.shuffle_rounded,
+          onTap: () => onPick(mixed()),
+        ),
+        if (general.isNotEmpty)
+          LgRow(
+            title: l.quizTopicGeneral,
+            subtitle: sub(general),
+            icon: Icons.calculate_outlined,
+            onTap: () => onPick(QuizScope(l.quizTopicGeneral, general)),
+          ),
+        for (final (i, (group, questions)) in groups.indexed)
+          LgRow(
+            title: group.names.of(lang),
+            subtitle: sub(questions),
+            icon: groupIcon(group.id),
+            onTap: () => onPick(QuizScope(group.names.of(lang), questions)),
+            divider: i < groups.length - 1,
+          ),
+        const SizedBox(height: 14),
+        Text(l.quizReviewNote, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -190,6 +355,11 @@ class _QuizQuestion extends StatelessWidget {
                   : () {
                       session.answer(i);
                       onChanged();
+                      // Natija faqat qurilmada — “xatolar ustida ishlash” uchun.
+                      context.services.quizProgress.record(
+                        q.id,
+                        correct: i == q.correctIndex,
+                      );
                     },
             ),
           ),
@@ -320,10 +490,15 @@ class _OptionButton extends StatelessWidget {
 }
 
 class _QuizResult extends StatelessWidget {
-  const _QuizResult({required this.session, required this.onRestart});
+  const _QuizResult({
+    required this.session,
+    required this.onRestart,
+    this.onOtherTopic,
+  });
 
   final QuizSession session;
   final VoidCallback onRestart;
+  final VoidCallback? onOtherTopic;
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +543,10 @@ class _QuizResult extends StatelessWidget {
             ),
         const SizedBox(height: 16),
         LgButton(label: l.quizRestart, onPressed: onRestart),
+        if (onOtherTopic != null) ...[
+          const SizedBox(height: 10),
+          LgButton.secondary(label: l.quizOtherTopic, onPressed: onOtherTopic),
+        ],
       ],
     );
   }

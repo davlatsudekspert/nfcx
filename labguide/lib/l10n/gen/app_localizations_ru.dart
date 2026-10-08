@@ -255,7 +255,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Образцы, методики и контроль качества в одном месте.';
 
   @override
-  String get homeHeroLabCta => 'Путь калибровки';
+  String get homeHeroLabCta => 'Открыть контроль качества';
 
   @override
   String get homeHeroStudentTitle => 'Понимайте биохимию';
@@ -502,6 +502,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get analyteMethodCalibrationSub => 'IFU · QC';
 
   @override
+  String get analyteCalculatorSub => 'Калькулятор · опубликованная формула';
+
+  @override
   String get analytePractice => 'Закрепить тему';
 
   @override
@@ -661,7 +664,192 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qcEmptyBody =>
-      'Журнал контроля и проверка правил появятся вместе с объяснениями на основе источников.';
+      'Добавьте тест с уровнями контроля, чтобы начать график Леви–Дженнингса. Данные хранятся только на этом устройстве.';
+
+  @override
+  String get qcIntro =>
+      'Введите целевое среднее и SD для каждого уровня контроля, затем записывайте каждую серию. Приложение проверяет правила Вестгарда и никогда не придумывает целевые значения или результаты.';
+
+  @override
+  String get qcLoadError =>
+      'Не удалось прочитать сохранённые данные КК. Ничего не перезаписано.';
+
+  @override
+  String get qcAddSet => 'Добавить тест';
+
+  @override
+  String get qcSetName => 'Название теста';
+
+  @override
+  String get qcUnit => 'Единица';
+
+  @override
+  String get qcTargetSource => 'Источник целевого среднего и SD';
+
+  @override
+  String get qcSourceLab => 'Данные нашей лаборатории';
+
+  @override
+  String get qcSourceManufacturer => 'Паспорт производителя';
+
+  @override
+  String qcLevel(String label) {
+    return 'Уровень $label';
+  }
+
+  @override
+  String qcLevelsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count уровня',
+      many: '$count уровней',
+      few: '$count уровня',
+      one: '$count уровень',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String qcRunsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count серии',
+      many: '$count серий',
+      few: '$count серии',
+      one: '$count серия',
+      zero: 'нет серий',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get qcLot => 'Лот';
+
+  @override
+  String get qcMean => 'Целевое среднее';
+
+  @override
+  String get qcSd => 'Целевое SD';
+
+  @override
+  String get qcAddLevel => 'Добавить уровень';
+
+  @override
+  String get qcRemoveLevel => 'Удалить уровень';
+
+  @override
+  String get qcSave => 'Сохранить';
+
+  @override
+  String get qcTargetNote =>
+      'Westgard и соавт. (1981) рассчитывают среднее и SD по собственным контрольным измерениям лаборатории — сначала примерно по 20 (одна серия в день), затем пересматривают по мере накопления данных. Приложение эти значения не предоставляет.';
+
+  @override
+  String get qcManufacturerWarning =>
+      'Значения производителя — лишь ориентир; уроки Вестгарда рекомендуют пределы, рассчитанные по собственным контрольным данным, — диапазоны из паспорта часто слишком широки.';
+
+  @override
+  String get qcErrName => 'Введите название теста.';
+
+  @override
+  String qcErrLevel(String label) {
+    return 'Уровень $label: введите среднее и SD больше нуля.';
+  }
+
+  @override
+  String get qcAccept => 'Принята';
+
+  @override
+  String get qcWarning => 'Предупреждение';
+
+  @override
+  String get qcReject => 'Отклонена';
+
+  @override
+  String get qcAcceptBody => 'Ни одно правило не нарушено.';
+
+  @override
+  String get qcLatestRun => 'Последняя серия';
+
+  @override
+  String get qcNoRunsYet => 'Серий пока нет — добавьте первую ниже.';
+
+  @override
+  String get qcAddRun => 'Добавить серию';
+
+  @override
+  String get qcNote => 'Примечание (необязательно)';
+
+  @override
+  String get qcSaveRun => 'Сохранить серию';
+
+  @override
+  String get qcErrRunEmpty => 'Введите хотя бы одно контрольное значение.';
+
+  @override
+  String qcErrRunInvalid(String label) {
+    return 'Уровень $label: не число.';
+  }
+
+  @override
+  String get qcRunHistory => 'Серии';
+
+  @override
+  String get qcStats => 'Наблюдаемые';
+
+  @override
+  String get qcChartLegend => '● в пределах   ▲ предупреждение   ■ отклонено';
+
+  @override
+  String qcChartSemantics(String label, int count) {
+    return 'График Леви–Дженнингса, уровень $label: значений $count';
+  }
+
+  @override
+  String get qcDeleteRun => 'Удалить серию';
+
+  @override
+  String get qcDeleteSet => 'Удалить тест и все серии';
+
+  @override
+  String get qcConfirmDelete => 'Это нельзя отменить.';
+
+  @override
+  String get qcSetMissing => 'Этого теста больше нет.';
+
+  @override
+  String get qcCopyCsv => 'Скопировать серии таблицей (CSV)';
+
+  @override
+  String qcCopied(int count) {
+    return 'Скопировано строк: $count — вставьте в Excel или Google Таблицы';
+  }
+
+  @override
+  String get qcChangeTarget => 'Сменить цель или лот';
+
+  @override
+  String get qcChangeTargetBody =>
+      'Используйте при переходе на новый лот контроля или после пересчёта среднего и SD лабораторией. Новые значения действуют с этого момента; прежние серии по-прежнему оцениваются по действовавшим тогда целям.';
+
+  @override
+  String get qcErrTarget => 'Введите среднее и SD больше нуля.';
+
+  @override
+  String qcSince(String date) {
+    return 'с $date';
+  }
+
+  @override
+  String qcPreviousTarget(String target, String date) {
+    return 'Ранее: $target (с $date)';
+  }
+
+  @override
+  String get qcRulesSource =>
+      'Правила: мультиправило Вестгарда (Westgard JO и соавт., Clin Chem 1981; doi:10.1093/clinchem/27.3.493). Средство обучения и проверки — не заменяет процедуру КК вашей лаборатории.';
 
   @override
   String get preTitle => 'Путь образца';
@@ -684,6 +872,27 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get preNotice =>
       'Цвет пробирки, время и температура привязаны к конкретной пробирке, методу и инструкции. Универсальные параметры не приводятся.';
+
+  @override
+  String get preOrderTitle => 'Порядок взятия пробирок (венепункция)';
+
+  @override
+  String get preOrderSub =>
+      'ВОЗ 2010, табл. 2.3 (на основе консенсуса NCCLS 2003). Сверяйте с действующим порядком вашей лаборатории.';
+
+  @override
+  String preCap(String cap) {
+    return 'Крышка: $cap';
+  }
+
+  @override
+  String get preHaemolysisTitle => 'Причины гемолиза';
+
+  @override
+  String get preTourniquetTitle => 'Жгут';
+
+  @override
+  String get preIdTitle => 'Идентификация пациента и маркировка';
 
   @override
   String get calcTitle => 'Калькуляторы';
@@ -1136,6 +1345,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sourcesTitle => 'Источники и лицензии';
 
   @override
+  String get sourcesContent => 'Карточки анализов';
+
+  @override
+  String get sourcesMethods => 'Калькуляторы, КК и преаналитика';
+
+  @override
   String get sourcesBody =>
       'Каждое публикуемое утверждение связано с первоисточником, датой просмотра, областью применения и статусом проверки.';
 
@@ -1272,6 +1487,41 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get quizCorrectAnswer => 'Правильный ответ';
+
+  @override
+  String get quizChooseTopic => 'Выберите тему';
+
+  @override
+  String quizTopicMixed(int count) {
+    return 'Вперемешку: $count случайных вопросов';
+  }
+
+  @override
+  String get quizTopicGeneral => 'Лабораторные расчёты';
+
+  @override
+  String quizQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count вопроса',
+      many: '$count вопросов',
+      few: '$count вопроса',
+      one: '$count вопрос',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get quizOtherTopic => 'Другая тема';
+
+  @override
+  String get quizTopicMistakes => 'Работа над ошибками';
+
+  @override
+  String quizMastered(int correct, int total) {
+    return 'верно в прошлый раз: $correct из $total';
+  }
 
   @override
   String get examTitle => 'Режим экзамена';
@@ -1466,6 +1716,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get kindQuestionSet => 'Сборник вопросов';
+
+  @override
+  String get kindWebsite => 'Веб-ресурс';
+
+  @override
+  String libAccessOpen(String licence) {
+    return 'Открытая лицензия · $licence';
+  }
+
+  @override
+  String get libAccessFree => 'Бесплатно для чтения · только ссылка';
+
+  @override
+  String get libAccessCatalog => 'Только библиографическая запись';
+
+  @override
+  String get libOpenSource => 'Открыть официальную страницу';
+
+  @override
+  String libChecked(String date) {
+    return 'Страница и лицензия проверены: $date';
+  }
 
   @override
   String libItemPack(String size) {

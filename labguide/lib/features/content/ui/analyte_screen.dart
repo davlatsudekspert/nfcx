@@ -7,6 +7,8 @@ import '../../../app/widgets/links.dart';
 import '../../../design/tokens.dart';
 import '../../../design/widgets/lg_widgets.dart';
 import '../../../l10n/gen/app_localizations.dart';
+import '../../tools/calc_info.dart';
+import '../../tools/clinical_calc_screens.dart';
 import '../content_model.dart';
 import 'content_widgets.dart';
 
@@ -28,11 +30,17 @@ String formatNumber(double v) =>
 
 String formatLimit(DecisionLimit d) {
   final unit = d.unit;
+  final lowSign = d.lowExclusive ? '>' : '≥';
+  final highSign = d.highExclusive ? '<' : '≤';
   if (d.low != null && d.high != null) {
-    return '${formatNumber(d.low!)}–${formatNumber(d.high!)} $unit';
+    if (!d.lowExclusive && !d.highExclusive) {
+      return '${formatNumber(d.low!)}–${formatNumber(d.high!)} $unit';
+    }
+    return '$lowSign ${formatNumber(d.low!)}, $highSign '
+        '${formatNumber(d.high!)} $unit';
   }
-  if (d.low != null) return '≥ ${formatNumber(d.low!)} $unit';
-  if (d.high != null) return '≤ ${formatNumber(d.high!)} $unit';
+  if (d.low != null) return '$lowSign ${formatNumber(d.low!)} $unit';
+  if (d.high != null) return '$highSign ${formatNumber(d.high!)} $unit';
   return unit;
 }
 
@@ -95,12 +103,17 @@ class _AnalyteBody {
 
   /// Manba raqami kartadagi tartib bo'yicha: [1], kitob bo'lsa sahifa
   /// bilan — [1, 45-bet].
-  String cite(List<SourceRef> refs, AppLocalizations l) => refs
-      .map((r) {
-        final n = analyte.sourceIds.indexOf(r.sourceId) + 1;
-        return r.pages == null ? '[$n]' : '[$n, ${l.citePage(r.pages!)}]';
-      })
-      .join('');
+  /// Bir manba bir da'voda ikki bo'limdan keltirilsa ham bir marta: [1].
+  String cite(List<SourceRef> refs, AppLocalizations l) {
+    final seen = <String>{};
+    return refs
+        .map((r) {
+          final n = analyte.sourceIds.indexOf(r.sourceId) + 1;
+          return r.pages == null ? '[$n]' : '[$n, ${l.citePage(r.pages!)}]';
+        })
+        .where(seen.add)
+        .join('');
+  }
 
   List<Widget> build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -162,19 +175,39 @@ class _AnalyteBody {
           icon: Icons.swap_vert_rounded,
           onTap: () => context.push('$location/units'),
         ),
+      for (final c
+          in calculatorsByAnalyte[analyte.id] ?? const <ClinicalCalc>[])
+        LgRow(
+          title: calcTitle(c, l),
+          subtitle: l.analyteCalculatorSub,
+          icon: calcIcon(c),
+          onTap: () => context.go('/lab/calculators/${calcRoute(c)}'),
+        ),
       LgRow(
         title: l.analyteMethodCalibration,
         subtitle: l.analyteMethodCalibrationSub,
         icon: Icons.tune_rounded,
         onTap: () => context.go('/lab/calibration'),
       ),
-      LgRow(
-        title: l.analytePractice,
-        subtitle: l.analytePracticeSub,
-        icon: Icons.quiz_outlined,
-        onTap: () => context.go('/learn/quiz'),
-        divider: false,
-      ),
+      // Shu analit bo'yicha savollar bo'lsa — o'sha joyning o'zida (tab
+      // stacki saqlanadi); bo'lmasa — umumiy mashq bo'limi.
+      if (pack.quiz.where((q) => q.topicIds.contains(analyte.id)).length
+          case final n when n > 0)
+        LgRow(
+          title: l.analytePractice,
+          subtitle: l.quizQuestionCount(n),
+          icon: Icons.quiz_outlined,
+          onTap: () => context.push('$location/quiz'),
+          divider: false,
+        )
+      else
+        LgRow(
+          title: l.analytePractice,
+          subtitle: l.analytePracticeSub,
+          icon: Icons.quiz_outlined,
+          onTap: () => context.go('/learn/quiz'),
+          divider: false,
+        ),
       if (analyte.sourceIds.isNotEmpty) _sources(context, l),
       _review(context, l, text),
     ];

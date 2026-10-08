@@ -203,6 +203,8 @@ class DecisionLimit {
     required this.refs,
     this.low,
     this.high,
+    this.lowExclusive = false,
+    this.highExclusive = false,
     this.note,
   });
 
@@ -211,6 +213,8 @@ class DecisionLimit {
     unit: json['unit']! as String,
     low: (json['low'] as num?)?.toDouble(),
     high: (json['high'] as num?)?.toDouble(),
+    lowExclusive: json['low_exclusive'] as bool? ?? false,
+    highExclusive: json['high_exclusive'] as bool? ?? false,
     population: LocalizedText.fromJson(json['population']),
     note: json['note'] == null ? null : LocalizedText.fromJson(json['note']),
     refs: SourceRef.listFromJson(json),
@@ -219,11 +223,16 @@ class DecisionLimit {
   final LocalizedText label;
   final String unit;
 
-  /// Pastki chegara (kiritilgan). `null` bo'lsa — faqat yuqori chegara.
+  /// Pastki chegara. `null` bo'lsa — faqat yuqori chegara.
   final double? low;
 
-  /// Yuqori chegara (kiritilgan). `null` bo'lsa — "≥ low".
+  /// Yuqori chegara. `null` bo'lsa — faqat pastki chegara.
   final double? high;
+
+  /// Chegara qiymatning o'zi kirmaydi: manba “more than 30” / “less than 60”
+  /// desa `true` (“> 30”, “< 60”); “30 or more” bo'lsa `false` (“≥ 30”).
+  final bool lowExclusive;
+  final bool highExclusive;
   final LocalizedText population;
   final LocalizedText? note;
   final List<SourceRef> refs;
@@ -267,18 +276,35 @@ class ReferenceInterval {
 /// Moddaga xos birlik konversiyasi (mg/dL ↔ mmol/L).
 @immutable
 class UnitConversion {
-  const UnitConversion({required this.molarMass, required this.basis});
+  const UnitConversion({
+    required this.molarMass,
+    required this.basis,
+    this.siUnit = 'mmol/L',
+  });
 
-  factory UnitConversion.fromJson(Map<String, Object?> json) => UnitConversion(
-    molarMass: (json['molar_mass_g_per_mol']! as num).toDouble(),
-    basis: json['basis']! as String,
-  );
+  factory UnitConversion.fromJson(Map<String, Object?> json) {
+    final si = json['si_unit'] as String? ?? 'mmol/L';
+    if (si != 'mmol/L' && si != 'µmol/L') {
+      throw FormatException('unsupported si_unit: $si');
+    }
+    return UnitConversion(
+      molarMass: (json['molar_mass_g_per_mol']! as num).toDouble(),
+      basis: json['basis']! as String,
+      siUnit: si,
+    );
+  }
 
   /// g/mol.
   final double molarMass;
 
   /// Qiymat qayerdan olingani (masalan, standart atom massalaridan hisob).
   final String basis;
+
+  /// Laboratoriyalar odatda beradigan SI birlik: `mmol/L` yoki `µmol/L`.
+  final String siUnit;
+
+  /// 1 mmol/L necha [siUnit] ga teng.
+  double get siPerMmol => siUnit == 'µmol/L' ? 1000 : 1;
 }
 
 @immutable
@@ -544,7 +570,8 @@ enum LibraryItemKind {
   method,
   ifu,
   article,
-  questionSet;
+  questionSet,
+  website;
 
   static LibraryItemKind parse(String raw) => switch (raw) {
     'book' => book,
@@ -553,6 +580,7 @@ enum LibraryItemKind {
     'ifu' => ifu,
     'article' => article,
     'question_set' => questionSet,
+    'website' => website,
     _ => throw FormatException('unknown library kind: $raw'),
   };
 }
@@ -590,6 +618,27 @@ enum DistributionRights {
   static DistributionRights parse(String raw) => values.firstWhere(
     (r) => r.key == raw,
     orElse: () => throw FormatException('unknown distribution: $raw'),
+  );
+}
+
+/// Material qanday olinadi (katalogda ko'rsatiladi).
+enum LibraryAccess {
+  /// Ochiq litsenziya (CC BY, CC BY-SA, CC BY-NC, jamoat mulki) — havola
+  /// orqali; to'liq matn paketi baribir alohida qayd talab qiladi.
+  openLicence('open_licence'),
+
+  /// Onlayn bepul o'qiladi, lekin ochiq litsenziya yo'q — faqat havola.
+  freeToRead('free_to_read'),
+
+  /// Erkin onlayn emas (bosma/pullik) — faqat bibliografik yozuv.
+  catalogOnly('catalog_only');
+
+  const LibraryAccess(this.key);
+  final String key;
+
+  static LibraryAccess parse(String raw) => values.firstWhere(
+    (a) => a.key == raw,
+    orElse: () => throw FormatException('unknown access: $raw'),
   );
 }
 
@@ -673,6 +722,11 @@ class LibraryItem {
     this.receivedAt,
     this.supersedes,
     this.filePack,
+    this.url,
+    this.licence,
+    this.access = LibraryAccess.catalogOnly,
+    this.accessed,
+    this.note,
   });
 
   factory LibraryItem.fromJson(Map<String, Object?> json) => LibraryItem(
@@ -702,6 +756,11 @@ class LibraryItem {
         : FilePackRef.fromJson(
             (json['file_pack']! as Map).cast<String, Object?>(),
           ),
+    url: json['url'] as String?,
+    licence: json['licence'] as String?,
+    access: LibraryAccess.parse(json['access'] as String? ?? 'catalog_only'),
+    accessed: json['accessed'] as String?,
+    note: json['note'] == null ? null : LocalizedText.fromJson(json['note']),
   );
 
   final String id;
@@ -732,6 +791,19 @@ class LibraryItem {
   /// To'liq matn alohida oflayn paket sifatida (faqat ruxsat qayd etilgan
   /// bo'lsa).
   final FilePackRef? filePack;
+
+  /// Rasmiy sahifa (o'qish yoki yozuvni ko'rish uchun).
+  final String? url;
+
+  /// Sahifada ko'rsatilgan litsenziya nomi (masalan, “CC BY 4.0”).
+  final String? licence;
+  final LibraryAccess access;
+
+  /// Sahifa va litsenziya tekshirilgan sana.
+  final String? accessed;
+
+  /// Nega foydali — qisqa izoh (3 tilda).
+  final LocalizedText? note;
 }
 
 /// Dars mavzusi: analitlar, savollar va manbalarni bog'laydi.
@@ -1036,6 +1108,15 @@ class ContentPack {
       }
       if (item.filePack != null && !item.importState.citable) {
         throw FormatException('${item.id}: file pack for unprocessed item');
+      }
+      // Ochiq litsenziya — litsenziya nomi va sahifa bilan; bepul o'qish —
+      // sahifa havolasi bilan.
+      if (item.access == LibraryAccess.openLicence &&
+          (item.licence == null || item.url == null || item.accessed == null)) {
+        throw FormatException('${item.id}: open licence without evidence');
+      }
+      if (item.access == LibraryAccess.freeToRead && item.url == null) {
+        throw FormatException('${item.id}: free-to-read item without url');
       }
     }
     for (final s in sources) {

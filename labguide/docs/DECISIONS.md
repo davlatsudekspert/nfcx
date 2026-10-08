@@ -132,3 +132,120 @@ shakli Lynd 2008), HbA1c NGSP↔IFCC (NGSP master tenglamasi) va eAG (ADAG, Nath
 - Formula, cheklov va manba matnlari kod bilan birga `lib/features/tools/calc_info.dart` da:
   formula o‘zgarsa, izoh ham shu commit’da o‘zgaradi. Bibliografiyada faqat tekshirilgan
   maydonlar (muallif, sarlavha, jurnal, yil, DOI) — jild/sahifa yozilmagan.
+
+## D-19. 35 ta analit kartasi — AQSh davlat sahifalaridan, draft holatida (2026-10-08)
+- Manbalar: MedlinePlus lab-test sahifalari (asosiy), NIDDK, NHLBI — jami 52 ta; har birida
+  URL, kirish sanasi va sahifaning yangilangan/ko‘rib chiqilgan sanasi (`source_date`).
+- Matn uch tilda, manbadan o‘z so‘zlarimiz bilan; har bir da’vo manba va bo‘lim nomi
+  (`locator`) bilan. Har da’vo uchun so‘zma-so‘z inglizcha iqtibos yig‘ilib tekshirildi
+  (ilovaga kirmaydi): sahifalar qayta yuklanib, 708 iqtibosdan 704 tasi avtomatik, 2 tasi
+  qo‘lda (havola/bo‘shliq farqi) tasdiqlandi; rasmdan o‘qilgan 2 tasi olib tashlanib,
+  eGFR chegarasi matnli manbalarga (NIDDK CKD tests + eGFR tenglamalari sahifasi) bog‘landi.
+- Referens interval yo‘q. Diagnostik chegara faqat manba aniq bergan joyda: HbA1c, OGTT
+  (NIDDK jadvali), eGFR < 60 va ≤ 15, ACR > 30 mg/g; mikro/makroalbuminuriya — “manba
+  atamasi” sifatida. Qat’iy chegaralar uchun `low_exclusive` / `high_exclusive` qo‘shildi
+  (“< 60”, “> 30” manbadagidek, “≤/≥” emas).
+- Populyatsiya manbadagidek: NIDDK “if you are not pregnant” deydi — yosh aytilmagan, shuning
+  uchun “kattalar” so‘zi olib tashlandi (glyukoza kartasidagi oldingi xatoim ham tuzatildi).
+- Lipid “sog‘lom daraja” jadvallari, xavfga bog‘liq maqsadlar va CRP “sog‘lom miqdor” ataylab
+  kiritilmadi — ular populyatsiya/xavfga bog‘liq va referens intervalga o‘xshaydi.
+- Birlik faqat manba ko‘rsatgan bo‘lsa (fermentlar sahifalarida yo‘q → karta birliksiz).
+- Hammasi `status: draft`, `content_state: sourced_sample`, review `pending` — mustaqil
+  ekspert ko‘rmagan. Manba qayta foydalanish huquqi konservativ (`verify_before_distribution`).
+- Tahririy izohlar `review_note` da (ilovada ko‘rsatilmaydi); ekspert uchun ochiq savollar:
+  [CONTENT_REVIEW_NOTES.md](CONTENT_REVIEW_NOTES.md).
+- Testlar: 68 ta yangi savol (har analitga 2 ta), hammasi draft, manba va mavzu (`topic_ids`)
+  bilan. Mashq endi mavzu bo‘yicha: guruh, bitta analit (kartadan) yoki aralash 10 ta.
+
+## D-20. Ichki sifat nazorati: Levey–Jennings + Westgard qoidalari (2026-10-08)
+- Manba: Westgard JO, Barry PL, Hunt MR, Groth T. *A multi-rule Shewhart chart for quality
+  control in clinical chemistry.* Clin Chem 1981;27(3):493–501 (doi:10.1093/clinchem/27.3.493) —
+  to‘liq matn (arxivlangan PDF) o‘qib tekshirildi; Westgard sayti darslari qo‘shimcha.
+- Qoidalar maqoladagidek: 1-2s ogohlantirish; 1-3s; 2-2s (seriya ichida ikki material bo‘ylab
+  va bir material ketma-ket ikki seriyada); R-4s faqat seriya ichida; 4-1s va 10x bir material
+  ichida (4/10 seriya) yoki materiallar bo‘ylab (joriy + oldingi seriya / 5 seriya).
+  Chegara qat’iy: aynan ±2 SD buzilish emas (“exceeds”).
+- 1981 tartibida 1-2s “eshik” edi; Westgard sayti kompyuter tizimlari uchun bu shart emasligini
+  aytadi. Ilova har seriyada hamma rad qoidalarini tekshiradi, 1-2s ni ogohlantirish deb
+  ko‘rsatadi — shuning uchun 2s siz 4-1s ham rad deb belgilanadi (klassik qo‘lda tartibdan
+  qattiqroq; ekranda izohlangan).
+- Maqsadli o‘rtacha va SD ni ilova bermaydi: foydalanuvchi kiritadi va manbasini belgilaydi.
+  Maqola: laboratoriyaning o‘z ma’lumotidan (~20 o‘lchov, keyin qayta hisoblash); ishlab
+  chiqaruvchi qiymati tanlansa ogohlantirish ko‘rsatiladi (varaqadagi oraliqlar ko‘pincha keng).
+- Grafik: ±1s/±2s/±3s chiziqlari (W81 2-rasm), nuqta holati shakl bilan ham (doira/uchburchak/
+  kvadrat) — faqat rangga tayanmaydi; ±4 SD dan tashqarisi strelka bilan.
+- Ma’lumot faqat qurilmada (`qc.data`), buzilgan yozuv ustidan yozilmaydi; “lokal ma’lumotlarni
+  o‘chirish” QC ni ham o‘chiradi. Kuzatilgan n, x̄, SD (n−1), CV % ko‘rsatiladi.
+
+## D-21. LabGuide alohida public repoga ko‘chadi (2026-10-08)
+nfcx hisobida GitHub Actions to‘lovi o‘tmagani sabab barcha ishlar `startup_failure` bilan
+to‘xtadi. Egasi “public qilib ishlataver” dedi: public repoda standart runnerlar (macOS ham)
+bepul. Reja: `git subtree split -P labguide` bilan tarix saqlangan holda yangi
+`labguide` repoga; CI `labguide/.github/workflows/build.yml` da (split’dan keyin repo ildizida
+`.github/` bo‘ladi; nfcx ichida esa ishlamaydi — NFCSTORE CI’ga tegmaydi). nfcx ildizidagi
+oldingi `labguide-ios.yml` olib tashlandi. Litsenziya fayli qo‘shilmaydi (kod ko‘rinadi,
+huquqlar egada). Secretlar repo sozlamalarida — kodda yo‘q ([IOS_TESTFLIGHT.md](IOS_TESTFLIGHT.md)).
+Repo yaratish Claude integratsiyasiga ruxsat etilmagan (403) — egasi yaratadi.
+
+## D-22. Birlik konvertori 13 analitga kengaytirildi (2026-10-08)
+Molyar massa faqat formula + IUPAC qisqartirilgan standart atom massalaridan (C 12.011,
+H 1.008, N 14.007, O 15.999; Ca 40.078, Mg 24.305, P 30.974): kreatinin 113.120, siydik
+kislotasi 168.112, bilirubin 584.673 (µmol/L), xolesterin 386.664 (umumiy, HDL, LDL, non-HDL),
+triglitseridlar — triolein 885.453 (an’anaviy model), kalsiy, magniy, fosfor (mmol/L).
+SI birlik paketda (`si_unit`: mmol/L yoki µmol/L). Mochevina/BUN ataylab qo‘shilmadi: bir
+analitda ikki asos (butun molekula vs azot) — chalkashlik xavfi; osmolyallik kalkulyatori
+BUN’ni alohida qabul qiladi.
+
+## D-23. Preanalitika — WHO 2010 qon olish qo‘llanmasidan (2026-10-08)
+Manba: *WHO guidelines on drawing blood: best practices in phlebotomy*, WHO 2010 (ISBN 978 92
+4 159922 1; IRIS 10665/44294) — to‘liq PDF o‘qib tekshirildi. Kiritilganlar: probirkalar tartibi
+(2.2.3, 2.3-jadval; NCCLS 2003 konsensusi asosida), jadval izohlari (rang kodlari farq qiladi —
+laboratoriya bilan tekshirish; aralashtirish; faqat koagulogramma), kapillyar tartib (7.1.3),
+gemoliz sabablari (1.1.1), jgut (2 daqiqa — “ba’zi qo‘llanmalar” iborasi bilan, manbadagidek),
+bemorni aniqlash va yorliq. Manbada yo‘q narsalar yozilmadi: aylantirishlar soni (laboratoriya
+belgilaydi), och qoringa talab, “to‘shak yonida yorliqlash”. Nashr “© WHO 2010, all rights
+reserved” — jadval ko‘chirilmadi, faktlar o‘z so‘zlarimiz bilan, joyi ko‘rsatilgan. Qopqoq
+rangi doira bilan ham, matn bilan ham (faqat rangga tayanmaydi). Rus tilidagi nashri IRIS’da
+topilmadi.
+
+## D-24. Kutubxona katalogi: 25 ta tekshirilgan yozuv, faqat havola (2026-10-08)
+Har yozuvning rasmiy sahifasi yuklab ko‘rildi, litsenziya iborasi so‘zma-so‘z saqlandi
+(`licence_quote`, ilovada ko‘rsatilmaydi). Kirish turi: ochiq litsenziya (OpenStax,
+LibreTexts — CC BY-NC-SA 4.0; WHO biologik xavfsizlik 4-nashr en/ru — CC BY-NC-SA 3.0 IGO;
+MedlinePlus — AQSh davlat ishi), bepul o‘qish (WHO sifat menejmenti en/ru, flebotomiya,
+WHO/IDF diabet hisoboti en/ru, ZiyoNET darsliklari, lex.uz hujjatlari) va faqat katalog
+(SamMU e-kutubxonasi — HEMIS login; Tietz, Henry — pullik).
+- Hech bir fayl yuklanmadi/tarqatilmadi — faqat bibliografik yozuv va rasmiy havola.
+- **NC litsenziyalar** notijorat tarqatishga ruxsat beradi; ilovada pullik obuna rejasi bor,
+  shuning uchun ularning matni paketga kiritilmaydi (faqat havola).
+- **OpenStax** sahifasi kitobni LLM o‘qitish yoki generativ AI mahsulotlariga kiritishni
+  yozma ruxsatsiz taqiqlaydi — matni ilovaning hech bir AI funksiyasiga berilmaydi
+  (`review_note`).
+- WHO “Manual of basic techniques” (2003): who.int’da CC BY-NC-SA 3.0 IGO, IRIS’da huquq
+  maydoni yo‘q — tasdiqlanguncha “bepul o‘qish” deb belgilandi.
+- ZiyoNET: foydalanuvchilar yuklagan fayllar, sayt “Barcha huquqlar himoyalangan” — faqat havola.
+- Izohlar (nega foydali) uch tilda qayta yozildi; agent izohidagi tekshirilmagan iboralar
+  (masalan, “ISO 15189 asosida”) olib tashlandi. Interfeys tilidagi materiallar birinchi.
+- Topilmadi/kiritilmadi: NCBI “Clinical Methods” (sahifa reCAPTCHA bilan yopiq), TMA
+  kutubxonasi (sahifalar ishlamaydi), GEOTAR-Media katalogi.
+
+## D-25. CI yana nfcx’da; public repo va Codemagic bekor (2026-10-08)
+Egasi GitHub to‘lovini tiklashini aytdi; Codemagic varianti ham bekor qilindi
+(`codemagic.yaml` yozilib, commit qilinmasdan o‘chirildi). Shuning uchun D-21 (alohida public
+repo) amalga oshirilmaydi: workflow nfcx ildizidagi `.github/workflows/labguide-ios.yml` ga
+qaytarildi (Android sinov APK job’i qo‘shildi, secretlar `LABGUIDE_* || NOVA_*`),
+`labguide/.github` olib tashlandi. To‘lov tiklanguncha CI ishga tushmaydi; kod va testlar
+konteynerda tekshiriladi.
+
+## D-26. QC maqsad tarixi, CSV eksport, ishga tushish ekrani (2026-10-08)
+- **Maqsad tarixi:** yangi nazorat loti yoki qayta hisoblangan x̄/SD uchun “Maqsad yoki lotni
+  almashtirish”. Eski maqsad `previous` ga o‘tadi; har seriya o‘z vaqtida amal qilgan maqsad
+  bilan baholanadi (o‘tmish qayta yozilmaydi). Grafik va kuzatilgan statistika — joriy davr.
+  Eski saqlangan ma’lumot (tarixsiz) o‘zgarishsiz o‘qiladi.
+- **CSV:** barcha seriyalar (sana, daraja, o‘sha paytdagi lot/x̄/SD, qiymat, z, xulosa, qoidalar,
+  izoh) clipboard’ga — Excel/Sheets uchun; qiymatlar nuqta bilan, CSV qo‘shtirnoq qoidasi bilan.
+- **Manbalar ekrani** endi kalkulyator, QC (Westgard 1981) va preanalitika (WHO 2010) manbalarini
+  ham ko‘rsatadi.
+- **Ishga tushish:** Android/iOS da oq fon o‘rniga mavzuga mos fon (yorug‘ #F3F3EC, qorong‘i
+  #0D1919) — qorong‘i rejimda oq “chaqnash” yo‘q; Android 12+ splash foni ham shu rang. Android
+  belgisi alohida PNG (adaptive ikonka XML `<bitmap>` ichida ishlamaydi).

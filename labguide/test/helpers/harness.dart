@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -117,5 +119,47 @@ class TamperingBundle extends CachingAssetBundle {
     );
     bytes[42] ^= 0x01;
     return ByteData.sublistView(bytes);
+  }
+}
+
+/// Paket JSON'ini o'zgartirib, manifestni (size + sha256) mos ravishda
+/// qayta hisoblaydigan bundle — tekshiruvdan o'tadigan, lekin boshqacha
+/// kontentli paket (masalan, “faqat tuzilma” kartasini ko'rsatish uchun).
+class PatchedPackBundle extends CachingAssetBundle {
+  PatchedPackBundle(this._inner, this._patch);
+
+  final AssetBundle _inner;
+  final void Function(Map<String, Object?> pack) _patch;
+  Uint8List? _pack;
+
+  Future<Uint8List> _patchedPack() async {
+    if (_pack != null) return _pack!;
+    final raw = await _inner.loadString('assets/content/core/pack.json');
+    final json = jsonDecode(raw) as Map<String, Object?>;
+    _patch(json);
+    return _pack = Uint8List.fromList(utf8.encode(jsonEncode(json)));
+  }
+
+  @override
+  Future<ByteData> load(String key) async {
+    if (key.endsWith('core/pack.json')) {
+      return ByteData.sublistView(await _patchedPack());
+    }
+    if (key.endsWith('core/manifest.json')) {
+      final bytes = await _patchedPack();
+      final manifest =
+          jsonDecode(await _inner.loadString(key)) as Map<String, Object?>;
+      manifest['files'] = [
+        {
+          'path': 'pack.json',
+          'size': bytes.length,
+          'sha256': sha256.convert(bytes).toString(),
+        },
+      ];
+      return ByteData.sublistView(
+        Uint8List.fromList(utf8.encode(jsonEncode(manifest))),
+      );
+    }
+    return _inner.load(key);
   }
 }

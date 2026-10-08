@@ -46,6 +46,26 @@ class CalcInfo {
 
 LocalizedText _all(String s) => LocalizedText({'uz': s, 'ru': s, 'en': s});
 
+/// Analit kartasidan tegishli kalkulyatorga o'tish (kiritiladigan analitlar).
+const Map<String, List<ClinicalCalc>> calculatorsByAnalyte = {
+  'creatinine': [ClinicalCalc.egfr],
+  'egfr': [ClinicalCalc.egfr],
+  'urine-acr': [ClinicalCalc.acr],
+  'sodium': [ClinicalCalc.anionGap, ClinicalCalc.osmolality],
+  'chloride': [ClinicalCalc.anionGap],
+  'potassium': [ClinicalCalc.anionGap],
+  'albumin': [ClinicalCalc.calcium, ClinicalCalc.anionGap],
+  'calcium': [ClinicalCalc.calcium],
+  'cholesterol-total': [ClinicalCalc.ldl],
+  'hdl-c': [ClinicalCalc.ldl],
+  'ldl-c': [ClinicalCalc.ldl],
+  'triglycerides': [ClinicalCalc.ldl],
+  'non-hdl-c': [ClinicalCalc.ldl],
+  'glucose-plasma-fasting': [ClinicalCalc.osmolality],
+  'urea': [ClinicalCalc.osmolality],
+  'hba1c': [ClinicalCalc.hba1c],
+};
+
 abstract final class CalcSources {
   static const inker2021 = CalcSource(
     id: 'calc-inker-2021',
@@ -146,6 +166,28 @@ abstract final class CalcSources {
     citation: 'NGSP. IFCC standardization of HbA1c. ngsp.org',
     url: 'https://ngsp.org/ifcc.asp',
   );
+
+  /// QC qoidalari (lib/features/qc) — PubMed bo'yicha tekshirilgan.
+  static const westgard1981 = CalcSource(
+    id: 'qc-westgard-1981',
+    citation:
+        'Westgard JO, Barry PL, Hunt MR, Groth T. A multi-rule Shewhart chart '
+        'for quality control in clinical chemistry. Clin Chem. '
+        '1981;27(3):493–501. doi:10.1093/clinchem/27.3.493',
+    url: 'https://doi.org/10.1093/clinchem/27.3.493',
+  );
+
+  /// Preanalitika (lib/features/lab/preanalytics_info.dart).
+  static const whoPhlebotomy2010 = CalcSource(
+    id: 'who-phlebotomy-2010',
+    citation:
+        'WHO guidelines on drawing blood: best practices in phlebotomy. '
+        'World Health Organization, 2010. ISBN 978 92 4 159922 1',
+    url: 'https://iris.who.int/handle/10665/44294',
+  );
+
+  /// Kalkulyatorlar, QC va preanalitika manbalari (“Manbalar” ekrani uchun).
+  static const methods = [...all, westgard1981, whoPhlebotomy2010];
 
   static const all = [
     inker2021,

@@ -192,15 +192,33 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
     _analyteId = widget.analyteId;
   }
 
+  // Bir analit konvertoridan boshqasiga o'tilganda router State'ni qayta
+  // ishlatishi mumkin — tanlangan analit yangi manzilga moslanadi.
+  @override
+  void didUpdateWidget(UnitConverterScreen old) {
+    super.didUpdateWidget(old);
+    if (old.analyteId != widget.analyteId) {
+      _analyteId = widget.analyteId;
+      _result = null;
+    }
+  }
+
   @override
   void dispose() {
     _value.dispose();
     super.dispose();
   }
 
-  static String unitLabel(MassUnit u) => switch (u) {
+  /// mmol/L — 2, µmol/L — 1; mg/dL — µmol/L moddalarda (kichik son) 2,
+  /// aks holda 1 kasr belgisi.
+  static int _decimals(MassUnit to, UnitConversion c) => switch (to) {
+    MassUnit.mmolPerL => c.siPerMmol == 1 ? 2 : 1,
+    MassUnit.mgPerDl => c.siPerMmol == 1 ? 1 : 2,
+  };
+
+  static String unitLabel(MassUnit u, UnitConversion c) => switch (u) {
     MassUnit.mgPerDl => 'mg/dL',
-    MassUnit.mmolPerL => 'mmol/L',
+    MassUnit.mmolPerL => c.siUnit,
   };
 
   void _convert(Analyte analyte) {
@@ -210,6 +228,7 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
         value: parseDecimal(_value.text),
         from: _from,
         molarMass: analyte.conversion?.molarMass,
+        siPerMmol: analyte.conversion?.siPerMmol ?? 1,
       );
     });
   }
@@ -270,7 +289,8 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
                   ],
                 ),
                 LgField(
-                  label: '${l.ucValue} (${unitLabel(_from)})',
+                  label:
+                      '${l.ucValue} (${unitLabel(_from, analyte.conversion!)})',
                   controller: _value,
                   keyboardType: _decimalKeyboard,
                   textInputAction: TextInputAction.done,
@@ -280,7 +300,8 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: LgButton.secondary(
-                    label: '${unitLabel(_from)} → ${unitLabel(to)}',
+                    label:
+                        '${unitLabel(_from, analyte.conversion!)} → ${unitLabel(to, analyte.conversion!)}',
                     icon: Icons.swap_vert_rounded,
                     expand: false,
                     onPressed: () => setState(() {
@@ -309,7 +330,7 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
                     ),
                     _ => LgPanel(
                       child: Text(
-                        '${formatResult(r.value!, locale, maxDecimals: to == MassUnit.mmolPerL ? 2 : 1)} ${unitLabel(to)}',
+                        '${formatResult(r.value!, locale, maxDecimals: _decimals(to, analyte.conversion!))} ${unitLabel(to, analyte.conversion!)}',
                         style: text.headlineSmall!.copyWith(color: p.brand),
                       ),
                     ),
