@@ -1569,6 +1569,10 @@ async function companyApi(request, env, url) {
       ? { ok: true, imageUrl: mediaIn.imageUrl, videoUrl: mediaIn.videoUrl }
       : storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const foreignCp = await foreignMediaGateD1(env, owned.auth.user, guard.uploadUrlsOf({
+      imageUrl: media.imageUrl, videoUrl: media.videoUrl, mediaJson: mediaIn.provided ? mediaIn.mediaJson : null,
+    }));
+    if (foreignCp) return foreignCp;
     // REJA (api/scheduled-posts.js) — kelajakda, 30 kungacha.
     const plan = parsePublishAt(body?.publishAt);
     if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
@@ -1641,6 +1645,9 @@ async function companyApi(request, env, url) {
     if (gateStory) return gateStory;
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const foreignCs = await foreignMediaGateD1(env, owned.auth.user,
+      guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }));
+    if (foreignCs) return foreignCs;
     const res = await addStoryD1(env, {
       kind: 'company', ownerId: id, userId: owned.auth.user.id,
       imageUrl: media.imageUrl, videoUrl: media.videoUrl,
@@ -3279,6 +3286,14 @@ function bodyHasVideoD1(body) {
 async function videoAttachGateD1(env, body) {
   if (!bodyHasVideoD1(body)) return null;
   return (peekFlags(env) || await getFlags(env)).videoUploadsBlocked ? json(VIDEO_UPLOADS_DISABLED, 403) : null;
+}
+
+// BEGONA FAYL (api/content-guard.js `foreignMediaUrls`): boshqa
+// foydalanuvchi yuklagan faylni o'z postiga/istoriyasiga ulab bo'lmaydi.
+// Har fayl uchun bitta parallel HEAD; metama'lumotsiz eski fayl — ruxsat.
+async function foreignMediaGateD1(env, user, urls) {
+  const bad = await guard.foreignMediaUrls(env, user, urls);
+  return bad.length ? json(guard.FOREIGN_MEDIA, 403) : null;
 }
 
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
@@ -6780,6 +6795,10 @@ async function recordsApi(request, env, url) {
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const foreignP = await foreignMediaGateD1(env, user, guard.uploadUrlsOf({
+        imageUrl: okImg ? imageUrl : null, videoUrl: okVid ? videoUrl : null, mediaJson: mediaIn.provided ? mediaIn.mediaJson : null,
+      }));
+      if (foreignP) return foreignP;
       // POST, VIDEO-POST VA REELS HAMMAGA BEPUL (egasining qarori,
       // 2026-10-04; App Store 3.1.1). NFC ID darajasi, Premium yoki
       // sinov muddati tekshirilmaydi — faqat ban va spam chegarasi.
@@ -6838,6 +6857,8 @@ async function recordsApi(request, env, url) {
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const foreignS = await foreignMediaGateD1(env, user, guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }));
+      if (foreignS) return foreignS;
       // Istorya (rasm yoki video) ham hammaga bepul — post bilan bir xil.
       const gateStory = await publishGateD1(env, user);
       if (gateStory) return gateStory;

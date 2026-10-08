@@ -177,6 +177,77 @@ export async function isPending(env, kind, id) {
   } catch { return false; }
 }
 
+// ═══ BEGONA FAYL (foreign_media) ═════════════════════════════════════
+//
+// Post/istoriya/kompaniya posti/istoriyasi/ko'rgazma istalgan mavjud
+// `/uploads/...` faylini qabul qilardi — boshqa odam yuklagan rasmni ham
+// (masalan, tekshiruvdan o'tmagan yoki egasi o'chirmoqchi bo'lgan fayl).
+// Yuklashda R2 obyektiga `customMetadata.actor` yoziladi (`user:<id|email>`
+// yoki `admin:<rol>`, worker.js uploadApi). Chop etishda HAR YANGI fayl
+// uchun bitta HEAD (parallel):
+//   * `admin:*` yoki o'zining `user:<id>` / `user:<email>` — ruxsat;
+//   * metama'lumot/actor yo'q yoki HEAD xatosi — ruxsat (eski fayllar);
+//   * boshqa `user:*` — faqat egasining O'Z mavjud kontentida ishlatilgan
+//     bo'lsa ruxsat, aks holda 403 `foreign_media`.
+export const FOREIGN_MEDIA = {
+  error: 'foreign_media',
+  message: "Bu faylni ishlatib bo'lmaydi. O'zingiz yuklagan rasm yoki videoni tanlang.",
+};
+// Bitta kontentdagi fayllar soni karusel chegarasidan (10) oshmaydi.
+export const FOREIGN_CHECK_MAX = 10;
+
+function actorIsMine(actor, user) {
+  const a = String(actor || '').trim();
+  if (!a || a.startsWith('admin:')) return true;
+  if (user?.id != null && a === `user:${user.id}`) return true;
+  const email = String(user?.email || '').trim().toLowerCase();
+  return !!email && a.toLowerCase() === `user:${email}`;
+}
+
+// Fayl egasining O'Z mavjud kontentida turibdimi (post, kompaniya posti,
+// istoriya, Aktual). Jadval yo'q — o'tkazib yuboriladi; boshqa xato — "yo'q".
+async function usedInOwnContent(env, userId, url) {
+  const uid = String(userId);
+  const checks = [
+    [`SELECT 1 AS x FROM posts p WHERE (CAST(p.user_id AS TEXT) = ? OR p.code IN (SELECT c.code FROM cards c WHERE CAST(c.user_id AS TEXT) = ?))
+        AND (p.image_url = ? OR p.video_url = ? OR instr(COALESCE(p.media_json, ''), ?) > 0) LIMIT 1`, [uid, uid, url, url, url]],
+    [`SELECT 1 AS x FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
+       WHERE CAST(co.owner_user_id AS TEXT) = ?
+         AND (cp.image_url = ? OR cp.video_url = ? OR instr(COALESCE(cp.media_json, ''), ?) > 0) LIMIT 1`, [uid, url, url, url]],
+    [`SELECT 1 AS x FROM stories s
+       WHERE (s.image_url = ? OR s.video_url = ?)
+         AND ((s.owner_kind = 'card' AND EXISTS (SELECT 1 FROM cards c WHERE c.code = s.owner_id AND CAST(c.user_id AS TEXT) = ?))
+           OR (s.owner_kind = 'company' AND EXISTS (SELECT 1 FROM companies co WHERE co.company_id = s.owner_id AND CAST(co.owner_user_id AS TEXT) = ?)))
+       LIMIT 1`, [url, url, uid, uid]],
+    [`SELECT 1 AS x FROM story_highlight_items i JOIN story_highlights h ON h.id = i.highlight_id
+       WHERE CAST(h.user_id AS TEXT) = ? AND (i.image_url = ? OR i.video_url = ?) LIMIT 1`, [uid, url, url]],
+  ];
+  for (const [sql, binds] of checks) {
+    try {
+      if (await env.DB.prepare(sql).bind(...binds).first()) return true;
+    } catch { /* jadval yo'q yoki xato — keyingisi */ }
+  }
+  return false;
+}
+
+/// Begona (boshqa foydalanuvchi yuklagan) fayllar ro'yxati — bo'sh bo'lsa
+/// ruxsat. Hech qachon tashlamaydi.
+export async function foreignMediaUrls(env, user, urls) {
+  try {
+    const list = [...new Set((urls || []).map(String).filter((u) => UPLOAD_URL_RE.test(u)))].slice(0, FOREIGN_CHECK_MAX);
+    if (!list.length || !user || typeof env?.UPLOADS?.head !== 'function') return [];
+    const actors = await Promise.all(list.map((u) => Promise.resolve()
+      .then(() => env.UPLOADS.head(u.slice(1)))
+      .then((obj) => obj?.customMetadata?.actor || '', () => '')));
+    const suspect = list.filter((_, i) => !actorIsMine(actors[i], user));
+    if (!suspect.length) return [];
+    const used = await Promise.all(suspect.map((u) => usedInOwnContent(env, user.id, u)));
+    return suspect.filter((_, i) => !used[i]);
+  } catch {
+    return [];
+  }
+}
+
 // ═══ ROZILIK DALILI ══════════════════════════════════════════════════
 
 export function rulesVersionOf(body) {
