@@ -122,7 +122,15 @@ class Prefs {
   static const _kCatalogFav = 'nova.catalogFavorites';
   static const _kSavedReels = 'nova.savedReels';
   static const _kAppFlags = 'nova.appFlags';
-  static const _kShowcaseMuted = 'nova.showcaseMuted';
+  /// `.v2` (TestFlight 331): 330–331 da saqlangan 🔇 BIR MARTA
+  /// tashlanadi. Egasining telefonida u yoqilib qolgan edi (burchakda
+  /// chizilgan karnay) va butun Ko'rgazma ilova qayta ochilsa ham jim
+  /// turardi — o'sha paytda iPhone'da musiqa boshqa sababdan (audio
+  /// sessiya, `audio_session.dart`) eshitilmasdi, ya'ni tugma "ovozni
+  /// yoqish" deb bosilgan bo'lishi mumkin. Yangi kalitda standart —
+  /// ovoz bor; keyin bosilgan 🔇 avvalgidek saqlanadi.
+  static const _kShowcaseMuted = 'nova.showcaseMuted.v2';
+  static const _kShowcaseMutedLegacy = 'nova.showcaseMuted';
   static const _kHomeAdHidden = 'nova.homeAdHiddenDay';
   static const _kHomeAdLaunch = 'nova.homeAdLaunch';
 
@@ -257,7 +265,13 @@ class Prefs {
   /// Ko'rgazma musiqasi o'chirilganmi (burchakdagi 🔇). Sahifalar va
   /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
   bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
-  Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
+  Future<void> setShowcaseMuted(bool v) async {
+    await _p.setBool(_kShowcaseMuted, v);
+    // Eski kalit qolmasin (o'qilmaydi, faqat tozalanadi).
+    if (_p.containsKey(_kShowcaseMutedLegacy)) {
+      await _p.remove(_kShowcaseMutedLegacy);
+    }
+  }
 
   /// Asosiydagi Ko'rgazma reklama kartasi "×" bilan yopilgan kun
   /// (`YYYY-MM-DD`, telefon vaqti). Shu kun tugaguncha karta chiqmaydi.

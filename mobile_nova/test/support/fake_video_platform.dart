@@ -43,6 +43,7 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
     final id = _next++;
     created.add(id);
     urls[id] = uri ?? '';
+    if (mixCalls.isNotEmpty) mixOf[id] = mixCalls.last;
     final c = StreamController<VideoEvent>();
     _events[id] = c;
     Future<void>.delayed(initDelay, () {
@@ -93,6 +94,10 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   /// `setMixWithOthers` chaqiruvlari (pleer ochilganda) — audio fokus
   /// sinovlari uchun.
   final mixCalls = <bool>[];
+
+  /// Pleer yaratilganda amalda bo'lgan `mixWithOthers` (controller uni
+  /// `create` dan oldin yuboradi). `true` — audio fokusni olmaydi.
+  final mixOf = <int, bool>{};
 
   @override
   Widget buildView(int playerId) => _frame(playerId);

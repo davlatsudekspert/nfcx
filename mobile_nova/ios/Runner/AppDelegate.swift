@@ -12,7 +12,52 @@ import UIKit
     if let registrar = self.registrar(forPlugin: "NovaVideoExport") {
       NovaVideoExport.register(messenger: registrar.messenger())
     }
+    if let registrar = self.registrar(forPlugin: "NovaAudioSession") {
+      NovaAudioSession.register(messenger: registrar.messenger())
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
+
+/// ILOVA OVOZI — iPhone audio sessiyasi (egasi, TestFlight 331:
+/// "Ko'rgazmada musiqa avto qo'yilmayapti").
+///
+/// `AVAudioSession` butun ilova uchun BITTA. `video_player` uni faqat
+/// birinchi pleerda `.playback` qiladi, keyin har pleer ochilganda faqat
+/// `mixWithOthers` belgisini o'sha paytdagi turkumga qo'shadi/olib
+/// tashlaydi. Asosiydagi ovozsiz reklama kartasi (`mixWithOthers: true`)
+/// sessiyani "aralashuvchi" qilib qoldirardi, WebView (YouTube/Instagram)
+/// esa o'z ijrosi bilan sessiyani to'xtatib (uzib) qo'yishi mumkin —
+/// ilovada sessiyani qayta yoqadigan joy yo'q edi. Natija: musiqa
+/// "o'ynayapti", lekin eshitilmaydi yoki umuman boshlanmaydi.
+///
+/// Dart (`lib/core/media/audio_session.dart`) Ko'rgazma musiqasi yoki
+/// ovozli video `play()` dan OLDIN `playback` ni chaqiradi: turkum
+/// `.playback` (jim rejim tugmasiga bo'ysunmaydi), aralashmaydi (boshqa
+/// ilova ovozi to'xtaydi), sessiya faol. Kamera/mikrofon
+/// (`.playAndRecord`) ishlayotgan bo'lsa turkumga tegilmaydi.
+enum NovaAudioSession {
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(
+      name: "uz.nfcstore.nova/audio", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "playback":
+        let session = AVAudioSession.sharedInstance()
+        do {
+          if session.category != .playAndRecord {
+            try session.setCategory(.playback, mode: .default, options: [])
+          }
+          try session.setActive(true)
+          result(true)
+        } catch {
+          // Sessiya band (masalan, qo'ng'iroq) — ijro odatdagidek urinadi.
+          result(false)
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }
 

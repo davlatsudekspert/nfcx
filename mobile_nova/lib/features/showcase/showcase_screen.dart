@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../app/profile_context.dart';
+import '../../core/media/audio_session.dart';
 import '../../core/utils/external_link.dart';
 import '../../core/utils/result.dart';
 import '../../core/utils/sharing.dart';
@@ -472,6 +474,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   bool _videoReady = false;
   bool _videoFailed = false;
 
+  /// Musiqa pleeri ochilmoqda (`initialize()`); video shuni kutadi.
+  Future<void>? _musicLoading;
+  bool _videoWaiting = false;
+
   /// Ustida boshqa ekran yo'q (`TickerMode`).
   bool _onStage = true;
 
@@ -640,9 +646,33 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   Future<void> _playVideo() async {
     var c = _video;
     if (c == null) {
+      // Musiqa pleeri hali ochilmoqda — video undan KEYIN ochiladi
+      // (poster turadi). `mixWithOthers` pleer platformasida UMUMIY
+      // belgi va har `initialize()` uni `create` dan oldin qo'yadi: ikki
+      // pleer bir vaqtda ochilsa, musiqa videoning belgisi bilan
+      // yaratilib qolardi.
+      final music = _musicLoading;
+      if (music != null) {
+        if (_videoWaiting) return;
+        _videoWaiting = true;
+        await music.timeout(reelsInitTimeout, onTimeout: () {});
+        _videoWaiting = false;
+        if (!mounted || _video != null || !_active) return;
+      }
       c = VideoPlayerController.networkUrl(
         Uri.parse(_p.videoUrl),
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+        // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
+        // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video
+        // fokusni musiqadan tortib olardi va ExoPlayer musiqani
+        // to'xtatardi (TestFlight 331: "BOY777 da musiqa avto
+        // qo'yilmayapti"). iOS'da pleerlarning alohida fokusi yo'q —
+        // u yerda belgi butun sessiyani "aralashuvchi" qilardi, shuning
+        // uchun `false` qoladi; sessiyani musiqa o'zi oladi
+        // ([claimPlayback]).
+        videoPlayerOptions: VideoPlayerOptions(
+          mixWithOthers:
+              _hasMusic && defaultTargetPlatform == TargetPlatform.android,
+        ),
       );
       _video = c;
       _videoFailed = false;
@@ -664,6 +694,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final ownSound = !_hasMusic && !ref.read(showcaseMutedProvider);
     if (ownSound) _owner.take(this, _pauseForOther);
     await c.setVolume(ownSound ? 1 : 0);
+    if (!mounted || _video != c || !_active) return;
+    // O'z ovozi bilan — iOS audio sessiyasi shu video uchun.
+    if (ownSound) await claimPlayback();
     if (!mounted || _video != c || !_active) return;
     await c.play();
   }
@@ -708,19 +741,27 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
       );
       _music = c;
+      final init = c.initialize();
+      final loading = _musicLoading = init.catchError((_) {});
       try {
-        await c.initialize();
+        await init;
+        if (identical(_musicLoading, loading)) _musicLoading = null;
         if (!mounted || _music != c) return;
         await c.setLooping(true);
         if (m.playFrom > Duration.zero) await c.seekTo(m.playFrom);
         _musicReady = true;
       } catch (_) {
+        if (identical(_musicLoading, loading)) _musicLoading = null;
         // Musiqa ochilmadi — sahifa jim davom etadi.
         return;
       }
     }
     if (!_musicReady || !mounted || _music != c || !_audible) return;
     await c.setVolume(1);
+    if (!mounted || _music != c || !_audible) return;
+    // iOS: sessiya `.playback`, faol — Asosiydagi ovozsiz karta, ovozsiz
+    // reklama videosi yoki WebView uni qanday qoldirgan bo'lsa ham.
+    await claimPlayback();
     if (!mounted || _music != c || !_audible) return;
     await c.play();
   }
@@ -729,6 +770,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final m = _music;
     _music = null;
     _musicReady = false;
+    _musicLoading = null;
     if (m != null) {
       m.pause().catchError((_) {});
       m.dispose();
