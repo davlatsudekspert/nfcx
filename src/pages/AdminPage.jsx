@@ -692,6 +692,105 @@ function FlagsSection() {
   );
 }
 
+// KO'RGAZMA REKLAMASI (2026-10) — Ko'rgazma lentasidagi 4 ta reklama joyi.
+// Server: GET /api/admin/showcase-ads, PUT/DELETE /api/admin/showcase-ads/:slot
+// (hosting/api/showcase-ads.js). Joyga VIDEO post ham qo'yish mumkin — oddiy
+// foydalanuvchi Ko'rgazmaga video qo'ya olmaydi, faqat admin shu yerdan.
+const SHOWCASE_AD_ERR = {
+  post_not_found: 'Post topilmadi.',
+  post_not_live: 'Post ko‘rinmaydi (o‘chirilgan, rejada, tekshiruvda yoki muallif faol emas).',
+  already_in_slot: 'Bu post boshqa joyda turibdi.',
+  post_changed: 'Bu raqamdagi post almashgan — postni qaytadan tanlang.',
+  bad_post_id: 'Post raqami noto‘g‘ri.',
+  bad_post_kind: 'Post turi noto‘g‘ri.',
+};
+
+function ShowcaseAdSlot({ s, isManager, busy, onSave, onToggle, onRemove }) {
+  const { t } = useLanguage();
+  const [kind, setKind] = useState(s.postKind || 'company_post');
+  const [pid, setPid] = useState(s.postId ? String(s.postId) : '');
+  useEffect(() => { setKind(s.postKind || 'company_post'); setPid(s.postId ? String(s.postId) : ''); }, [s.postKind, s.postId]);
+  const p = s.post;
+  const thumb = p?.imageUrl || '';
+  return (
+    <div className="flex flex-col gap-2 border-t border-[color:var(--vz-line)] py-3 first:border-t-0 sm:flex-row sm:items-start" data-testid={`showcase-ad-slot-${s.slot}`}>
+      <div className="flex items-start gap-3 sm:w-1/2">
+        <div className="w-6 shrink-0 pt-1 font-mono text-sm font-bold opacity-70">{s.slot}</div>
+        <div className="relative h-20 w-12 shrink-0 overflow-hidden rounded-md bg-black/40">
+          {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
+            : p?.videoUrl ? <video src={p.videoUrl} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : null}
+          {p?.videoUrl ? <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[10px] text-white">{t('Video')}</span> : null}
+        </div>
+        <div className="min-w-0 text-sm">
+          {!s.postId ? <div className="opacity-60">{t('Bo‘sh joy')}</div> : (
+            <>
+              <div className="truncate font-semibold">{p?.title || p?.caption?.split('\n')[0] || `#${s.postId}`}</div>
+              <div className="truncate text-xs opacity-70">
+                {p?.code ? <span className="font-mono">{p.code}</span> : null}{p?.name ? ` · ${p.name}` : ''}
+                {` · ${s.postKind === 'company_post' ? t('Kompaniya posti') : t('Shaxsiy post')} #${s.postId}`}
+              </div>
+              {!p?.exists ? <div className="text-xs text-error">{t('Post o‘chirilgan — joy ko‘rsatilmaydi.')}</div>
+                : !p?.live ? <div className="text-xs text-warning">{t('Post hozir ko‘rinmaydi — joy ko‘rsatilmaydi.')}</div> : null}
+            </>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:w-1/2 sm:justify-end">
+        <select className="select select-bordered select-xs" value={kind} disabled={!isManager || busy} onChange={(e) => setKind(e.target.value)} aria-label={t('Post turi')}>
+          <option value="company_post">{t('Kompaniya posti')}</option>
+          <option value="post">{t('Shaxsiy post')}</option>
+        </select>
+        <input className="input input-bordered input-xs w-24 font-mono" inputMode="numeric" placeholder={t('Post ID')} value={pid}
+          disabled={!isManager || busy} onChange={(e) => setPid(e.target.value.replace(/\D/g, '').slice(0, 12))} aria-label={t('Post ID')} />
+        <button type="button" className="btn btn-gold btn-xs" disabled={!isManager || busy || !pid}
+          onClick={() => onSave(s.slot, kind, Number(pid))}>{t('Saqlash')}</button>
+        {s.postId ? (
+          <>
+            <label className="flex items-center gap-1 text-xs">
+              <input type="checkbox" className="toggle toggle-xs" checked={!!s.enabled} disabled={!isManager || busy}
+                onChange={(e) => onToggle(s.slot, e.target.checked)} />
+              {t('Yoqilgan')}
+            </label>
+            <button type="button" className="btn btn-ghost btn-xs text-error" disabled={!isManager || busy} onClick={() => onRemove(s.slot)}>{t('Olib tashlash')}</button>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseAdsSection() {
+  const { t } = useLanguage();
+  const { isManager } = useAdmin();
+  const [slots, setSlots] = useState(null);
+  const [err, setErr] = useState(null);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(0);
+  const load = () => { setErr(null); adminApi('/showcase-ads').then((d) => setSlots(d.slots || [])).catch(setErr); };
+  useEffect(() => { load(); }, []);
+  const run = async (slot, fn) => {
+    setBusy(slot); setMsg('');
+    try { const d = await fn(); setSlots(d.slots || []); }
+    catch (e) { setMsg(SHOWCASE_AD_ERR[e.code] ? t(SHOWCASE_AD_ERR[e.code]) : apiErrText(e, t, t('Saqlab bo‘lmadi.'))); }
+    finally { setBusy(0); }
+  };
+  const save = (slot, postKind, postId) => run(slot, () => adminApi(`/showcase-ads/${slot}`, { method: 'PUT', body: JSON.stringify({ postKind, postId, enabled: true }) }));
+  const toggle = (slot, enabled) => run(slot, () => adminApi(`/showcase-ads/${slot}`, { method: 'PUT', body: JSON.stringify({ enabled }) }));
+  const remove = (slot) => run(slot, () => adminApi(`/showcase-ads/${slot}`, { method: 'DELETE' }));
+  return (
+    <div className="vz-card mb-4 p-4" data-testid="admin-showcase-ads">
+      <div className="mb-1 font-display text-base font-semibold">{t('Ko‘rgazma reklamasi')}</div>
+      <div className="mb-2 text-xs opacity-60">{t('Ko‘rgazma lentasida 4 tagacha reklama joyi. Video post ham qo‘yish mumkin — oddiy foydalanuvchilar Ko‘rgazmaga video qo‘ya olmaydi.')}</div>
+      {err && <div className="mb-2 text-sm text-error">{t('Reklama joylarini yuklab bo‘lmadi.')}</div>}
+      {msg && <div className="mb-2 text-sm text-error">{msg}</div>}
+      {!slots && !err && <div className="text-sm opacity-60">{t('Yuklanmoqda…')}</div>}
+      {slots && slots.map((s) => (
+        <ShowcaseAdSlot key={s.slot} s={s} isManager={isManager} busy={busy === s.slot} onSave={save} onToggle={toggle} onRemove={remove} />
+      ))}
+    </div>
+  );
+}
+
 function ReportsTab() {
   const { t } = useLanguage();
   const { confirm: ask, dialog } = useConfirm();
@@ -801,6 +900,7 @@ function ReportsTab() {
     <div>
       {dialog}
       <FlagsSection />
+      <ShowcaseAdsSection />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {Object.entries(REPORT_STATUS_LABEL).map(([key, label]) => (
           <button
