@@ -1,0 +1,189 @@
+From aff4c48ad67e3379989d8ba7c6b2bf200ab63da9 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 03:45:26 +0000
+Subject: [PATCH 73/78] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20rasm=20ko?=
+ =?UTF-8?q?'ruvchi=20va=20izoh=20ochilganda=20musiqa=20to'xtamaydi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (build 329): sahifadagi rasmni bosib butun ekranda ko'rganda
+kutubxona musiqasi to'xtab qolardi. Endi karusel soati (va ko'rishni
+sanash) bilan musiqa alohida shartga bo'lindi: rasm ko'ruvchi va
+izohni ochish musiqani to'xtatmaydi, faqat karusel turadi. Boshqa
+ekran (profil, tovar) ochilsa — `TickerMode` orqali pauza, qaytilganda
+o'sha sahifada davom etadi; tabdan chiqish/fon — avvalgidek to'xtaydi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../features/showcase/showcase_screen.dart    | 27 +++++--
+ mobile_nova/test/showcase_screen_test.dart    | 78 ++++++++++++++++++-
+ 2 files changed, 98 insertions(+), 7 deletions(-)
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index cd98649..a22919e 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -332,7 +332,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   /// Ilova oldinda.
+   bool _foreground = true;
+ 
+-  /// Rasm butun ekranda ochiq — karusel va musiqa to'xtaydi.
++  /// Rasm butun ekranda ochiq — karusel to'xtaydi, MUSIQA DAVOM ETADI
++  /// (egasi, build 329: "rasmni bosganda musiqa to'xtamasin"). Ko'ruvchi
++  /// shaffof marshrut, sahifa ekrandan chiqmaydi.
+   bool _viewerOpen = false;
+ 
+   bool _captionOpen = false;
+@@ -343,7 +345,17 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   Post get _p => widget.post;
+   List<String> get _images => _p.mediaUrls;
+ 
+-  bool get _active => widget.visible && _onStage && _foreground && !_viewerOpen;
++  /// Sahifa ekranda: ochiq, tab ko'rinyapti, ustida boshqa (yopiq)
++  /// ekran yo'q va ilova oldinda.
++  bool get _onScreen => widget.visible && _onStage && _foreground;
++
++  /// Karusel soati va ko'rishni sanash.
++  bool get _active => _onScreen && !_viewerOpen;
++
++  /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
++  /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
++  /// orqali pauza, qaytilganda davom etadi.
++  bool get _audible => _onScreen;
+ 
+   @override
+   void initState() {
+@@ -441,11 +453,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         if (c.isCompleted) c.reset();
+         if (!c.isAnimating) c.forward();
+       }
+-      _playMusic();
+     } else {
+       _clock?.stop();
++      if (!widget.visible) _clock?.reset();
++    }
++    if (_audible) {
++      _playMusic();
++    } else {
+       if (!widget.visible) {
+-        _clock?.reset();
+         _disposeMusic();
+       } else {
+         _music?.pause();
+@@ -494,9 +509,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         return;
+       }
+     }
+-    if (!_musicReady || !mounted || _music != c || !_active) return;
++    if (!_musicReady || !mounted || _music != c || !_audible) return;
+     await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
+-    if (!mounted || _music != c || !_active) return;
++    if (!mounted || _music != c || !_audible) return;
+     await c.play();
+   }
+ 
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index ab98680..e4b198f 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -61,6 +61,7 @@ Post _post({
+   bool featured = false,
+   MusicTrack? music,
+   String link = 'https://youtu.be/abc',
++  String text = 'Yangi kolleksiya',
+ }) =>
+     Post.fromJson({
+       'id': id,
+@@ -70,7 +71,7 @@ Post _post({
+       'showcase': true,
+       'title': 'Qizil ko‘ylak',
+       'priceUzs': 125000,
+-      'text': 'Yangi kolleksiya',
++      'text': text,
+       'linkUrl': link,
+       'featured': featured,
+       'imageSeconds': 5,
+@@ -379,4 +380,79 @@ void main() {
+     expect(v.playing, isEmpty);
+     expect(v.alive, isEmpty);
+   });
++
++  group('musiqa uzluksizligi (egasi, build 329)', () {
++    const track =
++        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
++
++    Future<void> drain(WidgetTester tester) async {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 40)));
++      await settle(tester, frames: 4);
++    }
++
++    testWidgets('rasm ko‘ruvchi va izohni ochish musiqani TO‘XTATMAYDI',
++        (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      await _pump(tester, pages: [
++        ReelsPage(items: [
++          _post(
++              images: 2,
++              music: track,
++              text: List.filled(40, 'Juda uzun izoh matni').join(' ')),
++        ]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++
++      // Izoh ochiladi ("… ko‘proq") — musiqa davom etadi.
++      await tester.tap(find.byKey(const ValueKey('reel-caption')));
++      await drain(tester);
++      expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
++
++      // Rasm butun ekranda — musiqa davom etadi. Ochiq izoh pastki
++      // yarmini egallaydi, shuning uchun rasmning yuqori qismi bosiladi.
++      await tester.tapAt(tester
++          .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
++          .translate(150, 250));
++      await settle(tester, frames: 6);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
++      expect(v.playing, hasLength(1), reason: 'rasm ko‘ruvchi ochiq');
++      expect(v.disposed, isEmpty);
++
++      // Yopildi — hamon o'ynayapti, yangi pleer ochilmagan.
++      await tester.tap(find.byKey(const ValueKey('image-viewer-close')));
++      await settle(tester, frames: 8);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
++      expect(v.playing, hasLength(1));
++      expect(v.created, hasLength(1));
++    });
++
++    testWidgets('boshqa ekran (tovar) — pauza, qaytilganda davom etadi',
++        (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(music: track)]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++
++      await tester.tap(find.byKey(const ValueKey('showcase-product')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(r.pushed, hasLength(1));
++      expect(v.playing, isEmpty, reason: 'boshqa ekran ochiq — pauza');
++      expect(v.disposed, isEmpty, reason: 'pleer saqlanadi');
++
++      GoRouter.of(tester.element(find.text('PRODUCT'))).pop();
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(v.playing, hasLength(1), reason: 'qaytildi — davom etadi');
++      expect(v.created, hasLength(1));
++    });
++  });
+ }
+-- 
+2.43.0
+

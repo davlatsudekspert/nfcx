@@ -1,0 +1,451 @@
+From 57b36f7ffa92e2b7e1cc74001d9ab800cdc5c30c Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 03:50:39 +0000
+Subject: [PATCH 74/78] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20burchakda?=
+ =?UTF-8?q?=20bitta=20ovoz=20tugmasi,=20holati=20saqlanadi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (build 329): "+" tugmasi ostida (ustma-ust emas) aniq 🔇/🔊
+tugma — har sahifada bitta joyda va Ko'rgazmadan ochilgan rasm
+ko'ruvchida ham. Holat `Prefs.showcaseMuted` da saqlanadi (sahifalar
+va ilova qayta ochilishi orasida). O'chiq bo'lsa ko'rgazma musiqasi
+umuman o'ynamaydi (ovozi pasaytirilgan holda ham emas). Sahifadagi
+eski karnay ikonkasi olib tashlandi. Semantika: uz/ru/en
+("Ovozni o'chirish/yoqish").
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../lib/core/storage/secure_store.dart        |  6 ++
+ .../features/showcase/showcase_screen.dart    | 64 ++++++++-------
+ .../lib/features/showcase/showcase_sound.dart | 78 ++++++++++++++++++
+ .../lib/features/social/image_viewer.dart     | 14 +++-
+ mobile_nova/test/showcase_screen_test.dart    | 81 +++++++++++++++++++
+ 5 files changed, 213 insertions(+), 30 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/showcase_sound.dart
+
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index d300ea0..6ef5add 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -122,6 +122,7 @@ class Prefs {
+   static const _kCatalogFav = 'nova.catalogFavorites';
+   static const _kSavedReels = 'nova.savedReels';
+   static const _kAppFlags = 'nova.appFlags';
++  static const _kShowcaseMuted = 'nova.showcaseMuted';
+ 
+   String? get themeId => _p.getString(_kTheme);
+   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
+@@ -250,4 +251,9 @@ class Prefs {
+   /// boshlanadi.
+   String? get appFlagsJson => _p.getString(_kAppFlags);
+   Future<void> setAppFlagsJson(String v) => _p.setString(_kAppFlags, v);
++
++  /// Ko'rgazma musiqasi o'chirilganmi (burchakdagi 🔇). Sahifalar va
++  /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
++  bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
++  Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
+ }
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index a22919e..fb36d6b 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -46,10 +46,10 @@ import '../social/reels_screen.dart'
+         SavedReelsX,
+         ViewSession,
+         reelsHiddenProvider,
+-        reelsMutedProvider,
+         savedReelsProvider,
+         showReelComments;
+ import 'showcase_common.dart';
++import 'showcase_sound.dart';
+ 
+ /// KO'RGAZMA — pastki menyuning 4-tabi (Reels o'rnida, 2026-10).
+ ///
+@@ -252,7 +252,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+                   visible: i == _index && onTab,
+                 ),
+               ),
+-              _TopBar(onCreate: _create),
++              _TopBar(onCreate: _create, showMute: true),
+             ],
+           );
+         },
+@@ -261,10 +261,14 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+   }
+ }
+ 
++/// Sarlavha, "+" va uning ostida ovoz tugmasi (o'ng burchak).
+ class _TopBar extends StatelessWidget {
+-  const _TopBar({required this.onCreate});
++  const _TopBar({required this.onCreate, this.showMute = false});
+   final VoidCallback onCreate;
+ 
++  /// Ovoz tugmasi — ro'yxat bor bo'lsa, HAR sahifada bitta joyda.
++  final bool showMute;
++
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+@@ -275,6 +279,7 @@ class _TopBar extends StatelessWidget {
+           vertical: Gap.sm,
+         ),
+         child: Row(
++          crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Expanded(
+               child: Text(
+@@ -290,12 +295,21 @@ class _TopBar extends StatelessWidget {
+                 ),
+               ),
+             ),
+-            NovaIconButton(
+-              key: const ValueKey('showcase-create'),
+-              icon: Icons.add_rounded,
+-              tooltip: l.showcaseCreate,
+-              onPressed: onCreate,
+-              filled: true,
++            Column(
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                NovaIconButton(
++                  key: const ValueKey('showcase-create'),
++                  icon: Icons.add_rounded,
++                  tooltip: l.showcaseCreate,
++                  onPressed: onCreate,
++                  filled: true,
++                ),
++                if (showMute) ...[
++                  const SizedBox(height: Gap.xs),
++                  const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
++                ],
++              ],
+             ),
+           ],
+         ),
+@@ -354,8 +368,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+ 
+   /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
+   /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
+-  /// orqali pauza, qaytilganda davom etadi.
+-  bool get _audible => _onScreen;
++  /// orqali pauza, qaytilganda davom etadi. Burchakdagi 🔇 — umuman
++  /// o'ynamaydi.
++  bool get _audible => _onScreen && !ref.read(showcaseMutedProvider);
+ 
+   @override
+   void initState() {
+@@ -510,7 +525,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+       }
+     }
+     if (!_musicReady || !mounted || _music != c || !_audible) return;
+-    await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
++    await c.setVolume(1);
+     if (!mounted || _music != c || !_audible) return;
+     await c.play();
+   }
+@@ -525,13 +540,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     }
+   }
+ 
+-  Future<void> _toggleMute() async {
+-    final next = !ref.read(reelsMutedProvider);
+-    ref.read(reelsMutedProvider.notifier).state = next;
+-    if (_musicReady) await _music?.setVolume(next ? 0 : 1);
+-    if (mounted) setState(() {});
+-  }
+-
+   // ── AMALLAR ──────────────────────────────────────────────────────
+ 
+   void _snack(String text) {
+@@ -543,7 +551,12 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   Future<void> _openViewer(int i) async {
+     setState(() => _viewerOpen = true);
+     _sync();
+-    await openImageViewer(context, _images, initial: i);
++    await openImageViewer(
++      context,
++      _images,
++      initial: i,
++      actions: const [ShowcaseMuteButton(key: ValueKey('showcase-viewer-mute'))],
++    );
+     if (!mounted) return;
+     setState(() => _viewerOpen = false);
+     _sync();
+@@ -678,7 +691,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     final following = (mine || p.code.isEmpty)
+         ? false
+         : ref.watch(followingOfProvider(p.code));
+-    final muted = ref.watch(reelsMutedProvider);
++    // Burchakdagi 🔇 bosildi — musiqa shu zahoti to'xtaydi/davom etadi.
++    ref.listen<bool>(showcaseMutedProvider, (_, __) => _sync());
+     final navH = MediaQuery.paddingOf(context).bottom;
+     final topH = MediaQuery.paddingOf(context).top;
+     final link = showcaseLinkKind(p.linkUrl);
+@@ -794,14 +808,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                   copiedMessage: l.shareCopied,
+                 ),
+               ),
+-              if (p.music != null)
+-                ReelAction(
+-                  key: const ValueKey('showcase-mute'),
+-                  icon: muted ? NovaIcons.muted : NovaIcons.sound,
+-                  label: '',
+-                  semantic: muted ? l.actionUnmute : l.actionMute,
+-                  onTap: _toggleMute,
+-                ),
+               ReelAction(
+                 key: const ValueKey('showcase-more'),
+                 icon: NovaIcons.more,
+diff --git a/mobile_nova/lib/features/showcase/showcase_sound.dart b/mobile_nova/lib/features/showcase/showcase_sound.dart
+new file mode 100644
+index 0000000..20639d7
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/showcase_sound.dart
+@@ -0,0 +1,78 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++
++import '../../app/providers.dart';
++import '../../core/storage/secure_store.dart';
++import '../../design/icons/nova_icons.dart';
++import '../../l10n/gen/app_localizations.dart';
++
++/// KO'RGAZMA OVOZI — bitta umumiy kalit (egasi, build 329).
++///
++/// Burchakdagi 🔇/🔊 tugma bilan boshqariladi: barcha sahifalarda va
++/// rasm ko'ruvchida bir xil, ilova qayta ochilganda ham saqlanadi
++/// (`Prefs.showcaseMuted`). O'chiq bo'lsa ko'rgazma musiqasi UMUMAN
++/// o'ynamaydi (ovozi pasaytirilgan holda ham emas).
++class ShowcaseMuteController extends StateNotifier<bool> {
++  ShowcaseMuteController(this._prefs) : super(_prefs.showcaseMuted);
++  final Prefs _prefs;
++
++  Future<void> toggle() => set(!state);
++
++  Future<void> set(bool muted) async {
++    if (muted == state) return;
++    state = muted;
++    await _prefs.setShowcaseMuted(muted);
++  }
++}
++
++final showcaseMutedProvider =
++    StateNotifierProvider<ShowcaseMuteController, bool>(
++  (ref) => ShowcaseMuteController(ref.watch(prefsProvider)),
++);
++
++/// Ko'rgazma burchagidagi ovoz tugmasi — qora shisha doira, oq ikonka.
++///
++/// Ko'rinadigan doira 40 px, bosish maydoni 48 px.
++class ShowcaseMuteButton extends ConsumerWidget {
++  const ShowcaseMuteButton({super.key});
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final l = L.of(context);
++    final muted = ref.watch(showcaseMutedProvider);
++    final label = muted ? l.actionUnmute : l.actionMute;
++    return Tooltip(
++      message: label,
++      child: Semantics(
++        button: true,
++        toggled: muted,
++        label: label,
++        excludeSemantics: true,
++        child: GestureDetector(
++          behavior: HitTestBehavior.opaque,
++          onTap: () => ref.read(showcaseMutedProvider.notifier).toggle(),
++          child: SizedBox(
++            width: 48,
++            height: 48,
++            child: Center(
++              child: Container(
++                width: 40,
++                height: 40,
++                decoration: BoxDecoration(
++                  color: Colors.black.withValues(alpha: .42),
++                  shape: BoxShape.circle,
++                  border: Border.all(color: Colors.white.withValues(alpha: .5)),
++                ),
++                child: Icon(
++                  muted ? NovaIcons.muted : NovaIcons.sound,
++                  size: 19,
++                  color: Colors.white,
++                ),
++              ),
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/social/image_viewer.dart b/mobile_nova/lib/features/social/image_viewer.dart
+index 1f45217..cd37c37 100644
+--- a/mobile_nova/lib/features/social/image_viewer.dart
++++ b/mobile_nova/lib/features/social/image_viewer.dart
+@@ -12,10 +12,14 @@ import 'media_frame.dart' show mediaImage;
+ /// * pastga surish yoki "orqaga" — yopiladi.
+ ///
+ /// Rasm kesilmaydi (`contain`) va ekranga mos sifatda ochiladi.
++///
++/// [actions] — yuqori o'ng burchakdagi qo'shimcha tugmalar (masalan,
++/// Ko'rgazmadan ochilganda ovoz tugmasi).
+ Future<void> openImageViewer(
+   BuildContext context,
+   List<String> urls, {
+   int initial = 0,
++  List<Widget> actions = const [],
+ }) {
+   final list = urls.where((u) => u.isNotEmpty).toList();
+   if (list.isEmpty) return Future.value();
+@@ -27,6 +31,7 @@ Future<void> openImageViewer(
+       pageBuilder: (_, __, ___) => ImageViewer(
+         urls: list,
+         initial: initial.clamp(0, list.length - 1),
++        actions: actions,
+       ),
+       transitionsBuilder: (_, a, __, child) =>
+           FadeTransition(opacity: a, child: child),
+@@ -35,10 +40,16 @@ Future<void> openImageViewer(
+ }
+ 
+ class ImageViewer extends StatefulWidget {
+-  const ImageViewer({super.key, required this.urls, this.initial = 0});
++  const ImageViewer({
++    super.key,
++    required this.urls,
++    this.initial = 0,
++    this.actions = const [],
++  });
+ 
+   final List<String> urls;
+   final int initial;
++  final List<Widget> actions;
+ 
+   @override
+   State<ImageViewer> createState() => _ImageViewerState();
+@@ -137,6 +148,7 @@ class _ImageViewerState extends State<ImageViewer> {
+                           ),
+                         ),
+                       ),
++                    ...widget.actions,
+                   ],
+                 ),
+               ),
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index e4b198f..b500f09 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -15,6 +15,7 @@ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+ import 'package:nfcstore_nova/features/profile/profile_repository.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
+ import 'package:nfcstore_nova/features/social/media_carousel.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
+@@ -89,6 +90,7 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
+   WidgetTester tester, {
+   required List<ReelsPage> pages,
+   int tab = kShowcaseTab,
++  Future<void> Function(ProviderContainer c)? beforeShow,
+ }) async {
+   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+   tester.view.devicePixelRatio = 3;
+@@ -103,6 +105,7 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
+     activeTabProvider.overrideWith((ref) => tab),
+   ]);
+   addTearDown(c.dispose);
++  await beforeShow?.call(c);
+   final pushed = <String>[];
+   final router = GoRouter(initialLocation: '/', routes: [
+     GoRoute(path: '/', builder: (_, __) => const ShowcaseScreen()),
+@@ -455,4 +458,82 @@ void main() {
+       expect(v.created, hasLength(1));
+     });
+   });
++
++  group('ovoz tugmasi — burchakda, bitta, saqlanadi', () {
++    const track =
++        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
++
++    Future<void> drain(WidgetTester tester) async {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 40)));
++      await settle(tester, frames: 4);
++    }
++
++    testWidgets(
++        '🔇: musiqa to‘xtaydi, Prefs ga yoziladi, har sahifada va rasm '
++        'ko‘ruvchida bitta tugma', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [
++          _post(id: 1, music: track),
++          _post(id: 2, music: track),
++        ]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++      final l = LUz();
++
++      // Bitta tugma, "+" ostida (ustma-ust emas), sahifadagi eski
++      // karnay ikonkasi yo'q.
++      final mute = find.byKey(const ValueKey('showcase-mute'));
++      expect(mute, findsOneWidget);
++      final plus = tester.getRect(find.byKey(const ValueKey('showcase-create')));
++      final m = tester.getRect(mute);
++      expect(m.top, greaterThanOrEqualTo(plus.bottom));
++      expect(m.center.dx, closeTo(plus.center.dx, 1));
++      expect(find.bySemanticsLabel(l.actionMute), findsOneWidget);
++
++      await tester.tap(mute);
++      await drain(tester);
++      expect(r.c.read(showcaseMutedProvider), isTrue);
++      expect(r.c.read(prefsProvider).showcaseMuted, isTrue,
++          reason: 'ilova qayta ochilganda ham');
++      expect(v.playing, isEmpty, reason: 'o‘chiq — musiqa o‘ynamaydi');
++      expect(find.bySemanticsLabel(l.actionUnmute), findsOneWidget);
++
++      // Keyingi sahifa — baribir jim.
++      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
++          const Offset(0, -600), 2000);
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(v.playing, isEmpty);
++      expect(mute, findsOneWidget);
++
++      // Rasm ko'ruvchida ham o'sha tugma; yoqilsa — musiqa qaytadi.
++      await tester.tap(find.byKey(const ValueKey('showcase-image-0')).last);
++      await settle(tester, frames: 6);
++      final inViewer = find.byKey(const ValueKey('showcase-viewer-mute'));
++      expect(inViewer, findsOneWidget);
++      await tester.tap(inViewer);
++      await drain(tester);
++      expect(r.c.read(showcaseMutedProvider), isFalse);
++      expect(r.c.read(prefsProvider).showcaseMuted, isFalse);
++      expect(v.playing, hasLength(1), reason: 'yoqildi — ko‘ruvchi ostida');
++    });
++
++    testWidgets('saqlangan 🔇 — ochilishda musiqa umuman boshlanmaydi',
++        (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      // `_pump` omborni tozalaydi — kalit undan keyin, provayder
++      // birinchi o'qilishidan oldin yoziladi.
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(music: track)]),
++      ], beforeShow: (c) => c.read(prefsProvider).setShowcaseMuted(true));
++      await drain(tester);
++      expect(r.c.read(showcaseMutedProvider), isTrue);
++      expect(v.playing, isEmpty);
++    });
++  });
+ }
+-- 
+2.43.0
+

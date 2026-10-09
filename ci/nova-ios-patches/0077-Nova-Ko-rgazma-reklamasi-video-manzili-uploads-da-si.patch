@@ -1,0 +1,74 @@
+From 4624e6a7a18ee2abaf7faccd91c7d24849355eea Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 04:16:25 +0000
+Subject: [PATCH 77/78] =?UTF-8?q?Nova:=20Ko'rgazma=20reklamasi=20=E2=80=94?=
+ =?UTF-8?q?=20video=20manzili=20/uploads/=20da=20(sinov)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Server reklama videolarini endi `/uploads/promo_*.mp4` dan beradi
+(iOS AVPlayer uchun Range/206), posterlar `/promo/*.jpg` da qoladi.
+Ilova ikkalasini ham `mediaUrl` orqali bir xil bazaga ulaydi (maxsus
+holat yo'q) — sinovlar yangi manzil bilan, `/promo/` video ham
+tekshiriladi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ mobile_nova/test/showcase_screen_test.dart | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 2815ff1..eeeeb92 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -833,7 +833,7 @@ void main() {
+           'ad': adFlag,
+           'title': 'Boy777',
+           'text': 'Yangi NFC kartalar',
+-          'videoUrl': '/promo/nfcstore-boy777.mp4',
++          'videoUrl': '/uploads/promo_boy777.mp4',
+           'imageUrl': '/promo/boy777.jpg',
+           'linkUrl': 'https://www.instagram.com/nfcstore',
+           if (music != null)
+@@ -851,16 +851,26 @@ void main() {
+     }
+ 
+     int videoId(FakeVideoPlatform v) => v.urls.entries
+-        .firstWhere((e) => e.value.endsWith('.mp4') && e.value.contains('promo'))
++        .firstWhere((e) => e.value.endsWith('promo_boy777.mp4'))
+         .key;
+ 
+     test('model: ad/featured, nisbiy manzil bazaga ulanadi, poster', () {
+       final p = ad();
+       expect(p.isShowcaseVideoAd, isTrue);
+       expect(p.isAd, isTrue);
+-      expect(p.videoUrl, 'https://nfcstore.uz/promo/nfcstore-boy777.mp4');
++      expect(p.videoUrl, 'https://nfcstore.uz/uploads/promo_boy777.mp4');
+       expect(p.posterUrl, 'https://nfcstore.uz/promo/boy777.jpg');
+       expect(ad(adFlag: false).isShowcaseVideoAd, isTrue, reason: 'featured');
++      // Server videoni `/uploads/` dan beradi (Range/206), poster esa
++      // `/promo/` da; `/promo/` dagi video ham xuddi shunday ulanadi —
++      // maxsus holat yo'q.
++      final promo = Post.fromJson({
++        'id': 901,
++        'ad': true,
++        'videoUrl': '/promo/nfcstore-boy777.mp4',
++      });
++      expect(promo.videoUrl, 'https://nfcstore.uz/promo/nfcstore-boy777.mp4');
++      expect(showcasePlayable(promo), isTrue);
+       expect(showcasePlayable(p), isTrue);
+       expect(showcasePlayable(p.copyWith(likes: 1)), isTrue);
+       // Reklama emas — oddiy video ko'rgazmaga tushmaydi.
+@@ -884,7 +894,7 @@ void main() {
+       expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
+       expect(find.text(LUz().feedSponsored), findsOneWidget);
+       expect(v.urls.values,
+-          contains('https://nfcstore.uz/promo/nfcstore-boy777.mp4'));
++          contains('https://nfcstore.uz/uploads/promo_boy777.mp4'));
+       final id = videoId(v);
+       expect(v.playing, {id});
+       expect(v.volumeOf[id], 1.0);
+-- 
+2.43.0
+

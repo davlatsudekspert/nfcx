@@ -1,0 +1,928 @@
+From 385993a95361c50f8ae90760abf33df9670088eb Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 04:21:43 +0000
+Subject: [PATCH 78/78] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20Instagram?=
+ =?UTF-8?q?=20post/reel=20ilova=20ichida,=20rasmiy=20embed?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi tasdiqlagan: `instagram.com/(reel|reels|p|tv)/<kod>` havolali
+ko'rgazmada "Instagram'da ko'rish" (ru "Смотреть в Instagram", en
+"View on Instagram") — pastdan varaq, ichida Instagram'ning RASMIY
+ommaviy embed sahifasi `https://www.instagram.com/<p|reel>/<kod>/embed/`
+(token kerak emas). Lenta kartasidagi ko'rgazma ma'lumotida ham.
+
+- avtomatik ijro yo'q (WebView media uchun bosishni talab qiladi);
+- embed ustida hech narsa yo'q: yopish tepada, "Instagram'da ochish"
+  pastda;
+- embed sahifasidan boshqa har qanday asosiy o'tish ("View on
+  Instagram", profil...) WebView ichida ochilmaydi — tashqarida;
+- yuklanmasa (tarmoq/HTTP xato, 20 s javobsizlik) — embed o'rnida
+  "Instagram'da ochish"; fonga o'tilsa sahifa bo'shatiladi;
+- varaq ochiq turganda ko'rgazma musiqasi pauzada, yopilgach davom
+  etadi (🔇 bo'lmasa).
+
+Profil havolasi (`instagram.com/<username>`) — avvalgidek tashqi tugma.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../features/showcase/showcase_common.dart    |  34 +-
+ .../features/showcase/showcase_extras.dart    |  18 +-
+ .../features/showcase/showcase_instagram.dart | 354 ++++++++++++++++++
+ .../features/showcase/showcase_screen.dart    |  44 ++-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   2 +
+ .../lib/l10n/gen/app_localizations.dart       |  12 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   7 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   7 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   7 +
+ mobile_nova/test/showcase_screen_test.dart    | 172 ++++++++-
+ 12 files changed, 646 insertions(+), 15 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/showcase_instagram.dart
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_common.dart b/mobile_nova/lib/features/showcase/showcase_common.dart
+index 6b3b49f..0a91447 100644
+--- a/mobile_nova/lib/features/showcase/showcase_common.dart
++++ b/mobile_nova/lib/features/showcase/showcase_common.dart
+@@ -6,7 +6,9 @@ import '../../l10n/gen/app_localizations.dart';
+ ///
+ /// * YouTube — video ID topilsa, ilova ichida YouTube'ning RASMIY
+ ///   pleerida ochiladi (`showcase_video.dart`), aks holda tashqarida;
+-/// * Instagram — faqat tashqarida (`openLink`).
++/// * Instagram — post/reel bo'lsa ilova ichida, Instagram'ning RASMIY
++///   embed sahifasida (`showcase_instagram.dart`); profil va boshqasi —
++///   tashqarida (`openLink`).
+ enum ShowcaseLinkKind { youtube, instagram }
+ 
+ /// Havola ruxsat etilganmi (shartnoma §3): faqat `https` va
+@@ -70,6 +72,36 @@ bool isYoutubeShorts(String url) {
+   return seg.isNotEmpty && seg.first == 'shorts';
+ }
+ 
++final _igCode = RegExp(r'^[A-Za-z0-9_-]{5,64}$');
++
++/// Instagram post/reel havolasining RASMIY ommaviy embed sahifasi:
++/// `https://www.instagram.com/<p|reel>/<shortcode>/embed/`, aks holda
++/// `null` (profil havolasi, boshqa sahifa).
++///
++/// Qabul qilinadi (`www.`/`m.` bilan, parametrlar bilan ham):
++/// `/p/<kod>`, `/reel/<kod>`, `/reels/<kod>`, `/tv/<kod>` va
++/// `/<username>/p|reel/<kod>`. `tv` — `p` sifatida (kod umumiy).
++Uri? instagramEmbedUri(String url) {
++  if (showcaseLinkKind(url) != ShowcaseLinkKind.instagram) return null;
++  final seg = Uri.parse(url.trim())
++      .pathSegments
++      .where((e) => e.isNotEmpty)
++      .toList();
++  for (final at in const [0, 1]) {
++    if (seg.length < at + 2) continue;
++    final kind = switch (seg[at].toLowerCase()) {
++      'p' || 'tv' => 'p',
++      'reel' || 'reels' => 'reel',
++      _ => null,
++    };
++    final code = seg[at + 1];
++    if (kind != null && _igCode.hasMatch(code)) {
++      return Uri.parse('https://www.instagram.com/$kind/$code/embed/');
++    }
++  }
++  return null;
++}
++
+ /// "YouTube'da ochish" / "Instagram'da ochish".
+ String showcaseLinkLabel(L l, ShowcaseLinkKind k) => switch (k) {
+   ShowcaseLinkKind.youtube => l.showcaseOpenYoutube,
+diff --git a/mobile_nova/lib/features/showcase/showcase_extras.dart b/mobile_nova/lib/features/showcase/showcase_extras.dart
+index 9c27d94..c1b60b9 100644
+--- a/mobile_nova/lib/features/showcase/showcase_extras.dart
++++ b/mobile_nova/lib/features/showcase/showcase_extras.dart
+@@ -10,12 +10,15 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import 'showcase_common.dart';
++import 'showcase_instagram.dart';
+ import 'showcase_video.dart';
+ 
+ /// KO'RGAZMA MA'LUMOTI — lenta kartasi va post tafsilotida (yorug' fon).
+ ///
+ /// Sarlavha, narx, "Mahsulotni ko'rish" va havola: YouTube — "Videoni
+-/// ko'rish" (ilova ichida, rasmiy pleer), Instagram — tashqarida.
++/// ko'rish" (ilova ichida, rasmiy pleer), Instagram post/reel —
++/// "Instagram'da ko'rish" (ilova ichida, rasmiy embed), profil —
++/// tashqarida.
+ /// Ma'lumot yo'q — hech narsa chizilmaydi.
+ class ShowcaseExtras extends StatelessWidget {
+   const ShowcaseExtras({
+@@ -41,6 +44,7 @@ class ShowcaseExtras extends StatelessWidget {
+     final t = context.tokens;
+     final link = showcaseLinkKind(p.linkUrl);
+     final videoId = youtubeVideoId(p.linkUrl);
++    final igEmbed = instagramEmbedUri(p.linkUrl);
+     final item = p.catalogItem;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+@@ -96,6 +100,18 @@ class ShowcaseExtras extends StatelessWidget {
+                     title: p.title,
+                   ),
+                 )
++              else if (igEmbed != null)
++                _Pill(
++                  key: ValueKey('$keyPrefix-instagram'),
++                  icon: Icons.camera_alt_outlined,
++                  label: l.showcaseWatchInstagram,
++                  onTap: () => showShowcaseInstagram(
++                    context,
++                    url: p.linkUrl,
++                    embed: igEmbed,
++                    title: p.title,
++                  ),
++                )
+               else if (link != null)
+                 _Pill(
+                   key: ValueKey('$keyPrefix-link'),
+diff --git a/mobile_nova/lib/features/showcase/showcase_instagram.dart b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+new file mode 100644
+index 0000000..c32663e
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+@@ -0,0 +1,354 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:webview_flutter/webview_flutter.dart';
++import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
++
++import '../../core/utils/external_link.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/shapes.dart';
++import '../../l10n/gen/app_localizations.dart';
++
++/// KO'RGAZMA — INSTAGRAM POSTI ilova ichida (egasi tasdiqlagan).
++///
++/// Instagram'ning RASMIY ommaviy embed sahifasi ochiladi:
++/// `https://www.instagram.com/<p|reel>/<kod>/embed/` (token kerak emas).
++///
++/// * avtomatik ijro yo'q — WebView media uchun foydalanuvchi bosishini
++///   talab qiladi (standart sozlama o'zgartirilmaydi);
++/// * embed ustida hech narsa yo'q: yopish — tepada, "Instagram'da
++///   ochish" — pastda;
++/// * embed ichidagi havolalar ("View on Instagram", profil...) WebView
++///   ichida OCHILMAYDI — tashqarida (`openLink`), ilovada Instagram
++///   sayti "ichkariga" kirib ketmaydi;
++/// * yuklanmasa (tarmoq/HTTP xato yoki javobsizlik) — embed o'rnida
++///   "Instagram'da ochish";
++/// * fonda hech narsa o'ynamaydi: ilova fonga o'tsa sahifa bo'shatiladi.
++
++/// Embed shuncha vaqtda yuklanmasa — zaxira yo'l.
++const kShowcaseInstagramTimeout = Duration(seconds: 20);
++
++/// Sinov uchun: WebView o'rniga soxta embed. `onState` ga `ready` yoki
++/// `error:<sabab>` yuboriladi.
++@visibleForTesting
++Widget Function(Uri embed, ValueChanged<String> onState)?
++    showcaseInstagramEmbedOverride;
++
++Future<void> showShowcaseInstagram(
++  BuildContext context, {
++  required String url,
++  required Uri embed,
++  String title = '',
++}) {
++  return showModalBottomSheet<void>(
++    context: context,
++    useRootNavigator: true,
++    isScrollControlled: true,
++    showDragHandle: true,
++    backgroundColor: Colors.black,
++    builder: (_) =>
++        ShowcaseInstagramSheet(url: url, embed: embed, title: title),
++  );
++}
++
++class ShowcaseInstagramSheet extends StatefulWidget {
++  const ShowcaseInstagramSheet({
++    super.key,
++    required this.url,
++    required this.embed,
++    this.title = '',
++  });
++
++  final String url;
++  final Uri embed;
++  final String title;
++
++  @override
++  State<ShowcaseInstagramSheet> createState() => _ShowcaseInstagramSheetState();
++}
++
++class _ShowcaseInstagramSheetState extends State<ShowcaseInstagramSheet>
++    with WidgetsBindingObserver {
++  final _ctl = _EmbedHandle();
++  bool _foreground = true;
++  bool _ready = false;
++  String? _error;
++  Timer? _watchdog;
++  int _gen = 0;
++
++  @override
++  void initState() {
++    super.initState();
++    WidgetsBinding.instance.addObserver(this);
++    final s = WidgetsBinding.instance.lifecycleState;
++    _foreground = s == null ||
++        s == AppLifecycleState.resumed ||
++        s == AppLifecycleState.inactive;
++    if (_foreground) _arm();
++  }
++
++  void _arm() {
++    _ready = false;
++    _watchdog?.cancel();
++    _watchdog = Timer(kShowcaseInstagramTimeout, () {
++      if (mounted && !_ready && _error == null) {
++        setState(() => _error = 'error:timeout');
++      }
++    });
++  }
++
++  void _onState(String s) {
++    if (!mounted) return;
++    if (s == 'ready') {
++      _ready = true;
++      _watchdog?.cancel();
++    } else if (s.startsWith('error')) {
++      _watchdog?.cancel();
++      setState(() => _error = s);
++    }
++  }
++
++  @override
++  void didChangeAppLifecycleState(AppLifecycleState state) {
++    final fg = state == AppLifecycleState.resumed ||
++        state == AppLifecycleState.inactive;
++    if (fg == _foreground || !mounted) return;
++    setState(() {
++      _foreground = fg;
++      if (fg) _gen++;
++    });
++    if (fg) {
++      if (_error == null) _arm();
++    } else {
++      // Fonda ovoz yo'q: sahifa darhol bo'shatiladi.
++      _ctl.unload();
++      _watchdog?.cancel();
++    }
++  }
++
++  @override
++  void dispose() {
++    WidgetsBinding.instance.removeObserver(this);
++    _watchdog?.cancel();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final h = (MediaQuery.sizeOf(context).height * .68).clamp(320.0, 720.0);
++    return SafeArea(
++      top: false,
++      child: Padding(
++        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
++        child: Column(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            Row(
++              children: [
++                const Icon(Icons.camera_alt_outlined,
++                    color: Colors.white, size: 22),
++                const SizedBox(width: Gap.sm),
++                Expanded(
++                  child: Text(
++                    widget.title.isEmpty ? 'Instagram' : widget.title,
++                    maxLines: 1,
++                    overflow: TextOverflow.ellipsis,
++                    style: const TextStyle(
++                      fontFamily: AppType.sans,
++                      fontSize: 15,
++                      fontWeight: FontWeight.w700,
++                      color: Colors.white,
++                    ),
++                  ),
++                ),
++                IconButton(
++                  key: const ValueKey('showcase-ig-close'),
++                  onPressed: () => Navigator.of(context).maybePop(),
++                  tooltip:
++                      MaterialLocalizations.of(context).closeButtonTooltip,
++                  icon: const Icon(Icons.close_rounded, color: Colors.white),
++                ),
++              ],
++            ),
++            const SizedBox(height: Gap.sm),
++            SizedBox(
++              key: const ValueKey('showcase-ig-area'),
++              width: double.infinity,
++              height: h,
++              child: ClipRRect(
++                borderRadius: BorderRadius.circular(14),
++                child: _error != null
++                    ? _Fallback(
++                        url: widget.url,
++                        message: l.showcaseInstagramUnavailable,
++                      )
++                    : !_foreground
++                        ? const ColoredBox(color: Colors.white)
++                        : KeyedSubtree(
++                            key: ValueKey('ig-$_gen'),
++                            child: showcaseInstagramEmbedOverride?.call(
++                                    widget.embed, _onState) ??
++                                _InstagramEmbed(
++                                  embed: widget.embed,
++                                  handle: _ctl,
++                                  onState: _onState,
++                                ),
++                          ),
++              ),
++            ),
++            if (_error == null) ...[
++              const SizedBox(height: Gap.xs),
++              TextButton.icon(
++                key: const ValueKey('showcase-ig-external'),
++                onPressed: () => openLink(widget.url),
++                style: TextButton.styleFrom(foregroundColor: Colors.white70),
++                icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                label: Text(l.showcaseOpenInstagram),
++              ),
++            ],
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++class _Fallback extends StatelessWidget {
++  const _Fallback({required this.url, required this.message});
++  final String url;
++  final String message;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    return ColoredBox(
++      key: const ValueKey('showcase-ig-fallback'),
++      color: Colors.white.withValues(alpha: .08),
++      child: Center(
++        child: Padding(
++          padding: const EdgeInsets.all(Gap.lg),
++          child: Column(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              const Icon(Icons.camera_alt_outlined,
++                  color: Colors.white70, size: 36),
++              const SizedBox(height: Gap.sm),
++              Text(
++                message,
++                textAlign: TextAlign.center,
++                style: const TextStyle(
++                  fontFamily: AppType.sans,
++                  fontSize: 13.5,
++                  height: 1.3,
++                  color: Colors.white,
++                ),
++              ),
++              const SizedBox(height: Gap.md),
++              FilledButton.icon(
++                key: const ValueKey('showcase-ig-fallback-open'),
++                onPressed: () => openLink(url),
++                style: FilledButton.styleFrom(
++                  backgroundColor: Colors.white,
++                  foregroundColor: Colors.black,
++                ),
++                icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                label: Text(l.showcaseOpenInstagram),
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _EmbedHandle {
++  WebViewController? _web;
++
++  void unload() {
++    _web?.loadHtmlString('<html></html>').catchError((_) {});
++  }
++}
++
++/// Embed sahifasining o'zi (shu manzil) — WebView ichida qoladi.
++/// Boshqa har qanday asosiy oyna o'tishi — tashqarida.
++@visibleForTesting
++bool instagramEmbedStaysInside(Uri embed, String url) {
++  final u = Uri.tryParse(url);
++  if (u == null) return false;
++  if (u.scheme == 'about') return true;
++  String norm(String p) => p.endsWith('/') ? p : '$p/';
++  return u.scheme == 'https' &&
++      u.host.toLowerCase() == embed.host &&
++      norm(u.path) == norm(embed.path);
++}
++
++class _InstagramEmbed extends StatefulWidget {
++  const _InstagramEmbed({
++    required this.embed,
++    required this.handle,
++    required this.onState,
++  });
++
++  final Uri embed;
++  final _EmbedHandle handle;
++  final ValueChanged<String> onState;
++
++  @override
++  State<_InstagramEmbed> createState() => _InstagramEmbedState();
++}
++
++class _InstagramEmbedState extends State<_InstagramEmbed> {
++  late final WebViewController _web;
++
++  @override
++  void initState() {
++    super.initState();
++    final PlatformWebViewControllerCreationParams params =
++        WebViewPlatform.instance is WebKitWebViewPlatform
++            ? WebKitWebViewControllerCreationParams(
++                allowsInlineMediaPlayback: true,
++              )
++            : const PlatformWebViewControllerCreationParams();
++    _web = WebViewController.fromPlatformCreationParams(params)
++      ..setJavaScriptMode(JavaScriptMode.unrestricted)
++      ..setBackgroundColor(Colors.white)
++      ..setNavigationDelegate(NavigationDelegate(
++        onPageFinished: (_) => widget.onState('ready'),
++        onWebResourceError: (e) {
++          if (e.isForMainFrame ?? false) widget.onState('error:load');
++        },
++        onHttpError: (e) {
++          final req = e.request?.uri;
++          final code = e.response?.statusCode ?? 0;
++          if (code >= 400 &&
++              req != null &&
++              instagramEmbedStaysInside(widget.embed, req.toString())) {
++            widget.onState('error:http$code');
++          }
++        },
++        onNavigationRequest: (r) {
++          if (!r.isMainFrame ||
++              instagramEmbedStaysInside(widget.embed, r.url)) {
++            return NavigationDecision.navigate;
++          }
++          // "View on Instagram" va boshqa havolalar — tashqarida.
++          openLink(r.url);
++          return NavigationDecision.prevent;
++        },
++      ))
++      ..loadRequest(widget.embed);
++    widget.handle._web = _web;
++  }
++
++  @override
++  void dispose() {
++    if (identical(widget.handle._web, _web)) widget.handle._web = null;
++    _web.loadHtmlString('<html></html>').catchError((_) {});
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) => WebViewWidget(controller: _web);
++}
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 3ab054e..e004d70 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -51,6 +51,7 @@ import '../social/reels_screen.dart'
+         savedReelsProvider,
+         showReelComments;
+ import 'showcase_common.dart';
++import 'showcase_instagram.dart';
+ import 'showcase_sound.dart';
+ import 'showcase_video.dart';
+ 
+@@ -64,7 +65,8 @@ import 'showcase_video.dart';
+ ///
+ /// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
+ /// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
+-/// ochiq turganda musiqa pauzada. Instagram — faqat tashqarida.
++/// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
++/// rasmiy embed sahifasida; profil havolasi — tashqarida.
+ 
+ /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
+ /// (Reels bilan bir xil qoida).
+@@ -371,8 +373,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
+   bool _viewerOpen = false;
+ 
+-  /// YouTube varag'i ochiq — musiqa va karusel pauzada (ikki ovoz
+-  /// bir vaqtda yo'q), yopilgach davom etadi.
++  /// YouTube yoki Instagram varag'i ochiq — musiqa va karusel pauzada
++  /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
+   bool _videoOpen = false;
+ 
+   bool _captionOpen = false;
+@@ -647,20 +649,34 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     _sync();
+   }
+ 
+-  Future<void> _openVideo(String id) async {
++  /// Ichki varaq (YouTube/Instagram) ochiq turganda musiqa pauzada.
++  Future<void> _withSheet(Future<void> Function() show) async {
+     setState(() => _videoOpen = true);
+     _sync();
+-    await showShowcaseVideo(
+-      context,
+-      url: _p.linkUrl,
+-      videoId: id,
+-      title: _p.title,
+-    );
++    await show();
+     if (!mounted) return;
+     setState(() => _videoOpen = false);
+     _sync();
+   }
+ 
++  Future<void> _openVideo(String id) => _withSheet(
++    () => showShowcaseVideo(
++      context,
++      url: _p.linkUrl,
++      videoId: id,
++      title: _p.title,
++    ),
++  );
++
++  Future<void> _openInstagram(Uri embed) => _withSheet(
++    () => showShowcaseInstagram(
++      context,
++      url: _p.linkUrl,
++      embed: embed,
++      title: _p.title,
++    ),
++  );
++
+   Future<void> _like() async {
+     final e = await ref.read(postLikesProvider.notifier).toggle(_p);
+     if (e != null && mounted) _snack(describeError(L.of(context), e));
+@@ -796,6 +812,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     final topH = MediaQuery.paddingOf(context).top;
+     final link = showcaseLinkKind(p.linkUrl);
+     final videoId = youtubeVideoId(p.linkUrl);
++    final igEmbed = instagramEmbedUri(p.linkUrl);
+     final item = p.catalogItem;
+ 
+     return Stack(
+@@ -1037,6 +1054,13 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                         label: l.showcaseWatchVideo,
+                         onTap: () => _openVideo(videoId),
+                       )
++                    else if (igEmbed != null)
++                      _CtaButton(
++                        key: const ValueKey('showcase-instagram'),
++                        icon: Icons.camera_alt_outlined,
++                        label: l.showcaseWatchInstagram,
++                        onTap: () => _openInstagram(igEmbed),
++                      )
+                     else if (link != null)
+                       _CtaButton(
+                         key: const ValueKey('showcase-link'),
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 98156bd..37f0609 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1241,6 +1241,8 @@
+   "showcaseOpenInstagram": "Open on Instagram",
+   "showcaseWatchVideo": "Watch video",
+   "showcaseVideoUnavailable": "This video can’t be played in the app. Open it on YouTube.",
++  "showcaseWatchInstagram": "View on Instagram",
++  "showcaseInstagramUnavailable": "This post couldn’t be opened in the app. Open it on Instagram.",
+   "currencyUzs": "UZS",
+   "showcaseImageN": "Photo {n} of {total}",
+   "showcasePhotos": "Photos",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 3409f2f..ad3b192 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1241,6 +1241,8 @@
+   "showcaseOpenInstagram": "Открыть в Instagram",
+   "showcaseWatchVideo": "Смотреть видео",
+   "showcaseVideoUnavailable": "Это видео нельзя посмотреть в приложении. Откройте его в YouTube.",
++  "showcaseWatchInstagram": "Смотреть в Instagram",
++  "showcaseInstagramUnavailable": "Не удалось открыть публикацию в приложении. Откройте её в Instagram.",
+   "currencyUzs": "сум",
+   "showcaseImageN": "Фото {n} из {total}",
+   "showcasePhotos": "Фото",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 2e69414..4b425b7 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1399,6 +1399,8 @@
+   "showcaseOpenInstagram": "Instagram’da ochish",
+   "showcaseWatchVideo": "Videoni ko‘rish",
+   "showcaseVideoUnavailable": "Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.",
++  "showcaseWatchInstagram": "Instagram’da ko‘rish",
++  "showcaseInstagramUnavailable": "Bu postni ilova ichida ochib bo‘lmadi. Uni Instagram’da oching.",
+   "currencyUzs": "so‘m",
+   "@currencyUzs": {"description": "Narx yonidagi valyuta (faqat so‘m)."},
+   "showcaseImageN": "{n}-rasm, jami {total}",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index b12ff27..de44781 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6501,6 +6501,18 @@ abstract class L {
+   /// **'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.'**
+   String get showcaseVideoUnavailable;
+ 
++  /// No description provided for @showcaseWatchInstagram.
++  ///
++  /// In uz, this message translates to:
++  /// **'Instagram’da ko‘rish'**
++  String get showcaseWatchInstagram;
++
++  /// No description provided for @showcaseInstagramUnavailable.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu postni ilova ichida ochib bo‘lmadi. Uni Instagram’da oching.'**
++  String get showcaseInstagramUnavailable;
++
+   /// Narx yonidagi valyuta (faqat so‘m).
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 091a331..d292d4c 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3594,6 +3594,13 @@ class LEn extends L {
+   String get showcaseVideoUnavailable =>
+       'This video can’t be played in the app. Open it on YouTube.';
+ 
++  @override
++  String get showcaseWatchInstagram => 'View on Instagram';
++
++  @override
++  String get showcaseInstagramUnavailable =>
++      'This post couldn’t be opened in the app. Open it on Instagram.';
++
+   @override
+   String get currencyUzs => 'UZS';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index f501023..3d7c328 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3616,6 +3616,13 @@ class LRu extends L {
+   String get showcaseVideoUnavailable =>
+       'Это видео нельзя посмотреть в приложении. Откройте его в YouTube.';
+ 
++  @override
++  String get showcaseWatchInstagram => 'Смотреть в Instagram';
++
++  @override
++  String get showcaseInstagramUnavailable =>
++      'Не удалось открыть публикацию в приложении. Откройте её в Instagram.';
++
+   @override
+   String get currencyUzs => 'сум';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 3319406..c9e65d1 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3574,6 +3574,13 @@ class LUz extends L {
+   String get showcaseVideoUnavailable =>
+       'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.';
+ 
++  @override
++  String get showcaseWatchInstagram => 'Instagram’da ko‘rish';
++
++  @override
++  String get showcaseInstagramUnavailable =>
++      'Bu postni ilova ichida ochib bo‘lmadi. Uni Instagram’da oching.';
++
+   @override
+   String get currencyUzs => 'so‘m';
+ 
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index eeeeb92..569bb82 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -21,6 +21,7 @@ import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
+ import 'package:nfcstore_nova/features/profile/music_player.dart'
+     show audioOwnerProvider;
+ import 'package:nfcstore_nova/features/showcase/showcase_extras.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_instagram.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
+ import 'package:nfcstore_nova/features/social/media_carousel.dart';
+@@ -654,7 +655,7 @@ void main() {
+       expect(find.text(l.showcaseOpenYoutube), findsNothing);
+     });
+ 
+-    testWidgets('Instagram — tashqi "Instagram’da ochish" qoladi',
++    testWidgets('Instagram profili — tashqi "Instagram’da ochish" qoladi',
+         (tester) async {
+       final opened = <Uri>[];
+       openLinkOverride = (u) async {
+@@ -663,12 +664,14 @@ void main() {
+       };
+       addTearDown(() => openLinkOverride = null);
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: 'https://www.instagram.com/p/x')]),
++        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore')]),
+       ]);
+       expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
++      expect(find.byKey(const ValueKey('showcase-instagram')), findsNothing);
++      expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
+       await tester.tap(find.byKey(const ValueKey('showcase-link')));
+       await settle(tester, frames: 3);
+-      expect(opened.single.toString(), 'https://www.instagram.com/p/x');
++      expect(opened.single.toString(), 'https://www.instagram.com/nfcstore');
+     });
+ 
+     testWidgets(
+@@ -972,6 +975,169 @@ void main() {
+     });
+   });
+ 
++  group('Instagram — ilova ichida rasmiy embed', () {
++    const code = 'C9xYz_Ab-12';
++    const reelUrl = 'https://www.instagram.com/reel/$code/?igsh=abc123';
++
++    test('shortcode: reel/reels/p/tv, parametrlar bilan; profil — null', () {
++      final reel = 'https://www.instagram.com/reel/$code/embed/';
++      final post = 'https://www.instagram.com/p/$code/embed/';
++      final cases = {
++        'https://www.instagram.com/reel/$code/': reel,
++        'https://instagram.com/reel/$code': reel,
++        'https://www.instagram.com/reels/$code/': reel,
++        'https://m.instagram.com/reel/$code/?utm_source=ig_web_copy_link':
++            reel,
++        reelUrl: reel,
++        'https://www.instagram.com/p/$code/': post,
++        'https://www.instagram.com/p/$code/?img_index=2': post,
++        'https://www.instagram.com/tv/$code/': post,
++        'https://www.instagram.com/nfcstore/p/$code/': post,
++        'https://www.instagram.com/nfcstore/reel/$code/': reel,
++      };
++      cases.forEach((u, want) {
++        expect(instagramEmbedUri(u)?.toString(), want, reason: u);
++      });
++      for (final u in [
++        '',
++        'https://www.instagram.com/nfcstore',
++        'https://www.instagram.com/nfcstore/',
++        'https://www.instagram.com/explore/tags/nfc/',
++        'https://www.instagram.com/p/',
++        'https://www.instagram.com/p/x', // juda qisqa
++        'https://www.instagram.com/p/a%22b<c/',
++        'http://www.instagram.com/p/$code/', // https emas
++        'https://evil.com/p/$code/',
++        'https://instagram.com.evil.com/p/$code/',
++        'https://youtu.be/dQw4w9WgXcQ',
++      ]) {
++        expect(instagramEmbedUri(u), isNull, reason: u);
++      }
++    });
++
++    test('embed ichida faqat o‘zi; boshqa o‘tishlar — tashqarida', () {
++      final e = Uri.parse('https://www.instagram.com/reel/$code/embed/');
++      expect(instagramEmbedStaysInside(e, e.toString()), isTrue);
++      expect(
++          instagramEmbedStaysInside(
++              e, 'https://www.instagram.com/reel/$code/embed'),
++          isTrue);
++      expect(instagramEmbedStaysInside(e, 'about:blank'), isTrue);
++      for (final u in [
++        'https://www.instagram.com/reel/$code/',
++        'https://www.instagram.com/nfcstore/',
++        'https://www.instagram.com/accounts/login/',
++        'https://evil.com/reel/$code/embed/',
++      ]) {
++        expect(instagramEmbedStaysInside(e, u), isFalse, reason: u);
++      }
++    });
++
++    const track =
++        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
++
++    Future<void> drain(WidgetTester tester) async {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 40)));
++      await settle(tester, frames: 4);
++    }
++
++    ({List<Uri> embeds, ValueChanged<String> Function() state}) fakeEmbed() {
++      final embeds = <Uri>[];
++      ValueChanged<String>? last;
++      showcaseInstagramEmbedOverride = (e, onState) {
++        embeds.add(e);
++        last = onState;
++        return const ColoredBox(
++            key: ValueKey('fake-ig'), color: Color(0xFFFFFFFF));
++      };
++      addTearDown(() => showcaseInstagramEmbedOverride = null);
++      return (embeds: embeds, state: () => last!);
++    }
++
++    testWidgets('tugma yozuvi havola turiga qarab', (tester) async {
++      final l = LUz();
++      expect(l.showcaseWatchInstagram, 'Instagram’da ko‘rish');
++      expect(LRu().showcaseWatchInstagram, 'Смотреть в Instagram');
++      expect(LEn().showcaseWatchInstagram, 'View on Instagram');
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: reelUrl)]),
++      ]);
++      expect(find.byKey(const ValueKey('showcase-instagram')), findsOneWidget);
++      expect(find.text(l.showcaseWatchInstagram), findsOneWidget);
++      expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
++      expect(find.text(l.showcaseOpenInstagram), findsNothing);
++    });
++
++    testWidgets('varaq: musiqa pauza, embed ostida tashqi havola, '
++        'yopilsa davom etadi', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final ig = fakeEmbed();
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: reelUrl, music: track)]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++
++      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(ig.embeds.single.toString(),
++          'https://www.instagram.com/reel/$code/embed/');
++      expect(find.byKey(const ValueKey('fake-ig')), findsOneWidget);
++      expect(v.playing, isEmpty, reason: 'Instagram varag‘i ochiq');
++      ig.state()('ready');
++      await settle(tester, frames: 2);
++
++      final area = tester.getRect(find.byKey(const ValueKey('showcase-ig-area')));
++      final ext =
++          tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
++      expect(ext.top, greaterThanOrEqualTo(area.bottom));
++      await tester.tap(find.byKey(const ValueKey('showcase-ig-external')));
++      await settle(tester, frames: 3);
++      expect(opened.single.toString(), reelUrl);
++
++      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
++      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
++    });
++
++    testWidgets('yuklanmasa — embed o‘rnida "Instagram’da ochish"',
++        (tester) async {
++      final ig = fakeEmbed();
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: reelUrl)]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await settle(tester, frames: 10);
++      ig.state()('error:load');
++      await settle(tester, frames: 3);
++      expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
++      expect(find.byKey(const ValueKey('showcase-ig-fallback')), findsOneWidget);
++      expect(find.text(LUz().showcaseInstagramUnavailable), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
++      await settle(tester, frames: 10);
++
++      // Javobsizlik ham — zaxira yo'l.
++      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await settle(tester, frames: 10);
++      await tester.pump(kShowcaseInstagramTimeout);
++      await settle(tester, frames: 3);
++      expect(find.byKey(const ValueKey('showcase-ig-fallback')), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
++      await settle(tester, frames: 10);
++    });
++  });
++
+   group('/api/showcase so‘rovi', () {
+     test('har sahifada video=1 (birinchi va kursor bilan)', () async {
+       final api = _Api();
+-- 
+2.43.0
+

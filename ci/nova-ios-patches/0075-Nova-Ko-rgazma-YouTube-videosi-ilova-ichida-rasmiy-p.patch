@@ -1,0 +1,1126 @@
+From c2273d33021f35a089cbfb1339f6affec0aae792 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 04:02:27 +0000
+Subject: [PATCH 75/78] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20YouTube?=
+ =?UTF-8?q?=20videosi=20ilova=20ichida,=20rasmiy=20pleerda?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (build 329): YouTube havolali ko'rgazmada "YouTube'da ochish"
+o'rniga "Videoni ko'rish" (ru "Смотреть видео", en "Watch video") —
+pastdan varaq ochiladi, ichida YouTube IFrame pleeri (webview_flutter,
+`music_embed.dart` bilan bir xil yo'l). Lenta kartasidagi ko'rgazma
+ma'lumotida ham shunday.
+
+YouTube API qoidalari:
+- avtomatik ijro yo'q (`autoplay` berilmaydi, `onReady` da
+  `playVideo` yo'q; media foydalanuvchi bosishini talab qiladi);
+- pleer ustida hech narsa yo'q, o'lcham kamida 200x200 (Shorts 9:16);
+- ilova kimligi: `https://nfcstore.uz/` bazasi (Referer), `origin`
+  va `widget_referrer`;
+- fonda ijro yo'q: varaq yopilsa yoki ilova fonga o'tsa pleer to'xtab,
+  sahifasi bo'shatiladi; qaytilganda yangidan (yana avtomatik ijrosiz).
+
+Varaq ochiq turganda ko'rgazma musiqasi va karusel pauzada, yopilgach
+davom etadi (🔇 bo'lmasa). Pleerda play bosilsa audio egaligi
+YouTube'ga o'tadi. Pleer ostida kichik "YouTube'da ochish"; xato
+101/150, yuklanmaslik yoki 15 s javobsizlikda pleer o'rnida zaxira yo'l.
+Video ID: watch?v=, youtu.be/, shorts/, embed/, live/ (www./m. bilan,
+qo'shimcha parametrlar bilan); ID topilmasa — avvalgidek tashqi tugma.
+Instagram — o'zgarmagan (tashqarida).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../features/showcase/showcase_common.dart    |  44 +-
+ .../features/showcase/showcase_extras.dart    |  21 +-
+ .../features/showcase/showcase_screen.dart    |  42 +-
+ .../lib/features/showcase/showcase_video.dart | 446 ++++++++++++++++++
+ mobile_nova/lib/l10n/arb/app_en.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   2 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   2 +
+ .../lib/l10n/gen/app_localizations.dart       |  12 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   7 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   7 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   7 +
+ mobile_nova/test/showcase_screen_test.dart    | 271 +++++++++++
+ 12 files changed, 852 insertions(+), 11 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/showcase_video.dart
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_common.dart b/mobile_nova/lib/features/showcase/showcase_common.dart
+index b36e3a3..6b3b49f 100644
+--- a/mobile_nova/lib/features/showcase/showcase_common.dart
++++ b/mobile_nova/lib/features/showcase/showcase_common.dart
+@@ -2,8 +2,11 @@ import '../../l10n/gen/app_localizations.dart';
+ 
+ /// KO'RGAZMA — umumiy qoidalar (ekran, yaratish, lenta kartasi).
+ 
+-/// Ko'rgazmadagi tashqi havola turi. Ilova uni FAQAT tashqarida ochadi
+-/// (`openLink`): ichiga joylanmaydi, o'zi o'ynamaydi.
++/// Ko'rgazmadagi tashqi havola turi.
++///
++/// * YouTube — video ID topilsa, ilova ichida YouTube'ning RASMIY
++///   pleerida ochiladi (`showcase_video.dart`), aks holda tashqarida;
++/// * Instagram — faqat tashqarida (`openLink`).
+ enum ShowcaseLinkKind { youtube, instagram }
+ 
+ /// Havola ruxsat etilganmi (shartnoma §3): faqat `https` va
+@@ -30,6 +33,43 @@ ShowcaseLinkKind? showcaseLinkKind(String url) {
+   };
+ }
+ 
++final _ytId = RegExp(r'^[A-Za-z0-9_-]{11}$');
++
++/// YouTube havolasidagi video ID (11 belgi) yoki `null`.
++///
++/// Qabul qilinadi (`www.`/`m.` bilan ham): `youtube.com/watch?v=ID`
++/// (boshqa parametrlar bilan ham), `youtu.be/ID`, `youtube.com/shorts/ID`,
++/// `youtube.com/embed/ID`, `youtube.com/live/ID`. Havola avval
++/// [showcaseLinkKind] dan o'tishi shart (faqat `https`, begona xost yo'q).
++String? youtubeVideoId(String url) {
++  if (showcaseLinkKind(url) != ShowcaseLinkKind.youtube) return null;
++  final u = Uri.parse(url.trim());
++  var h = u.host.toLowerCase();
++  if (h.startsWith('www.')) {
++    h = h.substring(4);
++  } else if (h.startsWith('m.')) {
++    h = h.substring(2);
++  }
++  final seg = u.pathSegments.where((e) => e.isNotEmpty).toList();
++  String? id;
++  if (h == 'youtu.be') {
++    id = seg.isEmpty ? null : seg.first;
++  } else if (seg.length == 1 && seg.first == 'watch') {
++    id = u.queryParameters['v'];
++  } else if (seg.length >= 2 &&
++      const {'shorts', 'embed', 'live'}.contains(seg.first)) {
++    id = seg[1];
++  }
++  return id != null && _ytId.hasMatch(id) ? id : null;
++}
++
++/// YouTube Shorts (vertikal) havolasimi — pleer 9:16 bo'ladi.
++bool isYoutubeShorts(String url) {
++  if (youtubeVideoId(url) == null) return false;
++  final seg = Uri.parse(url.trim()).pathSegments;
++  return seg.isNotEmpty && seg.first == 'shorts';
++}
++
+ /// "YouTube'da ochish" / "Instagram'da ochish".
+ String showcaseLinkLabel(L l, ShowcaseLinkKind k) => switch (k) {
+   ShowcaseLinkKind.youtube => l.showcaseOpenYoutube,
+diff --git a/mobile_nova/lib/features/showcase/showcase_extras.dart b/mobile_nova/lib/features/showcase/showcase_extras.dart
+index 4b3ddcb..9c27d94 100644
+--- a/mobile_nova/lib/features/showcase/showcase_extras.dart
++++ b/mobile_nova/lib/features/showcase/showcase_extras.dart
+@@ -10,11 +10,13 @@ import '../../design/widgets/surfaces.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../../routing/routes.dart';
+ import 'showcase_common.dart';
++import 'showcase_video.dart';
+ 
+ /// KO'RGAZMA MA'LUMOTI — lenta kartasi va post tafsilotida (yorug' fon).
+ ///
+-/// Sarlavha, narx, "Mahsulotni ko'rish" va YouTube/Instagram havolasi
+-/// (faqat tashqarida ochiladi). Ma'lumot yo'q — hech narsa chizilmaydi.
++/// Sarlavha, narx, "Mahsulotni ko'rish" va havola: YouTube — "Videoni
++/// ko'rish" (ilova ichida, rasmiy pleer), Instagram — tashqarida.
++/// Ma'lumot yo'q — hech narsa chizilmaydi.
+ class ShowcaseExtras extends StatelessWidget {
+   const ShowcaseExtras({
+     super.key,
+@@ -38,6 +40,7 @@ class ShowcaseExtras extends StatelessWidget {
+     final l = L.of(context);
+     final t = context.tokens;
+     final link = showcaseLinkKind(p.linkUrl);
++    final videoId = youtubeVideoId(p.linkUrl);
+     final item = p.catalogItem;
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+@@ -81,7 +84,19 @@ class ShowcaseExtras extends StatelessWidget {
+                   onTap: () => context.push(
+                       Routes.catalogProduct(item.companyId, item.id)),
+                 ),
+-              if (link != null)
++              if (videoId != null)
++                _Pill(
++                  key: ValueKey('$keyPrefix-video'),
++                  icon: Icons.play_circle_outline_rounded,
++                  label: l.showcaseWatchVideo,
++                  onTap: () => showShowcaseVideo(
++                    context,
++                    url: p.linkUrl,
++                    videoId: videoId,
++                    title: p.title,
++                  ),
++                )
++              else if (link != null)
+                 _Pill(
+                   key: ValueKey('$keyPrefix-link'),
+                   icon: Icons.open_in_new_rounded,
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index fb36d6b..33e3f99 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -50,6 +50,7 @@ import '../social/reels_screen.dart'
+         showReelComments;
+ import 'showcase_common.dart';
+ import 'showcase_sound.dart';
++import 'showcase_video.dart';
+ 
+ /// KO'RGAZMA — pastki menyuning 4-tabi (Reels o'rnida, 2026-10).
+ ///
+@@ -59,8 +60,9 @@ import 'showcase_sound.dart';
+ /// va ilova fonda turganda to'xtaydi. Kutubxona musiqasi — bitta audio
+ /// egasi orqali, boshqa ilova ovozi bilan aralashmaydi.
+ ///
+-/// Uchinchi tomon kontenti (YouTube / Instagram) ichida O'YNAMAYDI —
+-/// faqat tugma, tashqarida ochiladi.
++/// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
++/// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
++/// ochiq turganda musiqa pauzada. Instagram — faqat tashqarida.
+ 
+ /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
+ /// (Reels bilan bir xil qoida).
+@@ -351,6 +353,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
+   bool _viewerOpen = false;
+ 
++  /// YouTube varag'i ochiq — musiqa va karusel pauzada (ikki ovoz
++  /// bir vaqtda yo'q), yopilgach davom etadi.
++  bool _videoOpen = false;
++
+   bool _captionOpen = false;
+   int? _comments;
+   int? _views;
+@@ -364,13 +370,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   bool get _onScreen => widget.visible && _onStage && _foreground;
+ 
+   /// Karusel soati va ko'rishni sanash.
+-  bool get _active => _onScreen && !_viewerOpen;
++  bool get _active => _onScreen && !_viewerOpen && !_videoOpen;
+ 
+   /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
+   /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
+   /// orqali pauza, qaytilganda davom etadi. Burchakdagi 🔇 — umuman
+   /// o'ynamaydi.
+-  bool get _audible => _onScreen && !ref.read(showcaseMutedProvider);
++  bool get _audible =>
++      _onScreen && !_videoOpen && !ref.read(showcaseMutedProvider);
+ 
+   @override
+   void initState() {
+@@ -562,6 +569,20 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     _sync();
+   }
+ 
++  Future<void> _openVideo(String id) async {
++    setState(() => _videoOpen = true);
++    _sync();
++    await showShowcaseVideo(
++      context,
++      url: _p.linkUrl,
++      videoId: id,
++      title: _p.title,
++    );
++    if (!mounted) return;
++    setState(() => _videoOpen = false);
++    _sync();
++  }
++
+   Future<void> _like() async {
+     final e = await ref.read(postLikesProvider.notifier).toggle(_p);
+     if (e != null && mounted) _snack(describeError(L.of(context), e));
+@@ -696,6 +717,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     final navH = MediaQuery.paddingOf(context).bottom;
+     final topH = MediaQuery.paddingOf(context).top;
+     final link = showcaseLinkKind(p.linkUrl);
++    final videoId = youtubeVideoId(p.linkUrl);
+     final item = p.catalogItem;
+ 
+     return Stack(
+@@ -922,7 +944,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                         primary: true,
+                         onTap: () => _openProduct(item),
+                       ),
+-                    if (link != null)
++                    if (videoId != null)
++                      _CtaButton(
++                        key: const ValueKey('showcase-video'),
++                        icon: Icons.play_circle_outline_rounded,
++                        label: l.showcaseWatchVideo,
++                        onTap: () => _openVideo(videoId),
++                      )
++                    else if (link != null)
+                       _CtaButton(
+                         key: const ValueKey('showcase-link'),
+                         icon: Icons.open_in_new_rounded,
+@@ -1032,7 +1061,8 @@ class _Pill extends StatelessWidget {
+   );
+ }
+ 
+-/// "Mahsulotni ko'rish" (oltin) va "YouTube'da ochish" (qora shisha).
++/// "Mahsulotni ko'rish" (oltin), "Videoni ko'rish" / "Instagram'da
++/// ochish" (qora shisha).
+ class _CtaButton extends StatelessWidget {
+   const _CtaButton({
+     super.key,
+diff --git a/mobile_nova/lib/features/showcase/showcase_video.dart b/mobile_nova/lib/features/showcase/showcase_video.dart
+new file mode 100644
+index 0000000..ae98709
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/showcase_video.dart
+@@ -0,0 +1,446 @@
++import 'dart:async';
++import 'dart:convert';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:webview_flutter/webview_flutter.dart';
++import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
++
++import '../../core/utils/external_link.dart';
++import '../../design/theme/typography.dart';
++import '../../design/tokens/shapes.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../profile/music_player.dart' show AudioOwner, audioOwnerProvider;
++import 'showcase_common.dart';
++
++/// KO'RGAZMA VIDEOSI — YouTube'ning RASMIY pleeri ilova ichida.
++///
++/// Egasi (build 329): "YouTube'da ochish" o'rniga "Videoni ko'rish" —
++/// video ilovadan chiqmasdan ko'riladi. YouTube API qoidalari:
++///
++/// * avtomatik ijro YO'Q — `autoplay` berilmaydi, `onReady` da
++///   `playVideo()` chaqirilmaydi; ijroni odam pleerning O'ZIDA boshlaydi
++///   (iOS/Android'da ham media "foydalanuvchi bosishini" talab qiladi);
++/// * pleer ustida hech narsa yo'q (yopish tugmasi va "YouTube'da ochish"
++///   havolasi pleerdan TASHQARIDA — tepada va pastda);
++/// * o'lcham kamida 200×200;
++/// * ilova kimligi: sahifa `https://nfcstore.uz/` bazasi bilan yuklanadi
++///   (Referer), `origin` va `widget_referrer` — `music_embed.dart` bilan
++///   bir xil yo'l;
++/// * fonda ijro YO'Q — varaq yopilsa yoki ilova fonga o'tsa pleer
++///   yo'q qilinadi (qaytilganda qaytadan, yana avtomatik ijrosiz).
++///
++/// Video joylashtirishni taqiqlagan bo'lsa (xato 101/150), yuklanmasa
++/// yoki pleer javob bermasa — pleer o'rnida "YouTube'da ochish".
++
++/// Pleer shuncha vaqtda tayyor bo'lmasa — zaxira yo'l ko'rsatiladi.
++const kShowcaseVideoReadyTimeout = Duration(seconds: 15);
++
++/// Sinov uchun: WebView o'rniga soxta pleer. `onState` ga pleer
++/// holatlari (`ready`, `playing`, `paused`, `ended`, `error:<kod>`)
++/// yuboriladi.
++@visibleForTesting
++Widget Function(String videoId, ValueChanged<String> onState)?
++    showcaseYoutubePlayerOverride;
++
++/// Varaqni ochadi. Yopilganda (har qanday yo'l bilan) tugaydi.
++Future<void> showShowcaseVideo(
++  BuildContext context, {
++  required String url,
++  required String videoId,
++  String title = '',
++}) {
++  return showModalBottomSheet<void>(
++    context: context,
++    useRootNavigator: true,
++    isScrollControlled: true,
++    showDragHandle: true,
++    backgroundColor: Colors.black,
++    builder: (_) =>
++        ShowcaseVideoSheet(url: url, videoId: videoId, title: title),
++  );
++}
++
++class ShowcaseVideoSheet extends ConsumerStatefulWidget {
++  const ShowcaseVideoSheet({
++    super.key,
++    required this.url,
++    required this.videoId,
++    this.title = '',
++  });
++
++  final String url;
++  final String videoId;
++  final String title;
++
++  /// Pleer o'lchami: 16:9 (Shorts — 9:16), lekin hech qachon
++  /// 200×200 dan kichik emas va ekran balandligining ~60% idan oshmaydi.
++  @visibleForTesting
++  static Size playerSize({
++    required double maxWidth,
++    required double screenHeight,
++    required bool shorts,
++  }) {
++    const min = 200.0;
++    final w0 = maxWidth < min ? min : maxWidth;
++    final maxH = screenHeight * .6 < min ? min : screenHeight * .6;
++    if (shorts) {
++      final h = (w0 * 16 / 9).clamp(min, maxH);
++      return Size((h * 9 / 16).clamp(min, w0), h);
++    }
++    return Size(w0, (w0 * 9 / 16).clamp(min, maxH));
++  }
++
++  @override
++  ConsumerState<ShowcaseVideoSheet> createState() => _ShowcaseVideoSheetState();
++}
++
++class _ShowcaseVideoSheetState extends ConsumerState<ShowcaseVideoSheet>
++    with WidgetsBindingObserver {
++  late final AudioOwner _owner;
++  final _ctl = ShowcaseYoutubeController();
++  bool _foreground = true;
++  bool _ready = false;
++  String? _error;
++  Timer? _watchdog;
++
++  /// Fondan qaytilganda pleer YANGIDAN quriladi.
++  int _gen = 0;
++
++  @override
++  void initState() {
++    super.initState();
++    _owner = ref.read(audioOwnerProvider);
++    WidgetsBinding.instance.addObserver(this);
++    final s = WidgetsBinding.instance.lifecycleState;
++    _foreground = s == null ||
++        s == AppLifecycleState.resumed ||
++        s == AppLifecycleState.inactive;
++    if (_foreground) _arm();
++  }
++
++  void _arm() {
++    _ready = false;
++    _watchdog?.cancel();
++    _watchdog = Timer(kShowcaseVideoReadyTimeout, () {
++      if (mounted && !_ready && _error == null) {
++        setState(() => _error = 'error:timeout');
++      }
++    });
++  }
++
++  void _onState(String s) {
++    if (!mounted) return;
++    if (s == 'ready') {
++      _ready = true;
++      _watchdog?.cancel();
++    } else if (s == 'playing') {
++      _ready = true;
++      _watchdog?.cancel();
++      // Boshqa ovoz (ko'rgazma musiqasi, lentadagi video) to'xtaydi.
++      _owner.take(this, () => _ctl.pause());
++    } else if (s == 'paused' || s == 'ended') {
++      _owner.release(this);
++    } else if (s.startsWith('error')) {
++      _watchdog?.cancel();
++      _owner.release(this);
++      setState(() => _error = s);
++    }
++  }
++
++  @override
++  void didChangeAppLifecycleState(AppLifecycleState state) {
++    final fg = state == AppLifecycleState.resumed ||
++        state == AppLifecycleState.inactive;
++    if (fg == _foreground || !mounted) return;
++    setState(() {
++      _foreground = fg;
++      if (fg) _gen++;
++    });
++    if (fg) {
++      if (_error == null) _arm();
++    } else {
++      // Fonda ijro yo'q: DARHOL to'xtatiladi va sahifa bo'shatiladi
++      // (fonda kadr chizilmaydi — daraxtdan olinishini kutib bo'lmaydi),
++      // keyin pleer daraxtdan ham olinadi.
++      _ctl.unload();
++      _watchdog?.cancel();
++      _owner.release(this);
++    }
++  }
++
++  @override
++  void dispose() {
++    WidgetsBinding.instance.removeObserver(this);
++    _watchdog?.cancel();
++    _owner.release(this);
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final mq = MediaQuery.of(context);
++    final shorts = isYoutubeShorts(widget.url);
++    return SafeArea(
++      top: false,
++      child: Padding(
++        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
++        child: LayoutBuilder(builder: (context, c) {
++          final size = ShowcaseVideoSheet.playerSize(
++            maxWidth: c.maxWidth,
++            screenHeight: mq.size.height,
++            shorts: shorts,
++          );
++          return Column(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              // Sarlavha va yopish — pleerning USTIDA EMAS, tepasida.
++              Row(
++                children: [
++                  const Icon(Icons.smart_display_rounded,
++                      color: Colors.white, size: 22),
++                  const SizedBox(width: Gap.sm),
++                  Expanded(
++                    child: Text(
++                      widget.title.isEmpty ? 'YouTube' : widget.title,
++                      maxLines: 1,
++                      overflow: TextOverflow.ellipsis,
++                      style: const TextStyle(
++                        fontFamily: AppType.sans,
++                        fontSize: 15,
++                        fontWeight: FontWeight.w700,
++                        color: Colors.white,
++                      ),
++                    ),
++                  ),
++                  IconButton(
++                    key: const ValueKey('showcase-video-close'),
++                    onPressed: () => Navigator.of(context).maybePop(),
++                    tooltip: MaterialLocalizations.of(context)
++                        .closeButtonTooltip,
++                    icon: const Icon(Icons.close_rounded,
++                        color: Colors.white),
++                  ),
++                ],
++              ),
++              const SizedBox(height: Gap.sm),
++              SizedBox(
++                key: const ValueKey('showcase-video-player-area'),
++                width: size.width,
++                height: size.height,
++                child: ClipRRect(
++                  borderRadius: BorderRadius.circular(14),
++                  child: _error != null
++                      ? _Fallback(url: widget.url, message: l.showcaseVideoUnavailable)
++                      : !_foreground
++                          ? const ColoredBox(color: Colors.black)
++                          : KeyedSubtree(
++                              key: ValueKey('yt-$_gen'),
++                              child: showcaseYoutubePlayerOverride?.call(
++                                      widget.videoId, _onState) ??
++                                  ShowcaseYoutubePlayer(
++                                    videoId: widget.videoId,
++                                    controller: _ctl,
++                                    onState: _onState,
++                                  ),
++                            ),
++                ),
++              ),
++              if (_error == null) ...[
++                const SizedBox(height: Gap.xs),
++                // Zaxira yo'l — pleerdan PASTDA, kichik havola.
++                TextButton.icon(
++                  key: const ValueKey('showcase-video-external'),
++                  onPressed: () => openLink(widget.url),
++                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
++                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                  label: Text(l.showcaseOpenYoutube),
++                ),
++              ],
++            ],
++          );
++        }),
++      ),
++    );
++  }
++}
++
++/// Pleer o'rnida: "Bu videoni ilova ichida ko'rib bo'lmaydi" va
++/// "YouTube'da ochish".
++class _Fallback extends StatelessWidget {
++  const _Fallback({required this.url, required this.message});
++  final String url;
++  final String message;
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    return ColoredBox(
++      key: const ValueKey('showcase-video-fallback'),
++      color: Colors.white.withValues(alpha: .08),
++      child: Center(
++        child: Padding(
++          padding: const EdgeInsets.all(Gap.lg),
++          child: Column(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              const Icon(Icons.smart_display_outlined,
++                  color: Colors.white70, size: 36),
++              const SizedBox(height: Gap.sm),
++              Text(
++                message,
++                textAlign: TextAlign.center,
++                style: const TextStyle(
++                  fontFamily: AppType.sans,
++                  fontSize: 13.5,
++                  height: 1.3,
++                  color: Colors.white,
++                ),
++              ),
++              const SizedBox(height: Gap.md),
++              FilledButton.icon(
++                key: const ValueKey('showcase-video-fallback-open'),
++                onPressed: () => openLink(url),
++                style: FilledButton.styleFrom(
++                  backgroundColor: Colors.white,
++                  foregroundColor: Colors.black,
++                ),
++                icon: const Icon(Icons.open_in_new_rounded, size: 16),
++                label: Text(l.showcaseOpenYoutube),
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++/// Pleerni tashqaridan to'xtatish (audio egaligi boshqasiga o'tganda).
++class ShowcaseYoutubeController {
++  WebViewController? _web;
++
++  Future<void> pause() async {
++    await _web
++        ?.runJavaScript('window.nfcPause && window.nfcPause()')
++        .catchError((_) {});
++  }
++
++  /// Ijroni to'xtatib, sahifani bo'shatadi (ovoz qolmaydi).
++  void unload() {
++    final w = _web;
++    if (w == null) return;
++    w.runJavaScript('window.nfcPause && window.nfcPause()').catchError((_) {});
++    w.loadHtmlString('<html></html>').catchError((_) {});
++  }
++}
++
++/// YouTube IFrame Player API — WebView ichida.
++class ShowcaseYoutubePlayer extends StatefulWidget {
++  const ShowcaseYoutubePlayer({
++    super.key,
++    required this.videoId,
++    required this.controller,
++    required this.onState,
++  });
++
++  final String videoId;
++  final ShowcaseYoutubeController controller;
++
++  /// `ready` | `playing` | `paused` | `ended` | `error:<kod>`
++  final ValueChanged<String> onState;
++
++  static const _base = 'https://nfcstore.uz/';
++
++  /// Pleer sahifasi. AVTOMATIK IJRO YO'Q: `autoplay` yo'q va `onReady`
++  /// faqat holatni xabar qiladi.
++  @visibleForTesting
++  static String html(String id) => '''
++<!doctype html><html><head>
++<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
++<meta name="referrer" content="strict-origin-when-cross-origin">
++<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#p{width:100%;height:100%}</style>
++</head><body><div id="p"></div>
++<script>
++var player;
++function post(m){try{NfcVideo.postMessage(m)}catch(e){}}
++window.nfcPause=function(){try{player.pauseVideo()}catch(e){}};
++function onYouTubeIframeAPIReady(){
++  player=new YT.Player('p',{width:'100%',height:'100%',videoId:${jsonEncode(id)},
++    playerVars:{playsinline:1,rel:0,controls:1,origin:'https://nfcstore.uz',widget_referrer:'https://nfcstore.uz'},
++    events:{
++      onReady:function(){post('ready')},
++      onStateChange:function(e){
++        if(e.data===1)post('playing');else if(e.data===2)post('paused');else if(e.data===0)post('ended');
++      },
++      onError:function(e){post('error:'+e.data)}
++    }});
++}
++</script>
++<script src="https://www.youtube.com/iframe_api" onerror="post('error:load')"></script>
++</body></html>''';
++
++  @override
++  State<ShowcaseYoutubePlayer> createState() => _ShowcaseYoutubePlayerState();
++}
++
++class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
++  late final WebViewController _web;
++
++  @override
++  void initState() {
++    super.initState();
++    // Media "foydalanuvchi bosishini" talab qiladi (standart) — ijro
++    // faqat pleerdagi play tugmasidan.
++    final PlatformWebViewControllerCreationParams params =
++        WebViewPlatform.instance is WebKitWebViewPlatform
++            ? WebKitWebViewControllerCreationParams(
++                allowsInlineMediaPlayback: true,
++              )
++            : const PlatformWebViewControllerCreationParams();
++    _web = WebViewController.fromPlatformCreationParams(params)
++      ..setJavaScriptMode(JavaScriptMode.unrestricted)
++      ..setBackgroundColor(Colors.black)
++      ..addJavaScriptChannel('NfcVideo',
++          onMessageReceived: (m) => widget.onState(m.message))
++      ..setNavigationDelegate(NavigationDelegate(
++        onWebResourceError: (e) {
++          if (e.isForMainFrame ?? false) widget.onState('error:load');
++        },
++        onNavigationRequest: (r) {
++          if (!r.isMainFrame) return NavigationDecision.navigate;
++          final u = Uri.tryParse(r.url);
++          if (u == null ||
++              u.scheme == 'about' ||
++              u.scheme == 'data' ||
++              u.host == 'nfcstore.uz') {
++            return NavigationDecision.navigate;
++          }
++          // Pleerdagi "YouTube'da ko'rish" va boshqa havolalar —
++          // ilovaning o'zida emas, tashqarida.
++          openLink(r.url);
++          return NavigationDecision.prevent;
++        },
++      ))
++      ..loadHtmlString(ShowcaseYoutubePlayer.html(widget.videoId),
++          baseUrl: ShowcaseYoutubePlayer._base);
++    widget.controller._web = _web;
++  }
++
++  @override
++  void dispose() {
++    if (identical(widget.controller._web, _web)) {
++      widget.controller._web = null;
++    }
++    // Fonda ijro yo'q: sahifa bo'shatiladi, ovoz shu zahoti to'xtaydi.
++    _web
++        .runJavaScript('window.nfcPause && window.nfcPause()')
++        .catchError((_) {});
++    _web.loadHtmlString('<html></html>').catchError((_) {});
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) => WebViewWidget(controller: _web);
++}
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 9efd016..98156bd 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1239,6 +1239,8 @@
+   "showcaseViewProduct": "View product",
+   "showcaseOpenYoutube": "Open on YouTube",
+   "showcaseOpenInstagram": "Open on Instagram",
++  "showcaseWatchVideo": "Watch video",
++  "showcaseVideoUnavailable": "This video can’t be played in the app. Open it on YouTube.",
+   "currencyUzs": "UZS",
+   "showcaseImageN": "Photo {n} of {total}",
+   "showcasePhotos": "Photos",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 95677f0..3409f2f 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1239,6 +1239,8 @@
+   "showcaseViewProduct": "Посмотреть товар",
+   "showcaseOpenYoutube": "Открыть в YouTube",
+   "showcaseOpenInstagram": "Открыть в Instagram",
++  "showcaseWatchVideo": "Смотреть видео",
++  "showcaseVideoUnavailable": "Это видео нельзя посмотреть в приложении. Откройте его в YouTube.",
+   "currencyUzs": "сум",
+   "showcaseImageN": "Фото {n} из {total}",
+   "showcasePhotos": "Фото",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index d7f2ec6..2e69414 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1397,6 +1397,8 @@
+   "showcaseViewProduct": "Mahsulotni ko‘rish",
+   "showcaseOpenYoutube": "YouTube’da ochish",
+   "showcaseOpenInstagram": "Instagram’da ochish",
++  "showcaseWatchVideo": "Videoni ko‘rish",
++  "showcaseVideoUnavailable": "Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.",
+   "currencyUzs": "so‘m",
+   "@currencyUzs": {"description": "Narx yonidagi valyuta (faqat so‘m)."},
+   "showcaseImageN": "{n}-rasm, jami {total}",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 2402a4c..b12ff27 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6489,6 +6489,18 @@ abstract class L {
+   /// **'Instagram’da ochish'**
+   String get showcaseOpenInstagram;
+ 
++  /// No description provided for @showcaseWatchVideo.
++  ///
++  /// In uz, this message translates to:
++  /// **'Videoni ko‘rish'**
++  String get showcaseWatchVideo;
++
++  /// No description provided for @showcaseVideoUnavailable.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.'**
++  String get showcaseVideoUnavailable;
++
+   /// Narx yonidagi valyuta (faqat so‘m).
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 157ef94..091a331 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3587,6 +3587,13 @@ class LEn extends L {
+   @override
+   String get showcaseOpenInstagram => 'Open on Instagram';
+ 
++  @override
++  String get showcaseWatchVideo => 'Watch video';
++
++  @override
++  String get showcaseVideoUnavailable =>
++      'This video can’t be played in the app. Open it on YouTube.';
++
+   @override
+   String get currencyUzs => 'UZS';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 2a3fd19..f501023 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3609,6 +3609,13 @@ class LRu extends L {
+   @override
+   String get showcaseOpenInstagram => 'Открыть в Instagram';
+ 
++  @override
++  String get showcaseWatchVideo => 'Смотреть видео';
++
++  @override
++  String get showcaseVideoUnavailable =>
++      'Это видео нельзя посмотреть в приложении. Откройте его в YouTube.';
++
+   @override
+   String get currencyUzs => 'сум';
+ 
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index ddecbdb..3319406 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3567,6 +3567,13 @@ class LUz extends L {
+   @override
+   String get showcaseOpenInstagram => 'Instagram’da ochish';
+ 
++  @override
++  String get showcaseWatchVideo => 'Videoni ko‘rish';
++
++  @override
++  String get showcaseVideoUnavailable =>
++      'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.';
++
+   @override
+   String get currencyUzs => 'so‘m';
+ 
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index b500f09..e49e9f9 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -15,7 +15,11 @@ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
+ import 'package:nfcstore_nova/features/profile/profile_repository.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
++import 'package:nfcstore_nova/features/profile/music_player.dart'
++    show audioOwnerProvider;
++import 'package:nfcstore_nova/features/showcase/showcase_extras.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
+ import 'package:nfcstore_nova/features/social/media_carousel.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
+@@ -536,4 +540,271 @@ void main() {
+       expect(v.playing, isEmpty);
+     });
+   });
++
++  group('YouTube — ilova ichida rasmiy pleer', () {
++    test('havoladan video ID: watch, youtu.be, shorts, m., parametrlar',
++        () {
++      const id = 'dQw4w9WgXcQ';
++      for (final u in [
++        'https://www.youtube.com/watch?v=$id',
++        'https://youtube.com/watch?v=$id',
++        'https://m.youtube.com/watch?v=$id',
++        'https://www.youtube.com/watch?feature=share&v=$id&t=42s',
++        'https://youtu.be/$id',
++        'https://youtu.be/$id?si=AbCdEf&t=3',
++        'https://www.youtube.com/shorts/$id',
++        'https://youtube.com/shorts/$id?feature=share',
++        'https://m.youtube.com/shorts/$id',
++        'https://www.youtube.com/embed/$id',
++        ' https://youtu.be/$id ',
++      ]) {
++        expect(youtubeVideoId(u), id, reason: u);
++      }
++      expect(isYoutubeShorts('https://youtube.com/shorts/$id'), isTrue);
++      expect(isYoutubeShorts('https://youtu.be/$id'), isFalse);
++    });
++
++    test('yaroqsiz havola — ID yo‘q', () {
++      for (final u in [
++        '',
++        'https://youtu.be/abc', // 11 belgi emas
++        'https://youtu.be/',
++        'https://www.youtube.com/watch',
++        'https://www.youtube.com/watch?v=',
++        'https://www.youtube.com/watch?v=dQw4w9WgXcQ"><',
++        'https://www.youtube.com/channel/UCabcdefghijk',
++        'https://www.youtube.com/@nfcstore',
++        'http://youtu.be/dQw4w9WgXcQ', // https emas
++        'https://evil.com/watch?v=dQw4w9WgXcQ',
++        'https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ',
++        'https://www.instagram.com/p/dQw4w9WgXcQ',
++      ]) {
++        expect(youtubeVideoId(u), isNull, reason: u);
++      }
++    });
++
++    test('pleer: avtomatik ijro yo‘q, ilova kimligi, ≥ 200×200', () {
++      final html = ShowcaseYoutubePlayer.html('dQw4w9WgXcQ');
++      expect(html, isNot(contains('autoplay')));
++      expect(html, isNot(contains('playVideo')));
++      expect(html, contains("origin:'https://nfcstore.uz'"));
++      expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
++      expect(html, contains('"dQw4w9WgXcQ"'));
++      for (final shorts in [false, true]) {
++        for (final w in [180.0, 288.0, 358.0, 700.0]) {
++          final s = ShowcaseVideoSheet.playerSize(
++              maxWidth: w, screenHeight: 560, shorts: shorts);
++          expect(s.width, greaterThanOrEqualTo(200), reason: '$w $shorts');
++          expect(s.height, greaterThanOrEqualTo(200), reason: '$w $shorts');
++        }
++      }
++      final shorts = ShowcaseVideoSheet.playerSize(
++          maxWidth: 358, screenHeight: 844, shorts: true);
++      expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
++    });
++
++    const track =
++        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
++    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s';
++
++    Future<void> drain(WidgetTester tester) async {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 40)));
++      await settle(tester, frames: 4);
++    }
++
++    /// Soxta pleer: WebView o'rniga. Oxirgi `onState` saqlanadi.
++    ({List<String> ids, ValueChanged<String> Function() state}) fakePlayer() {
++      final ids = <String>[];
++      ValueChanged<String>? last;
++      showcaseYoutubePlayerOverride = (id, onState) {
++        ids.add(id);
++        last = onState;
++        return ColoredBox(
++            key: ValueKey('fake-yt-$id'), color: const Color(0xFF000000));
++      };
++      addTearDown(() => showcaseYoutubePlayerOverride = null);
++      return (ids: ids, state: () => last!);
++    }
++
++    testWidgets('YouTube — "Videoni ko‘rish"; Instagram — tashqi tugma',
++        (tester) async {
++      final l = LUz();
++      expect(l.showcaseWatchVideo, 'Videoni ko‘rish');
++      expect(LRu().showcaseWatchVideo, 'Смотреть видео');
++      expect(LEn().showcaseWatchVideo, 'Watch video');
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: ytUrl)]),
++      ]);
++      expect(find.byKey(const ValueKey('showcase-video')), findsOneWidget);
++      expect(find.text(l.showcaseWatchVideo), findsOneWidget);
++      expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
++      expect(find.text(l.showcaseOpenYoutube), findsNothing);
++    });
++
++    testWidgets('Instagram — tashqi "Instagram’da ochish" qoladi',
++        (tester) async {
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: 'https://www.instagram.com/p/x')]),
++      ]);
++      expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
++      await tester.tap(find.byKey(const ValueKey('showcase-link')));
++      await settle(tester, frames: 3);
++      expect(opened.single.toString(), 'https://www.instagram.com/p/x');
++    });
++
++    testWidgets(
++        'varaq ochilsa musiqa pauza, pleer ustida hech narsa yo‘q, '
++        'yopilsa davom etadi', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final yt = fakePlayer();
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: ytUrl, music: track)]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(yt.ids, ['dQw4w9WgXcQ']);
++      final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
++      expect(player, findsOneWidget);
++      expect(v.playing, isEmpty, reason: 'YouTube varag‘i ochiq — musiqa jim');
++      expect(v.disposed, isEmpty);
++
++      // Pleer ≥ 200×200 va "YouTube'da ochish" PASTDA, ustida emas.
++      final area = tester.getRect(
++          find.byKey(const ValueKey('showcase-video-player-area')));
++      expect(area.width, greaterThanOrEqualTo(200));
++      expect(area.height, greaterThanOrEqualTo(200));
++      final ext = tester
++          .getRect(find.byKey(const ValueKey('showcase-video-external')));
++      expect(ext.top, greaterThanOrEqualTo(area.bottom));
++      final close =
++          tester.getRect(find.byKey(const ValueKey('showcase-video-close')));
++      expect(close.bottom, lessThanOrEqualTo(area.top));
++
++      // Pleerda play — audio egasi YouTube.
++      yt.state()('ready');
++      yt.state()('playing');
++      await settle(tester, frames: 2);
++      expect(r.c.read(audioOwnerProvider).current, isNotNull);
++      expect(v.playing, isEmpty);
++
++      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(player, findsNothing);
++      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
++      expect(v.created, hasLength(1));
++    });
++
++    testWidgets('🔇 bo‘lsa varaq yopilgach ham musiqa jim', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      fakePlayer();
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: ytUrl, music: track)]),
++      ]);
++      await drain(tester);
++      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++      await drain(tester);
++      expect(v.playing, isEmpty);
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(v.playing, isEmpty);
++    });
++
++    testWidgets('101/150 — pleer o‘rnida "YouTube’da ochish"',
++        (tester) async {
++      final opened = <Uri>[];
++      openLinkOverride = (u) async {
++        opened.add(u);
++        return true;
++      };
++      addTearDown(() => openLinkOverride = null);
++      final yt = fakePlayer();
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: ytUrl)]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      expect(find.byKey(const ValueKey('showcase-video-fallback')), findsNothing);
++
++      yt.state()('error:150');
++      await settle(tester, frames: 3);
++      expect(find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ')), findsNothing);
++      expect(find.byKey(const ValueKey('showcase-video-fallback')),
++          findsOneWidget);
++      expect(find.text(LUz().showcaseVideoUnavailable), findsOneWidget);
++      await tester
++          .tap(find.byKey(const ValueKey('showcase-video-fallback-open')));
++      await settle(tester, frames: 3);
++      expect(opened.single.toString(), ytUrl);
++    });
++
++    testWidgets('pleer javob bermasa — zaxira yo‘l; fonda pleer yo‘q qilinadi',
++        (tester) async {
++      final yt = fakePlayer();
++      await _pump(tester, pages: [
++        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ')]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
++      expect(player, findsOneWidget);
++
++      // Fonda — pleer yo'q qilinadi (fonda ijro yo'q), qaytilganda
++      // YANGI pleer quriladi (yana avtomatik ijrosiz).
++      expect(yt.ids, hasLength(1));
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++      await settle(tester, frames: 3);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
++      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++      await settle(tester, frames: 3);
++      expect(player, findsOneWidget);
++      expect(yt.ids, hasLength(2), reason: 'qaytildi — yangi pleer');
++
++      // `ready` kelmadi — vaqt tugagach zaxira yo'l.
++      await tester.pump(kShowcaseVideoReadyTimeout);
++      await settle(tester, frames: 3);
++      expect(find.byKey(const ValueKey('showcase-video-fallback')),
++          findsOneWidget);
++    });
++
++    testWidgets('lenta kartasi (ShowcaseExtras) — YouTube "Videoni ko‘rish"',
++        (tester) async {
++      final yt = fakePlayer();
++      await tester.pumpWidget(ProviderScope(
++        child: wrapScreen(Scaffold(
++          body: ShowcaseExtras(
++            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ'),
++            keyPrefix: 'feed-showcase',
++          ),
++        )),
++      ));
++      await settle(tester, frames: 4);
++      expect(find.text(LUz().showcaseWatchVideo), findsOneWidget);
++      expect(find.byKey(const ValueKey('feed-showcase-link')), findsNothing);
++      await tester.tap(find.byKey(const ValueKey('feed-showcase-video')));
++      await settle(tester, frames: 10);
++      expect(yt.ids, ['dQw4w9WgXcQ']);
++      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
++      await settle(tester, frames: 10);
++    });
++  });
+ }
+-- 
+2.43.0
+
