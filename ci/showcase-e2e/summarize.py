@@ -72,7 +72,7 @@ def main():
             keep.append(f"{k}: {brief(v)}")
         md.append("| {} | {} | {} | {} | {} |".format(
             s.get("id"), s.get("name"),
-            {"PASS": "✅ PASS", "INFO": "ℹ️ INFO"}.get(s.get("status"), "❌ " + s.get("status", "?")),
+            {"PASS": "✅ PASS", "INFO": "ℹ️ INFO", "ENV": "⚠️ ENV (muhit)"}.get(s.get("status"), "❌ " + s.get("status", "?")),
             "<br>".join(keep).replace("|", "/"),
             "<br>".join(s.get("problems", [])).replace("|", "/")))
     if errors:
@@ -83,7 +83,7 @@ def main():
     if summ:
         with open(summ, "a") as f:
             f.write(out_md)
-    ok = done is not None and steps and all(s.get("status") in ("PASS", "INFO") for s in steps)
+    ok = done is not None and steps and all(s.get("status") in ("PASS", "INFO", "ENV") for s in steps)
     return 0 if ok else 1
 
 

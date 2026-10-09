@@ -316,6 +316,9 @@ class _Run {
   /// Odam kabi yuqoriga surish (keyingi sahifa) / pastga (oldingi).
   final swipeLog = <String>[];
 
+  /// h0 nazorat videosi holatlari (YouTube'ning o'z videosi).
+  List<String> controlStates = const [];
+
   double? get pagerPage {
     final f = find.byKey(const ValueKey('showcase-pager'));
     if (f.evaluate().isEmpty) return null;
@@ -841,6 +844,7 @@ class _Run {
           timeout: const Duration(seconds: 25));
       await wait(const Duration(seconds: 2));
       r.values['controlStates'] = List.of(states);
+      controlStates = List.of(states);
       r.values['controlShot'] = await screenshot('08c_youtube_control');
       nav.pop();
       await wait(const Duration(seconds: 2));
@@ -947,7 +951,41 @@ class _Run {
         r.check(m['still'] == true || m['disposed'] == true || m['player'] == null,
             'YouTube ochiq turganda ko\'rgazma musiqasi o\'ynayapti');
       }
+      // Nazorat videosi ham xato bergan bo'lsa — bu muhit (YouTube shu
+      // qurilma/IP'da embed'ni o'ynatmaydi), ilova xatosi emas: ENV.
+      final controlErr = controlStates.any((x) => x.startsWith('error'));
+      if (r.status == 'FAIL' && fallback && controlErr) {
+        r.status = 'ENV';
+        r.problems.add('YouTube nazorat videosi ham xato berdi '
+            '(${controlStates.join(',')}) — CI muhiti cheklovi');
+      }
       r.values['ytShot'] = await screenshot('08_youtube_fullscreen');
+      // TASHXIS (faqat pleer o'ynamagan va zaxira panel chiqmagan holda):
+      // nima to'sayapti — ovozli autoplay siyosatimi? Natija qadam bahosini
+      // o'zgartirmaydi, faqat yoziladi.
+      if (!playing && has(web)) {
+        const st = '(function(){try{return player.getPlayerState()+"|"+'
+            'player.getCurrentTime().toFixed(2)+"|muted="+player.isMuted()}'
+            'catch(e){return "x:"+e}})()';
+        final diag = <String, String>{};
+        diag['iframeAllow'] = await js(web,
+            '(function(){var f=document.querySelector("iframe");'
+            'return f?(f.getAttribute("allow")||"-"):"no-iframe"})()');
+        diag['userActivation'] = await js(web,
+            '(function(){try{return ""+navigator.userActivation.hasBeenActive}'
+            'catch(e){return "n/a"}})()');
+        diag['state0'] = await js(web, st);
+        await js(web, '(function(){try{player.playVideo()}catch(e){}return 1})()');
+        await wait(const Duration(seconds: 4));
+        diag['afterPlayVideo'] = await js(web, st);
+        await js(web,
+            '(function(){try{player.mute();player.playVideo()}catch(e){}return 1})()');
+        await wait(const Duration(seconds: 5));
+        diag['afterMutedPlay'] = await js(web, st);
+        r.values['ytDiag'] = diag;
+        r.values['ytMutedShot'] = await screenshot('08d_youtube_muted_try');
+        await js(web, '(function(){try{player.unMute()}catch(e){}return 1})()');
+      }
       await t.tap(find.byKey(const ValueKey('showcase-video-close')));
       final closed = await waitFor(() => !has(find.byType(ShowcaseVideoPage)),
           timeout: const Duration(seconds: 6));
