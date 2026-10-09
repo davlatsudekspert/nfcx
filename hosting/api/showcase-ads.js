@@ -98,7 +98,7 @@ export function ensureSchema(env) {
   }
   return p;
 }
-export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); }
+export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); moved = new WeakMap(); movedRetry = new WeakMap(); }
 
 /// Lenta uchun: yoqilgan joylar, slot tartibida. Jadval yo'q / xato — [].
 /// → [{ slot, key: 'kind:id', kind, id, createdAt }]
@@ -352,4 +352,70 @@ export async function seedShowcaseAds(env, { now = new Date() } = {}) {
   await env.DB.prepare(`UPDATE app_migrations SET detail = ? WHERE name = ?`)
     .bind(`created=${created.join(',')}; slots=${slots.join(',')}`, SHOWCASE_ADS_MIGRATION).run().catch(() => {});
   return { applied: true, created, slots };
+}
+
+// ═══ PROMO VIDEOLAR /uploads GA (bir marta, 2026-10) ═══
+//
+// iPhone pleyeri (AVPlayer) videoni FAQAT `Range` (206) bilan o'ynatadi.
+// Saytning statik fayllari (`/promo/*.mp4`, Worker assets) `Range`ni
+// qo'llamaydi — to'liq 200 qaytaradi va iPhone'da video ochilmaydi.
+// `/uploads/*` esa Range/206 + chegara keshi bilan xizmat qiladi (Reels
+// videolari shu yo'ldan). Shuning uchun: promo mp4 assets'dan bir marta
+// omborga (`uploads/promo_*.mp4`) ko'chiriladi va NFCSTOREUZ'ning aynan
+// shu `/promo/...mp4` manzilli postlari yangi manzilga o'tkaziladi.
+// Poster rasm (`/promo/*.jpg`) joyida qoladi — rasmga Range kerak emas.
+// Assets/ombor ishlamasa belgi qo'yilmaydi: 10 daqiqadan keyin qayta.
+export const PROMO_VIDEO_MIGRATION = 'showcase_ads_v2_uploads';
+export const promoUploadName = (videoUrl) => `promo_${String(videoUrl).split('/').pop().replace(/^nfcstore-/, '')}`;
+const PROMO_RETRY_MS = 10 * 60_000;
+let moved = new WeakMap();
+let movedRetry = new WeakMap();
+
+/// → { applied: false, reason? } | { applied: true, moved: [{ from, to, posts }] }
+export async function moveShowcasePromoVideos(env, { now = new Date(), origin = 'https://nfcstore.uz' } = {}) {
+  if (!env?.DB || !env.UPLOADS || !env.ASSETS) return { applied: false, reason: 'no_bindings' };
+  const k = keyOf(env);
+  if (moved.get(k)) return { applied: false, reason: 'cached' };
+  if ((movedRetry.get(k) || 0) > now.getTime()) return { applied: false, reason: 'retry_later' };
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "app_migrations" (
+    name TEXT PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL, detail TEXT
+  )`).run();
+  const seen = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(PROMO_VIDEO_MIGRATION).first();
+  if (seen) { moved.set(k, true); return { applied: false }; }
+  // Promo postlar hali yaratilmagan bo'lsa — kutamiz (v1 avval).
+  const v1 = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(SHOWCASE_ADS_MIGRATION).first();
+  if (!v1) return { applied: false, reason: 'no_v1' };
+
+  const later = (reason) => { movedRetry.set(k, now.getTime() + PROMO_RETRY_MS); return { applied: false, reason }; };
+  const out = [];
+  for (const a of PROMO_ADS) {
+    const name = promoUploadName(a.videoUrl);
+    const key = `uploads/${name}`;
+    let exists = null;
+    try { exists = await env.UPLOADS.head(key); } catch { exists = null; }
+    if (!exists) {
+      let res;
+      try { res = await env.ASSETS.fetch(new Request(origin + a.videoUrl)); } catch { return later('asset_fetch'); }
+      const ct = String(res.headers.get('content-type') || '');
+      if (!res.ok || !/^video\/mp4/i.test(ct)) return later(`asset_${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length < 1024) return later('asset_small');
+      try {
+        await env.UPLOADS.put(key, bytes, {
+          httpMetadata: { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000, immutable' },
+          customMetadata: { uploadedAt: now.toISOString(), actor: `seed:${PROMO_VIDEO_MIGRATION}` },
+        });
+      } catch { return later('upload_put'); }
+    }
+    const to = `/uploads/${name}`;
+    const r = await env.DB.prepare(`UPDATE company_posts SET video_url = ? WHERE company_id = ? AND video_url = ?`)
+      .bind(to, ADS_COMPANY, a.videoUrl).run();
+    out.push({ from: a.videoUrl, to, posts: Number(r?.meta?.changes || 0) });
+  }
+  await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, ?)`)
+    .bind(PROMO_VIDEO_MIGRATION, now.toISOString(), out.map((m) => `${m.to}:${m.posts}`).join(',')).run();
+  moved.set(k, true);
+  return { applied: true, moved: out };
 }

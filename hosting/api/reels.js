@@ -97,7 +97,7 @@
 // (account-purge.js) tozalanadi.
 
 import { seedShowcaseSamples } from './showcase-samples.js';
-import { seedShowcaseAds, enabledSlots, slotMatchesRow } from './showcase-ads.js';
+import { seedShowcaseAds, moveShowcasePromoVideos, enabledSlots, slotMatchesRow } from './showcase-ads.js';
 import { blockedByUser } from './moderation.js';
 import { activeTargets } from './featured.js';
 import { ensureExtras } from './music.js';
@@ -570,6 +570,8 @@ export async function handle(request, env, url, H) {
     await seedShowcaseSamples(env).catch((e) => console.error('showcase_samples', String(e?.message || e).slice(0, 160)));
     // NFCSTORE promo reklamalari (BOY777, LOL707) — bir marta (api/showcase-ads.js).
     await seedShowcaseAds(env).catch((e) => console.error('showcase_ads', String(e?.message || e).slice(0, 160)));
+    // Promo mp4 — iPhone uchun Range qo'llaydigan /uploads ga (bir marta).
+    await moveShowcasePromoVideos(env).catch((e) => console.error('showcase_promo_move', String(e?.message || e).slice(0, 160)));
     return listReels(request, env, url, H, 'showcase');
   }
   if (path === '/api/reels/hide') {
