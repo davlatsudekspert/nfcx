@@ -1239,6 +1239,8 @@
   "showcaseViewProduct": "View product",
   "showcaseOpenYoutube": "Open on YouTube",
   "showcaseOpenInstagram": "Open on Instagram",
+  "showcaseWatchVideo": "Watch video",
+  "showcaseVideoUnavailable": "This video can’t be played in the app. Open it on YouTube.",
   "currencyUzs": "UZS",
   "showcaseImageN": "Photo {n} of {total}",
   "showcasePhotos": "Photos",

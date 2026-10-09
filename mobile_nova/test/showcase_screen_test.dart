@@ -15,7 +15,11 @@ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
+import 'package:nfcstore_nova/features/profile/music_player.dart'
+    show audioOwnerProvider;
+import 'package:nfcstore_nova/features/showcase/showcase_extras.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
+import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
 import 'package:nfcstore_nova/features/social/media_carousel.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
@@ -534,6 +538,273 @@ void main() {
       await drain(tester);
       expect(r.c.read(showcaseMutedProvider), isTrue);
       expect(v.playing, isEmpty);
+    });
+  });
+
+  group('YouTube — ilova ichida rasmiy pleer', () {
+    test('havoladan video ID: watch, youtu.be, shorts, m., parametrlar',
+        () {
+      const id = 'dQw4w9WgXcQ';
+      for (final u in [
+        'https://www.youtube.com/watch?v=$id',
+        'https://youtube.com/watch?v=$id',
+        'https://m.youtube.com/watch?v=$id',
+        'https://www.youtube.com/watch?feature=share&v=$id&t=42s',
+        'https://youtu.be/$id',
+        'https://youtu.be/$id?si=AbCdEf&t=3',
+        'https://www.youtube.com/shorts/$id',
+        'https://youtube.com/shorts/$id?feature=share',
+        'https://m.youtube.com/shorts/$id',
+        'https://www.youtube.com/embed/$id',
+        ' https://youtu.be/$id ',
+      ]) {
+        expect(youtubeVideoId(u), id, reason: u);
+      }
+      expect(isYoutubeShorts('https://youtube.com/shorts/$id'), isTrue);
+      expect(isYoutubeShorts('https://youtu.be/$id'), isFalse);
+    });
+
+    test('yaroqsiz havola — ID yo‘q', () {
+      for (final u in [
+        '',
+        'https://youtu.be/abc', // 11 belgi emas
+        'https://youtu.be/',
+        'https://www.youtube.com/watch',
+        'https://www.youtube.com/watch?v=',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ"><',
+        'https://www.youtube.com/channel/UCabcdefghijk',
+        'https://www.youtube.com/@nfcstore',
+        'http://youtu.be/dQw4w9WgXcQ', // https emas
+        'https://evil.com/watch?v=dQw4w9WgXcQ',
+        'https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ',
+        'https://www.instagram.com/p/dQw4w9WgXcQ',
+      ]) {
+        expect(youtubeVideoId(u), isNull, reason: u);
+      }
+    });
+
+    test('pleer: avtomatik ijro yo‘q, ilova kimligi, ≥ 200×200', () {
+      final html = ShowcaseYoutubePlayer.html('dQw4w9WgXcQ');
+      expect(html, isNot(contains('autoplay')));
+      expect(html, isNot(contains('playVideo')));
+      expect(html, contains("origin:'https://nfcstore.uz'"));
+      expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
+      expect(html, contains('"dQw4w9WgXcQ"'));
+      for (final shorts in [false, true]) {
+        for (final w in [180.0, 288.0, 358.0, 700.0]) {
+          final s = ShowcaseVideoSheet.playerSize(
+              maxWidth: w, screenHeight: 560, shorts: shorts);
+          expect(s.width, greaterThanOrEqualTo(200), reason: '$w $shorts');
+          expect(s.height, greaterThanOrEqualTo(200), reason: '$w $shorts');
+        }
+      }
+      final shorts = ShowcaseVideoSheet.playerSize(
+          maxWidth: 358, screenHeight: 844, shorts: true);
+      expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
+    });
+
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s';
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    /// Soxta pleer: WebView o'rniga. Oxirgi `onState` saqlanadi.
+    ({List<String> ids, ValueChanged<String> Function() state}) fakePlayer() {
+      final ids = <String>[];
+      ValueChanged<String>? last;
+      showcaseYoutubePlayerOverride = (id, onState) {
+        ids.add(id);
+        last = onState;
+        return ColoredBox(
+            key: ValueKey('fake-yt-$id'), color: const Color(0xFF000000));
+      };
+      addTearDown(() => showcaseYoutubePlayerOverride = null);
+      return (ids: ids, state: () => last!);
+    }
+
+    testWidgets('YouTube — "Videoni ko‘rish"; Instagram — tashqi tugma',
+        (tester) async {
+      final l = LUz();
+      expect(l.showcaseWatchVideo, 'Videoni ko‘rish');
+      expect(LRu().showcaseWatchVideo, 'Смотреть видео');
+      expect(LEn().showcaseWatchVideo, 'Watch video');
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: ytUrl)]),
+      ]);
+      expect(find.byKey(const ValueKey('showcase-video')), findsOneWidget);
+      expect(find.text(l.showcaseWatchVideo), findsOneWidget);
+      expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
+      expect(find.text(l.showcaseOpenYoutube), findsNothing);
+    });
+
+    testWidgets('Instagram — tashqi "Instagram’da ochish" qoladi',
+        (tester) async {
+      final opened = <Uri>[];
+      openLinkOverride = (u) async {
+        opened.add(u);
+        return true;
+      };
+      addTearDown(() => openLinkOverride = null);
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: 'https://www.instagram.com/p/x')]),
+      ]);
+      expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('showcase-link')));
+      await settle(tester, frames: 3);
+      expect(opened.single.toString(), 'https://www.instagram.com/p/x');
+    });
+
+    testWidgets(
+        'varaq ochilsa musiqa pauza, pleer ustida hech narsa yo‘q, '
+        'yopilsa davom etadi', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final yt = fakePlayer();
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: ytUrl, music: track)]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(yt.ids, ['dQw4w9WgXcQ']);
+      final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
+      expect(player, findsOneWidget);
+      expect(v.playing, isEmpty, reason: 'YouTube varag‘i ochiq — musiqa jim');
+      expect(v.disposed, isEmpty);
+
+      // Pleer ≥ 200×200 va "YouTube'da ochish" PASTDA, ustida emas.
+      final area = tester.getRect(
+          find.byKey(const ValueKey('showcase-video-player-area')));
+      expect(area.width, greaterThanOrEqualTo(200));
+      expect(area.height, greaterThanOrEqualTo(200));
+      final ext = tester
+          .getRect(find.byKey(const ValueKey('showcase-video-external')));
+      expect(ext.top, greaterThanOrEqualTo(area.bottom));
+      final close =
+          tester.getRect(find.byKey(const ValueKey('showcase-video-close')));
+      expect(close.bottom, lessThanOrEqualTo(area.top));
+
+      // Pleerda play — audio egasi YouTube.
+      yt.state()('ready');
+      yt.state()('playing');
+      await settle(tester, frames: 2);
+      expect(r.c.read(audioOwnerProvider).current, isNotNull);
+      expect(v.playing, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(player, findsNothing);
+      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+      expect(v.created, hasLength(1));
+    });
+
+    testWidgets('🔇 bo‘lsa varaq yopilgach ham musiqa jim', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      fakePlayer();
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: ytUrl, music: track)]),
+      ]);
+      await drain(tester);
+      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+      await drain(tester);
+      expect(v.playing, isEmpty);
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(v.playing, isEmpty);
+    });
+
+    testWidgets('101/150 — pleer o‘rnida "YouTube’da ochish"',
+        (tester) async {
+      final opened = <Uri>[];
+      openLinkOverride = (u) async {
+        opened.add(u);
+        return true;
+      };
+      addTearDown(() => openLinkOverride = null);
+      final yt = fakePlayer();
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: ytUrl)]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      expect(find.byKey(const ValueKey('showcase-video-fallback')), findsNothing);
+
+      yt.state()('error:150');
+      await settle(tester, frames: 3);
+      expect(find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ')), findsNothing);
+      expect(find.byKey(const ValueKey('showcase-video-fallback')),
+          findsOneWidget);
+      expect(find.text(LUz().showcaseVideoUnavailable), findsOneWidget);
+      await tester
+          .tap(find.byKey(const ValueKey('showcase-video-fallback-open')));
+      await settle(tester, frames: 3);
+      expect(opened.single.toString(), ytUrl);
+    });
+
+    testWidgets('pleer javob bermasa — zaxira yo‘l; fonda pleer yo‘q qilinadi',
+        (tester) async {
+      final yt = fakePlayer();
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ')]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
+      expect(player, findsOneWidget);
+
+      // Fonda — pleer yo'q qilinadi (fonda ijro yo'q), qaytilganda
+      // YANGI pleer quriladi (yana avtomatik ijrosiz).
+      expect(yt.ids, hasLength(1));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await settle(tester, frames: 3);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester, frames: 3);
+      expect(player, findsOneWidget);
+      expect(yt.ids, hasLength(2), reason: 'qaytildi — yangi pleer');
+
+      // `ready` kelmadi — vaqt tugagach zaxira yo'l.
+      await tester.pump(kShowcaseVideoReadyTimeout);
+      await settle(tester, frames: 3);
+      expect(find.byKey(const ValueKey('showcase-video-fallback')),
+          findsOneWidget);
+    });
+
+    testWidgets('lenta kartasi (ShowcaseExtras) — YouTube "Videoni ko‘rish"',
+        (tester) async {
+      final yt = fakePlayer();
+      await tester.pumpWidget(ProviderScope(
+        child: wrapScreen(Scaffold(
+          body: ShowcaseExtras(
+            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ'),
+            keyPrefix: 'feed-showcase',
+          ),
+        )),
+      ));
+      await settle(tester, frames: 4);
+      expect(find.text(LUz().showcaseWatchVideo), findsOneWidget);
+      expect(find.byKey(const ValueKey('feed-showcase-link')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('feed-showcase-video')));
+      await settle(tester, frames: 10);
+      expect(yt.ids, ['dQw4w9WgXcQ']);
+      await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
+      await settle(tester, frames: 10);
     });
   });
 }

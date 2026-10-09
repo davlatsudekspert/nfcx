@@ -3610,6 +3610,13 @@ class LRu extends L {
   String get showcaseOpenInstagram => 'Открыть в Instagram';
 
   @override
+  String get showcaseWatchVideo => 'Смотреть видео';
+
+  @override
+  String get showcaseVideoUnavailable =>
+      'Это видео нельзя посмотреть в приложении. Откройте его в YouTube.';
+
+  @override
   String get currencyUzs => 'сум';
 
   @override

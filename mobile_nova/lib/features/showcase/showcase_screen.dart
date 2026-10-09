@@ -50,6 +50,7 @@ import '../social/reels_screen.dart'
         showReelComments;
 import 'showcase_common.dart';
 import 'showcase_sound.dart';
+import 'showcase_video.dart';
 
 /// KO'RGAZMA — pastki menyuning 4-tabi (Reels o'rnida, 2026-10).
 ///
@@ -59,8 +60,9 @@ import 'showcase_sound.dart';
 /// va ilova fonda turganda to'xtaydi. Kutubxona musiqasi — bitta audio
 /// egasi orqali, boshqa ilova ovozi bilan aralashmaydi.
 ///
-/// Uchinchi tomon kontenti (YouTube / Instagram) ichida O'YNAMAYDI —
-/// faqat tugma, tashqarida ochiladi.
+/// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
+/// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
+/// ochiq turganda musiqa pauzada. Instagram — faqat tashqarida.
 
 /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
 /// (Reels bilan bir xil qoida).
@@ -351,6 +353,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
   bool _viewerOpen = false;
 
+  /// YouTube varag'i ochiq — musiqa va karusel pauzada (ikki ovoz
+  /// bir vaqtda yo'q), yopilgach davom etadi.
+  bool _videoOpen = false;
+
   bool _captionOpen = false;
   int? _comments;
   int? _views;
@@ -364,13 +370,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   bool get _onScreen => widget.visible && _onStage && _foreground;
 
   /// Karusel soati va ko'rishni sanash.
-  bool get _active => _onScreen && !_viewerOpen;
+  bool get _active => _onScreen && !_viewerOpen && !_videoOpen;
 
   /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
   /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
   /// orqali pauza, qaytilganda davom etadi. Burchakdagi 🔇 — umuman
   /// o'ynamaydi.
-  bool get _audible => _onScreen && !ref.read(showcaseMutedProvider);
+  bool get _audible =>
+      _onScreen && !_videoOpen && !ref.read(showcaseMutedProvider);
 
   @override
   void initState() {
@@ -562,6 +569,20 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     _sync();
   }
 
+  Future<void> _openVideo(String id) async {
+    setState(() => _videoOpen = true);
+    _sync();
+    await showShowcaseVideo(
+      context,
+      url: _p.linkUrl,
+      videoId: id,
+      title: _p.title,
+    );
+    if (!mounted) return;
+    setState(() => _videoOpen = false);
+    _sync();
+  }
+
   Future<void> _like() async {
     final e = await ref.read(postLikesProvider.notifier).toggle(_p);
     if (e != null && mounted) _snack(describeError(L.of(context), e));
@@ -696,6 +717,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final navH = MediaQuery.paddingOf(context).bottom;
     final topH = MediaQuery.paddingOf(context).top;
     final link = showcaseLinkKind(p.linkUrl);
+    final videoId = youtubeVideoId(p.linkUrl);
     final item = p.catalogItem;
 
     return Stack(
@@ -922,7 +944,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                         primary: true,
                         onTap: () => _openProduct(item),
                       ),
-                    if (link != null)
+                    if (videoId != null)
+                      _CtaButton(
+                        key: const ValueKey('showcase-video'),
+                        icon: Icons.play_circle_outline_rounded,
+                        label: l.showcaseWatchVideo,
+                        onTap: () => _openVideo(videoId),
+                      )
+                    else if (link != null)
                       _CtaButton(
                         key: const ValueKey('showcase-link'),
                         icon: Icons.open_in_new_rounded,
@@ -1032,7 +1061,8 @@ class _Pill extends StatelessWidget {
   );
 }
 
-/// "Mahsulotni ko'rish" (oltin) va "YouTube'da ochish" (qora shisha).
+/// "Mahsulotni ko'rish" (oltin), "Videoni ko'rish" / "Instagram'da
+/// ochish" (qora shisha).
 class _CtaButton extends StatelessWidget {
   const _CtaButton({
     super.key,

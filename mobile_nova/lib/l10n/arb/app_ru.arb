@@ -1239,6 +1239,8 @@
   "showcaseViewProduct": "Посмотреть товар",
   "showcaseOpenYoutube": "Открыть в YouTube",
   "showcaseOpenInstagram": "Открыть в Instagram",
+  "showcaseWatchVideo": "Смотреть видео",
+  "showcaseVideoUnavailable": "Это видео нельзя посмотреть в приложении. Откройте его в YouTube.",
   "currencyUzs": "сум",
   "showcaseImageN": "Фото {n} из {total}",
   "showcasePhotos": "Фото",

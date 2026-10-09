@@ -3568,6 +3568,13 @@ class LUz extends L {
   String get showcaseOpenInstagram => 'Instagram’da ochish';
 
   @override
+  String get showcaseWatchVideo => 'Videoni ko‘rish';
+
+  @override
+  String get showcaseVideoUnavailable =>
+      'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.';
+
+  @override
   String get currencyUzs => 'so‘m';
 
   @override

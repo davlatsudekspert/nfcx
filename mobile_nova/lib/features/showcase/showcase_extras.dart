@@ -10,11 +10,13 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'showcase_common.dart';
+import 'showcase_video.dart';
 
 /// KO'RGAZMA MA'LUMOTI — lenta kartasi va post tafsilotida (yorug' fon).
 ///
-/// Sarlavha, narx, "Mahsulotni ko'rish" va YouTube/Instagram havolasi
-/// (faqat tashqarida ochiladi). Ma'lumot yo'q — hech narsa chizilmaydi.
+/// Sarlavha, narx, "Mahsulotni ko'rish" va havola: YouTube — "Videoni
+/// ko'rish" (ilova ichida, rasmiy pleer), Instagram — tashqarida.
+/// Ma'lumot yo'q — hech narsa chizilmaydi.
 class ShowcaseExtras extends StatelessWidget {
   const ShowcaseExtras({
     super.key,
@@ -38,6 +40,7 @@ class ShowcaseExtras extends StatelessWidget {
     final l = L.of(context);
     final t = context.tokens;
     final link = showcaseLinkKind(p.linkUrl);
+    final videoId = youtubeVideoId(p.linkUrl);
     final item = p.catalogItem;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +84,19 @@ class ShowcaseExtras extends StatelessWidget {
                   onTap: () => context.push(
                       Routes.catalogProduct(item.companyId, item.id)),
                 ),
-              if (link != null)
+              if (videoId != null)
+                _Pill(
+                  key: ValueKey('$keyPrefix-video'),
+                  icon: Icons.play_circle_outline_rounded,
+                  label: l.showcaseWatchVideo,
+                  onTap: () => showShowcaseVideo(
+                    context,
+                    url: p.linkUrl,
+                    videoId: videoId,
+                    title: p.title,
+                  ),
+                )
+              else if (link != null)
                 _Pill(
                   key: ValueKey('$keyPrefix-link'),
                   icon: Icons.open_in_new_rounded,

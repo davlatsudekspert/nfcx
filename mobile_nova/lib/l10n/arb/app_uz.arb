@@ -1397,6 +1397,8 @@
   "showcaseViewProduct": "Mahsulotni ko‘rish",
   "showcaseOpenYoutube": "YouTube’da ochish",
   "showcaseOpenInstagram": "Instagram’da ochish",
+  "showcaseWatchVideo": "Videoni ko‘rish",
+  "showcaseVideoUnavailable": "Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.",
   "currencyUzs": "so‘m",
   "@currencyUzs": {"description": "Narx yonidagi valyuta (faqat so‘m)."},
   "showcaseImageN": "{n}-rasm, jami {total}",

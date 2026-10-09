@@ -2,8 +2,11 @@ import '../../l10n/gen/app_localizations.dart';
 
 /// KO'RGAZMA — umumiy qoidalar (ekran, yaratish, lenta kartasi).
 
-/// Ko'rgazmadagi tashqi havola turi. Ilova uni FAQAT tashqarida ochadi
-/// (`openLink`): ichiga joylanmaydi, o'zi o'ynamaydi.
+/// Ko'rgazmadagi tashqi havola turi.
+///
+/// * YouTube — video ID topilsa, ilova ichida YouTube'ning RASMIY
+///   pleerida ochiladi (`showcase_video.dart`), aks holda tashqarida;
+/// * Instagram — faqat tashqarida (`openLink`).
 enum ShowcaseLinkKind { youtube, instagram }
 
 /// Havola ruxsat etilganmi (shartnoma §3): faqat `https` va
@@ -28,6 +31,43 @@ ShowcaseLinkKind? showcaseLinkKind(String url) {
     'instagram.com' => ShowcaseLinkKind.instagram,
     _ => null,
   };
+}
+
+final _ytId = RegExp(r'^[A-Za-z0-9_-]{11}$');
+
+/// YouTube havolasidagi video ID (11 belgi) yoki `null`.
+///
+/// Qabul qilinadi (`www.`/`m.` bilan ham): `youtube.com/watch?v=ID`
+/// (boshqa parametrlar bilan ham), `youtu.be/ID`, `youtube.com/shorts/ID`,
+/// `youtube.com/embed/ID`, `youtube.com/live/ID`. Havola avval
+/// [showcaseLinkKind] dan o'tishi shart (faqat `https`, begona xost yo'q).
+String? youtubeVideoId(String url) {
+  if (showcaseLinkKind(url) != ShowcaseLinkKind.youtube) return null;
+  final u = Uri.parse(url.trim());
+  var h = u.host.toLowerCase();
+  if (h.startsWith('www.')) {
+    h = h.substring(4);
+  } else if (h.startsWith('m.')) {
+    h = h.substring(2);
+  }
+  final seg = u.pathSegments.where((e) => e.isNotEmpty).toList();
+  String? id;
+  if (h == 'youtu.be') {
+    id = seg.isEmpty ? null : seg.first;
+  } else if (seg.length == 1 && seg.first == 'watch') {
+    id = u.queryParameters['v'];
+  } else if (seg.length >= 2 &&
+      const {'shorts', 'embed', 'live'}.contains(seg.first)) {
+    id = seg[1];
+  }
+  return id != null && _ytId.hasMatch(id) ? id : null;
+}
+
+/// YouTube Shorts (vertikal) havolasimi — pleer 9:16 bo'ladi.
+bool isYoutubeShorts(String url) {
+  if (youtubeVideoId(url) == null) return false;
+  final seg = Uri.parse(url.trim()).pathSegments;
+  return seg.isNotEmpty && seg.first == 'shorts';
 }
 
 /// "YouTube'da ochish" / "Instagram'da ochish".

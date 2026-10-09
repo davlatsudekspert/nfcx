@@ -3588,6 +3588,13 @@ class LEn extends L {
   String get showcaseOpenInstagram => 'Open on Instagram';
 
   @override
+  String get showcaseWatchVideo => 'Watch video';
+
+  @override
+  String get showcaseVideoUnavailable =>
+      'This video can’t be played in the app. Open it on YouTube.';
+
+  @override
   String get currencyUzs => 'UZS';
 
   @override
