@@ -711,7 +711,9 @@ function FlagsSection() {
   );
 }
 
-// KO'RGAZMA REKLAMASI (2026-10) — Ko'rgazma lentasidagi 4 ta reklama joyi.
+// KO'RGAZMA REKLAMASI (2026-10) — 4 ta reklama joyi: ilovadagi Ko'rgazma
+// lentasi, ilova Asosiy ekranidagi reklama kartochkasi (GET /api/showcase/ads)
+// va saytdagi /korgazma sahifasi (src/pages/KorgazmaPage.jsx).
 // Server: GET /api/admin/showcase-ads, PUT/DELETE /api/admin/showcase-ads/:slot
 // (hosting/api/showcase-ads.js). Joyga VIDEO post ham qo'yish mumkin — oddiy
 // foydalanuvchi Ko'rgazmaga video qo'ya olmaydi, faqat admin shu yerdan.
@@ -799,7 +801,7 @@ function ShowcaseAdsSection() {
   return (
     <div className="vz-card mb-4 p-4" data-testid="admin-showcase-ads">
       <div className="mb-1 font-display text-base font-semibold">{t('Ko‘rgazma reklamasi')}</div>
-      <div className="mb-2 text-xs opacity-60">{t('Ko‘rgazma lentasida 4 tagacha reklama joyi. Video post ham qo‘yish mumkin — oddiy foydalanuvchilar Ko‘rgazmaga video qo‘ya olmaydi.')}</div>
+      <div className="mb-2 text-xs opacity-60">{t('4 tagacha reklama joyi. Ular ilovadagi Ko‘rgazma lentasida, ilova Asosiy ekranidagi reklama kartochkasida va saytdagi nfcstore.uz/korgazma sahifasida ko‘rinadi. Video post ham qo‘yish mumkin — oddiy foydalanuvchilar Ko‘rgazmaga video qo‘ya olmaydi.')}</div>
       {err && <div className="mb-2 text-sm text-error">{t('Reklama joylarini yuklab bo‘lmadi.')}</div>}
       {msg && <div className="mb-2 text-sm text-error">{msg}</div>}
       {!slots && !err && <div className="text-sm opacity-60">{t('Yuklanmoqda…')}</div>}

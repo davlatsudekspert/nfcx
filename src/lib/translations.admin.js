@@ -14,7 +14,7 @@ export const DICT_ADMIN = {
   'Worker sozlamasida qotirilgan': { ru: 'Зафиксировано в настройках Worker', en: 'Pinned in Worker settings' },
   // ── Ko'rgazma reklamasi (2026-10) ──
   'Ko‘rgazma reklamasi': { ru: 'Реклама в Витрине', en: 'Showcase ads' },
-  'Ko‘rgazma lentasida 4 tagacha reklama joyi. Video post ham qo‘yish mumkin — oddiy foydalanuvchilar Ko‘rgazmaga video qo‘ya olmaydi.': { ru: 'До 4 рекламных мест в ленте Витрины. Можно поставить и видео-пост — обычные пользователи не могут публиковать видео в Витрину.', en: 'Up to 4 ad slots in the Showcase feed. Video posts are allowed here — regular users cannot post videos to the Showcase.' },
+  '4 tagacha reklama joyi. Ular ilovadagi Ko‘rgazma lentasida, ilova Asosiy ekranidagi reklama kartochkasida va saytdagi nfcstore.uz/korgazma sahifasida ko‘rinadi. Video post ham qo‘yish mumkin — oddiy foydalanuvchilar Ko‘rgazmaga video qo‘ya olmaydi.': { ru: 'До 4 рекламных мест. Они показываются в ленте «Витрина» в приложении, в рекламной карточке на главном экране приложения и на сайте на странице nfcstore.uz/korgazma. Можно поставить и видео-пост — обычные пользователи не могут публиковать видео в Витрину.', en: 'Up to 4 ad slots. They appear in the app’s Showcase feed, on the ad card on the app Home screen and on the website at nfcstore.uz/korgazma. Video posts are allowed here — regular users cannot post videos to the Showcase.' },
   'Reklama joylarini yuklab bo‘lmadi.': { ru: 'Не удалось загрузить рекламные места.', en: 'Could not load ad slots.' },
   'Bo‘sh joy': { ru: 'Пустое место', en: 'Empty slot' },
   'Kompaniya posti': { ru: 'Пост компании', en: 'Company post' },
