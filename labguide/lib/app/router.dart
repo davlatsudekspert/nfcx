@@ -122,7 +122,7 @@ GoRouter buildRouter(
       StatefulShellRoute.indexedStack(
         restorationScopeId: 'shell',
         builder: (context, state, shell) =>
-            AppShell(shell: shell, memory: tabMemory, location: state.uri.path),
+            AppShell(shell: shell, memory: tabMemory, location: state.uri),
         branches: [
           StatefulShellBranch(
             restorationScopeId: 'tab-home',

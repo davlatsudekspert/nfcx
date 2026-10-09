@@ -10,17 +10,22 @@ import '../l10n/gen/app_localizations.dart';
 /// ichida (masalan, ochiq QC to'plami yoki imtihon) bo'lsa, stekni
 /// tashlab yubormaydi.
 class TabMemory extends ChangeNotifier {
-  final Map<int, String> _last = {};
+  final Map<int, Uri> _last = {};
 
   /// Qayta bosilgan tab indeksi (har bosishda [notifyListeners]).
   int? reselectedIndex;
 
-  void record(int index, String location) => _last[index] = location;
+  void record(int index, Uri location) => _last[index] = location;
 
-  /// [location] bo'limining ichidagi oxirgi manzil (bo'lsa).
-  String? lastUnder(String location) {
-    for (final last in _last.values) {
-      if (last == location || last.startsWith('$location/')) return last;
+  /// Oxirgi manzili [location] bo'limining ichida turgan tab (bo'lsa).
+  /// So'rovli manzil (`?maker=…`) faqat aynan mos kelsa hisoblanadi.
+  int? branchUnder(String location) {
+    final target = Uri.parse(location);
+    for (final MapEntry(key: index, value: last) in _last.entries) {
+      final inside = target.hasQuery
+          ? last == target
+          : last.path == target.path || last.path.startsWith('${target.path}/');
+      if (inside) return index;
     }
     return null;
   }
@@ -45,10 +50,20 @@ class TabMemoryScope extends InheritedWidget {
 }
 
 /// Boshqa tabdagi bo'limni ochish: o'sha tab allaqachon shu bo'lim ichida
-/// bo'lsa — o'sha joyiga qaytadi (stek saqlanadi), aks holda bo'lim ildizi.
+/// bo'lsa — tabning o'ziga o'tiladi, aks holda bo'lim ochiladi.
+///
+/// `go(oxirgi manzil)` yetmaydi: u stekni URL'dan qayta quradi va push
+/// qilingan sahifalar (masalan, ro'yxatdan ochilgan QC to'plami) yangidan
+/// yaratilib, kiritilgan, hali saqlanmagan qiymat yo'qolardi. `goBranch`
+/// tab stekini o'zgarishsiz tiklaydi.
 void openInTab(BuildContext context, String location) {
-  final last = TabMemoryScope.maybeOf(context)?.lastUnder(location);
-  context.go(last ?? location);
+  final index = TabMemoryScope.maybeOf(context)?.branchUnder(location);
+  final shell = StatefulNavigationShell.maybeOf(context);
+  if (index != null && shell != null) {
+    shell.goBranch(index);
+  } else {
+    context.go(location);
+  }
 }
 
 /// Besh tabli qobiq. Har bir tab o'z navigation stackini va scroll
@@ -66,7 +81,7 @@ class AppShell extends StatelessWidget {
   final TabMemory memory;
 
   /// Joriy manzil (shu tabning oxirgi manzili sifatida eslab qolinadi).
-  final String location;
+  final Uri location;
 
   void _select(int index) {
     // Faol tab qayta bosilsa — shu tab ildiziga qaytadi; ildizda bo'lsa,
