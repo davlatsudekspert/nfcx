@@ -16,6 +16,7 @@
 // Har qadam natijasi `E2E_STEP:{json}` qatori bo'lib chiqadi; ekran
 // surati uchun `E2E_SHOT:<nom>` — host (adb screencap / simctl) suratga
 // olib, `E2E_TMP` papkasiga `e2e_ack_<nom>` faylini yozadi.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
@@ -776,6 +777,48 @@ class _Run {
       }
     }, shot: '07b_restored');
 
+    // h0. TASHXIS (h dan OLDIN — WebKit/WebView ham isitiladi): YouTube nazorat videosi ─────────────────────────────
+    // Ilovaning AYNAN o'sha pleeri (`ShowcaseYoutubePlayer`, o'sha HTML,
+    // o'sha WebView sozlamasi), lekin YouTube'ning o'zining namunaviy
+    // videosi (IFrame API hujjatidagi `M7lc1UVf-VE`, joylashtirishga doim
+    // ruxsat). U ham xato bersa — muhit (CI IP / WebView) sababi, ilova
+    // emas. Faqat ma'lumot uchun (INFO), ilova kodi o'zgarmaydi.
+    await step('h0', 'Tashxis: YouTube nazorat videosi shu pleerda', (r) async {
+      final states = <String>[];
+      final anchor = find.byType(ShowcasePage);
+      if (!has(anchor)) {
+        r.status = 'INFO';
+        r.values['note'] = 'sahifa yo\'q';
+        return;
+      }
+      final nav = Navigator.of(t.element(anchor.first), rootNavigator: true);
+      unawaited(nav.push(MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: SizedBox(
+              width: 360,
+              height: 640,
+              child: ShowcaseYoutubePlayer(
+                videoId: 'M7lc1UVf-VE',
+                controller: ShowcaseYoutubeController(),
+                onState: states.add,
+              ),
+            ),
+          ),
+        ),
+      )));
+      await waitFor(
+          () => states.any((s) => s == 'playing' || s.startsWith('error')),
+          timeout: const Duration(seconds: 25));
+      await wait(const Duration(seconds: 2));
+      r.values['controlStates'] = List.of(states);
+      r.values['controlShot'] = await screenshot('08c_youtube_control');
+      nav.pop();
+      await wait(const Duration(seconds: 2));
+      r.status = 'INFO';
+    });
+
     // h. YOUTUBE ─────────────────────────────────────────────────────
     await step('h', 'YouTube "Videoni ko\'rish": butun ekran va o\'ynaydi',
         (r) async {
@@ -956,7 +999,7 @@ class _Run {
   String mu(Post p) => p.music?.playUrl ?? '';
 
   void _finish() {
-    final fail = _results.where((r) => r.status != 'PASS').length;
+    final fail = _results.where((r) => r.status == 'FAIL').length;
     _log('E2E_ERRORS:${jsonEncode(_flutterErrors)}');
     _log('E2E_DONE:${_results.length} steps, $fail failed');
   }
