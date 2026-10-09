@@ -542,7 +542,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     // "orqaga" ni pop qila oladigan navigatorga yuboradi (bu — ildiz
     // navigator) va ilova yopilib qolardi. `BackButtonListener` esa
     // Router'ning o'zidan birinchi bo'lib so'raladi.
-    return _BackGuard(
+    return ReelsBackGuard(
       onBack: () {
         final c = ref.read(reelsCleanProvider.notifier);
         if (!onReelsTab || !c.state) return false;
@@ -680,7 +680,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                         },
                 ),
               ),
-              _Chrome(
+              ReelsChrome(
                 hidden: clean,
                 child: _TopBar(
                   tab: tab,
@@ -699,9 +699,13 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
 }
 
 /// "Orqaga" tutqichi — Router bo'lsagina (ilovada doim bor; alohida
-/// ekran sinovida esa yo'q).
-class _BackGuard extends StatelessWidget {
-  const _BackGuard({required this.onBack, required this.child});
+/// ekran sinovida esa yo'q). Ko'rgazma ham shundan foydalanadi.
+class ReelsBackGuard extends StatelessWidget {
+  const ReelsBackGuard({
+    super.key,
+    required this.onBack,
+    required this.child,
+  });
 
   final bool Function() onBack;
   final Widget child;
@@ -716,10 +720,14 @@ class _BackGuard extends StatelessWidget {
   }
 }
 
-/// Reels ustidagi belgilar — toza rejimda yumshoq yo'qoladi va
-/// bosishni o'tkazib yuboradi (video bosilganda qaytadi).
-class _Chrome extends StatelessWidget {
-  const _Chrome({required this.hidden, required this.child});
+/// Reels (va Ko'rgazma) ustidagi belgilar — toza rejimda yumshoq
+/// yo'qoladi va bosishni o'tkazib yuboradi (media bosilganda qaytadi).
+class ReelsChrome extends StatelessWidget {
+  const ReelsChrome({
+    super.key,
+    required this.hidden,
+    required this.child,
+  });
 
   final bool hidden;
   final Widget child;
@@ -1519,7 +1527,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
             const _LateSpinner(),
           // Pastdagi matn o'qilishi uchun gradient.
           Positioned.fill(
-            child: _Chrome(
+            child: ReelsChrome(
               hidden: hide,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -1567,7 +1575,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
           Positioned(
             right: 4,
             bottom: navH + 30 - Gap.lg / 2,
-            child: _Chrome(
+            child: ReelsChrome(
               hidden: hide,
               child: Column(
               children: [
@@ -1640,7 +1648,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
             left: Gap.lg,
             right: 72,
             bottom: navH + 30,
-            child: _Chrome(
+            child: ReelsChrome(
               hidden: hide,
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1843,7 +1851,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
               left: Gap.lg,
               right: Gap.lg,
               bottom: navH + 12,
-              child: _Chrome(
+              child: ReelsChrome(
                 hidden: hide,
                 child: IgnorePointer(
                   child: ClipRRect(
@@ -1870,7 +1878,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
               left: Gap.lg,
               right: Gap.lg,
               bottom: navH + 12,
-              child: _Chrome(
+              child: ReelsChrome(
                 hidden: hide,
                 child: IgnorePointer(
                   child: ClipRRect(

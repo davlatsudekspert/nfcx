@@ -30,6 +30,10 @@ final activeTabProvider = StateProvider<int>((_) => 0);
 /// va telefonning tizim panellari yashiriladi, video butun ekranda
 /// qoladi (egasi, 2026-09-24: "rolik bosilsa to'liq ekran, belgilarsiz").
 /// Yana bosilsa yoki "orqaga" — qaytadi.
+///
+/// KO'RGAZMA ham shu holatdan foydalanadi (egasi, build 330: "bosam
+/// o'zi toza ko'rinmayapti"): rasm/video bosilsa sarlavha, tugmalar,
+/// izoh va pastki panel yashirinadi; boshqa sahifaga surilsa qaytadi.
 final reelsCleanProvider = StateProvider<bool>((_) => false);
 
 /// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`) — qora, butun

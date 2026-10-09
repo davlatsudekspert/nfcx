@@ -2,20 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../../core/utils/external_link.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/shapes.dart';
 import '../../l10n/gen/app_localizations.dart';
+import 'showcase_video.dart' show webLoadCancelled;
 
 /// KO'RGAZMA — INSTAGRAM POSTI ilova ichida (egasi tasdiqlagan).
 ///
 /// Instagram'ning RASMIY ommaviy embed sahifasi ochiladi:
 /// `https://www.instagram.com/<p|reel>/<kod>/embed/` (token kerak emas).
 ///
-/// * avtomatik ijro yo'q — WebView media uchun foydalanuvchi bosishini
-///   talab qiladi (standart sozlama o'zgartirilmaydi);
+/// * odam "Instagram'da ko'rish" ni O'ZI bosgan — WebView media'ni
+///   to'smaydi (iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
+///   `setMediaPlaybackRequiresUserGesture(false)`, YouTube varag'i bilan
+///   bir xil; build 330). Reel embed'ning o'zi play bosishni so'rashi
+///   mumkin — bosilganda darhol o'ynaydi;
 /// * embed ustida hech narsa yo'q: yopish — tepada, "Instagram'da
 ///   ochish" — pastda;
 /// * embed ichidagi havolalar ("View on Instagram", profil...) WebView
@@ -305,19 +310,29 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
   @override
   void initState() {
     super.initState();
+    // Media odam bosishini kutmaydi: varaqni u o'zi ochgan (YouTube
+    // varag'i va `music_embed.dart` bilan bir xil sozlama).
     final PlatformWebViewControllerCreationParams params =
         WebViewPlatform.instance is WebKitWebViewPlatform
             ? WebKitWebViewControllerCreationParams(
                 allowsInlineMediaPlayback: true,
+                mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
               )
             : const PlatformWebViewControllerCreationParams();
     _web = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.white)
+      ..setBackgroundColor(Colors.white);
+    final platform = _web.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+    }
+    _web
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) => widget.onState('ready'),
         onWebResourceError: (e) {
-          if (e.isForMainFrame ?? false) widget.onState('error:load');
+          if ((e.isForMainFrame ?? false) && !webLoadCancelled(e)) {
+            widget.onState('error:load');
+          }
         },
         onHttpError: (e) {
           final req = e.request?.uri;

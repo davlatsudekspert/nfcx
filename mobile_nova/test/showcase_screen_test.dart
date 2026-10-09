@@ -25,6 +25,8 @@ import 'package:nfcstore_nova/features/showcase/showcase_instagram.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
 import 'package:nfcstore_nova/features/social/media_carousel.dart';
+import 'package:nfcstore_nova/features/social/reels_screen.dart'
+    show ReelsChrome;
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
@@ -32,6 +34,7 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
 import 'package:nfcstore_nova/routing/shell.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+import 'package:webview_flutter/webview_flutter.dart' show WebResourceError;
 
 import 'helpers.dart';
 import 'support/fake_video_platform.dart';
@@ -153,6 +156,32 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
 
 int _dot(WidgetTester tester) =>
     tester.widget<CarouselDots>(find.byType(CarouselDots)).index;
+
+/// Ikki marta bosish (rasmni butun ekranda ochish).
+Future<void> _doubleTapAt(WidgetTester tester, Offset at) async {
+  await tester.tapAt(at);
+  await tester.pump(const Duration(milliseconds: 60));
+  await tester.tapAt(at);
+  await settle(tester, frames: 6);
+}
+
+Future<void> _doubleTap(WidgetTester tester, Finder f) =>
+    _doubleTapAt(tester, tester.getCenter(f));
+
+/// Belgi qatlami ko'rinadimi (toza rejimda — yo'q).
+bool _shown(WidgetTester tester, Finder f) =>
+    !tester.widget<ReelsChrome>(f).hidden;
+
+Finder _chrome(String key) => find.byKey(ValueKey(key));
+
+/// Ko'rgazma sahifasidagi hamma belgilar (tepa panel, amallar ustuni,
+/// izoh/tugmalar bloki, gradient).
+const _overlayKeys = [
+  'showcase-topbar',
+  'showcase-rail',
+  'showcase-info',
+  'showcase-gradient',
+];
 
 void main() {
   // Rasm keshi (`flutter_cache_manager`) `runAsync` ichida haqiqiy
@@ -287,13 +316,21 @@ void main() {
     expect(_dot(tester), 0);
   });
 
-  testWidgets('rasm bosilsa — butun ekranda ko‘rish', (tester) async {
-    await _pump(tester, pages: [
+  testWidgets(
+      'rasm IKKI marta bosilsa — butun ekranda ko‘rish; BIR marta — '
+      'toza rejim, ko‘ruvchi ochilmaydi', (tester) async {
+    final r = await _pump(tester, pages: [
       ReelsPage(items: [_post(images: 2)]),
     ]);
     await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
     await settle(tester, frames: 6);
+    expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
+    expect(r.c.read(reelsCleanProvider), isTrue);
+
+    await _doubleTap(tester, find.byKey(const ValueKey('showcase-image-0')));
     expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
+    expect(r.c.read(reelsCleanProvider), isTrue,
+        reason: 'ikki bosish toza rejimni o‘zgartirmaydi');
   });
 
   testWidgets('bo‘sh — "Hali ko‘rgazma yo‘q" va yaratish', (tester) async {
@@ -431,12 +468,14 @@ void main() {
       await drain(tester);
       expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
 
-      // Rasm butun ekranda — musiqa davom etadi. Ochiq izoh pastki
-      // yarmini egallaydi, shuning uchun rasmning yuqori qismi bosiladi.
-      await tester.tapAt(tester
-          .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
-          .translate(150, 250));
-      await settle(tester, frames: 6);
+      // Rasm butun ekranda (ikki bosish) — musiqa davom etadi. Ochiq
+      // izoh pastki yarmini egallaydi, shuning uchun rasmning yuqori
+      // qismi bosiladi.
+      await _doubleTapAt(
+          tester,
+          tester
+              .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
+              .translate(150, 250));
       await drain(tester);
       expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
       expect(v.playing, hasLength(1), reason: 'rasm ko‘ruvchi ochiq');
@@ -528,8 +567,8 @@ void main() {
       expect(mute, findsOneWidget);
 
       // Rasm ko'ruvchida ham o'sha tugma; yoqilsa — musiqa qaytadi.
-      await tester.tap(find.byKey(const ValueKey('showcase-image-0')).last);
-      await settle(tester, frames: 6);
+      await _doubleTap(
+          tester, find.byKey(const ValueKey('showcase-image-0')).last);
       final inViewer = find.byKey(const ValueKey('showcase-viewer-mute'));
       expect(inViewer, findsOneWidget);
       await tester.tap(inViewer);
@@ -551,6 +590,224 @@ void main() {
       await drain(tester);
       expect(r.c.read(showcaseMutedProvider), isTrue);
       expect(v.playing, isEmpty);
+    });
+  });
+
+  /// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti,
+  /// to'liq yozuvlar olinmayapti"). Reels kabi: media BIR MARTA bosilsa
+  /// hamma belgilar yo'qoladi, yana bosilsa qaytadi; boshqa sahifaga
+  /// surilsa yoki tabdan chiqilsa — oddiy holat. Ijroga ta'sir yo'q.
+  group('toza rejim — bosish hamma belgilarni yashiradi', () {
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+
+    Post ad({MusicTrack? music}) => Post.fromJson({
+          'id': 900,
+          'code': 'NFCSTORE',
+          'authorName': 'NFCSTORE',
+          'ad': true,
+          'title': 'Boy777',
+          'text': 'Yangi NFC kartalar',
+          'videoUrl': '/uploads/promo_boy777.mp4',
+          'imageUrl': '/promo/boy777.jpg',
+          'authorKind': 'company',
+          'contact': {
+            'phone': '+998901234567',
+            'telegram': 'https://t.me/nfcstore',
+          },
+          'linkUrl': 'https://www.instagram.com/nfcstore',
+          if (music != null)
+            'music': {
+              'id': music.id,
+              'title': music.title,
+              'clipUrl': music.clipUrl,
+            },
+        });
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    void expectOverlays(WidgetTester tester, {required bool shown}) {
+      for (final k in _overlayKeys) {
+        expect(_shown(tester, _chrome(k)), shown, reason: k);
+        // Yumshoq yo'qolish tugagan: shaffoflik 0/1.
+        final fade = tester.widget<AnimatedOpacity>(find
+            .descendant(of: _chrome(k), matching: find.byType(AnimatedOpacity))
+            .first);
+        expect(fade.opacity, shown ? 1.0 : 0.0, reason: k);
+      }
+    }
+
+    testWidgets(
+        'rasm sahifasi: bosish — sarlavha, +, 🔇, ustun, izoh, nuqtalar '
+        'yo‘qoladi; yana bosish — qaytadi; musiqa to‘xtamaydi',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(images: 2, music: track)]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+      expectOverlays(tester, shown: true);
+      final dots = find.descendant(
+          of: find.byKey(const ValueKey('showcase-dots')),
+          matching: find.byType(ReelsChrome));
+      expect(_shown(tester, dots), isTrue);
+      expect(_shown(tester, _chrome('showcase-header')), isTrue,
+          reason: 'rasm sahifasida "Ko‘rgazma" yozuvi bor');
+
+      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
+      await settle(tester, frames: 6);
+      await drain(tester);
+      expect(r.c.read(reelsCleanProvider), isTrue);
+      expectOverlays(tester, shown: false);
+      expect(_shown(tester, dots), isFalse);
+      // 🔇 va "+" — tepa panel ichida, u ham yashirin va bosilmaydi.
+      expect(
+          find.ancestor(
+              of: find.byKey(const ValueKey('showcase-mute')),
+              matching: _chrome('showcase-topbar')),
+          findsOneWidget);
+      expect(
+          find.ancestor(
+              of: find.byKey(const ValueKey('showcase-create')),
+              matching: _chrome('showcase-topbar')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
+      expect(v.playing, hasLength(1), reason: 'musiqa davom etadi');
+      expect(v.created, hasLength(1));
+
+      // Yashirin "like" o'rni bosilsa — like emas, belgilar qaytadi.
+      final likeAt =
+          tester.getCenter(find.byKey(const ValueKey('showcase-like')));
+      await tester.tapAt(likeAt);
+      await settle(tester, frames: 6);
+      await drain(tester);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+      expectOverlays(tester, shown: true);
+      expect(_shown(tester, dots), isTrue);
+      expect(v.playing, hasLength(1));
+      expect(v.created, hasLength(1), reason: 'pleer qayta ochilmagan');
+    });
+
+    testWidgets(
+        'video reklama: "Ko‘rgazma" yozuvi yo‘q, gradient yengil; bosish — '
+        'hammasi yo‘qoladi, video o‘ynayveradi', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [ad()]),
+      ]);
+      await drain(tester);
+      final id = v.urls.entries
+          .firstWhere((e) => e.value.endsWith('promo_boy777.mp4'))
+          .key;
+      expect(v.playing, {id});
+
+      // Oddiy holat: videoning o'z sarlavhasi ustida "Ko'rgazma" yo'q,
+      // "+" va 🔇 qoladi; gradient faqat pastda va yengil.
+      expect(_shown(tester, _chrome('showcase-header')), isFalse);
+      expect(_shown(tester, _chrome('showcase-topbar')), isTrue);
+      final grad = tester
+          .widget<DecoratedBox>(find
+              .descendant(
+                  of: _chrome('showcase-gradient'),
+                  matching: find.byType(DecoratedBox))
+              .first)
+          .decoration as BoxDecoration;
+      final g = grad.gradient! as LinearGradient;
+      expect(g.colors.first.a, 0, reason: 'tepasi shaffof');
+      expect(g.colors.last.a, lessThanOrEqualTo(.6));
+      expect((g.begin as Alignment).y, greaterThan(0),
+          reason: 'faqat pastki qismda');
+      expect(find.byKey(const ValueKey('showcase-contact')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
+      await settle(tester, frames: 6);
+      await drain(tester);
+      expect(r.c.read(reelsCleanProvider), isTrue);
+      expectOverlays(tester, shown: false);
+      expect(
+          find.ancestor(
+              of: find.byKey(const ValueKey('showcase-sponsored')),
+              matching: _chrome('showcase-info')),
+          findsOneWidget,
+          reason: '"Reklama" ham yashirin blokda');
+      expect(
+          find.ancestor(
+              of: find.byKey(const ValueKey('showcase-contact')),
+              matching: _chrome('showcase-info')),
+          findsOneWidget);
+      expect(v.playing, {id}, reason: 'video to‘xtamaydi');
+      expect(v.created, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
+      await settle(tester, frames: 6);
+      await drain(tester);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+      expectOverlays(tester, shown: true);
+      expect(_shown(tester, _chrome('showcase-header')), isFalse);
+      expect(v.playing, {id});
+      expect(v.created, hasLength(1));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(minutes: 1));
+    });
+
+    testWidgets('boshqa sahifaga surilsa — toza rejim tugaydi',
+        (tester) async {
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(id: 1), _post(id: 2)]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
+      await settle(tester, frames: 6);
+      expect(r.c.read(reelsCleanProvider), isTrue);
+
+      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
+          const Offset(0, -600), 2000);
+      await settle(tester, frames: 10);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+      expect(_shown(tester, _chrome('showcase-topbar')), isTrue);
+      expect(_shown(tester, _chrome('showcase-rail').last), isTrue);
+      expect(_shown(tester, _chrome('showcase-info').last), isTrue);
+    });
+
+    testWidgets('boshqa tabga o‘tilsa — toza rejim tugaydi', (tester) async {
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post()]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
+      await settle(tester, frames: 6);
+      expect(r.c.read(reelsCleanProvider), isTrue);
+      r.c.read(activeTabProvider.notifier).state = 0;
+      await settle(tester, frames: 4);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+    });
+
+    testWidgets('oddiy holatda tugmalar ishlaydi va toza rejimga o‘tmaydi',
+        (tester) async {
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post()]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+      await settle(tester, frames: 6);
+      expect(r.c.read(showcaseMutedProvider), isTrue);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-more')));
+      await settle(tester, frames: 8);
+      expect(find.byKey(const ValueKey('showcase-report')), findsOneWidget);
+      expect(r.c.read(reelsCleanProvider), isFalse);
+      await tester.tapAt(const Offset(20, 20));
+      await settle(tester, frames: 8);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-product')));
+      await settle(tester, frames: 6);
+      expect(r.pushed, ['/catalog/C7/b9fa1d77-794a-4b7a-b972-aecb1dce7c02']);
+      expect(r.c.read(reelsCleanProvider), isFalse);
     });
   });
 
@@ -596,10 +853,20 @@ void main() {
       }
     });
 
-    test('pleer: avtomatik ijro yo‘q, ilova kimligi, ≥ 200×200', () {
+    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (varaq
+    // shu bosishdan ochiladi) — shunda video o'zi boshlanadi (build 330:
+    // "ochilyapti, o'ynab ketmayapti"). `music_embed.dart` bilan bir xil.
+    test('pleer: "Videoni ko‘rish" dan keyin o‘zi boshlanadi, ilova '
+        'kimligi, ≥ 200×200', () {
       final html = ShowcaseYoutubePlayer.html('dQw4w9WgXcQ');
-      expect(html, isNot(contains('autoplay')));
-      expect(html, isNot(contains('playVideo')));
+      expect(html, contains('autoplay:1'));
+      expect(
+          RegExp(r'onReady:function\(e\)\{[^}]*e\.target\.playVideo\(\)')
+              .hasMatch(html),
+          isTrue,
+          reason: 'onReady da zaxira playVideo()');
+      expect(html, isNot(contains('mute')), reason: 'ovoz o‘chirilmaydi');
+      expect(html, contains('playsinline:1'));
       expect(html, contains("origin:'https://nfcstore.uz'"));
       expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
       expect(html, contains('"dQw4w9WgXcQ"'));
@@ -614,6 +881,58 @@ void main() {
       final shorts = ShowcaseVideoSheet.playerSize(
           maxWidth: 358, screenHeight: 844, shorts: true);
       expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
+    });
+
+    test('WebView o‘tishlari: pleer freymlari ichida, tashqi havola — '
+        'tashqarida', () {
+      // Ichki freymlar (YouTube iframe, googlevideo, ytimg, about:blank,
+      // srcdoc) — hech qachon to'silmaydi.
+      for (final u in [
+        'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1',
+        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+        'https://rr3---sn-abc.googlevideo.com/videoplayback?x=1',
+        'https://i.ytimg.com/vi/dQw4w9WgXcQ/hq.jpg',
+        'https://googleads.g.doubleclick.net/pagead/id',
+        'about:blank',
+        'about:srcdoc',
+      ]) {
+        expect(youtubeNavStaysInside(u, mainFrame: false), isTrue, reason: u);
+      }
+      // Asosiy oyna: bazaviy sahifa, about:/data:, YouTube embed.
+      for (final u in [
+        'https://nfcstore.uz/',
+        'https://www.nfcstore.uz/',
+        'about:blank',
+        'about:srcdoc',
+        'data:text/html,<html></html>',
+        'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1',
+        'https://youtube.com/embed/dQw4w9WgXcQ',
+        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+      ]) {
+        expect(youtubeNavStaysInside(u, mainFrame: true), isTrue, reason: u);
+      }
+      // Haqiqiy tashqi havolalar — ilovadan tashqarida.
+      for (final u in [
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        'https://m.youtube.com/watch?v=dQw4w9WgXcQ',
+        'https://youtu.be/dQw4w9WgXcQ',
+        'https://www.youtube.com/channel/UCabcdefghijk',
+        'https://www.youtube.com/@nfcstore',
+        'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+        'http://www.youtube.com/embed/dQw4w9WgXcQ',
+        'https://evil.com/embed/dQw4w9WgXcQ',
+        'https://youtube.com.evil.com/embed/dQw4w9WgXcQ',
+        'https://accounts.google.com/ServiceLogin',
+      ]) {
+        expect(youtubeNavStaysInside(u, mainFrame: true), isFalse, reason: u);
+      }
+      // Bekor qilingan yuklash (iOS -999, WebKit 102) — zaxira panel emas.
+      WebResourceError err(int code) => WebResourceError(
+          errorCode: code, description: '', isForMainFrame: true);
+      expect(webLoadCancelled(err(-999)), isTrue);
+      expect(webLoadCancelled(err(102)), isTrue);
+      expect(webLoadCancelled(err(-1009)), isFalse, reason: 'internet yo‘q');
+      expect(webLoadCancelled(err(-2)), isFalse, reason: 'Android host');
     });
 
     const track =
@@ -781,7 +1100,7 @@ void main() {
       expect(player, findsOneWidget);
 
       // Fonda — pleer yo'q qilinadi (fonda ijro yo'q), qaytilganda
-      // YANGI pleer quriladi (yana avtomatik ijrosiz).
+      // YANGI pleer quriladi.
       expect(yt.ids, hasLength(1));
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);

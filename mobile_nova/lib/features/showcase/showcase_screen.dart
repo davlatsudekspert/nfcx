@@ -42,6 +42,8 @@ import '../social/reels_screen.dart'
         reelsInitTimeout,
         ReelAction,
         ReelCaption,
+        ReelsBackGuard,
+        ReelsChrome,
         ReelFollowPill,
         ReelsPager,
         ReelViewsLabel,
@@ -67,6 +69,15 @@ import 'showcase_video.dart';
 /// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
 /// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
 /// rasmiy embed sahifasida; profil havolasi — tashqarida.
+///
+/// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti") —
+/// Reels'dagi bilan bir xil: rasm yoki video BIR MARTA bosilsa hamma
+/// belgilar (sarlavha, "+", 🔇, muallif, "Reklama", izoh, tugmalar,
+/// amallar ustuni, nuqtalar, gradient va pastki panel) yumshoq
+/// yo'qoladi; yana bosilsa qaytadi. Boshqa sahifaga surilsa, tabdan
+/// chiqilsa yoki "orqaga" bosilsa — oddiy holatga qaytadi. Musiqa va
+/// video ijrosiga ta'sir qilmaydi. Rasmni butun ekranda ochish — IKKI
+/// MARTA bosish.
 
 /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
 /// (Reels bilan bir xil qoida).
@@ -165,6 +176,12 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
 
   void _create() => context.push(Routes.showcaseCreate);
 
+  /// Toza rejimdan chiqish (sahifa almashdi, tab yopildi, ro'yxat yo'q).
+  void _exitClean() {
+    final c = ref.read(reelsCleanProvider.notifier);
+    if (c.state) c.state = false;
+  }
+
   /// Tabga qaytildi — ro'yxat eskirgan bo'lsa yangisi, boshidan.
   void _onEnter() {
     final at = _loadedAt;
@@ -195,79 +212,112 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     final list = ref.watch(showcaseProvider);
     final pager = ref.watch(showcasePagerProvider);
     final hidden = ref.watch(reelsHiddenProvider);
+    final clean = ref.watch(reelsCleanProvider);
+    // Boshqa tabga o'tildi yoki ko'rsatadigan sahifa yo'q — toza rejim
+    // o'z-o'zidan tugaydi (aks holda pastki panel yashirin qolardi).
+    final hasPages =
+        !list.hasError &&
+        (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ?? false);
+    if (clean && (!onTab || !hasPages)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _exitClean();
+      });
+    }
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBody: true,
-      body: list.when(
-        skipLoadingOnReload: true,
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-        ),
-        error: (e, __) => Stack(
-          children: [
-            StatePanel.fromError(
-              context,
-              asAppError(e),
-              onRetry: () => ref.invalidate(showcaseProvider),
-              onDark: true,
+    // "ORQAGA" AVVAL TOZA REJIMDAN CHIQARADI (Reels bilan bir xil).
+    return ReelsBackGuard(
+      onBack: () {
+        final c = ref.read(reelsCleanProvider.notifier);
+        if (!onTab || !c.state) return false;
+        c.state = false;
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        extendBody: true,
+        body: list.when(
+          skipLoadingOnReload: true,
+          loading: () => const Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
             ),
-            _TopBar(onCreate: _create),
-          ],
-        ),
-        data: (all) {
-          final items = hidden.isEmpty
-              ? all
-              : all.where((p) => !hidden.contains(likeKey(p))).toList();
-          if (items.isEmpty) {
+          ),
+          error: (e, __) => Stack(
+            children: [
+              StatePanel.fromError(
+                context,
+                asAppError(e),
+                onRetry: () => ref.invalidate(showcaseProvider),
+                onDark: true,
+              ),
+              _TopBar(onCreate: _create),
+            ],
+          ),
+          data: (all) {
+            final items = hidden.isEmpty
+                ? all
+                : all.where((p) => !hidden.contains(likeKey(p))).toList();
+            if (items.isEmpty) {
+              return Stack(
+                children: [
+                  StatePanel(
+                    key: const ValueKey('showcase-empty'),
+                    icon: Icons.photo_library_outlined,
+                    title: l.showcaseEmpty,
+                    message: l.showcaseEmptyHint,
+                    actionLabel: l.showcaseCreate,
+                    onAction: _create,
+                    onDark: true,
+                  ),
+                  _TopBar(onCreate: _create),
+                ],
+              );
+            }
+            // Element yashirildi / ro'yxat qisqardi — oxirgisiga.
+            if (_index >= items.length) {
+              final to = items.length - 1;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                if (_page.hasClients) _page.jumpToPage(to);
+                setState(() => _index = to);
+              });
+            }
+            final current = items[_index.clamp(0, items.length - 1)];
             return Stack(
               children: [
-                StatePanel(
-                  key: const ValueKey('showcase-empty'),
-                  icon: Icons.photo_library_outlined,
-                  title: l.showcaseEmpty,
-                  message: l.showcaseEmptyHint,
-                  actionLabel: l.showcaseCreate,
-                  onAction: _create,
-                  onDark: true,
+                PageView.builder(
+                  key: const ValueKey('showcase-pager'),
+                  controller: _page,
+                  scrollDirection: Axis.vertical,
+                  allowImplicitScrolling: true,
+                  itemCount: items.length,
+                  onPageChanged: (i) {
+                    setState(() => _index = i);
+                    pager.nearEnd(i, items.length);
+                    // Yangi sahifa — belgilar bilan ochiladi.
+                    _exitClean();
+                  },
+                  itemBuilder: (context, i) => ShowcasePage(
+                    key: ValueKey('showcase:${likeKey(items[i])}'),
+                    post: items[i],
+                    // Ikki shart: shu sahifa ochiq VA Ko'rgazma tabining
+                    // o'zi ko'rinyapti (tablar yopilmaydi, berkitiladi).
+                    visible: i == _index && onTab,
+                  ),
                 ),
-                _TopBar(onCreate: _create),
+                _TopBar(
+                  onCreate: _create,
+                  showMute: true,
+                  hidden: clean,
+                  // Video reklamada "Ko'rgazma" yozuvi yo'q: videoning o'z
+                  // sarlavhasi (tepada) bilan ustma-ust tushardi.
+                  showTitle: !current.isShowcaseVideoAd,
+                ),
               ],
             );
-          }
-          // Element yashirildi / ro'yxat qisqardi — oxirgisiga.
-          if (_index >= items.length) {
-            final to = items.length - 1;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              if (_page.hasClients) _page.jumpToPage(to);
-              setState(() => _index = to);
-            });
-          }
-          return Stack(
-            children: [
-              PageView.builder(
-                key: const ValueKey('showcase-pager'),
-                controller: _page,
-                scrollDirection: Axis.vertical,
-                allowImplicitScrolling: true,
-                itemCount: items.length,
-                onPageChanged: (i) {
-                  setState(() => _index = i);
-                  pager.nearEnd(i, items.length);
-                },
-                itemBuilder: (context, i) => ShowcasePage(
-                  key: ValueKey('showcase:${likeKey(items[i])}'),
-                  post: items[i],
-                  // Ikki shart: shu sahifa ochiq VA Ko'rgazma tabining
-                  // o'zi ko'rinyapti (tablar yopilmaydi, berkitiladi).
-                  visible: i == _index && onTab,
-                ),
-              ),
-              _TopBar(onCreate: _create, showMute: true),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -275,55 +325,75 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
 
 /// Sarlavha, "+" va uning ostida ovoz tugmasi (o'ng burchak).
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onCreate, this.showMute = false});
+  const _TopBar({
+    required this.onCreate,
+    this.showMute = false,
+    this.hidden = false,
+    this.showTitle = true,
+  });
   final VoidCallback onCreate;
 
   /// Ovoz tugmasi — ro'yxat bor bo'lsa, HAR sahifada bitta joyda.
   final bool showMute;
 
+  /// Toza rejim — butun panel yashirin.
+  final bool hidden;
+
+  /// "Ko'rgazma" yozuvi (video reklamada yo'q).
+  final bool showTitle;
+
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Gap.lg,
-          vertical: Gap.sm,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                l.navShowcase,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.displayStyle(
-                  color: Colors.white,
-                  size: 24,
-                  shadows: const [
-                    Shadow(color: Colors.black54, blurRadius: 12),
-                  ],
+    return ReelsChrome(
+      key: const ValueKey('showcase-topbar'),
+      hidden: hidden,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.lg,
+            vertical: Gap.sm,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                // Yashirin yozuv bosishni ushlamaydi — video bosilaveradi.
+                child: ReelsChrome(
+                  key: const ValueKey('showcase-header'),
+                  hidden: !showTitle,
+                  child: Text(
+                    l.navShowcase,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.displayStyle(
+                      color: Colors.white,
+                      size: 24,
+                      shadows: const [
+                        Shadow(color: Colors.black54, blurRadius: 12),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                NovaIconButton(
-                  key: const ValueKey('showcase-create'),
-                  icon: Icons.add_rounded,
-                  tooltip: l.showcaseCreate,
-                  onPressed: onCreate,
-                  filled: true,
-                ),
-                if (showMute) ...[
-                  const SizedBox(height: Gap.xs),
-                  const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  NovaIconButton(
+                    key: const ValueKey('showcase-create'),
+                    icon: Icons.add_rounded,
+                    tooltip: l.showcaseCreate,
+                    onPressed: onCreate,
+                    filled: true,
+                  ),
+                  if (showMute) ...[
+                    const SizedBox(height: Gap.xs),
+                    const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -633,6 +703,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// BITTA BOSISH — TOZA REJIM (Reels kabi): hamma belgilar yashirinadi,
+  /// yana bosilsa qaytadi. Faqat holat almashadi — musiqa/video
+  /// ijrosiga (`_sync`) tegilmaydi.
+  void _toggleClean() {
+    final c = ref.read(reelsCleanProvider.notifier);
+    c.state = !c.state;
+  }
+
   Future<void> _openViewer(int i) async {
     setState(() => _viewerOpen = true);
     _sync();
@@ -808,6 +886,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         : ref.watch(followingOfProvider(p.code));
     // Burchakdagi 🔇 bosildi — musiqa shu zahoti to'xtaydi/davom etadi.
     ref.listen<bool>(showcaseMutedProvider, (_, __) => _sync());
+    // Toza rejim faqat ko'rinayotgan sahifaga tegishli (qo'shni sahifa
+    // surilganda belgilar bilan chiqadi).
+    final clean = widget.visible && ref.watch(reelsCleanProvider);
     final navH = MediaQuery.paddingOf(context).bottom;
     final topH = MediaQuery.paddingOf(context).top;
     final link = showcaseLinkKind(p.linkUrl);
@@ -820,11 +901,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       children: [
         const ColoredBox(color: Colors.black),
         if (_isVideo)
-          _AdVideo(
-            key: const ValueKey('showcase-ad-video'),
-            poster: p.posterUrl,
-            controller: _videoReady ? _video : null,
-            failed: _videoFailed,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleClean,
+            child: _AdVideo(
+              key: const ValueKey('showcase-ad-video'),
+              poster: p.posterUrl,
+              controller: _videoReady ? _video : null,
+              failed: _videoFailed,
+            ),
           )
         else
           PageView.builder(
@@ -832,10 +917,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             controller: _carousel,
             itemCount: _images.length,
             onPageChanged: _onImage,
+            // Bitta bosish — toza rejim (egasi, build 330: har sahifada
+            // bir xil). Rasmni butun ekranda ochish — ikki marta bosish
+            // (ko'ruvchida ham ikki bosish kattalashtiradi).
             itemBuilder: (context, i) => GestureDetector(
               key: ValueKey('showcase-image-$i'),
               behavior: HitTestBehavior.opaque,
-              onTap: () => _openViewer(i),
+              onTap: _toggleClean,
+              onDoubleTap: () => _openViewer(i),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -852,17 +941,22 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
               ),
             ),
           ),
-        // Pastdagi matn o'qilishi uchun gradient.
-        IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.center,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: .75),
-                ],
+        // Pastdagi matn o'qilishi uchun gradient. Video reklamada —
+        // yengilroq va pastroqdan: videoning o'z yozuvlari o'qilsin.
+        ReelsChrome(
+          key: const ValueKey('showcase-gradient'),
+          hidden: clean,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: _isVideo ? const Alignment(0, .4) : Alignment.center,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: _isVideo ? .55 : .75),
+                  ],
+                ),
               ),
             ),
           ),
@@ -873,205 +967,217 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             left: 0,
             right: 0,
             top: topH + 64,
-            child: IgnorePointer(
-              child: Center(
-                child: CarouselDots(count: _images.length, index: _image),
+            child: ReelsChrome(
+              hidden: clean,
+              child: IgnorePointer(
+                child: Center(
+                  child: CarouselDots(count: _images.length, index: _image),
+                ),
               ),
             ),
           ),
         Positioned(
           right: 4,
           bottom: navH + 30 - Gap.lg / 2,
-          child: Column(
-            children: [
-              ReelAction(
-                key: const ValueKey('showcase-like'),
-                icon: like.liked ? NovaIcons.liked : NovaIcons.like,
-                label: formatCount(like.count),
-                tint: like.liked ? t.error : Colors.white,
-                semantic: l.postLike,
-                onTap: _like,
-              ),
-              ReelAction(
-                key: const ValueKey('showcase-comments'),
-                icon: NovaIcons.comment,
-                label: formatCount(_comments ?? p.comments),
-                semantic: l.postComments,
-                onTap: () => showReelComments(
-                  context,
-                  p,
-                  onTotal: (n) {
-                    if (mounted) setState(() => _comments = n);
-                  },
+          child: ReelsChrome(
+            key: const ValueKey('showcase-rail'),
+            hidden: clean,
+            child: Column(
+              children: [
+                ReelAction(
+                  key: const ValueKey('showcase-like'),
+                  icon: like.liked ? NovaIcons.liked : NovaIcons.like,
+                  label: formatCount(like.count),
+                  tint: like.liked ? t.error : Colors.white,
+                  semantic: l.postLike,
+                  onTap: _like,
                 ),
-              ),
-              ReelAction(
-                key: const ValueKey('showcase-save'),
-                icon: saved ? NovaIcons.saved : NovaIcons.save,
-                label: l.actionSave,
-                tint: saved ? t.goldOnDark(IdPlate.goldLight) : Colors.white,
-                semantic: l.actionSave,
-                onTap: _save,
-              ),
-              ReelAction(
-                key: const ValueKey('showcase-share'),
-                icon: NovaIcons.share,
-                label: l.actionShare,
-                semantic: l.actionShare,
-                onTap: () => shareWithFeedback(
-                  context,
-                  contentShareText(
-                    caption: [
-                      p.title,
-                      p.text,
-                    ].where((e) => e.isNotEmpty).join('\n'),
-                    code: p.code,
-                    company: p.isCompany,
-                    postId: p.id,
+                ReelAction(
+                  key: const ValueKey('showcase-comments'),
+                  icon: NovaIcons.comment,
+                  label: formatCount(_comments ?? p.comments),
+                  semantic: l.postComments,
+                  onTap: () => showReelComments(
+                    context,
+                    p,
+                    onTotal: (n) {
+                      if (mounted) setState(() => _comments = n);
+                    },
                   ),
-                  subject: p.authorName,
-                  copiedMessage: l.shareCopied,
                 ),
-              ),
-              ReelAction(
-                key: const ValueKey('showcase-more'),
-                icon: NovaIcons.more,
-                label: '',
-                semantic: l.reportTitle,
-                onTap: _showMore,
-              ),
-            ],
+                ReelAction(
+                  key: const ValueKey('showcase-save'),
+                  icon: saved ? NovaIcons.saved : NovaIcons.save,
+                  label: l.actionSave,
+                  tint: saved ? t.goldOnDark(IdPlate.goldLight) : Colors.white,
+                  semantic: l.actionSave,
+                  onTap: _save,
+                ),
+                ReelAction(
+                  key: const ValueKey('showcase-share'),
+                  icon: NovaIcons.share,
+                  label: l.actionShare,
+                  semantic: l.actionShare,
+                  onTap: () => shareWithFeedback(
+                    context,
+                    contentShareText(
+                      caption: [
+                        p.title,
+                        p.text,
+                      ].where((e) => e.isNotEmpty).join('\n'),
+                      code: p.code,
+                      company: p.isCompany,
+                      postId: p.id,
+                    ),
+                    subject: p.authorName,
+                    copiedMessage: l.shareCopied,
+                  ),
+                ),
+                ReelAction(
+                  key: const ValueKey('showcase-more'),
+                  icon: NovaIcons.more,
+                  label: '',
+                  semantic: l.reportTitle,
+                  onTap: _showMore,
+                ),
+              ],
+            ),
           ),
         ),
         Positioned(
           left: Gap.lg,
           right: 72,
           bottom: navH + 30,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _AuthorRow(
-                post: p,
-                mine: mine,
-                following: following,
-                views: _views ?? p.views,
-                onAuthor: _openAuthor,
-                onFollow: () async {
-                  final e = await ref
-                      .read(followOverridesProvider.notifier)
-                      .toggle(
-                        p.code,
-                        following: following,
-                        company: p.isCompany,
-                      );
-                  if (e != null && mounted) _snack(describeError(l, e));
-                },
-              ),
-              if (p.pending) ...[
-                const SizedBox(height: Gap.sm),
-                const PendingBadge(onDark: true),
-              ],
-              if (p.isAd) ...[
-                const SizedBox(height: Gap.sm),
-                _Pill(
-                  key: const ValueKey('showcase-sponsored'),
-                  text: l.feedSponsored,
-                ),
-              ],
-              if (p.title.isNotEmpty) ...[
-                const SizedBox(height: Gap.sm),
-                Text(
-                  p.title,
-                  key: const ValueKey('showcase-title'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: AppType.sans,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    height: 1.25,
-                    color: Colors.white,
-                    shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-                  ),
-                ),
-              ],
-              if (p.priceUzs != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  formatUzs(l, p.priceUzs!),
-                  key: const ValueKey('showcase-price'),
-                  style: AppType.monoStyle(
-                    color: IdPlate.goldLight,
-                    size: 15,
-                    weight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              if (p.text.isNotEmpty) ...[
-                const SizedBox(height: Gap.sm),
-                ReelCaption(
-                  text: p.text,
-                  open: _captionOpen,
-                  onToggle: () => setState(() => _captionOpen = !_captionOpen),
-                ),
-              ],
-              if (p.music != null) ...[
-                const SizedBox(height: Gap.sm),
-                MusicChip(
-                  key: const ValueKey('showcase-music'),
-                  track: p.music!,
-                  onDark: true,
-                  onTap: () => _openMusic(p.music!),
-                ),
-              ],
-              if (postContactActions(p).isNotEmpty) ...[
-                const SizedBox(height: Gap.sm),
-                PostContactBar(
-                  key: const ValueKey('showcase-contact'),
+          child: ReelsChrome(
+            key: const ValueKey('showcase-info'),
+            hidden: clean,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _AuthorRow(
                   post: p,
-                  onDark: true,
+                  mine: mine,
+                  following: following,
+                  views: _views ?? p.views,
+                  onAuthor: _openAuthor,
+                  onFollow: () async {
+                    final e = await ref
+                        .read(followOverridesProvider.notifier)
+                        .toggle(
+                          p.code,
+                          following: following,
+                          company: p.isCompany,
+                        );
+                    if (e != null && mounted) _snack(describeError(l, e));
+                  },
                 ),
+                if (p.pending) ...[
+                  const SizedBox(height: Gap.sm),
+                  const PendingBadge(onDark: true),
+                ],
+                if (p.isAd) ...[
+                  const SizedBox(height: Gap.sm),
+                  _Pill(
+                    key: const ValueKey('showcase-sponsored'),
+                    text: l.feedSponsored,
+                  ),
+                ],
+                if (p.title.isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    p.title,
+                    key: const ValueKey('showcase-title'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: AppType.sans,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      height: 1.25,
+                      color: Colors.white,
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                    ),
+                  ),
+                ],
+                if (p.priceUzs != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    formatUzs(l, p.priceUzs!),
+                    key: const ValueKey('showcase-price'),
+                    style: AppType.monoStyle(
+                      color: IdPlate.goldLight,
+                      size: 15,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (p.text.isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  ReelCaption(
+                    text: p.text,
+                    open: _captionOpen,
+                    onToggle: () =>
+                        setState(() => _captionOpen = !_captionOpen),
+                  ),
+                ],
+                if (p.music != null) ...[
+                  const SizedBox(height: Gap.sm),
+                  MusicChip(
+                    key: const ValueKey('showcase-music'),
+                    track: p.music!,
+                    onDark: true,
+                    onTap: () => _openMusic(p.music!),
+                  ),
+                ],
+                if (postContactActions(p).isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  PostContactBar(
+                    key: const ValueKey('showcase-contact'),
+                    post: p,
+                    onDark: true,
+                  ),
+                ],
+                if (item != null || link != null) ...[
+                  const SizedBox(height: Gap.sm),
+                  Wrap(
+                    spacing: Gap.sm,
+                    runSpacing: 6,
+                    children: [
+                      if (item != null)
+                        _CtaButton(
+                          key: const ValueKey('showcase-product'),
+                          icon: Icons.shopping_bag_outlined,
+                          label: l.showcaseViewProduct,
+                          primary: true,
+                          onTap: () => _openProduct(item),
+                        ),
+                      if (videoId != null)
+                        _CtaButton(
+                          key: const ValueKey('showcase-video'),
+                          icon: Icons.play_circle_outline_rounded,
+                          label: l.showcaseWatchVideo,
+                          onTap: () => _openVideo(videoId),
+                        )
+                      else if (igEmbed != null)
+                        _CtaButton(
+                          key: const ValueKey('showcase-instagram'),
+                          icon: Icons.camera_alt_outlined,
+                          label: l.showcaseWatchInstagram,
+                          onTap: () => _openInstagram(igEmbed),
+                        )
+                      else if (link != null)
+                        _CtaButton(
+                          key: const ValueKey('showcase-link'),
+                          icon: Icons.open_in_new_rounded,
+                          label: showcaseLinkLabel(l, link),
+                          onTap: () => openLink(p.linkUrl),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-              if (item != null || link != null) ...[
-                const SizedBox(height: Gap.sm),
-                Wrap(
-                  spacing: Gap.sm,
-                  runSpacing: 6,
-                  children: [
-                    if (item != null)
-                      _CtaButton(
-                        key: const ValueKey('showcase-product'),
-                        icon: Icons.shopping_bag_outlined,
-                        label: l.showcaseViewProduct,
-                        primary: true,
-                        onTap: () => _openProduct(item),
-                      ),
-                    if (videoId != null)
-                      _CtaButton(
-                        key: const ValueKey('showcase-video'),
-                        icon: Icons.play_circle_outline_rounded,
-                        label: l.showcaseWatchVideo,
-                        onTap: () => _openVideo(videoId),
-                      )
-                    else if (igEmbed != null)
-                      _CtaButton(
-                        key: const ValueKey('showcase-instagram'),
-                        icon: Icons.camera_alt_outlined,
-                        label: l.showcaseWatchInstagram,
-                        onTap: () => _openInstagram(igEmbed),
-                      )
-                    else if (link != null)
-                      _CtaButton(
-                        key: const ValueKey('showcase-link'),
-                        icon: Icons.open_in_new_rounded,
-                        label: showcaseLinkLabel(l, link),
-                        onTap: () => openLink(p.linkUrl),
-                      ),
-                  ],
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ],

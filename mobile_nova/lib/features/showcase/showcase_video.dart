@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../../core/utils/external_link.dart';
@@ -18,9 +19,14 @@ import 'showcase_common.dart';
 /// Egasi (build 329): "YouTube'da ochish" o'rniga "Videoni ko'rish" —
 /// video ilovadan chiqmasdan ko'riladi. YouTube API qoidalari:
 ///
-/// * avtomatik ijro YO'Q — `autoplay` berilmaydi, `onReady` da
-///   `playVideo()` chaqirilmaydi; ijroni odam pleerning O'ZIDA boshlaydi
-///   (iOS/Android'da ham media "foydalanuvchi bosishini" talab qiladi);
+/// * ijro FAQAT odam "Videoni ko'rish" ni O'ZI bosgandan keyin
+///   boshlanadi (egasi, build 330: "ochilyapti, o'ynab ketmayapti").
+///   Bu — uning harakati davomi, `music_embed.dart` dagi bilan bir xil
+///   asos: `autoplay:1`, zaxira sifatida `onReady` da `playVideo()`,
+///   iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
+///   `setMediaPlaybackRequiresUserGesture(false)`. Ovoz o'chirilmaydi.
+///   Varaqni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
+///   o'zi o'ynamaydi;
 /// * pleer ustida hech narsa yo'q (yopish tugmasi va "YouTube'da ochish"
 ///   havolasi pleerdan TASHQARIDA — tepada va pastda);
 /// * o'lcham kamida 200×200;
@@ -28,10 +34,47 @@ import 'showcase_common.dart';
 ///   (Referer), `origin` va `widget_referrer` — `music_embed.dart` bilan
 ///   bir xil yo'l;
 /// * fonda ijro YO'Q — varaq yopilsa yoki ilova fonga o'tsa pleer
-///   yo'q qilinadi (qaytilganda qaytadan, yana avtomatik ijrosiz).
+///   yo'q qilinadi (qaytilganda qaytadan quriladi).
 ///
 /// Video joylashtirishni taqiqlagan bo'lsa (xato 101/150), yuklanmasa
 /// yoki pleer javob bermasa — pleer o'rnida "YouTube'da ochish".
+
+/// WebView yuklashi BEKOR QILINDI (xato emas): iOS `NSURLErrorCancelled`
+/// (-999) va WebKit "frame load interrupted" (102) — masalan, sahifa
+/// bo'shatilganda yoki tashqi havola to'xtatilganda. Bular zaxira
+/// panelni ko'rsatmaydi. Android kodlari manfiy va kichik — to'qnashmaydi.
+bool webLoadCancelled(WebResourceError e) =>
+    e.errorCode == -999 || e.errorCode == 102;
+
+/// YouTube pleeri WebView'idagi o'tish ICHIDA qoladimi.
+///
+/// * ichki freym (YouTube'ning o'z iframe'i, `googlevideo`, `ytimg`,
+///   `about:blank`/`srcdoc`, reklama freymlari) — hammasi ichida: ular
+///   ilovadan olib chiqmaydi, to'sib qo'yilsa pleer ishlamaydi;
+/// * asosiy oynada: `about:`/`data:`/`blob:`, bizning bazaviy sahifa
+///   (`nfcstore.uz`) va YouTube'ning `/embed/` sahifasi (iOS iframe'ni
+///   asosiy oyna deb bersa ham pleer to'xtamasin);
+/// * qolgani (tomosha sahifasi, kanal, `youtu.be`, boshqa sayt) —
+///   haqiqiy tashqi havola: ilovada emas, tashqarida ochiladi.
+@visibleForTesting
+bool youtubeNavStaysInside(String url, {required bool mainFrame}) {
+  if (!mainFrame) return true;
+  final u = Uri.tryParse(url.trim());
+  if (u == null) return true;
+  final scheme = u.scheme.toLowerCase();
+  if (scheme == 'about' || scheme == 'data' || scheme == 'blob') return true;
+  if (scheme != 'https') return false;
+  final host = u.host.toLowerCase();
+  if (host == 'nfcstore.uz' || host == 'www.nfcstore.uz') return true;
+  const embedHosts = {
+    'youtube.com',
+    'www.youtube.com',
+    'm.youtube.com',
+    'youtube-nocookie.com',
+    'www.youtube-nocookie.com',
+  };
+  return embedHosts.contains(host) && u.path.startsWith('/embed/');
+}
 
 /// Pleer shuncha vaqtda tayyor bo'lmasa — zaxira yo'l ko'rsatiladi.
 const kShowcaseVideoReadyTimeout = Duration(seconds: 15);
@@ -353,8 +396,9 @@ class ShowcaseYoutubePlayer extends StatefulWidget {
 
   static const _base = 'https://nfcstore.uz/';
 
-  /// Pleer sahifasi. AVTOMATIK IJRO YO'Q: `autoplay` yo'q va `onReady`
-  /// faqat holatni xabar qiladi.
+  /// Pleer sahifasi. Odam "Videoni ko'rish" ni bosgan — video o'zi
+  /// boshlanadi: `autoplay:1`, `onReady` da esa zaxira `playVideo()`
+  /// (ba'zi WebView'larda `autoplay` yetarli emas).
   @visibleForTesting
   static String html(String id) => '''
 <!doctype html><html><head>
@@ -368,9 +412,9 @@ function post(m){try{NfcVideo.postMessage(m)}catch(e){}}
 window.nfcPause=function(){try{player.pauseVideo()}catch(e){}};
 function onYouTubeIframeAPIReady(){
   player=new YT.Player('p',{width:'100%',height:'100%',videoId:${jsonEncode(id)},
-    playerVars:{playsinline:1,rel:0,controls:1,origin:'https://nfcstore.uz',widget_referrer:'https://nfcstore.uz'},
+    playerVars:{playsinline:1,autoplay:1,rel:0,controls:1,origin:'https://nfcstore.uz',widget_referrer:'https://nfcstore.uz'},
     events:{
-      onReady:function(){post('ready')},
+      onReady:function(e){post('ready');try{e.target.playVideo()}catch(x){}},
       onStateChange:function(e){
         if(e.data===1)post('playing');else if(e.data===2)post('paused');else if(e.data===0)post('ended');
       },
@@ -391,33 +435,38 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
   @override
   void initState() {
     super.initState();
-    // Media "foydalanuvchi bosishini" talab qiladi (standart) — ijro
-    // faqat pleerdagi play tugmasidan.
+    // Avtomatik ijro: odam "Videoni ko'rish" ni O'ZI bosgan — bu uning
+    // harakati davomi (`music_embed.dart` bilan bir xil). Ilgari media
+    // "foydalanuvchi bosishini" talab qilardi va iOS'da video pleer
+    // ichida bosilsa ham boshlanmasdi (build 330).
     final PlatformWebViewControllerCreationParams params =
         WebViewPlatform.instance is WebKitWebViewPlatform
             ? WebKitWebViewControllerCreationParams(
                 allowsInlineMediaPlayback: true,
+                mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
               )
             : const PlatformWebViewControllerCreationParams();
     _web = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..addJavaScriptChannel('NfcVideo',
-          onMessageReceived: (m) => widget.onState(m.message))
+          onMessageReceived: (m) => widget.onState(m.message));
+    final platform = _web.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+    }
+    _web
       ..setNavigationDelegate(NavigationDelegate(
         onWebResourceError: (e) {
-          if (e.isForMainFrame ?? false) widget.onState('error:load');
+          if ((e.isForMainFrame ?? false) && !webLoadCancelled(e)) {
+            widget.onState('error:load');
+          }
         },
         onNavigationRequest: (r) {
-          if (!r.isMainFrame) return NavigationDecision.navigate;
-          final u = Uri.tryParse(r.url);
-          if (u == null ||
-              u.scheme == 'about' ||
-              u.scheme == 'data' ||
-              u.host == 'nfcstore.uz') {
+          if (youtubeNavStaysInside(r.url, mainFrame: r.isMainFrame)) {
             return NavigationDecision.navigate;
           }
-          // Pleerdagi "YouTube'da ko'rish" va boshqa havolalar —
+          // Pleerdagi "YouTube'da ko'rish", kanal va boshqa havolalar —
           // ilovaning o'zida emas, tashqarida.
           openLink(r.url);
           return NavigationDecision.prevent;
