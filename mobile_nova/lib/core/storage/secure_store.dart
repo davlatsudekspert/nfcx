@@ -123,6 +123,8 @@ class Prefs {
   static const _kSavedReels = 'nova.savedReels';
   static const _kAppFlags = 'nova.appFlags';
   static const _kShowcaseMuted = 'nova.showcaseMuted';
+  static const _kHomeAdHidden = 'nova.homeAdHiddenDay';
+  static const _kHomeAdLaunch = 'nova.homeAdLaunch';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -256,4 +258,14 @@ class Prefs {
   /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
   bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
   Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
+
+  /// Asosiydagi Ko'rgazma reklama kartasi "×" bilan yopilgan kun
+  /// (`YYYY-MM-DD`, telefon vaqti). Shu kun tugaguncha karta chiqmaydi.
+  String get homeAdHiddenDay => _p.getString(_kHomeAdHidden) ?? '';
+  Future<void> setHomeAdHiddenDay(String v) => _p.setString(_kHomeAdHidden, v);
+
+  /// Ilova necha marta ochilgani — reklama kartasi navbat bilan
+  /// almashishi uchun (BOY777, LOL707, ...).
+  int get homeAdLaunch => _p.getInt(_kHomeAdLaunch) ?? 0;
+  Future<void> setHomeAdLaunch(int v) => _p.setInt(_kHomeAdLaunch, v);
 }

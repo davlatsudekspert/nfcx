@@ -490,6 +490,15 @@ class SocialRepository {
     return res.map(ReelsPage.fromJson);
   }
 
+  /// KO'RGAZMA REKLAMALARI — Asosiydagi karta uchun (kirish shart
+  /// emas). Elementlar `/api/showcase` dagi reklama bilan bir xil
+  /// shaklda; `video=1` doim yuboriladi (eski server video bermaydi).
+  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async {
+    final res = await _api.get<Map<String, dynamic>>('/api/showcase/ads',
+        query: {'video': 1, 'limit': limit});
+    return res.map(ReelsPage.fromJson);
+  }
+
   /// "QIZIQ EMAS" — server shu reelni bu hisobga boshqa ko'rsatmaydi.
   ///
   /// Kompaniya postining `id` si alohida sanaladi (`like` izohiga

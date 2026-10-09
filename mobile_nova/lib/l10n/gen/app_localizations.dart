@@ -6668,6 +6668,18 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Post tekshiruvdan so‘ng hammaga ko‘rinadi'**
   String get pendingPublished;
+
+  /// Asosiydagi Ko‘rgazma reklama kartochkasi — bosilsa Ko‘rgazma tabida ochiladi (ekran o‘qigich uchun).
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko‘rgazmada ochish'**
+  String get homeAdOpen;
+
+  /// Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bugun ko‘rsatilmasin'**
+  String get homeAdHideToday;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

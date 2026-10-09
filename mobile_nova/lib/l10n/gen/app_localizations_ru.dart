@@ -3711,4 +3711,10 @@ class LRu extends L {
 
   @override
   String get pendingPublished => 'Пост станет виден всем после проверки';
+
+  @override
+  String get homeAdOpen => 'Открыть в витрине';
+
+  @override
+  String get homeAdHideToday => 'Скрыть на сегодня';
 }

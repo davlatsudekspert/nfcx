@@ -3668,4 +3668,10 @@ class LUz extends L {
 
   @override
   String get pendingPublished => 'Post tekshiruvdan so‘ng hammaga ko‘rinadi';
+
+  @override
+  String get homeAdOpen => 'Ko‘rgazmada ochish';
+
+  @override
+  String get homeAdHideToday => 'Bugun ko‘rsatilmasin';
 }

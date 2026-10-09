@@ -3689,4 +3689,10 @@ class LEn extends L {
   @override
   String get pendingPublished =>
       'Your post will be visible to everyone after review';
+
+  @override
+  String get homeAdOpen => 'Open in Showcase';
+
+  @override
+  String get homeAdHideToday => 'Hide for today';
 }

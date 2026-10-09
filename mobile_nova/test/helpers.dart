@@ -117,6 +117,11 @@ class FakeSocialRepository extends SocialRepository {
           {String? cursor, int limit = 10}) async =>
       const Ok(ReelsPage());
 
+  /// Asosiydagi Ko'rgazma reklamasi — sukut bo'yicha yo'q.
+  @override
+  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async =>
+      const Ok(ReelsPage());
+
   /// "Qiziq emas" — tarmoqqa chiqmaydi, faqat yoziladi.
   final hiddenReels = <Post>[];
 

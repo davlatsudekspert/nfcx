@@ -1268,5 +1268,7 @@
   "errShowcasePriceHigh": "Слишком большая цена",
   "errShowcaseBadLink": "Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)",
   "pendingReview": "Ожидает проверки",
-  "pendingPublished": "Пост станет виден всем после проверки"
+  "pendingPublished": "Пост станет виден всем после проверки",
+  "homeAdOpen": "Открыть в витрине",
+  "homeAdHideToday": "Скрыть на сегодня"
 }

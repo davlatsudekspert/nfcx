@@ -86,6 +86,11 @@ const kShowcaseStaleAfter = Duration(minutes: 10);
 @visibleForTesting
 DateTime Function() showcaseClock = DateTime.now;
 
+/// ASOSIYDAGI REKLAMA KARTASI BOSILDI — Ko'rgazma shu element bilan
+/// (birinchi sahifada, o'z ovozi/musiqasi bilan) ochiladi. Ekran uni
+/// o'qib, darhol tozalaydi.
+final showcaseFocusProvider = StateProvider<Post?>((_) => null);
+
 /// Ko'rgazma davomi (keyingi sahifalar).
 final showcasePagerProvider = Provider.autoDispose<ReelsPager>(
   (ref) => ReelsPager(),
@@ -168,6 +173,28 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
   int _index = 0;
   DateTime? _loadedAt;
 
+  /// Asosiydan ochilgan reklama — ro'yxat boshida turadi (ro'yxatda
+  /// bo'lsa, takrorlanmaydi).
+  Post? _pinned;
+  bool _focusing = false;
+
+  /// [showcaseFocusProvider] dagi elementni birinchi sahifaga qo'yadi.
+  void _takeFocus(Post p) {
+    if (_focusing) return;
+    _focusing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusing = false;
+      if (!mounted) return;
+      ref.read(showcaseFocusProvider.notifier).state = null;
+      setState(() {
+        _pinned = p;
+        _index = 0;
+      });
+      if (_page.hasClients) _page.jumpToPage(0);
+      _exitClean();
+    });
+  }
+
   @override
   void dispose() {
     _page.dispose();
@@ -213,11 +240,16 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     final pager = ref.watch(showcasePagerProvider);
     final hidden = ref.watch(reelsHiddenProvider);
     final clean = ref.watch(reelsCleanProvider);
+    final focus = ref.watch(showcaseFocusProvider);
+    if (focus != null) _takeFocus(focus);
     // Boshqa tabga o'tildi yoki ko'rsatadigan sahifa yo'q — toza rejim
     // o'z-o'zidan tugaydi (aks holda pastki panel yashirin qolardi).
+    final pinned = _pinned;
     final hasPages =
         !list.hasError &&
-        (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ?? false);
+        ((pinned != null && !hidden.contains(likeKey(pinned))) ||
+            (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ??
+                false));
     if (clean && (!onTab || !hasPages)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _exitClean();
@@ -254,7 +286,15 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
               _TopBar(onCreate: _create),
             ],
           ),
-          data: (all) {
+          data: (loaded) {
+            final pin = _pinned;
+            final all = pin == null
+                ? loaded
+                : [
+                    pin,
+                    for (final p in loaded)
+                      if (likeKey(p) != likeKey(pin)) p,
+                  ];
             final items = hidden.isEmpty
                 ? all
                 : all.where((p) => !hidden.contains(likeKey(p))).toList();

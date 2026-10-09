@@ -30,6 +30,7 @@ import '../nfc/qr_sheet.dart';
 import '../shop/nfc_id_market.dart' show tierLabel;
 import 'widgets/avatar.dart';
 import 'widgets/nfc_mobile_section.dart';
+import 'widgets/showcase_ad_card.dart';
 import 'widgets/identity_card.dart';
 import 'widgets/mode_switch.dart';
 import '../../app/profile_context.dart';
@@ -179,6 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ref.invalidate(homeStoriesProvider);
           ref.invalidate(homeCatalogProvider);
           ref.invalidate(homeFeedProvider);
+          ref.invalidate(homeShowcaseAdsProvider);
         },
         child: NovaScroll(
           controller: _scroll,
@@ -329,6 +331,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: Gap.lg),
             ],
             _StoriesRow(user: user),
+            // KO'RGAZMA REKLAMASI — NFC ID kartasi, tezkor amallar va
+            // storylardan KEYIN (eng tepada emas), ikkala rejimda ham.
+            // Reklama yo'q / kalit o'chiq — hech narsa chizilmaydi.
+            const HomeShowcaseAdCard(),
             // NAMUNA BIZNESLAR — faqat biznesi yo'q odamga, shaxsiy
             // rejimda, Stories'dan keyin (pastga surmasdan ko'rinsin).
             if (!business) const HomeSampleBusinesses(),

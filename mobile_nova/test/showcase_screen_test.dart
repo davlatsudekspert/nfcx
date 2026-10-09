@@ -1258,6 +1258,30 @@ void main() {
       expect(v.volumeOf[id], 0.0);
     });
 
+    testWidgets(
+        'Asosiydagi karta bosildi — shu reklama birinchi sahifada, ovozi '
+        'bilan; ro‘yxatda bo‘lsa takrorlanmaydi', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(id: 1), ad(), _post(id: 2)]),
+      ], beforeShow: (c) async =>
+          c.read(showcaseFocusProvider.notifier).state = ad());
+      await drain(tester);
+      expect(r.c.read(showcaseFocusProvider), isNull, reason: 'o‘qildi');
+      // Birinchi sahifa — reklama videosi, o'z ovozi bilan.
+      expect(find.byKey(const ValueKey('showcase-ad-video')), findsOneWidget);
+      final id = videoId(v);
+      expect(v.playing, {id});
+      expect(v.volumeOf[id], 1.0);
+      // Ro'yxatda ikkinchi marta yo'q: 3 sahifa (reklama, 1, 2).
+      final pager = tester.widget<PageView>(
+          find.byKey(const ValueKey('showcase-pager')));
+      expect(pager.childrenDelegate.estimatedChildCount, 3);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(minutes: 1));
+    });
+
     testWidgets('ekrandan chiqsa pauza va yo‘q qilinadi; boshqa tab — pauza',
         (tester) async {
       final v = FakeVideoPlatform();

@@ -1433,5 +1433,9 @@
   "pendingReview": "Tekshiruv kutilmoqda",
   "@pendingReview": {"description": "O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi)."},
   "pendingPublished": "Post tekshiruvdan so‘ng hammaga ko‘rinadi",
-  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."}
+  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."},
+  "homeAdOpen": "Ko‘rgazmada ochish",
+  "@homeAdOpen": {"description": "Asosiydagi Ko‘rgazma reklama kartochkasi — bosilsa Ko‘rgazma tabida ochiladi (ekran o‘qigich uchun)."},
+  "homeAdHideToday": "Bugun ko‘rsatilmasin",
+  "@homeAdHideToday": {"description": "Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi."}
 }
