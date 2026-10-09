@@ -35,6 +35,7 @@ import 'package:nfcstore_nova/data/models/models.dart';
 import 'package:nfcstore_nova/design/icons/nova_icons.dart';
 import 'package:nfcstore_nova/design/widgets/bottom_nav.dart';
 import 'package:nfcstore_nova/design/widgets/buttons.dart';
+import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/home/widgets/showcase_ad_card.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
@@ -483,16 +484,43 @@ class _Run {
       await t.enterText(fields.at(1), kTestPassword);
       await wait(const Duration(milliseconds: 500));
       // Klaviatura yopiladi (iOS'da tugma uning ostida qolardi), keyin
-      // BITTA kirish urinishi.
+      // BITTA kirish urinishi. Tugma — aynan LoginScreen ichidagi (pastdagi
+      // Welcome marshrutining tugmalari ham daraxtda turadi).
       FocusManager.instance.primaryFocus?.unfocus();
       await wait(const Duration(milliseconds: 800));
-      final submit = find.byType(NovaButton).first;
-      await t.ensureVisible(submit);
-      await wait(const Duration(milliseconds: 500));
-      r.values['submitTap'] = await tapReal(find.byType(NovaButton));
+      final submit = find.descendant(
+          of: find.byType(LoginScreen), matching: find.byType(NovaButton));
+      if (has(submit)) {
+        await t.ensureVisible(submit.first);
+        await wait(const Duration(milliseconds: 500));
+      }
+      Set<String> texts() => t
+          .widgetList<Text>(find.byType(Text))
+          .map((w) => w.data ?? '')
+          .toSet();
+      final before = texts();
+      final how = await tapReal(submit);
+      r.values['submitTap'] = how;
+      bool busy() =>
+          has(submit) && t.widget<NovaButton>(submit.first).busy;
+      if (how != 'hit') {
+        // Bosish tugmaga yetmagan bo'lsa (so'rov ketmagan: tugma band
+        // emas va Asosiy ochilmagan) — odam kabi klaviaturadagi "Tayyor".
+        await wait(const Duration(seconds: 3));
+        // Xato matni chiqqan bo'lsa — so'rov ketgan, qayta yuborilmaydi.
+        final appeared = texts().difference(before);
+        r.values['afterTapNewTexts'] = appeared.map(redact).toList();
+        if (!busy() && appeared.isEmpty && !has(find.byType(NovaBottomNav))) {
+          await t.showKeyboard(fields.at(1));
+          await t.testTextInput.receiveAction(TextInputAction.done);
+          r.values['submitTap'] = '$how -> keyboard done';
+        }
+      }
       final home = await waitFor(() => has(find.byType(NovaBottomNav)),
           timeout: const Duration(seconds: 45));
       r.values['loginAttempts'] = 1;
+      // Surat FAQAT Asosiy ochilganda: kirish ekranida login ko'rinadi.
+      if (home) r.values['screenshot'] = await screenshot('00_after_login');
       r.check(home, 'kirishdan keyin Asosiy (pastki menyu) ochilmadi');
       if (!home) {
         final texts = t
@@ -507,7 +535,7 @@ class _Run {
       final loc = c.read(localeProvider);
       r.values['locale'] = loc.languageCode;
       r.values['showcaseMutedPref'] = c.read(showcaseMutedProvider);
-    }, shot: '00_after_login');
+    });
     if (login.status != 'PASS' || !has(find.byType(NovaBottomNav))) {
       _finish();
       return;

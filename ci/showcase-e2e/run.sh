@@ -47,10 +47,24 @@ if command -v timeout >/dev/null; then TO=(timeout --foreground -s INT -k 30s 27
 elif command -v gtimeout >/dev/null; then TO=(gtimeout --foreground -s INT -k 30s 2700)
 fi
 
-echo "== flutter test ($PLATFORM / $DEVICE)"
-${TO[@]+"${TO[@]}"} flutter test integration_test/showcase_user_test.dart -d "$DEVICE" "${DEFINES[@]}" \
-  > "$LOG" 2>&1
-code=$?
+# Ikki urinish — FAQAT test umuman boshlanmagan bo'lsa (iOS simulyatorda
+# Flutter log o'quvchisi ba'zan uziladi: "Error waiting for a debug
+# connection"). Test boshlangan bo'lsa (E2E_ qatori bor) — kirish
+# ishlatilgan bo'lishi mumkin, qayta urinilmaydi.
+: > "$LOG"
+for attempt in 1 2; do
+  echo "== flutter test ($PLATFORM / $DEVICE), urinish $attempt"
+  ${TO[@]+"${TO[@]}"} flutter test integration_test/showcase_user_test.dart -d "$DEVICE" "${DEFINES[@]}" \
+    >> "$LOG" 2>&1
+  code=$?
+  if [ "$attempt" = 1 ] && ! grep -q "E2E_STEP\|E2E_TMP" "$LOG" \
+      && grep -q "Error waiting for a debug connection\|log reader failed" "$LOG"; then
+    echo "== test boshlanmadi (debug ulanish uzildi) — qayta urinish" | tee -a "$LOG"
+    sleep 10
+    continue
+  fi
+  break
+done
 echo "EXIT $code" >> "$LOG"
 
 # Shooter oxirgi belgini ishlab bo'lsin.
