@@ -20,6 +20,7 @@ import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import { applyLaunchTrialExtension } from './api/trial-promo.js';
 import { seedShowcaseSamples } from './api/showcase-samples.js';
+import * as apiShowcaseAds from './api/showcase-ads.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
@@ -2455,6 +2456,8 @@ async function ensureCoreSchema(env) {
     guard.ensureGuardSchema(env),
     // Post qo'shimchalari (musiqa, reel, ko'rgazma) — ro'yxatlar ularni o'qiydi.
     apiMusic.ensureExtras(env),
+    // Ko'rgazma reklama joylari (api/showcase-ads.js) — /api/showcase o'qiydi.
+    apiShowcaseAds.ensureSchema(env),
   ]);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
@@ -12575,7 +12578,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12714,6 +12717,13 @@ export default {
         if (sc?.applied) console.log('showcase_samples', JSON.stringify(sc));
       } catch (e) {
         console.error('showcase_samples', String(e?.message || e).slice(0, 160));
+      }
+      // NFCSTORE promo reklamalari (Ko'rgazma 1-2 joy) — bir marta (api/showcase-ads.js).
+      try {
+        const ads = await apiShowcaseAds.seedShowcaseAds(env);
+        if (ads?.applied) console.log('showcase_ads', JSON.stringify(ads));
+      } catch (e) {
+        console.error('showcase_ads', String(e?.message || e).slice(0, 160));
       }
       try {
         const ext = await applyLaunchTrialExtension(env);

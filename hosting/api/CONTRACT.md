@@ -139,6 +139,19 @@ YouTube/Instagram), `catalogItemId` (matn, faqat o'sha kompaniya), `imageSeconds
 mediaUrls, pending`. `GET /api/showcase` (`reels.js`) — Reels tartibi, faqat
 videosiz `showcase=1` yoki rasmli reel; javobda `cursor` va `nextCursor`.
 
+KO'RGAZMA REKLAMASI (`showcase-ads.js`, 2026-10): `showcase_ads` (slot 1..4).
+`GET /api/admin/showcase-ads` (admin) → `{slots:[{slot, postKind, postId, enabled,
+updatedAt, updatedBy, post:{exists, live, authorKind, code, name, caption, title,
+imageUrl, videoUrl}|null}], max:4}`; `PUT /api/admin/showcase-ads/:slot`
+`{postKind:'post'|'company_post', postId, enabled?}` va `DELETE …/:slot` — manager+,
+admin jurnali (`showcase_ad_set|showcase_ad_remove`). Xatolar: 422 `bad_slot|
+bad_post_kind|bad_post_id|bad_enabled|post_not_live`, 404 `post_not_found`,
+409 `already_in_slot|post_changed`. `/api/showcase` da yoqilgan joylar featured
+qoidasida (4/9-o'rin, sahifada ≤2, zanjirda bir marta, oddiydan chiqariladi;
+lenta qisqa bo'lsa oxirgi oddiy kadrdan keyin) — kadr + `featured:true, ad:true,
+adSlot`. Joydagi post VIDEO bo'lishi mumkin (faqat shu yo'l); `videosHidden` da
+video reklama chiqmaydi. Promo videolar statik: `/promo/*.mp4|jpg` (Worker assets).
+
 MODERATSIYA QO'RIQCHISI (`content-guard.js`, modul emas): tekshirilmagan
 (`content_reports` reason=`unchecked`, status=`new`) fayl bilan chop etilgan
 kontent `content_pending` da — faqat egasiga (`pending:true`), UNION va

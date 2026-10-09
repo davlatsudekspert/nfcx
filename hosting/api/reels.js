@@ -62,6 +62,15 @@
 // keyingi sahifada reklama bo'lib chiqqan post oldin oddiy kadr bo'lib
 // takrorlanmasin.
 //
+// KO'RGAZMA REKLAMASI (2026-10, api/showcase-ads.js) — faqat `/api/showcase`:
+// admin tanlagan 4 tagacha joy AYNAN shu qoidada (o'rinlar, sahifa chegarasi,
+// `x`/`a` kursorda). Joylar navbatda OLDIN (slot tartibida), keyin featured.
+// Joydagi post VIDEO bo'lishi mumkin — `SHOWCASE_SQL` ning yagona istisnosi,
+// faqat shu yo'l bilan; oddiy videoli kadr Ko'rgazmaga baribir tushmaydi.
+// Lenta qisqa bo'lib oddiy kadrlar 4-o'ringacha yetmasa, reklama oxirgi
+// oddiy kadrdan keyin turadi (sahifa chegarasi o'sha-o'sha; bo'sh sahifada
+// yoki 0-o'rinda — hech qachon). Javobda `featured: true, ad: true, adSlot`.
+//
 // ═══ BARQAROR SAHIFALASH ═══
 //
 // Birinchi so'rov "surat" vaqtini (`s`) oladi. Kursor — base64url JSON:
@@ -87,6 +96,7 @@
 // (account-purge.js) tozalanadi.
 
 import { seedShowcaseSamples } from './showcase-samples.js';
+import { seedShowcaseAds, enabledSlots, slotMatchesRow } from './showcase-ads.js';
 import { blockedByUser } from './moderation.js';
 import { activeTargets } from './featured.js';
 import { ensureExtras } from './music.js';
@@ -266,7 +276,7 @@ async function listReels(request, env, url, H, mode = 'reels') {
   const poolQuery = () => env.DB.prepare(poolSql).bind(0, 0, nowIso, 0, nowIso, snap).all();
 
   // ── 1-TO'LQIN ──
-  const [user, poolRes, active] = await Promise.all([
+  const [user, poolRes, active, slots] = await Promise.all([
     H.getCurrentUser(request, env).catch(() => null),
     poolQuery().catch(async (e) => {
       if (!isMissingTable(e)) throw e;
@@ -274,6 +284,7 @@ async function listReels(request, env, url, H, mode = 'reels') {
       return poolQuery();
     }),
     activeTargets(env, H.nowTs()).catch(() => []),
+    mode === 'showcase' ? enabledSlots(env) : [],
   ]);
   const viewerId = user ? Number(user.id) : 0;
   const viewerKey = await contentViewerKey(H, request, user);
@@ -283,14 +294,20 @@ async function listReels(request, env, url, H, mode = 'reels') {
   const authorOf = (r) => `${String(r.author_kind)}:${String(r.code || '').toUpperCase()}`;
 
   // Reklama nomzodlari: zanjir boshida faol bo'lganlar (`x`), hozir ham faol.
-  const activeKeys = (active || [])
+  // Ko'rgazma reklama joylari (slot tartibida) — featured'dan OLDIN.
+  const slotByKey = new Map();
+  for (const sl of slots || []) if (KEY_RE.test(sl.key) && !slotByKey.has(sl.key)) slotByKey.set(sl.key, sl);
+  const featuredKeys = (active || [])
     .filter((t) => t.kind === 'post' || t.kind === 'company_post')
     .map((t) => `${t.kind}:${Number(t.id)}`)
     .filter((k) => KEY_RE.test(k));
+  const activeKeys = [...slotByKey.keys(), ...featuredKeys];
   const xKeys = cur ? cur.x : [...new Set(activeKeys)].slice(0, MAX_AD_KEYS);
   const served = new Set(cur ? cur.a : []);
   const activeSet = new Set(activeKeys);
   const adCand = xKeys.filter((k) => activeSet.has(k) && !served.has(k));
+  const slotCand = adCand.filter((k) => slotByKey.has(k));
+  const featCand = adCand.filter((k) => !slotByKey.has(k));
 
   // ── 2-TO'LQIN ──
   const pIds = pool.filter((r) => String(r.author_kind) !== 'company').map((r) => Number(r.id));
@@ -357,14 +374,22 @@ async function listReels(request, env, url, H, mode = 'reels') {
     `SELECT target_kind, target_id, created_at FROM reel_hidden WHERE user_id = ? ORDER BY created_at DESC LIMIT 2000`
   ).bind(viewerId).all()) : Promise.resolve([]);
   const blocksQ = viewerId ? blockedByUser(env, viewerId).catch(() => []) : Promise.resolve([]);
-  const adsQ = adCand.length ? rowsOf(env.DB.prepare(
-    `SELECT f.* FROM (${unionSql}) f
-      WHERE f.kind = 'post' AND ${FILTER_SQL('f')}
-        AND (${adCand.map(() => '(f.author_kind = ? AND f.id = ?)').join(' OR ')})`
-  ).bind(0, 0, nowIso, 0, nowIso, ...adCand.flatMap((k) => {
+  // Reklama qatorlari — lenta UNIONidan (maxfiylik, o'chirilgan, rejadagi,
+  // tekshiruv kutayotgan, `videosHidden`). Featured — `FILTER_SQL` bilan;
+  // Ko'rgazma joyi — usiz (video ruxsat), lekin faqat `slotCand` kalitlari.
+  const keyPairs = (keys) => keys.flatMap((k) => {
     const [kind, id] = k.split(':');
     return [kind === 'company_post' ? 'company' : 'card', Number(id)];
-  })).all()) : Promise.resolve([]);
+  });
+  const keyOr = (keys) => keys.map(() => '(f.author_kind = ? AND f.id = ?)').join(' OR ');
+  const adWhere = [
+    ...(featCand.length ? [`(${FILTER_SQL('f')} AND (${keyOr(featCand)}))`] : []),
+    ...(slotCand.length ? [`(${keyOr(slotCand)})`] : []),
+  ];
+  const adsQ = adCand.length ? rowsOf(env.DB.prepare(
+    `SELECT f.* FROM (${unionSql}) f
+      WHERE f.kind = 'post' AND (${adWhere.join(' OR ')})`
+  ).bind(0, 0, nowIso, 0, nowIso, ...keyPairs(featCand), ...keyPairs(slotCand)).all()) : Promise.resolve([]);
 
   const [viewsR, commentsR, likesR, savesR, socialR, hidesR, blocksR, adsR] = await Promise.all([
     Promise.all(viewsQ), Promise.all(commentsQ), Promise.all(likesQ), Promise.all(savesQ),
@@ -439,10 +464,15 @@ async function listReels(request, env, url, H, mode = 'reels') {
     ordered.forEach((it, i) => { if (anchors.has(it.key)) last = i; });
     if (last >= 0) start = last + 1;
   }
+  // Navbat: avval Ko'rgazma joylari (slot tartibida), keyin featured (jitter).
+  // Joydagi post raqami boshqa postga o'tgan bo'lsa (`slotMatchesRow`) — chiqmaydi.
+  const adRank = (a) => (a.slot ? a.slot.slot : 100);
   const adQueue = adsR
     .filter((r) => adCand.includes(keyOf(r)) && !blocked.has(authorOf(r)) && !hiddenFor(r, false))
-    .map((r) => ({ key: keyOf(r), row: r }))
-    .sort((a, b) => (jitterOf(viewerKey, day, b.key) - jitterOf(viewerKey, day, a.key)) || (a.key < b.key ? -1 : 1));
+    .map((r) => ({ key: keyOf(r), row: r, slot: slotCand.includes(keyOf(r)) ? slotByKey.get(keyOf(r)) : null }))
+    .filter((a) => !a.slot || slotMatchesRow(a.slot, a.row))
+    .sort((a, b) => (adRank(a) - adRank(b))
+      || (jitterOf(viewerKey, day, b.key) - jitterOf(viewerKey, day, a.key)) || (a.key < b.key ? -1 : 1));
   const page = [];
   let adsOnPage = 0;
   let oi = start;
@@ -453,7 +483,16 @@ async function listReels(request, env, url, H, mode = 'reels') {
       adsOnPage++;
       continue;
     }
-    if (oi >= ordered.length) break;
+    if (oi >= ordered.length) {
+      // Ko'rgazma: oddiy kadr tugadi, sahifada kamida bitta oddiy kadr bor —
+      // qolgan reklama oxiriga (sahifa chegarasi o'sha-o'sha).
+      if (mode === 'showcase' && pos > adsOnPage && adQueue.length && adsOnPage < MAX_ADS_PER_PAGE) {
+        page.push({ ...adQueue.shift(), ad: true });
+        adsOnPage++;
+        continue;
+      }
+      break;
+    }
     const it = ordered[oi++];
     // Suratdan keyingi "qiziq emas" — tartibda turadi, javobda yo'q.
     if (hiddenFor(it.row, false)) continue;
@@ -470,7 +509,8 @@ async function listReels(request, env, url, H, mode = 'reels') {
   const items = page.map((p, i) => {
     const lk = likedKeys && H.feedLikedKey(p.row);
     const base = lk ? { ...shaped[i], liked: likedKeys.has(lk) } : shaped[i];
-    return p.ad ? { ...base, featured: true } : base;
+    if (!p.ad) return base;
+    return p.slot ? { ...base, featured: true, ad: true, adSlot: p.slot.slot } : { ...base, featured: true };
   });
 
   const nextCursor = hasMore ? encodeCursor({
@@ -522,6 +562,8 @@ export async function handle(request, env, url, H) {
     // NFCSTORE'ning o'z namunalari — bir marta (api/showcase-samples.js).
     // Xato lentani buzmaydi.
     await seedShowcaseSamples(env).catch((e) => console.error('showcase_samples', String(e?.message || e).slice(0, 160)));
+    // NFCSTORE promo reklamalari (BOY777, LOL707) — bir marta (api/showcase-ads.js).
+    await seedShowcaseAds(env).catch((e) => console.error('showcase_ads', String(e?.message || e).slice(0, 160)));
     return listReels(request, env, url, H, 'showcase');
   }
   if (path === '/api/reels/hide') {
