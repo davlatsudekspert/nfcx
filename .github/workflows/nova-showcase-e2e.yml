@@ -1,0 +1,241 @@
+# KO'RGAZMA — FOYDALANUVCHI MISOLIDA E2E (Android emulyator + iPhone simulyator)
+#
+# Egasi: "o'zing kirib test qilib ko'r, aniq qil, keyin chiqar,
+# foydalanuvchi misolida kirib tekshir".
+#
+# Ilova kodi: `claude/vibrant-einstein-p5lo1i` + `ci/nova-ios-patches/*.patch`
+# (TestFlight/APK bilan AYNAN bir xil manba). Test:
+# `ci/showcase-e2e/showcase_user_test.dart` — haqiqiy `main()`, haqiqiy
+# https://nfcstore.uz, haqiqiy sinov hisobi (kirish ekrani orqali, har
+# platformada BITTA kirish; server chegarasi: 15 daqiqada 5 ta).
+#
+# Ekran suratlari QURILMANING O'ZIDAN (adb screencap / simctl) — WebView
+# (YouTube, Instagram) ham ko'rinadi. Artefaktda FAQAT suratlar, JSON va
+# loglar: test build ichida parol bor (`--dart-define`), shuning uchun
+# APK/.app HECH QACHON yuklanmaydi.
+#
+# Qaysi platforma: `ci/showcase-e2e/platforms` faylidagi so'zlar
+# (`android`, `ios`). Push faqat shu papka yoki shu fayl o'zgarganda.
+name: NFCSTORE Ko'rgazma E2E (foydalanuvchi misolida)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths:
+      - .github/workflows/nova-showcase-e2e.yml
+      - ci/showcase-e2e/**
+
+concurrency:
+  group: nova-showcase-e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.p.outputs.android }}
+      ios: ${{ steps.p.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          P=$(cat ci/showcase-e2e/platforms 2>/dev/null || echo "android ios")
+          echo "platforms: $P"
+          echo "android=$(echo "$P" | grep -qw android && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "ios=$(echo "$P" | grep -qw ios && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: plan
+    if: needs.plan.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+    env:
+      NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+      NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - name: iOS/Android patch'lari (TestFlight bilan bir xil manba)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          git am --3way self/ci/nova-ios-patches/*.patch
+          git log --oneline -3
+          echo "**Manba:** vibrant-einstein + $(ls self/ci/nova-ios-patches/*.patch | wc -l | tr -d ' ') patch → \`$(git rev-parse --short HEAD)\` ($(git log -1 --format=%s | cut -c1-80))" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Paketlar va test fayli
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          mkdir -p integration_test/showcase_support
+          cp ../self/ci/showcase-e2e/showcase_user_test.dart integration_test/
+          cp ../self/ci/showcase-e2e/support/*.dart integration_test/showcase_support/
+          flutter analyze --no-fatal-infos integration_test/showcase_user_test.dart integration_test/showcase_support
+      - name: KVM va host audio (null sink)
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          # Emulyator ovozi HAQIQATAN ishlasin (musiqa soati yursin):
+          # host'da PulseAudio + jim "null" chiqish.
+          sudo apt-get update -qq && sudo apt-get install -y -qq pulseaudio >/dev/null
+          pulseaudio --start --exit-idle-time=-1 || true
+          pactl load-module module-null-sink sink_name=nfc_null || true
+          pactl set-default-sink nfc_null || true
+          pactl info | grep -E "Server Name|Default Sink" || true
+      - name: AVD keshi
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64-audio
+      - name: AVD ni tayyorlash (faqat kesh bo'sh bo'lsa)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swangle_indirect -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD tayyor"
+      - name: E2E — Android emulyator (ovoz YOQIQ)
+        timeout-minutes: 50
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swangle_indirect -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile_nova
+          script: bash ../self/ci/showcase-e2e/run.sh android emulator-5554
+      - name: Natija jadvali
+        id: sum
+        if: always()
+        run: |
+          python3 ../self/ci/showcase-e2e/summarize.py android showcase-e2e/test.log showcase-e2e/results.json
+      - name: Maxfiy qiymatlarni tozalash
+        if: always()
+        run: |
+          python3 ../self/ci/showcase-e2e/redact.py showcase-e2e/*.txt showcase-e2e/*.log showcase-e2e/*.json || true
+          ls -la showcase-e2e showcase-e2e/screens || true
+      - name: Artefakt (faqat suratlar, JSON, loglar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-e2e-android
+          path: |
+            mobile_nova/showcase-e2e/
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios:
+    needs: plan
+    if: needs.plan.outputs.ios == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+        shell: bash
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+      NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - name: iOS patch'lari (TestFlight bilan bir xil manba)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          git am --3way self/ci/nova-ios-patches/*.patch
+          git log --oneline -3
+          echo "**Manba:** vibrant-einstein + $(ls self/ci/nova-ios-patches/*.patch | wc -l | tr -d ' ') patch → \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Paketlar va test fayli
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          mkdir -p integration_test/showcase_support
+          cp ../self/ci/showcase-e2e/showcase_user_test.dart integration_test/
+          cp ../self/ci/showcase-e2e/support/*.dart integration_test/showcase_support/
+      - name: iPhone simulyatori
+        id: sim
+        run: |
+          set -e
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          pref=['iPhone 16','iPhone 16 Pro','iPhone 17','iPhone 15 Pro','iPhone 16 Pro Max']
+          allv=[x for k,v in d.items() if 'iOS' in k for x in v]
+          for p in pref:
+            for x in allv:
+              if x['name']==p: print(x['udid']); raise SystemExit
+          print([x for x in allv if 'iPhone' in x['name']][0]['udid'])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices | grep "$UDID"
+          echo "**Simulyator:** $(xcrun simctl list devices | grep "$UDID" | sed 's/^ *//')" >> "$GITHUB_STEP_SUMMARY"
+      - name: E2E — iPhone simulyatori
+        timeout-minutes: 50
+        run: bash ../self/ci/showcase-e2e/run.sh ios ${{ steps.sim.outputs.udid }}
+      - name: Natija jadvali
+        if: always()
+        run: |
+          python3 ../self/ci/showcase-e2e/summarize.py ios showcase-e2e/test.log showcase-e2e/results.json
+      - name: Maxfiy qiymatlarni tozalash
+        if: always()
+        run: |
+          python3 ../self/ci/showcase-e2e/redact.py showcase-e2e/*.txt showcase-e2e/*.log showcase-e2e/*.json || true
+          ls -la showcase-e2e showcase-e2e/screens || true
+      - name: Artefakt (faqat suratlar, JSON, loglar)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-e2e-ios
+          path: |
+            mobile_nova/showcase-e2e/
+          if-no-files-found: warn
+          retention-days: 14
