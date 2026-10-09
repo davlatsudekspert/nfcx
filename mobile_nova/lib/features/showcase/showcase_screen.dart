@@ -332,7 +332,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   /// Ilova oldinda.
   bool _foreground = true;
 
-  /// Rasm butun ekranda ochiq — karusel va musiqa to'xtaydi.
+  /// Rasm butun ekranda ochiq — karusel to'xtaydi, MUSIQA DAVOM ETADI
+  /// (egasi, build 329: "rasmni bosganda musiqa to'xtamasin"). Ko'ruvchi
+  /// shaffof marshrut, sahifa ekrandan chiqmaydi.
   bool _viewerOpen = false;
 
   bool _captionOpen = false;
@@ -343,7 +345,17 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   Post get _p => widget.post;
   List<String> get _images => _p.mediaUrls;
 
-  bool get _active => widget.visible && _onStage && _foreground && !_viewerOpen;
+  /// Sahifa ekranda: ochiq, tab ko'rinyapti, ustida boshqa (yopiq)
+  /// ekran yo'q va ilova oldinda.
+  bool get _onScreen => widget.visible && _onStage && _foreground;
+
+  /// Karusel soati va ko'rishni sanash.
+  bool get _active => _onScreen && !_viewerOpen;
+
+  /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
+  /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
+  /// orqali pauza, qaytilganda davom etadi.
+  bool get _audible => _onScreen;
 
   @override
   void initState() {
@@ -441,11 +453,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         if (c.isCompleted) c.reset();
         if (!c.isAnimating) c.forward();
       }
-      _playMusic();
     } else {
       _clock?.stop();
+      if (!widget.visible) _clock?.reset();
+    }
+    if (_audible) {
+      _playMusic();
+    } else {
       if (!widget.visible) {
-        _clock?.reset();
         _disposeMusic();
       } else {
         _music?.pause();
@@ -494,9 +509,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         return;
       }
     }
-    if (!_musicReady || !mounted || _music != c || !_active) return;
+    if (!_musicReady || !mounted || _music != c || !_audible) return;
     await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
-    if (!mounted || _music != c || !_active) return;
+    if (!mounted || _music != c || !_audible) return;
     await c.play();
   }
 

@@ -61,6 +61,7 @@ Post _post({
   bool featured = false,
   MusicTrack? music,
   String link = 'https://youtu.be/abc',
+  String text = 'Yangi kolleksiya',
 }) =>
     Post.fromJson({
       'id': id,
@@ -70,7 +71,7 @@ Post _post({
       'showcase': true,
       'title': 'Qizil ko‘ylak',
       'priceUzs': 125000,
-      'text': 'Yangi kolleksiya',
+      'text': text,
       'linkUrl': link,
       'featured': featured,
       'imageSeconds': 5,
@@ -378,5 +379,80 @@ void main() {
     await settle(tester, frames: 2);
     expect(v.playing, isEmpty);
     expect(v.alive, isEmpty);
+  });
+
+  group('musiqa uzluksizligi (egasi, build 329)', () {
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    testWidgets('rasm ko‘ruvchi va izohni ochish musiqani TO‘XTATMAYDI',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      await _pump(tester, pages: [
+        ReelsPage(items: [
+          _post(
+              images: 2,
+              music: track,
+              text: List.filled(40, 'Juda uzun izoh matni').join(' ')),
+        ]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+
+      // Izoh ochiladi ("… ko‘proq") — musiqa davom etadi.
+      await tester.tap(find.byKey(const ValueKey('reel-caption')));
+      await drain(tester);
+      expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
+
+      // Rasm butun ekranda — musiqa davom etadi. Ochiq izoh pastki
+      // yarmini egallaydi, shuning uchun rasmning yuqori qismi bosiladi.
+      await tester.tapAt(tester
+          .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
+          .translate(150, 250));
+      await settle(tester, frames: 6);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
+      expect(v.playing, hasLength(1), reason: 'rasm ko‘ruvchi ochiq');
+      expect(v.disposed, isEmpty);
+
+      // Yopildi — hamon o'ynayapti, yangi pleer ochilmagan.
+      await tester.tap(find.byKey(const ValueKey('image-viewer-close')));
+      await settle(tester, frames: 8);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
+      expect(v.playing, hasLength(1));
+      expect(v.created, hasLength(1));
+    });
+
+    testWidgets('boshqa ekran (tovar) — pauza, qaytilganda davom etadi',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(music: track)]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('showcase-product')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(r.pushed, hasLength(1));
+      expect(v.playing, isEmpty, reason: 'boshqa ekran ochiq — pauza');
+      expect(v.disposed, isEmpty, reason: 'pleer saqlanadi');
+
+      GoRouter.of(tester.element(find.text('PRODUCT'))).pop();
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(v.playing, hasLength(1), reason: 'qaytildi — davom etadi');
+      expect(v.created, hasLength(1));
+    });
   });
 }
