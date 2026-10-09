@@ -31,6 +31,13 @@ export const DICT_ADMIN = {
   'Post raqami noto‘g‘ri.': { ru: 'Неверный номер поста.', en: 'Invalid post ID.' },
   'Post turi noto‘g‘ri.': { ru: 'Неверный тип поста.', en: 'Invalid post type.' },
   'Matnda so‘kinish (avtomatik)': { ru: 'Брань в тексте (автоматически)', en: 'Profanity in text (automatic)' },
+  // ── Matn filtri (2026-10, text-guard.js) ──
+  'Matn bloklandi (taqiqlangan so‘z)': { ru: 'Текст заблокирован (запрещённое слово)', en: 'Text blocked (banned term)' },
+  'Matn tekshiruvga (shubhali so‘z)': { ru: 'Текст на проверку (подозрительное слово)', en: 'Text for review (suspicious term)' },
+  'Matn bloklandi (AI)': { ru: 'Текст заблокирован (ИИ)', en: 'Text blocked (AI)' },
+  'Rad etish (yashirin qoladi)': { ru: 'Отклонить (останется скрытым)', en: 'Reject (stays hidden)' },
+  'Matnni AI bilan tekshirish': { ru: 'Проверять текст с помощью ИИ', en: 'Check text with AI' },
+  'Post, Reels va ko‘rgazma matni Gemini bilan qo‘shimcha tekshiriladi; shubhali matn admin tasdig‘igacha yashiriladi. Taqiqlangan so‘zlar ro‘yxati bu kalitsiz ham doim ishlaydi.': { ru: 'Текст постов, Reels и Витрины дополнительно проверяется Gemini; подозрительный текст скрывается до подтверждения админом. Список запрещённых слов работает всегда, даже без этого переключателя.', en: 'Post, Reels and Showcase text is additionally checked by Gemini; suspicious text stays hidden until an admin approves it. The banned-terms list always works, even without this switch.' },
   // ── Umumiy holatlar ──
   "Ruxsat yo'q": { ru: 'Нет доступа', en: 'Access denied' },
   "Ma'lumotlarni yuklab bo'lmadi.": { ru: 'Не удалось загрузить данные.', en: 'Could not load data.' },

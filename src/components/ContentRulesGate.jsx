@@ -16,7 +16,7 @@ import { useLanguage } from '../lib/i18n.jsx';
 // MATN EGASI BERGAN TAHRIRDA — o'zgartirilmaydi, qisqartirilmaydi.
 // Bitta joyda turadi: rasm, istorya, post va musiqa yuklashda AYNAN
 // shu matn ko'rsatiladi (avval har birida boshqacha yozuv bor edi).
-export const CONTENT_RULES_TEXT = 'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi.';
+export const CONTENT_RULES_TEXT = 'Joylashtirilayotgan kontent quyidagilarni o‘z ichiga olmasligi shart: diniy targ‘ibot yoki ekstremistik mazmun, pornografik yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har qanday material. Ushbu qoidalar buzilgan taqdirda kontent ogohlantirishsiz o‘chiriladi. Joylangan kontent uchun javobgarlik to‘liq muallifning o‘zida.';
 export const CONTENT_RULES_ACCEPT = 'Men qoidalarni o‘qidim va roziman';
 
 export default function ContentRulesGate({ onAccept, onClose }) {

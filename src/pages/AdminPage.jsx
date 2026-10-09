@@ -499,7 +499,20 @@ const REPORT_REASON_LABEL = {
   other: 'Boshqa',
   unchecked: 'Avtomatik tekshirilmagan',
   text_flag: 'Matnda so‘kinish (avtomatik)',
+  // MATN FILTRI (2026-10, hosting/api/text-guard.js). `text_block` va
+  // `text_ai` — kontent yashirin: "Tasdiqlash" ochadi, "Rad etish"
+  // yashirin qoldiradi, "Kontentni o‘chirish" o‘chiradi.
+  text_block: 'Matn bloklandi (taqiqlangan so‘z)',
+  text_review: 'Matn tekshiruvga (shubhali so‘z)',
+  text_ai: 'Matn bloklandi (AI)',
 };
+
+// Matn sababli yashirilgan — "Rad etish" kontentni yashirin qoldiradi.
+const REPORT_TEXT_HOLD = ['text_block', 'text_ai'];
+// "Tasdiqlash" tugmasi: tekshirilmagan fayl (yangi) yoki yashirin matn
+// (yopilmagan — "Rad etish"dan keyin ham ochish mumkin).
+const canApproveReport = (r) => (r.reason === 'unchecked' && r.status === 'new')
+  || (REPORT_TEXT_HOLD.includes(r.reason) && r.status !== 'resolved');
 
 // Shikoyat qilingan kontentning qisqa ko'rinishi: rasm/video, matn, muallif.
 function ReportPreview({ p, t }) {
@@ -552,7 +565,8 @@ function ReportPeople({ r, t }) {
 // izoh — /comments/:id; Aktual — DELETE /api/admin/highlights/:id {reason}).
 // `media` — avtomatik tekshirilmagan fayl (hech qaysi postga bog'lanmagan).
 // `catalog_item` (2026-10) — katalog mahsuloti (DELETE /api/admin/content/catalog_item/:id, dalil arxivi bilan).
-const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight', 'media', 'catalog_item'];
+// `story_reply` (2026-10) — istoriyaga javob (DELETE /api/admin/content/story_reply/:id, dalil arxivi bilan).
+const REPORT_DELETABLE = ['post', 'story', 'company_post', 'company_story', 'comment', 'highlight', 'media', 'catalog_item', 'story_reply'];
 
 function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
   useEffect(() => {
@@ -633,14 +647,16 @@ function ReportDetail({ r, t, busy, onClose, onDelete, onStatus }) {
           )}
           {/* TEKSHIRILMAGAN FAYL — "Tasdiqlash": shu faylli post/istoriya
               ommaga ochiladi (server: content_pending tozalanadi). */}
-          {r.reason === 'unchecked' && r.status === 'new' && (
+          {canApproveReport(r) && (
             <button type="button" disabled={busy} onClick={() => onStatus('resolved')} className="btn btn-gold btn-sm">{t('Tasdiqlash')}</button>
           )}
-          {r.status !== 'resolved' && (
+          {r.status !== 'resolved' && !REPORT_TEXT_HOLD.includes(r.reason) && (
             <button type="button" disabled={busy} onClick={() => onStatus('resolved')} className="btn btn-success btn-sm">{t('Hal qilindi')}</button>
           )}
           {r.status !== 'rejected' && (
-            <button type="button" disabled={busy} onClick={() => onStatus('rejected')} className="btn btn-ghost btn-sm">{t('Rad etish')}</button>
+            <button type="button" disabled={busy} onClick={() => onStatus('rejected')} className="btn btn-ghost btn-sm">
+              {t(REPORT_TEXT_HOLD.includes(r.reason) ? 'Rad etish (yashirin qoladi)' : 'Rad etish')}
+            </button>
           )}
         </div>
       </div>
@@ -655,6 +671,9 @@ const FLAG_ITEMS = [
   ['reelsHidden', 'Reels bo‘limini yashirish', 'Ilovadagi Reels lentasi bo‘sh qaytadi.'],
   ['videoUploadsBlocked', 'Video yuklashni to‘xtatish', 'Yangi video yuklash va postga video ulash rad etiladi (rasm ishlaydi).'],
   ['videosHidden', 'Mavjud videolarni yashirish', 'Mavjud videolarni yashirish: video reklama joylari ham yashiriladi.'],
+  // Matnni AI bilan tekshirish (hosting/api/text-guard.js) — taqiqlangan
+  // so'zlar ro'yxati bu kalitsiz ham DOIM ishlaydi.
+  ['textAiCheck', 'Matnni AI bilan tekshirish', 'Post, Reels va ko‘rgazma matni Gemini bilan qo‘shimcha tekshiriladi; shubhali matn admin tasdig‘igacha yashiriladi. Taqiqlangan so‘zlar ro‘yxati bu kalitsiz ham doim ishlaydi.'],
 ];
 
 function FlagsSection() {
@@ -995,7 +1014,7 @@ function ReportsTab() {
                         {t('Kontentni o‘chirish')}
                       </button>
                     )}
-                    {r.reason === 'unchecked' && r.status === 'new' && (
+                    {canApproveReport(r) && (
                       <button
                         type="button"
                         disabled={busy === r.id}
@@ -1005,7 +1024,7 @@ function ReportsTab() {
                         {t('Tasdiqlash')}
                       </button>
                     )}
-                    {r.status !== 'resolved' && (
+                    {r.status !== 'resolved' && !REPORT_TEXT_HOLD.includes(r.reason) && (
                       <button
                         type="button"
                         disabled={busy === r.id}
@@ -1022,7 +1041,7 @@ function ReportsTab() {
                         onClick={() => setRowStatus(r.id, 'rejected')}
                         className="btn btn-ghost btn-xs ml-1 min-h-9"
                       >
-                        {t('Rad etish')}
+                        {t(REPORT_TEXT_HOLD.includes(r.reason) ? 'Rad etish (yashirin qoladi)' : 'Rad etish')}
                       </button>
                     )}
                   </td>
