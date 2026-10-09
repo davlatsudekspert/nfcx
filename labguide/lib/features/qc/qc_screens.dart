@@ -8,7 +8,6 @@ import '../../app/widgets/lg_page.dart';
 import '../../design/tokens.dart';
 import '../../design/widgets/lg_widgets.dart';
 import '../../l10n/gen/app_localizations.dart';
-import '../tools/calculators.dart';
 import '../tools/clinical_calculators.dart';
 import '../tools/tool_screens.dart';
 import 'levey_jennings_chart.dart';
@@ -48,7 +47,7 @@ String _z(double z, String locale) {
 }
 
 /// Maydonga qo'yish uchun: guruhlashsiz, lokal o'nlik belgisi bilan —
-/// [parseDecimal] uni qayta o'qiy oladi.
+/// [parseFieldNumber] uni qayta o'qiy oladi.
 String _plain(double v, String locale) {
   final decimals = v.abs() >= 1 ? 4 : 6;
   final f = NumberFormat.decimalPattern(locale)
@@ -335,8 +334,8 @@ class _QcNewSetScreenState extends State<QcNewSetScreen> {
     }
     final levels = <({String label, String lot, double mean, double sd})>[];
     for (final (i, f) in _levels.indexed) {
-      final mean = parseDecimal(f.mean.text);
-      final sd = parseDecimal(f.sd.text);
+      final mean = parseFieldNumber(context, f.mean.text);
+      final sd = parseFieldNumber(context, f.sd.text);
       if (mean == null ||
           sd == null ||
           !mean.isFinite ||
@@ -510,7 +509,7 @@ class _QcSetScreenState extends State<QcSetScreen> {
     for (final level in set.levels) {
       final raw = _ctrl(level.id).text;
       if (raw.trim().isEmpty) continue;
-      final v = parseDecimal(raw);
+      final v = parseFieldNumber(context, raw);
       if (v == null) {
         setState(() => _error = l.qcErrRunInvalid(qcLevelName(level.label, l)));
         return;
@@ -1032,8 +1031,8 @@ class _QcTargetScreenState extends State<QcTargetScreen> {
   Future<void> _save() async {
     final l = AppLocalizations.of(context);
     FocusScope.of(context).unfocus();
-    final mean = parseDecimal(_mean.text);
-    final sd = parseDecimal(_sd.text);
+    final mean = parseFieldNumber(context, _mean.text);
+    final sd = parseFieldNumber(context, _sd.text);
     if (mean == null ||
         sd == null ||
         !mean.isFinite ||

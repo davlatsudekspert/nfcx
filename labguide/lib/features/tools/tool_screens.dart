@@ -25,6 +25,14 @@ String formatResult(double v, String locale, {int maxDecimals = 4}) {
   return f.format(v);
 }
 
+/// Maydondagi sonni ilova tili bo'yicha o'qish: o'nlik belgisi vergul
+/// bo'lgan tilda (UZ, RU) “1,500” — 1,5; EN da ikki ma'noli (`null`).
+double? parseFieldNumber(BuildContext context, String raw) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  final symbols = NumberFormat.decimalPattern(locale).symbols;
+  return parseDecimal(raw, commaIsDecimal: symbols.DECIMAL_SEP == ',');
+}
+
 class CalculatorsScreen extends StatelessWidget {
   const CalculatorsScreen({super.key});
 
@@ -94,9 +102,9 @@ class _DilutionScreenState extends State<DilutionScreen> {
     FocusScope.of(context).unfocus();
     setState(() {
       _result = solveDilution(
-        stockConcentration: parseDecimal(_c1.text),
-        targetConcentration: parseDecimal(_c2.text),
-        finalVolume: parseDecimal(_v2.text),
+        stockConcentration: parseFieldNumber(context, _c1.text),
+        targetConcentration: parseFieldNumber(context, _c2.text),
+        finalVolume: parseFieldNumber(context, _v2.text),
       );
     });
   }
@@ -233,7 +241,7 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
     FocusScope.of(context).unfocus();
     setState(() {
       _result = convertConcentration(
-        value: parseDecimal(_value.text),
+        value: parseFieldNumber(context, _value.text),
         from: _from,
         molarMass: analyte.conversion?.molarMass,
         siPerMmol: analyte.conversion?.siPerMmol ?? 1,

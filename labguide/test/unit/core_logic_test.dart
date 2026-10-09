@@ -107,6 +107,16 @@ void main() {
       }
     });
 
+    test('decimal-comma locales read “1,500” as 1.5 (UZ/RU)', () {
+      expect(parseDecimal('1,500', commaIsDecimal: true), 1.5);
+      expect(parseDecimal('5,125', commaIsDecimal: true), 5.125);
+      expect(parseDecimal('-12,345', commaIsDecimal: true), -12.345);
+      expect(parseDecimal('1 000,25', commaIsDecimal: true), 1000.25);
+      expect(parseDecimal('2.5', commaIsDecimal: true), 2.5);
+      // Ikki vergul — baribir noto'g'ri.
+      expect(parseDecimal('1,500,000', commaIsDecimal: true), isNull);
+    });
+
     test('rejects garbage, empty, NaN and Infinity text', () {
       for (final bad in ['', ' ', 'abc', '1.2.3', 'NaN', 'Infinity', '--1']) {
         expect(parseDecimal(bad), isNull, reason: bad);

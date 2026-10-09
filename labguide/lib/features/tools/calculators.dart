@@ -4,13 +4,20 @@ library;
 
 /// Raqamni foydalanuvchi kiritgan matndan o'qish. UZ/RU klaviaturalarida
 /// o'nlik ajratuvchi vergul bo'lgani uchun "2,5" ham qabul qilinadi.
-/// Bo'shliqlar (minglik ajratuvchi) olib tashlanadi. “1,500” kabi ikki
-/// ma'noli kirish va noto'g'ri kirish `null` qaytaradi — hech qachon NaN emas.
-double? parseDecimal(String raw) {
+/// Bo'shliqlar (minglik ajratuvchi) olib tashlanadi. Noto'g'ri kirish `null`
+/// qaytaradi — hech qachon NaN emas.
+///
+/// [commaIsDecimal] — ilova tilida vergul o'nlik belgisi (UZ, RU): unda
+/// “1,500” = 1,5. Aks holda (EN) “1,500” ikki ma'noli va `null`.
+double? parseDecimal(String raw, {bool commaIsDecimal = false}) {
   final compact = raw.trim().replaceAll(RegExp(r'[\s  ]'), '');
-  // “1,500” — ming ajratgichmi (1500) yoki o'nlik vergulmi (1,5)? Taxmin
-  // qilinmaydi: foydalanuvchi qayta kiritadi (“1500” yoki “1,5”).
-  if (RegExp(r'^[+-]?[1-9]\d{0,2}(,\d{3})+$').hasMatch(compact)) return null;
+  // “1,500” — ming ajratgichmi (1500) yoki o'nlik vergulmi (1,5)? Vergul
+  // o'nlik belgisi bo'lmagan tilda taxmin qilinmaydi: foydalanuvchi qayta
+  // kiritadi (“1500” yoki “1.5”).
+  if (!commaIsDecimal &&
+      RegExp(r'^[+-]?[1-9]\d{0,2}(,\d{3})+$').hasMatch(compact)) {
+    return null;
+  }
   final cleaned = compact.replaceAll(',', '.');
   if (cleaned.isEmpty) return null;
   if (!RegExp(r'^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$').hasMatch(cleaned)) {

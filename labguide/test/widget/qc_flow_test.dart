@@ -6,6 +6,7 @@ import 'package:labguide/features/qc/qc_model.dart';
 import 'package:labguide/features/qc/qc_rules.dart';
 import 'package:labguide/features/qc/qc_screens.dart';
 import 'package:labguide/features/settings/settings_controller.dart';
+import 'package:labguide/l10n/gen/app_localizations.dart';
 import 'package:labguide/l10n/gen/app_localizations_en.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -269,4 +270,38 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     }
   });
+
+  // UZ/RU da “Kuzatilganni olish” maydonga vergulli qiymat yozadi
+  // (5,125); u “1,500” kabi ikki ma'noli deb rad etilmasligi kerak.
+  for (final lang in [AppLanguage.ru, AppLanguage.uz]) {
+    testWidgets('use observed x̄/SD saves in ${lang.name} (decimal comma)', (
+      tester,
+    ) async {
+      final s = await makeServices(tester, language: lang);
+      final set = await tester.runAsync(
+        () => s.qc.addSet(
+          name: 'Glucose',
+          unit: 'mmol/L',
+          targetSource: QcTargetSource.laboratory,
+          levels: [(label: '1', lot: 'A', mean: 5, sd: 0.2)],
+        ),
+      );
+      for (final (i, v) in [5.1, 5.15].indexed) {
+        await tester.runAsync(
+          () => s.qc.addRun(set!.id, {'L1': v}, at: DateTime(2026, 10, 1 + i)),
+        );
+      }
+      await pumpApp(tester, s, size: const Size(390, 2400));
+      await goTo(tester, '/lab/qc/set/${set!.id}/target/L1');
+      final l = lookupAppLocalizations(Locale(lang.name));
+      await _tap(tester, find.text(l.qcUseObserved(2)));
+      final fields = find.byType(TextField);
+      expect(tester.widget<TextField>(fields.at(1)).controller!.text, '5,125');
+      await _tap(tester, find.text(l.qcSave));
+      expect(find.text(l.qcErrTarget), findsNothing);
+      final level = s.qc.data.sets.single.level('L1')!;
+      expect(level.current.mean, 5.125);
+      expect(level.current.sd, closeTo(0.035355, 1e-6));
+    });
+  }
 }

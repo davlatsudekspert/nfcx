@@ -6,7 +6,6 @@ import '../../design/tokens.dart';
 import '../../design/widgets/lg_widgets.dart';
 import '../../l10n/gen/app_localizations.dart';
 import 'calc_info.dart';
-import 'calculators.dart';
 import 'clinical_calculators.dart';
 import 'tool_screens.dart';
 
@@ -191,7 +190,7 @@ class _ClinicalCalcScreenState extends State<ClinicalCalcScreen> {
     CalcOutcome<Object?>? invalid;
     for (final s in _specs) {
       final raw = _ctrl[s.field]!.text;
-      final v = parseDecimal(raw);
+      final v = parseFieldNumber(context, raw);
       // Matn bor, lekin son emas — ixtiyoriy maydonda ham xato.
       if (raw.trim().isNotEmpty && v == null) {
         invalid ??= CalcFail(CalcIssue.missing, field: s.field);
