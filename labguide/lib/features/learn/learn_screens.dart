@@ -118,9 +118,11 @@ class QuizScope {
 /// Aralash rejimdagi savollar soni.
 const kMixedQuizSize = 10;
 
-/// Analitning guruhi bo'yicha savollar (savolning `topic_ids` i orqali).
+/// Guruh savollari: `topic_ids` da guruhning analiti yoki guruhning o'zi
+/// (validator ikkalasini ham qabul qiladi) bo'lgan savollar.
 List<QuizQuestion> questionsForGroup(ContentPack pack, String groupId) {
   final ids = {
+    groupId,
     for (final a in pack.analytes)
       if (a.group == groupId) a.id,
   };

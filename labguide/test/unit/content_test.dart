@@ -8,6 +8,7 @@ import 'package:labguide/features/content/analyte_search.dart';
 import 'package:labguide/features/content/content_model.dart';
 import 'package:labguide/features/content/content_pack.dart';
 import 'package:labguide/features/lab/ifu_matching.dart';
+import 'package:labguide/features/learn/learn_screens.dart';
 
 /// Ilova ichidagi haqiqiy paket (testlar repo ildizidan — labguide/ — ishlaydi).
 Uint8List bundled(String name) =>
@@ -115,6 +116,27 @@ void main() {
       expect(analyteQuestions.length, 68);
       for (final q in analyteQuestions) {
         expect(q.refs, isNotEmpty, reason: q.id);
+      }
+    });
+
+    // Mavzu tanlovida har savol biror bo'limda bo'lishi kerak: umumiy
+    // (mavzusiz) yoki guruh (analit yoki guruhning o'zi orqali).
+    test('quiz: every question is reachable from the topic picker', () {
+      final json = packJson();
+      // Validator guruh id sini ham mavzu sifatida qabul qiladi.
+      final groupId = ((json['groups']! as List).first as Map)['id']! as String;
+      final first = (json['quiz']! as List).first as Map;
+      first['topic_ids'] = [groupId];
+      final pack = parse(json);
+      expect(
+        questionsForGroup(pack, groupId).map((q) => q.id),
+        contains(first['id']),
+      );
+      for (final q in pack.quiz) {
+        final reachable =
+            q.topicIds.isEmpty ||
+            pack.groups.any((g) => questionsForGroup(pack, g.id).contains(q));
+        expect(reachable, isTrue, reason: q.id);
       }
     });
 
