@@ -6,7 +6,9 @@ import '../../l10n/gen/app_localizations.dart';
 ///
 /// * YouTube — video ID topilsa, ilova ichida YouTube'ning RASMIY
 ///   pleerida ochiladi (`showcase_video.dart`), aks holda tashqarida;
-/// * Instagram — faqat tashqarida (`openLink`).
+/// * Instagram — post/reel bo'lsa ilova ichida, Instagram'ning RASMIY
+///   embed sahifasida (`showcase_instagram.dart`); profil va boshqasi —
+///   tashqarida (`openLink`).
 enum ShowcaseLinkKind { youtube, instagram }
 
 /// Havola ruxsat etilganmi (shartnoma §3): faqat `https` va
@@ -68,6 +70,36 @@ bool isYoutubeShorts(String url) {
   if (youtubeVideoId(url) == null) return false;
   final seg = Uri.parse(url.trim()).pathSegments;
   return seg.isNotEmpty && seg.first == 'shorts';
+}
+
+final _igCode = RegExp(r'^[A-Za-z0-9_-]{5,64}$');
+
+/// Instagram post/reel havolasining RASMIY ommaviy embed sahifasi:
+/// `https://www.instagram.com/<p|reel>/<shortcode>/embed/`, aks holda
+/// `null` (profil havolasi, boshqa sahifa).
+///
+/// Qabul qilinadi (`www.`/`m.` bilan, parametrlar bilan ham):
+/// `/p/<kod>`, `/reel/<kod>`, `/reels/<kod>`, `/tv/<kod>` va
+/// `/<username>/p|reel/<kod>`. `tv` — `p` sifatida (kod umumiy).
+Uri? instagramEmbedUri(String url) {
+  if (showcaseLinkKind(url) != ShowcaseLinkKind.instagram) return null;
+  final seg = Uri.parse(url.trim())
+      .pathSegments
+      .where((e) => e.isNotEmpty)
+      .toList();
+  for (final at in const [0, 1]) {
+    if (seg.length < at + 2) continue;
+    final kind = switch (seg[at].toLowerCase()) {
+      'p' || 'tv' => 'p',
+      'reel' || 'reels' => 'reel',
+      _ => null,
+    };
+    final code = seg[at + 1];
+    if (kind != null && _igCode.hasMatch(code)) {
+      return Uri.parse('https://www.instagram.com/$kind/$code/embed/');
+    }
+  }
+  return null;
 }
 
 /// "YouTube'da ochish" / "Instagram'da ochish".

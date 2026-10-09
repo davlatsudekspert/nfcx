@@ -21,6 +21,7 @@ import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart'
     show audioOwnerProvider;
 import 'package:nfcstore_nova/features/showcase/showcase_extras.dart';
+import 'package:nfcstore_nova/features/showcase/showcase_instagram.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
 import 'package:nfcstore_nova/features/social/media_carousel.dart';
@@ -654,7 +655,7 @@ void main() {
       expect(find.text(l.showcaseOpenYoutube), findsNothing);
     });
 
-    testWidgets('Instagram — tashqi "Instagram’da ochish" qoladi',
+    testWidgets('Instagram profili — tashqi "Instagram’da ochish" qoladi',
         (tester) async {
       final opened = <Uri>[];
       openLinkOverride = (u) async {
@@ -663,12 +664,14 @@ void main() {
       };
       addTearDown(() => openLinkOverride = null);
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: 'https://www.instagram.com/p/x')]),
+        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore')]),
       ]);
       expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
+      expect(find.byKey(const ValueKey('showcase-instagram')), findsNothing);
+      expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('showcase-link')));
       await settle(tester, frames: 3);
-      expect(opened.single.toString(), 'https://www.instagram.com/p/x');
+      expect(opened.single.toString(), 'https://www.instagram.com/nfcstore');
     });
 
     testWidgets(
@@ -969,6 +972,169 @@ void main() {
       await drain(tester);
       expect(v.playing, isEmpty);
       expect(v.alive, isNot(contains(id2)), reason: 'ko‘rinmaydi — yopildi');
+    });
+  });
+
+  group('Instagram — ilova ichida rasmiy embed', () {
+    const code = 'C9xYz_Ab-12';
+    const reelUrl = 'https://www.instagram.com/reel/$code/?igsh=abc123';
+
+    test('shortcode: reel/reels/p/tv, parametrlar bilan; profil — null', () {
+      final reel = 'https://www.instagram.com/reel/$code/embed/';
+      final post = 'https://www.instagram.com/p/$code/embed/';
+      final cases = {
+        'https://www.instagram.com/reel/$code/': reel,
+        'https://instagram.com/reel/$code': reel,
+        'https://www.instagram.com/reels/$code/': reel,
+        'https://m.instagram.com/reel/$code/?utm_source=ig_web_copy_link':
+            reel,
+        reelUrl: reel,
+        'https://www.instagram.com/p/$code/': post,
+        'https://www.instagram.com/p/$code/?img_index=2': post,
+        'https://www.instagram.com/tv/$code/': post,
+        'https://www.instagram.com/nfcstore/p/$code/': post,
+        'https://www.instagram.com/nfcstore/reel/$code/': reel,
+      };
+      cases.forEach((u, want) {
+        expect(instagramEmbedUri(u)?.toString(), want, reason: u);
+      });
+      for (final u in [
+        '',
+        'https://www.instagram.com/nfcstore',
+        'https://www.instagram.com/nfcstore/',
+        'https://www.instagram.com/explore/tags/nfc/',
+        'https://www.instagram.com/p/',
+        'https://www.instagram.com/p/x', // juda qisqa
+        'https://www.instagram.com/p/a%22b<c/',
+        'http://www.instagram.com/p/$code/', // https emas
+        'https://evil.com/p/$code/',
+        'https://instagram.com.evil.com/p/$code/',
+        'https://youtu.be/dQw4w9WgXcQ',
+      ]) {
+        expect(instagramEmbedUri(u), isNull, reason: u);
+      }
+    });
+
+    test('embed ichida faqat o‘zi; boshqa o‘tishlar — tashqarida', () {
+      final e = Uri.parse('https://www.instagram.com/reel/$code/embed/');
+      expect(instagramEmbedStaysInside(e, e.toString()), isTrue);
+      expect(
+          instagramEmbedStaysInside(
+              e, 'https://www.instagram.com/reel/$code/embed'),
+          isTrue);
+      expect(instagramEmbedStaysInside(e, 'about:blank'), isTrue);
+      for (final u in [
+        'https://www.instagram.com/reel/$code/',
+        'https://www.instagram.com/nfcstore/',
+        'https://www.instagram.com/accounts/login/',
+        'https://evil.com/reel/$code/embed/',
+      ]) {
+        expect(instagramEmbedStaysInside(e, u), isFalse, reason: u);
+      }
+    });
+
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    ({List<Uri> embeds, ValueChanged<String> Function() state}) fakeEmbed() {
+      final embeds = <Uri>[];
+      ValueChanged<String>? last;
+      showcaseInstagramEmbedOverride = (e, onState) {
+        embeds.add(e);
+        last = onState;
+        return const ColoredBox(
+            key: ValueKey('fake-ig'), color: Color(0xFFFFFFFF));
+      };
+      addTearDown(() => showcaseInstagramEmbedOverride = null);
+      return (embeds: embeds, state: () => last!);
+    }
+
+    testWidgets('tugma yozuvi havola turiga qarab', (tester) async {
+      final l = LUz();
+      expect(l.showcaseWatchInstagram, 'Instagram’da ko‘rish');
+      expect(LRu().showcaseWatchInstagram, 'Смотреть в Instagram');
+      expect(LEn().showcaseWatchInstagram, 'View on Instagram');
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: reelUrl)]),
+      ]);
+      expect(find.byKey(const ValueKey('showcase-instagram')), findsOneWidget);
+      expect(find.text(l.showcaseWatchInstagram), findsOneWidget);
+      expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
+      expect(find.text(l.showcaseOpenInstagram), findsNothing);
+    });
+
+    testWidgets('varaq: musiqa pauza, embed ostida tashqi havola, '
+        'yopilsa davom etadi', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final ig = fakeEmbed();
+      final opened = <Uri>[];
+      openLinkOverride = (u) async {
+        opened.add(u);
+        return true;
+      };
+      addTearDown(() => openLinkOverride = null);
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: reelUrl, music: track)]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(ig.embeds.single.toString(),
+          'https://www.instagram.com/reel/$code/embed/');
+      expect(find.byKey(const ValueKey('fake-ig')), findsOneWidget);
+      expect(v.playing, isEmpty, reason: 'Instagram varag‘i ochiq');
+      ig.state()('ready');
+      await settle(tester, frames: 2);
+
+      final area = tester.getRect(find.byKey(const ValueKey('showcase-ig-area')));
+      final ext =
+          tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
+      expect(ext.top, greaterThanOrEqualTo(area.bottom));
+      await tester.tap(find.byKey(const ValueKey('showcase-ig-external')));
+      await settle(tester, frames: 3);
+      expect(opened.single.toString(), reelUrl);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
+      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+    });
+
+    testWidgets('yuklanmasa — embed o‘rnida "Instagram’da ochish"',
+        (tester) async {
+      final ig = fakeEmbed();
+      await _pump(tester, pages: [
+        ReelsPage(items: [_post(link: reelUrl)]),
+      ]);
+      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await settle(tester, frames: 10);
+      ig.state()('error:load');
+      await settle(tester, frames: 3);
+      expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
+      expect(find.byKey(const ValueKey('showcase-ig-fallback')), findsOneWidget);
+      expect(find.text(LUz().showcaseInstagramUnavailable), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
+      await settle(tester, frames: 10);
+
+      // Javobsizlik ham — zaxira yo'l.
+      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await settle(tester, frames: 10);
+      await tester.pump(kShowcaseInstagramTimeout);
+      await settle(tester, frames: 3);
+      expect(find.byKey(const ValueKey('showcase-ig-fallback')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('showcase-ig-close')));
+      await settle(tester, frames: 10);
     });
   });
 

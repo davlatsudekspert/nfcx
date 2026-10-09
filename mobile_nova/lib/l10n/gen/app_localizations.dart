@@ -6501,6 +6501,18 @@ abstract class L {
   /// **'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.'**
   String get showcaseVideoUnavailable;
 
+  /// No description provided for @showcaseWatchInstagram.
+  ///
+  /// In uz, this message translates to:
+  /// **'Instagram’da ko‘rish'**
+  String get showcaseWatchInstagram;
+
+  /// No description provided for @showcaseInstagramUnavailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu postni ilova ichida ochib bo‘lmadi. Uni Instagram’da oching.'**
+  String get showcaseInstagramUnavailable;
+
   /// Narx yonidagi valyuta (faqat so‘m).
   ///
   /// In uz, this message translates to:

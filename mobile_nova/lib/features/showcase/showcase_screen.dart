@@ -51,6 +51,7 @@ import '../social/reels_screen.dart'
         savedReelsProvider,
         showReelComments;
 import 'showcase_common.dart';
+import 'showcase_instagram.dart';
 import 'showcase_sound.dart';
 import 'showcase_video.dart';
 
@@ -64,7 +65,8 @@ import 'showcase_video.dart';
 ///
 /// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
 /// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
-/// ochiq turganda musiqa pauzada. Instagram — faqat tashqarida.
+/// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
+/// rasmiy embed sahifasida; profil havolasi — tashqarida.
 
 /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
 /// (Reels bilan bir xil qoida).
@@ -371,8 +373,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
   bool _viewerOpen = false;
 
-  /// YouTube varag'i ochiq — musiqa va karusel pauzada (ikki ovoz
-  /// bir vaqtda yo'q), yopilgach davom etadi.
+  /// YouTube yoki Instagram varag'i ochiq — musiqa va karusel pauzada
+  /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
   bool _videoOpen = false;
 
   bool _captionOpen = false;
@@ -647,19 +649,33 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     _sync();
   }
 
-  Future<void> _openVideo(String id) async {
+  /// Ichki varaq (YouTube/Instagram) ochiq turganda musiqa pauzada.
+  Future<void> _withSheet(Future<void> Function() show) async {
     setState(() => _videoOpen = true);
     _sync();
-    await showShowcaseVideo(
-      context,
-      url: _p.linkUrl,
-      videoId: id,
-      title: _p.title,
-    );
+    await show();
     if (!mounted) return;
     setState(() => _videoOpen = false);
     _sync();
   }
+
+  Future<void> _openVideo(String id) => _withSheet(
+    () => showShowcaseVideo(
+      context,
+      url: _p.linkUrl,
+      videoId: id,
+      title: _p.title,
+    ),
+  );
+
+  Future<void> _openInstagram(Uri embed) => _withSheet(
+    () => showShowcaseInstagram(
+      context,
+      url: _p.linkUrl,
+      embed: embed,
+      title: _p.title,
+    ),
+  );
 
   Future<void> _like() async {
     final e = await ref.read(postLikesProvider.notifier).toggle(_p);
@@ -796,6 +812,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final topH = MediaQuery.paddingOf(context).top;
     final link = showcaseLinkKind(p.linkUrl);
     final videoId = youtubeVideoId(p.linkUrl);
+    final igEmbed = instagramEmbedUri(p.linkUrl);
     final item = p.catalogItem;
 
     return Stack(
@@ -1036,6 +1053,13 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                         icon: Icons.play_circle_outline_rounded,
                         label: l.showcaseWatchVideo,
                         onTap: () => _openVideo(videoId),
+                      )
+                    else if (igEmbed != null)
+                      _CtaButton(
+                        key: const ValueKey('showcase-instagram'),
+                        icon: Icons.camera_alt_outlined,
+                        label: l.showcaseWatchInstagram,
+                        onTap: () => _openInstagram(igEmbed),
                       )
                     else if (link != null)
                       _CtaButton(

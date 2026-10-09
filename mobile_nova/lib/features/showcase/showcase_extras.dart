@@ -10,12 +10,15 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'showcase_common.dart';
+import 'showcase_instagram.dart';
 import 'showcase_video.dart';
 
 /// KO'RGAZMA MA'LUMOTI — lenta kartasi va post tafsilotida (yorug' fon).
 ///
 /// Sarlavha, narx, "Mahsulotni ko'rish" va havola: YouTube — "Videoni
-/// ko'rish" (ilova ichida, rasmiy pleer), Instagram — tashqarida.
+/// ko'rish" (ilova ichida, rasmiy pleer), Instagram post/reel —
+/// "Instagram'da ko'rish" (ilova ichida, rasmiy embed), profil —
+/// tashqarida.
 /// Ma'lumot yo'q — hech narsa chizilmaydi.
 class ShowcaseExtras extends StatelessWidget {
   const ShowcaseExtras({
@@ -41,6 +44,7 @@ class ShowcaseExtras extends StatelessWidget {
     final t = context.tokens;
     final link = showcaseLinkKind(p.linkUrl);
     final videoId = youtubeVideoId(p.linkUrl);
+    final igEmbed = instagramEmbedUri(p.linkUrl);
     final item = p.catalogItem;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,6 +97,18 @@ class ShowcaseExtras extends StatelessWidget {
                     context,
                     url: p.linkUrl,
                     videoId: videoId,
+                    title: p.title,
+                  ),
+                )
+              else if (igEmbed != null)
+                _Pill(
+                  key: ValueKey('$keyPrefix-instagram'),
+                  icon: Icons.camera_alt_outlined,
+                  label: l.showcaseWatchInstagram,
+                  onTap: () => showShowcaseInstagram(
+                    context,
+                    url: p.linkUrl,
+                    embed: igEmbed,
                     title: p.title,
                   ),
                 )
