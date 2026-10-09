@@ -70,6 +70,7 @@
 // Lenta qisqa bo'lib oddiy kadrlar 4-o'ringacha yetmasa, reklama oxirgi
 // oddiy kadrdan keyin turadi (sahifa chegarasi o'sha-o'sha; bo'sh sahifada
 // yoki 0-o'rinda — hech qachon). Javobda `featured: true, ad: true, adSlot`.
+// VIDEO reklama faqat `?video=1` so'rovida (yangi ilova); eski ilovaga — yo'q.
 //
 // ═══ BARQAROR SAHIFALASH ═══
 //
@@ -467,8 +468,13 @@ async function listReels(request, env, url, H, mode = 'reels') {
   // Navbat: avval Ko'rgazma joylari (slot tartibida), keyin featured (jitter).
   // Joydagi post raqami boshqa postga o'tgan bo'lsa (`slotMatchesRow`) — chiqmaydi.
   const adRank = (a) => (a.slot ? a.slot.slot : 100);
+  // Ko'rgazmada VIDEO reklama faqat `?video=1` yuborgan ilovaga: eski ilova
+  // (iOS 329, Android 315) videoni o'ynata olmaydi — mp4 rasm o'rnida singan
+  // kadr bo'lib chiqardi. Rasmli reklama hammaga.
+  const videoAdsOk = mode !== 'showcase' || url.searchParams.get('video') === '1';
   const adQueue = adsR
     .filter((r) => adCand.includes(keyOf(r)) && !blocked.has(authorOf(r)) && !hiddenFor(r, false))
+    .filter((r) => videoAdsOk || !String(r.video_url || '').trim())
     .map((r) => ({ key: keyOf(r), row: r, slot: slotCand.includes(keyOf(r)) ? slotByKey.get(keyOf(r)) : null }))
     .filter((a) => !a.slot || slotMatchesRow(a.slot, a.row))
     .sort((a, b) => (adRank(a) - adRank(b))

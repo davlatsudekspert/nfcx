@@ -48,11 +48,11 @@ const addCPost = (company, { image = null, video = null, minAgo = 10, showcase =
 const put = (slot, json, ck = cookie.admin) => call(`/api/admin/showcase-ads/${slot}`, { method: 'PUT', cookie: ck, json });
 const del = (slot, ck = cookie.admin) => call(`/api/admin/showcase-ads/${slot}`, { method: 'DELETE', cookie: ck });
 const key = (it) => `${it.authorKind === 'company' ? 'company_post' : 'post'}:${it.id}`;
-async function feedAll(limit = 5, ck = undefined, path = '/api/showcase') {
+async function feedAll(limit = 5, ck = undefined, path = '/api/showcase?video=1') {
   const pages = [];
   let cursor = '';
   for (let i = 0; i < 20; i += 1) {
-    const r = await call(`${path}?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, ck ? { cookie: ck } : {});
+    const r = await call(`${path}${path.includes('?') ? '&' : '?'}limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, ck ? { cookie: ck } : {});
     if (r.status !== 200) throw new Error(`feed ${r.status} ${JSON.stringify(r.body)}`);
     pages.push(r.body.items);
     cursor = r.body.nextCursor || '';
@@ -153,11 +153,16 @@ check('4) ad at position 4 of page 1 and 2', [pages[0][4] && key(pages[0][4]), p
 check('4) video ad has videoUrl + mediaItems', [a[0].videoUrl, a[0].mediaItems?.[0]?.type, a[0].kind, a[0].code], ['/uploads/v1.mp4', 'video', 'post', 'OTH222']);
 checkTrue('4) organic items not ad', items.filter((it) => !it.ad).every((it) => it.featured === undefined && it.adSlot === undefined));
 checkTrue('4) never at position 0', pages.every((p) => !p[0]?.ad));
+// Eski ilova (`video=1` yo'q): video reklama yo'q, rasmli reklama bor.
+const oldApp = await feedAll(5, undefined, '/api/showcase');
+check('4) old app: only image ad', ads(oldApp).map((it) => it.adSlot), [2]);
+checkTrue('4) old app: no video at all', flat(oldApp).every((it) => !it.videoUrl));
+check('4) video=0 same as old app', ads(await feedAll(5, undefined, '/api/showcase?video=0')).map((it) => it.adSlot), [2]);
 // /api/reels — reklama joylari ta'sir qilmaydi.
 const reels = flat(await feedAll(10, undefined, '/api/reels'));
 checkTrue('4) /api/reels has no showcase ad items', reels.every((it) => !it.ad));
 // Bir sahifada hammasi (limit 20) — reklama 4-o'rinda, ikkinchisi 9-o'rinda.
-r = await call('/api/showcase?limit=20');
+r = await call('/api/showcase?video=1&limit=20');
 check('4) single page: ads at 4 and 9', [r.body.items[4]?.adSlot, r.body.items[9]?.adSlot], [1, 2]);
 
 // ═══ 5. Kalit, o'chiq joy, blok, qiziq emas, pending, o'chirilgan ═══
@@ -208,9 +213,9 @@ sqlite.prepare(`INSERT INTO posts (id, code, user_id, image_url, video_url, capt
 check('5) original back -> shown', ads(await feedAll(5)).map((it) => it.adSlot), [1, 2]);
 
 // Kursor barqaror: 1-sahifadan keyin joy o'zgarsa ham zanjir buzilmaydi.
-const p1 = await call('/api/showcase?limit=5');
+const p1 = await call('/api/showcase?video=1&limit=5');
 await put(1, { enabled: false });
-const p2 = await call(`/api/showcase?limit=5&cursor=${encodeURIComponent(p1.body.nextCursor)}`);
+const p2 = await call(`/api/showcase?video=1&limit=5&cursor=${encodeURIComponent(p1.body.nextCursor)}`);
 const both = [...p1.body.items, ...p2.body.items].map(key);
 check('5) cursor: no duplicate after slot change', both.length, new Set(both).size);
 checkTrue('5) cursor: disabled slot not served later', !p2.body.items.some((it) => it.adSlot === 1));
@@ -231,7 +236,7 @@ const extra = [addPost('VIP001', 1, { image: '/uploads/x1.jpg', minAgo: 60, show
   addPost('VIP001', 1, { image: '/uploads/x3.jpg', minAgo: 62, showcase: false })];
 for (const [i, id] of extra.entries()) check(`6) fill slot ${i + 2}`, (await put(i + 2, { postKind: 'post', postId: id })).status, 200);
 check('6) 4 slots max', sqlite.prepare(`SELECT COUNT(*) AS n FROM showcase_ads`).get().n, 4);
-r = await call('/api/showcase?limit=20');
+r = await call('/api/showcase?video=1&limit=20');
 check('6) per-page ad limit (2)', r.body.items.filter((it) => it.ad).length, 2);
 resetLimits();
 
@@ -286,11 +291,11 @@ checkTrue('7) poster absolute /promo', String(res.body).includes('poster="https:
 sqlite.prepare(`DELETE FROM post_extras WHERE NOT (post_kind = 'company_post'
   AND post_id IN (SELECT id FROM company_posts WHERE company_id = ?))`).run(ADS_COMPANY);
 const lone = addPost('VIP001', 1, { image: '/uploads/lone.jpg', minAgo: 5 });
-r = await call('/api/showcase?limit=10');
+r = await call('/api/showcase?video=1&limit=10');
 check('7) short feed: organic then ads at tail', r.body.items.map((it) => (it.ad ? `ad${it.adSlot}` : key(it))), [`post:${lone}`, 'ad1', 'ad2']);
 check('7) short feed: hasMore false', [r.body.hasMore, r.body.nextCursor], [false, null]);
 sqlite.prepare(`DELETE FROM posts WHERE id = ?`).run(lone);
-r = await call('/api/showcase?limit=10');
+r = await call('/api/showcase?video=1&limit=10');
 check('7) empty organic feed: no ads alone', r.body.items.length, 0);
 
 // Qayta — dublikat yo'q (shu isolate va "yangi isolate").
@@ -302,7 +307,7 @@ check('7) marker -> once', [r.applied, sqlite.prepare(`SELECT COUNT(*) AS n FROM
 // Egasi o'chirsa — qaytmaydi.
 sqlite.prepare(`DELETE FROM company_posts WHERE company_id = ?`).run(ADS_COMPANY);
 __resetShowcaseAdsCaches();
-await call('/api/showcase?limit=10');
+await call('/api/showcase?video=1&limit=10');
 check('7) not recreated', sqlite.prepare(`SELECT COUNT(*) AS n FROM company_posts WHERE company_id = ?`).get(ADS_COMPANY).n, 0);
 check('7) slots of deleted posts not served', ads(await feedAll(5)).length, 0);
 
@@ -344,7 +349,7 @@ check('8) again -> no duplicates', [r.applied, sqlite.prepare(`SELECT COUNT(*) A
 items = flat(await feedAll(10));
 check('8) v2 in showcase feed as ordinary items', items.filter((it) => SAMPLES_V2.some((s) => s.title === it.title)).map((it) => !!it.ad), [false, false]);
 sqlite.prepare(`DELETE FROM company_posts WHERE id IN (SELECT post_id FROM post_extras WHERE post_kind = 'company_post' AND title IN (?, ?))`).run(SAMPLES_V2[0].title, SAMPLES_V2[1].title);
-await call('/api/showcase?limit=10');
+await call('/api/showcase?video=1&limit=10');
 check('8) deleted v2 not recreated', sqlite.prepare(`SELECT COUNT(*) AS n FROM company_posts cp JOIN post_extras pe ON pe.post_kind = 'company_post' AND pe.post_id = cp.id WHERE pe.title IN (?, ?)`).get(SAMPLES_V2[0].title, SAMPLES_V2[1].title).n, 0);
 
 done();
