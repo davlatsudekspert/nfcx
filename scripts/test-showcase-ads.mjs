@@ -160,6 +160,16 @@ const oldApp = await feedAll(5, undefined, '/api/showcase');
 check('4) old app: only image ad', ads(oldApp).map((it) => it.adSlot), [2]);
 checkTrue('4) old app: no video at all', flat(oldApp).every((it) => !it.videoUrl));
 check('4) video=0 same as old app', ads(await feedAll(5, undefined, '/api/showcase?video=0')).map((it) => it.adSlot), [2]);
+// Asosiy ekran kartochkasi: /api/showcase/ads — faqat joylar, slot tartibida.
+r = await call('/api/showcase/ads?video=1');
+check('4) home ads: slots only, in order', [r.status, r.body.items.map((it) => [it.adSlot, it.ad, it.featured]), r.body.hasMore, r.body.nextCursor],
+  [200, [[1, true, true], [2, true, true]], false, null]);
+check('4) home ads: video ad has videoUrl', r.body.items[0].videoUrl, '/uploads/v1.mp4');
+r = await call('/api/showcase/ads');
+check('4) home ads old app: image only', r.body.items.map((it) => it.adSlot), [2]);
+r = await call('/api/showcase/ads?video=1&limit=1');
+check('4) home ads limit', r.body.items.map((it) => it.adSlot), [1]);
+check('4) home ads POST -> 405', (await call('/api/showcase/ads', { method: 'POST', json: {} })).status, 405);
 // /api/reels — reklama joylari ta'sir qilmaydi.
 const reels = flat(await feedAll(10, undefined, '/api/reels'));
 checkTrue('4) /api/reels has no showcase ad items', reels.every((it) => !it.ad));

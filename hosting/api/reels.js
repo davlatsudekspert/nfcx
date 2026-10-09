@@ -14,6 +14,8 @@
 //        `items` — `/api/feed` kadrlari bilan AYNAN bir shakl
 //        (`shapeFeedRows` + `liked`), reklama qo'shimcha `featured: true`.
 //        `limit` 1..20 (standart 10).
+//   GET  /api/showcase/ads?video=1&limit=4 — Asosiy ekran reklama kartochkasi:
+//        faqat admin joylari (1–4), slot tartibida, kursorsiz.
 //   GET  /api/showcase?limit=10&cursor=…  — KO'RGAZMA (2026-10): xuddi shu
 //        tartib, faqat videosiz `showcase=1` yoki rasmli reel kadrlar;
 //        javob { items, hasMore, cursor, nextCursor }.
@@ -250,7 +252,7 @@ const SHOWCASE_SQL = (a) => `(COALESCE(${a}.video_url, '') = '' AND EXISTS (SELE
 const isMissingTable = (e) => /no such table/i.test(String(e?.message || e));
 
 // ── GET /api/reels ──────────────────────────────────────────────────
-async function listReels(request, env, url, H, mode = 'reels') {
+async function listReels(request, env, url, H, mode = 'reels', { adsOnly = false } = {}) {
   const FILTER_SQL = mode === 'showcase' ? SHOWCASE_SQL : REEL_SQL;
   const nowMs = Date.now();
   const rawLimit = url.searchParams.get('limit');
@@ -482,7 +484,13 @@ async function listReels(request, env, url, H, mode = 'reels') {
   const page = [];
   let adsOnPage = 0;
   let oi = start;
-  while (page.length < limit) {
+  // Asosiy ekran kartochkasi (`/api/showcase/ads`): FAQAT admin joylari
+  // (slot tartibida), oddiy kadr va featured yo'q, sahifalash yo'q.
+  if (adsOnly) {
+    for (const a of adQueue) if (a.slot && page.length < limit) page.push({ ...a, ad: true });
+    oi = ordered.length;
+  }
+  while (!adsOnly && page.length < limit) {
     const pos = page.length;
     if (AD_POSITIONS.includes(pos) && adQueue.length && adsOnPage < MAX_ADS_PER_PAGE) {
       page.push({ ...adQueue.shift(), ad: true });
@@ -573,6 +581,16 @@ export async function handle(request, env, url, H) {
     // Promo mp4 — iPhone uchun Range qo'llaydigan /uploads ga (bir marta).
     await moveShowcasePromoVideos(env).catch((e) => console.error('showcase_promo_move', String(e?.message || e).slice(0, 160)));
     return listReels(request, env, url, H, 'showcase');
+  }
+  // Asosiy ekrandagi reklama kartochkasi — Ko'rgazma joylari (1–4), xuddi
+  // shu filtrlar (blok, "qiziq emas", pending, video faqat `?video=1`).
+  if (path === '/api/showcase/ads') {
+    if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
+    await seedShowcaseAds(env).catch((e) => console.error('showcase_ads', String(e?.message || e).slice(0, 160)));
+    await moveShowcasePromoVideos(env).catch((e) => console.error('showcase_promo_move', String(e?.message || e).slice(0, 160)));
+    const res = await listReels(request, env, url, H, 'showcase', { adsOnly: true });
+    // Kursor kerak emas — bir martalik ro'yxat; qisqa keshsiz.
+    return res;
   }
   if (path === '/api/reels/hide') {
     if (request.method !== 'POST') return H.json({ error: 'method_not_allowed' }, 405);
