@@ -21,10 +21,19 @@
 //
 // Chaqiriladi: GET /api/showcase (birinchi so'rovda, isolate'da bir marta)
 // va kunlik cron.
+//
+// ═══ 2-TO'PLAM (`showcase_samples_v2`, 2026-10-09) ═══
+//
+// Egasi yana 2 ta oddiy (rasmli) namuna so'radi: NFC aksessuarlar va avto
+// stiker. Alohida belgi — 1-to'plam allaqachon bajarilgan productionda ham
+// bir marta qo'shiladi; qoidalar AYNAN bir xil (kompaniya + katalog
+// mahsulotlari bo'lmasa — hech narsa, dublikat yo'q, o'chirilsa qaytmaydi).
+// Bu reklama joyi EMAS (reklama — api/showcase-ads.js).
 
 import { savePostExtras } from './music.js';
 
 export const SHOWCASE_SAMPLES_MIGRATION = 'showcase_samples_v1';
+export const SHOWCASE_SAMPLES_V2_MIGRATION = 'showcase_samples_v2';
 export const SAMPLES_COMPANY = 'NFCSTOREUZ';
 
 export const SAMPLES = [
@@ -78,18 +87,85 @@ export const SAMPLES = [
   },
 ];
 
-const done = new WeakMap();
+export const SAMPLES_V2 = [
+  {
+    catalogItemId: '5a080c62-4874-463c-a8e2-e07129e24b75',
+    title: 'NFC aksessuarlar — uzuk, braslet, brelok',
+    caption: 'Uzuk, braslet yoki brelok — profilingiz doim yoningizda. '
+      + 'Telefonga tekkizing — kontaktlaringiz, ijtimoiy tarmoqlaringiz va katalogingiz bir zumda ochiladi.\n\n'
+      + '🌐 nfcstore.uz',
+    mediaUrls: [
+      '/uploads/file_0774774b14b747a4fdf0d211.jpg',
+      '/uploads/file_a1dec8239a44aba30fcca9f6.jpg',
+      '/uploads/file_905db3f524488ec36550b0ee.jpg',
+      '/uploads/file_2f32d4b8ba7f925af702fb2c.jpg',
+    ],
+    linkUrl: 'https://www.instagram.com/nfcstore.uz',
+    musicId: 62,
+    imageSeconds: 4,
+  },
+  {
+    catalogItemId: '9b5d9b47-6b6d-4116-9803-1af864b869b5',
+    title: 'Avto NFC stiker Ø80 — mashinangiz vizitkasi',
+    caption: 'Oynaga yopishtiring — kimdir mashinangizga telefonini tekkizsa, raqamingiz va profilingiz ochiladi. '
+      + "Ehtiyot qilib qo'yilgan mashina — xabarlashish oson.\n\n"
+      + '🌐 nfcstore.uz',
+    mediaUrls: [
+      '/uploads/file_59ff19e39f75fd9b7751e5bb.jpg',
+      '/uploads/file_3b277b89106a8d0a9ccc6077.jpg',
+      '/uploads/file_2eaf92bfeaa4148799250c73.jpg',
+    ],
+    linkUrl: 'https://www.youtube.com/shorts/KEKnJWig840',
+    musicId: 58,
+    imageSeconds: 4,
+  },
+];
+
+const BATCHES = [
+  [SHOWCASE_SAMPLES_MIGRATION, SAMPLES],
+  [SHOWCASE_SAMPLES_V2_MIGRATION, SAMPLES_V2],
+];
+
+// Belgi → (env.DB → true). Har to'plam alohida keshlanadi.
+const done = new Map(BATCHES.map(([m]) => [m, new WeakMap()]));
+
+/// Hamma to'plamlar, tartib bilan. Natija — 1-to'plamniki kabi shakl:
+/// `created` — shu chaqiruvda yaratilgan hamma postlar; `reason` — birinchi
+/// bajarilmagan to'plam sababi; `batches` — har to'plam natijasi.
+///   → { applied, created?, reason?, batches: { [marker]: natija } }
+export async function seedShowcaseSamples(env, opts = {}) {
+  const batches = {};
+  const created = [];
+  let reason;
+  let error = false;
+  for (const [marker, list] of BATCHES) {
+    const r = await seedBatch(env, marker, list, opts);
+    batches[marker] = r;
+    if (r.created) created.push(...r.created);
+    if (r.error) error = true;
+    if (!r.applied && r.reason && reason === undefined) reason = r.reason;
+  }
+  const applied = Object.values(batches).some((r) => r.applied);
+  return {
+    applied,
+    ...(applied ? { created } : {}),
+    ...(reason !== undefined && !applied ? { reason } : {}),
+    ...(error ? { error } : {}),
+    batches,
+  };
+}
 
 /// → { applied: false, reason? } | { applied: true, created }
-export async function seedShowcaseSamples(env, { now = new Date() } = {}) {
+async function seedBatch(env, marker, SAMPLES, { now = new Date() } = {}) {
   if (!env?.DB) return { applied: false, reason: 'no_db' };
-  if (done.get(env.DB)) return { applied: false, reason: 'cached' };
+  const cache = done.get(marker);
+  if (cache.get(env.DB)) return { applied: false, reason: 'cached' };
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "app_migrations" (
     name TEXT PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL, detail TEXT
   )`).run();
   const seen = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
-    .bind(SHOWCASE_SAMPLES_MIGRATION).first();
-  if (seen) { done.set(env.DB, true); return { applied: false }; }
+    .bind(marker).first();
+  if (seen) { cache.set(env.DB, true); return { applied: false }; }
 
   // Shartlar — hammasi bo'lmasa, hech narsa yozmaymiz (keyin qayta).
   const company = await env.DB.prepare(`SELECT company_id FROM companies WHERE company_id = ? AND status = 'active'`)
@@ -103,8 +179,8 @@ export async function seedShowcaseSamples(env, { now = new Date() } = {}) {
 
   const nowIso = now.toISOString();
   const flag = await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at) VALUES (?, ?)`)
-    .bind(SHOWCASE_SAMPLES_MIGRATION, nowIso).run();
-  done.set(env.DB, true);
+    .bind(marker, nowIso).run();
+  cache.set(env.DB, true);
   if (!Number(flag?.meta?.changes || 0)) return { applied: false };
 
   const created = [];
@@ -135,12 +211,12 @@ export async function seedShowcaseSamples(env, { now = new Date() } = {}) {
   } catch (e) {
     // Yarim yozilgan holatda belgi turadi — qayta yozib dublikat qilmaymiz.
     await env.DB.prepare(`UPDATE app_migrations SET detail = ? WHERE name = ?`)
-      .bind(`error: ${String(e?.message || e).slice(0, 160)}; created=${created.join(',')}`, SHOWCASE_SAMPLES_MIGRATION)
+      .bind(`error: ${String(e?.message || e).slice(0, 160)}; created=${created.join(',')}`, marker)
       .run().catch(() => {});
     return { applied: true, created, error: true };
   }
   await env.DB.prepare(`UPDATE app_migrations SET detail = ? WHERE name = ?`)
-    .bind(`created=${created.join(',')}`, SHOWCASE_SAMPLES_MIGRATION).run().catch(() => {});
+    .bind(`created=${created.join(',')}`, marker).run().catch(() => {});
   return { applied: true, created };
 }
 
