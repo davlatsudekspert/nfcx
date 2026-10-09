@@ -51,6 +51,8 @@
 
 import { createNotification } from './notifications.js';
 import { postLiveSql, companyPostLiveSql } from './scheduled-posts.js';
+import { flagText, pendingSql, pendingDeleteStmt } from './content-guard.js';
+import { guardText } from './text-guard.js';
 
 export const KINDS = ['post', 'company_post', 'story', 'company_story'];
 
@@ -332,6 +334,11 @@ async function backfillViewHitsOnce(env) {
 /// ko'rinib turardi.
 const ALIVE = `deleted_at IS NULL`;
 
+/// MATN FILTRI (2026-10, text-guard.js) — taqiqlangan so'zli izoh
+/// `content_pending` da (kind='comment'): admin tasdiqlaguncha faqat
+/// MUALLIFIGA ko'rinadi va sanoqlarga kirmaydi.
+const NOT_PENDING = `NOT ${pendingSql('comment', 'content_comments.id')}`;
+
 async function readJson(request) {
   const b = await request.json().catch(() => null);
   return b && typeof b === 'object' && !Array.isArray(b) ? b : {};
@@ -489,6 +496,8 @@ const rowToComment = (r, viewerId, H) => ({
   // ham), `liked` esa faqat ko'rayotgan odam uchun.
   likes: Number(r.likes) || 0,
   liked: !!r.liked,
+  // Tekshiruvdagi izoh (faqat muallifiga keladi) — text-guard.js.
+  ...(Number(r.pending) ? { pending: true, pendingReason: 'text' } : null),
 });
 
 // ── ESKI POSTNING IZOHI YANGI POSTDA KO'RINMASIN ─────────────────
@@ -533,7 +542,8 @@ const authorAliveSql = (a = '') => {
 async function countFor(env, kind, id) {
   const r = await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM content_comments
-      WHERE target_kind = ? AND target_id = ? AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()}`
+      WHERE target_kind = ? AND target_id = ? AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()}
+        AND ${NOT_PENDING}`
   ).bind(kind, id).first();
   return Number(r?.n) || 0;
 }
@@ -554,7 +564,7 @@ export async function countsFor(env, targets) {
   const args = targets.flatMap((t) => [t.kind, t.id]);
   const rows = await env.DB.prepare(
     `SELECT target_kind, target_id, COUNT(*) AS n FROM content_comments
-      WHERE (${where}) AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()}
+      WHERE (${where}) AND ${ALIVE} AND ${freshPostSql()} AND ${authorAliveSql()} AND ${NOT_PENDING}
       GROUP BY target_kind, target_id`
   ).bind(...args).all().catch(() => null);
   for (const r of rows?.results || []) out.set(`${r.target_kind}:${Number(r.target_id)}`, Number(r.n) || 0);
@@ -911,14 +921,16 @@ export async function handle(request, env, url, H) {
     // tartibida saralaymiz: mavzular yangisidan eskisiga, har
     // mavzu ichida esa ota birinchi, javoblar ketma-ket.
     const rows = await env.DB.prepare(
-      `SELECT cc.*, c.name AS name, c.avatar_url AS avatar_url
+      `SELECT cc.*, c.name AS name, c.avatar_url AS avatar_url,
+              ${pendingSql('comment', 'cc.id')} AS pending
          FROM content_comments cc
          LEFT JOIN cards c ON c.code = cc.author_code
         WHERE cc.target_kind = ? AND cc.target_id = ? AND cc.${ALIVE} AND ${freshPostSql('cc')}
           AND ${authorAliveSql('cc')}
+          AND (NOT ${pendingSql('comment', 'cc.id')} OR cc.user_id = ?)
         ORDER BY COALESCE(cc.parent_id, cc.id) DESC, cc.id ASC
         LIMIT ? OFFSET ?`
-    ).bind(kind, id, limit + 1, (page - 1) * limit).all();
+    ).bind(kind, id, viewerId || 0, limit + 1, (page - 1) * limit).all();
 
     const all = rows.results || [];
     const page_ = all.slice(0, limit);
@@ -1034,6 +1046,16 @@ export async function handle(request, env, url, H) {
       `INSERT INTO content_comments (target_kind, target_id, user_id, author_code, body, created_at, parent_id)
        VALUES (?,?,?,?,?,?,?) RETURNING id`
     ).bind(kind, id, user.id, author.code, body, now, parentId || null).first();
+    // MATNDA SO'KINISH (2026-10, content-guard.js) — bloklanmaydi, faqat
+    // admin "Shikoyatlar" navbatiga `text_flag`. Xatosi yutiladi.
+    if (ins?.id) await flagText(env, { kind: 'comment', id: Number(ins.id), text: body, ownerCode: author.code || '' });
+    // TAQIQLANGAN MATN (text-guard.js) — izoh yoziladi, lekin admin
+    // tasdiqlaguncha faqat muallifga ko'rinadi (`text_block`). Izohlar AI
+    // bilan tekshirilmaydi (narx) — faqat ro'yxat.
+    const guarded = ins?.id
+      ? await guardText(env, { kind: 'comment', id: Number(ins.id), texts: [body], ownerCode: author.code || '' })
+      : { pending: false };
+    const pendingOut = guarded.pending ? { pending: true, pendingReason: 'text' } : null;
 
     // Bildirishnoma — izoh YOZILGANDAN keyin, javobdan oldin.
     //
@@ -1056,15 +1078,18 @@ export async function handle(request, env, url, H) {
       ).bind(parentId).first();
       if (pa) recipient = Number(pa.user_id) || recipient;
     }
-    await createNotification(env, {
-      recipientUserId: recipient,
-      actorUserId: user.id,
-      kind: 'comment',
-      targetType: 'comment',
-      targetId: Number(ins?.id) || 0,
-      targetCode: target.ownerCode || '',
-      now,
-    });
+    // Yashirin (tekshiruvdagi) izoh haqida xabar yuborilmaydi.
+    if (!guarded.pending) {
+      await createNotification(env, {
+        recipientUserId: recipient,
+        actorUserId: user.id,
+        kind: 'comment',
+        targetType: 'comment',
+        targetId: Number(ins?.id) || 0,
+        targetCode: target.ownerCode || '',
+        now,
+      });
+    }
 
     return H.json({
       comment: {
@@ -1080,8 +1105,10 @@ export async function handle(request, env, url, H) {
         liked: false,
         createdAt: tsMs(H, now) || Date.now(),
         mine: true,
+        ...pendingOut,
       },
       total: await countFor(env, kind, id),
+      ...pendingOut,
     }, 201);
   }
 
@@ -1310,4 +1337,7 @@ async function softDelete(env, H, row, { byUserId = 0, byAdmin = '', reason = ''
         SET deleted_at = ?, deleted_by_user_id = ?, deleted_reason = ?
       WHERE id = ?`
   ).bind(now, Number(byUserId) || 0, reason, Number(row.id)).run();
+  // Matn sababli kutish qatori (text-guard.js) — o'chirilgan izoh
+  // "yashirin kontent" sanog'ida qolmasin.
+  await pendingDeleteStmt(env, 'comment', Number(row.id)).run().catch(() => {});
 }

@@ -247,8 +247,10 @@ await check('admin: o‘chirilgach shikoyatlar avtomatik yopiladi', async () => 
   await mod.handle(req('DELETE'), env, u('/api/admin/content/post/7'), H);
   const upd = env.calls.find((c) => /UPDATE content_reports SET status = 'resolved'/.test(c.sql));
   assert.ok(upd, 'shikoyatlar yopilmadi');
+  // Bind tartibi: (now, by, kind, kind2, id) — kind2 istoriya uchun
+  // `company_story` (moderation.js).
   assert.equal(upd.args[2], 'post');
-  assert.equal(upd.args[3], '7');
+  assert.equal(upd.args[upd.args.length - 1], '7');
 });
 
 await check('admin: noma‘lum kontent turi tanilmaydi', async () => {

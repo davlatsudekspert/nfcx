@@ -117,8 +117,50 @@ Rasm filtri (`image-moderation.js`, modul emas — `uploadApi` chaqiradi):
 foydalanuvchi rasmi Gemini bilan tekshiriladi; 18+/zo'ravonlik/
 ekstremizm/giyohvandlik/nafrat bo'lsa 422 `{error:'content_blocked',
 category}`, fayl saqlanmaydi, urinish `content_scan_blocks` ga yoziladi.
-Video/GIF va admin yuklashi tekshirilmaydi; xizmat xatosida yuklash
-to'xtamaydi; `MODERATION_OFF=1` bilan o'chadi.
+Admin yuklashi tekshirilmaydi; xizmat xatosida (yoki `MODERATION_OFF=1` /
+kalit yo'q) yuklash to'xtamaydi, lekin fayl admin navbatiga tushadi va u
+bilan chop etilgan kontent tasdiqlanguncha yashirin (pending).
+
+KALITLAR (`flags.js`, 2026-10): `GET /api/app/config` (ochiq, no-store) →
+`{flags:{reelsHidden, videoUploadsBlocked, videosHidden, showcase:true}}`;
+`GET|PUT /api/admin/flags` (admin; PUT — manager+, admin jurnali). Manba:
+env `FLAG_*` → `admin_settings.flag_*`, 60 s isolate keshi, hammasi standart
+o'chiq. Issiq yo'llar `peekFlags(env) || await getFlags(env)` (to'lqin qo'shmaydi).
+`videoUploadsBlocked` — yuklash/ulash 403 `video_uploads_disabled` (admin
+mustasno); `videosHidden` — UNION (`feedUnionSqlFor`), profil/kompaniya/
+istoriya ro'yxatlari, Aktual (`highlights.js`) video elementlari, post sahifasi,
+`/uploads/*.mp4|webm|mov` 404;
+`reelsHidden` — `/api/reels` → `{items:[],hasMore:false,hidden:true}`.
+
+KO'RGAZMA (`showcase.js` + `post_extras`): `showcase:true` bilan post —
+1..5 rasm (`mediaUrls`), `title` ≤ 80, `priceUzs` 0..1e10, `linkUrl` (https
+YouTube/Instagram), `catalogItemId` (matn, faqat o'sha kompaniya), `imageSeconds`
+3..60. Har post JSON'ida `showcase, title, priceUzs, linkUrl, catalogItem,
+mediaUrls, pending`. `GET /api/showcase` (`reels.js`) — Reels tartibi, faqat
+videosiz `showcase=1` yoki rasmli reel; javobda `cursor` va `nextCursor`.
+
+KO'RGAZMA REKLAMASI (`showcase-ads.js`, 2026-10): `showcase_ads` (slot 1..4).
+`GET /api/admin/showcase-ads` (admin) → `{slots:[{slot, postKind, postId, enabled,
+updatedAt, updatedBy, post:{exists, live, authorKind, code, name, caption, title,
+imageUrl, videoUrl}|null}], max:4}`; `PUT /api/admin/showcase-ads/:slot`
+`{postKind:'post'|'company_post', postId, enabled?}` va `DELETE …/:slot` — manager+,
+admin jurnali (`showcase_ad_set|showcase_ad_remove`). Xatolar: 422 `bad_slot|
+bad_post_kind|bad_post_id|bad_enabled|post_not_live`, 404 `post_not_found`,
+409 `already_in_slot|post_changed`. `/api/showcase` da yoqilgan joylar featured
+qoidasida (4/9-o'rin, sahifada ≤2, zanjirda bir marta, oddiydan chiqariladi;
+lenta qisqa bo'lsa oxirgi oddiy kadrdan keyin) — kadr + `featured:true, ad:true,
+adSlot`. Joydagi post VIDEO bo'lishi mumkin (faqat shu yo'l); `videosHidden` da
+video reklama chiqmaydi. Promo videolar statik: `/promo/*.mp4|jpg` (Worker assets).
+
+MODERATSIYA QO'RIQCHISI (`content-guard.js`, modul emas): tekshirilmagan
+(`content_reports` reason=`unchecked`, status=`new`) fayl bilan chop etilgan
+kontent `content_pending` da — faqat egasiga (`pending:true`), UNION va
+ro'yxatlarda yo'q; admin PATCH `resolved|rejected` (media shikoyati) ochadi.
+Navbatga yozib bo'lmasa yuklash 503 `moderation_unavailable` (fayl
+o'chiriladi); filtr o'chiq bo'lsa ham navbatga yoziladi. `consent_log`
+(agreed:true), `deleted_uploads` (o'chirilgan fayl `/uploads` da 404, chegara
+keshidan oldin), matnda so'kinish → `text_flag` (bloklamaydi). Kunlik cron
+`moderation-retry.js` navbatni Gemini bilan qayta tekshiradi.
 
 `comments` — izohlar (`content_comments`): `GET|POST
 /api/comments/:kind/:id`, `DELETE /api/comments/:id`, bu yerda

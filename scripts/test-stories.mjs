@@ -18,6 +18,14 @@ const { env } = makeEnv();
 await seedBasic(env);
 
 const j = async (path, init) => { const r = await worker.fetch(req(path, init), env); return { status: r.status, body: await r.json().catch(() => null) }; };
+// 2026-10: testda avtomatik filtr o'chiq — yuklangan fayl admin navbatiga
+// tushadi va u bilan chop etilgan kontent admin tasdiqlaguncha faqat egasiga
+// ko'rinadi (api/content-guard.js). Ochiq ro'yxatni tekshirishdan oldin
+// admin "Tasdiqlash" qiladi.
+const approve = async (u) => {
+  const row = await env.DB.prepare(`SELECT id FROM content_reports WHERE target_kind = 'media' AND target_id = ?`).bind(u).first().catch(() => null);
+  if (row) await j(`/api/admin/reports/${row.id}`, { method: 'PATCH', cookie: cookie.admin, json: { status: 'resolved' } });
+};
 const IMG = '/uploads/story-1.jpg';
 
 // seedBasic: VIP001 (user#1) — faqat harflardan iborat emas, 6 belgili.
@@ -224,6 +232,7 @@ check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { coo
   // 9.2 kompaniya istoryasi (video bilan)
   const st = await j('/api/companies/NFCTEST/stories', { method: 'POST', cookie: cookie.user, json: { videoUrl: upVid.body.url, agreed: true } });
   check('9) video istorya joylandi', st.status, 201);
+  await approve(upVid.body.url);
   const stList = await j('/api/companies/NFCTEST/stories');
   checkTrue('9) istorya ro‘yxatda ko‘rinadi', stList.body.stories.some((x) => x.videoUrl === upVid.body.url));
 
@@ -239,6 +248,7 @@ check('8) muddati o‘tgani lentada yo‘q', (await j('/api/stories/feed', { coo
   const upImg = await upload(jpeg, 'image/jpeg');
   const post = await j('/api/companies/NFCTEST/posts', { method: 'POST', cookie: cookie.user, json: { imageUrl: upImg.body.url, agreed: true, caption: 'yangi' } });
   check('9) post joylandi', post.status, 201);
+  await approve(upImg.body.url);
   const openPosts = await j('/api/companies/NFCTEST/posts');
   checkTrue('9) post OCHIQ ro‘yxatda (kirmasdan ham)', openPosts.body.posts.some((x) => x.imageUrl === upImg.body.url));
 }
@@ -320,6 +330,7 @@ console.log('\\naccess:', access || '(nomaʼlum)');
   check('12) media yuklandi', up.status, 200);
   const st = await j('/api/records/VIP001/stories', { method: 'POST', cookie: cookie.user, json: { imageUrl: up.body.url, agreed: true } });
   check('12) shaxsiy istorya joylandi', st.status, 201);
+  await approve(up.body.url);
   const list = await j('/api/records/VIP001/stories');
   checkTrue('12) profilda ko‘rinadi', list.body.stories.some((x) => x.imageUrl === up.body.url));
 

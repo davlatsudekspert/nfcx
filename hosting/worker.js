@@ -19,6 +19,8 @@ import * as apiMyAnalytics from './api/my-analytics.js';
 import * as apiMarketplace from './api/marketplace.js';
 import * as apiNotifications from './api/notifications.js';
 import { applyLaunchTrialExtension } from './api/trial-promo.js';
+import { seedShowcaseSamples } from './api/showcase-samples.js';
+import * as apiShowcaseAds from './api/showcase-ads.js';
 import * as apiFeatured from './api/featured.js';
 import * as apiCatalogFeed from './api/catalog-feed.js';
 import * as apiSaves from './api/saves.js';
@@ -47,7 +49,10 @@ import * as apiStoryReplies from './api/story-replies.js';
 import * as apiNearby from './api/nearby.js';
 import * as apiProductTags from './api/product-tags.js';
 import * as apiReels from './api/reels.js';
+import * as apiFlags from './api/flags.js';
+import { getFlags, peekFlags, VIDEO_UPLOADS_DISABLED } from './api/flags.js';
 import { parseMediaInput, mediaOut } from './api/carousel.js';
+import { wantsShowcase, readShowcase, catalogItemJson } from './api/showcase.js';
 import { companyContact as companyContactOut } from './api/post-contact.js';
 import {
   postLiveSql, companyPostLiveSql, effectiveTimeSql, parsePublishAt, scheduledForMs, postsTs, companyPostsTs,
@@ -60,7 +65,11 @@ import { idQuarantined, notQuarantinedSql, purgeAfterMs, runScheduledPurge } fro
 import { recordAppOpen } from './api/app-usage.js';
 import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag, TEZLIK_HTML } from './speed-diag.js';
 import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
-import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload } from './api/image-moderation.js';
+import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload, queueUncheckedUpload } from './api/image-moderation.js';
+import * as guard from './api/content-guard.js';
+import * as textGuard from './api/text-guard.js';
+import { retryUncheckedMedia } from './api/moderation-retry.js';
+import { MODERATION_UNAVAILABLE } from './api/content-guard.js';
 
 // API javoblari standart holda KESHLANMAYDI.
 //
@@ -1173,7 +1182,7 @@ async function companyApi(request, env, url) {
   await ensureCompanySchema(env);
   // Karusel/reja ustunlari ham shu yerda (bu yo'l `ensureCoreSchema` ni
   // chaqirmaydi). Parallel va keshlanadi — keyingi so'rovlarga to'lqin qo'shmaydi.
-  await Promise.all([ensureCatalogListingColumns(env), ensurePostSocialColumnsD1(env)]);
+  await Promise.all([ensureCatalogListingColumns(env), ensurePostSocialColumnsD1(env), guard.ensureGuardSchema(env)]);
   const path = url.pathname;
 
   if (path === '/api/companies/check' && request.method === 'GET') {
@@ -1445,10 +1454,12 @@ async function companyApi(request, env, url) {
         `SELECT * FROM companies WHERE company_id = ?`
       ).bind(id).first(),
       env.DB.prepare(
-        `SELECT id, image_url, video_url, caption, created_at, publish_at, media_json
+        `SELECT id, image_url, video_url, caption, created_at, publish_at, media_json,
+                ${guard.pendingSql('company_post', 'cp.id')} AS pending
            FROM company_posts cp WHERE company_id = ? ORDER BY ${effectiveTimeSql('cp')} DESC LIMIT 60`
       ).bind(id).all(),
     ]);
+    const cpFlags = peekFlags(env) || await getFlags(env);
     if (deletedOwner) return json({ posts: [] });
     const isOwner = !!(viewer && meta && String(meta.owner_user_id) === String(viewer.id));
     // YASHIRIN KOMPANIYA (faol emas: qoralama, to'xtatilgan, rad etilgan)
@@ -1456,7 +1467,10 @@ async function companyApi(request, env, url) {
     // (`not_active`) beradi, bu yo'l uni chetlab o'tmasin.
     if (!meta || (String(meta.status) !== 'active' && !isOwner)) return json({ posts: [] });
     const contact = String(meta.status) === 'active' ? companyContactOut(meta) : null;
-    const posts = (rows.results || []).filter((row) => isOwner || !scheduledForMs(row.publish_at));
+    // Rejadagi va tekshirilmagan medialisi (pending) — faqat egasiga;
+    // `videosHidden` kaliti — video post hech kimga.
+    const posts = (rows.results || []).filter((row) => (isOwner || (!scheduledForMs(row.publish_at) && !Number(row.pending)))
+      && !(cpFlags.videosHidden && row.video_url));
     const targets = posts.map((row) => ({ kind: 'company_post', id: Number(row.id) }));
     const shaped = posts.map((row) => {
       const scheduledFor = scheduledForMs(row.publish_at);
@@ -1466,7 +1480,9 @@ async function companyApi(request, env, url) {
         imageUrl: row.image_url || '', videoUrl: row.video_url || '',
         caption: row.caption || '', createdAt: row.publish_at || row.created_at,
         mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaUrls: mediaOut(row.media_json, row.image_url, row.video_url).map((m) => m.url),
         products: [],
+        pending: !!Number(row.pending || 0),
         ...(contact ? { contact } : null),
         ...(scheduledFor ? { scheduledFor } : null),
       };
@@ -1533,6 +1549,8 @@ async function companyApi(request, env, url) {
   if (action === 'posts' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const videoGateCp = await videoAttachGateD1(env, body);
+    if (videoGateCp) return videoGateCp;
     // POST HAMMAGA BEPUL (2026-10-04) — tarif/Premium tekshirilmaydi
     // (`companyPlanStateD1` izohiga qarang). Faqat ban va spam chegarasi.
     const gatePost = await publishGateD1(env, owned.auth.user);
@@ -1540,12 +1558,23 @@ async function companyApi(request, env, url) {
 
     // KARUSEL (api/carousel.js) — `media` berilsa, birinchi rasm
     // `imageUrl` bo'ladi; berilmasa avvalgi `imageUrl`/`videoUrl` yo'li.
-    const mediaIn = parseMediaInput(body);
+    let mediaIn = parseMediaInput(body);
+    // KO'RGAZMA (api/showcase.js) — katalog mahsuloti faqat SHU kompaniyadan.
+    let showcaseIn = null;
+    if (wantsShowcase(body)) {
+      showcaseIn = await readShowcase(env, body, { companyId: id });
+      if (!showcaseIn.ok) return json({ error: showcaseIn.error, ...(showcaseIn.limit ? { limit: showcaseIn.limit } : {}) }, 422);
+      mediaIn = { ok: true, provided: true, imageUrl: showcaseIn.media.imageUrl, videoUrl: null, mediaJson: showcaseIn.media.mediaJson };
+    }
     if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
     const media = mediaIn.provided
       ? { ok: true, imageUrl: mediaIn.imageUrl, videoUrl: mediaIn.videoUrl }
       : storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const foreignCp = await foreignMediaGateD1(env, owned.auth.user, guard.uploadUrlsOf({
+      imageUrl: media.imageUrl, videoUrl: media.videoUrl, mediaJson: mediaIn.provided ? mediaIn.mediaJson : null,
+    }));
+    if (foreignCp) return foreignCp;
     // REJA (api/scheduled-posts.js) — kelajakda, 30 kungacha.
     const plan = parsePublishAt(body?.publishAt);
     if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
@@ -1553,6 +1582,7 @@ async function companyApi(request, env, url) {
     if (Number(cnt?.n || 0) >= COMPANY_POST_MAX) return json({ error: 'limit_reached', limit: COMPANY_POST_MAX }, 409);
     const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: !!media.imageUrl && !media.videoUrl });
     if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
+    if (showcaseIn) extrasIn.extras.showcase = showcaseIn.showcase;
     // MAHSULOT BELGILARI (api/product-tags.js) — faqat SHU kompaniya
     // katalogidan, post yozilishidan OLDIN tekshiriladi.
     const tagsIn = await apiProductTags.readProductIds(env, body, id);
@@ -1561,7 +1591,8 @@ async function companyApi(request, env, url) {
     const row = await env.DB.prepare(
       `INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at, media_json, publish_at) VALUES (?,?,?,?,?,?,?)
        RETURNING id, image_url, video_url, caption, created_at, media_json, publish_at`
-    ).bind(id, media.imageUrl, media.videoUrl, String(body?.caption || '').slice(0, 600), nowIso,
+    ).bind(id, media.imageUrl, media.videoUrl,
+      String(body?.caption || (showcaseIn && typeof body?.text === 'string' ? body.text : '') || '').slice(0, 600), nowIso,
       mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? companyPostsTs(plan.ms) : null).first();
     const extras = await apiMusic.savePostExtras(env, 'company_post', Number(row.id), extrasIn.extras);
     if (tagsIn.ids.length) await apiProductTags.saveProductTags(env, Number(row.id), tagsIn.ids, nowIso);
@@ -1569,11 +1600,18 @@ async function companyApi(request, env, url) {
       ? ((await apiProductTags.productsFor(env, [Number(row.id)])).get(Number(row.id)) || [])
       : [];
     const scheduledFor = scheduledForMs(row.publish_at);
+    const pub = await afterPublishD1(env, request, {
+      kind: 'company_post', id: Number(row.id), userId: owned.auth.user.id, body, ownerCode: id,
+      urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
+      texts: [row.caption, showcaseIn?.showcase?.title],
+    });
     return json({
       post: {
         id: Number(row.id), imageUrl: row.image_url || '', videoUrl: row.video_url || '', caption: row.caption || '',
         createdAt: row.publish_at || row.created_at, ...extras,
         mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
+        mediaUrls: mediaOut(row.media_json, row.image_url, row.video_url).map((m) => m.url),
+        ...pendingFieldsD1(pub),
         products,
         ...(scheduledFor ? { scheduledFor } : null),
       },
@@ -1582,12 +1620,16 @@ async function companyApi(request, env, url) {
 
   if (action === 'posts' && itemId && request.method === 'DELETE') {
     const postId = Number(itemId) || 0;
+    // Fayllar — o'chirishdan OLDIN (keyin `deleted_uploads` ga, content-guard.js).
+    const cpUrls = await guard.contentUrls(env, 'company_posts', 'id = ? AND company_id = ?', [postId, id]);
     // Avval dalil arxiviga nusxa, keyin o'chirish — bitta atomik batch.
     const [, res] = await env.DB.batch([
       archiveStmt(env, 'company_post', 'id = ? AND company_id = ?', [postId, id], { userId: owned.auth.user.id, reason: 'owner' }),
       env.DB.prepare(`DELETE FROM company_posts WHERE id = ? AND company_id = ?`).bind(postId, id),
     ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    await guard.pendingDeleteStmt(env, 'company_post', postId).run().catch(() => {});
+    await guard.denyUploads(env, cpUrls, { onlyUnreferenced: true });
     await apiComments.deleteLikesFor(env, 'company_post', postId).catch(() => {});
     // Mahsulot belgilari ham ketadi (yetim qolmasin).
     await apiProductTags.deleteTagsStmt(env, postId).run().catch(() => {});
@@ -1598,28 +1640,41 @@ async function companyApi(request, env, url) {
   if (action === 'stories' && !itemId && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+    const videoGateCs = await videoAttachGateD1(env, body);
+    if (videoGateCs) return videoGateCs;
     // Post bilan bir xil qoida — istorya ham hammaga bepul.
     const gateStory = await publishGateD1(env, owned.auth.user);
     if (gateStory) return gateStory;
     const media = storyMediaD1(body);
     if (!media.ok) return json({ error: 'bad_image' }, 422);
+    const foreignCs = await foreignMediaGateD1(env, owned.auth.user,
+      guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }));
+    if (foreignCs) return foreignCs;
     const res = await addStoryD1(env, {
       kind: 'company', ownerId: id, userId: owned.auth.user.id,
       imageUrl: media.imageUrl, videoUrl: media.videoUrl,
       caption: String(body?.caption || '').slice(0, 300),
     });
     if (res.error) return json(res, 409);
-    return json(res.story, 201);
+    const pub = await afterPublishD1(env, request, {
+      kind: 'story', reportKind: 'company_story', id: res.story.id, userId: owned.auth.user.id, body, ownerCode: id,
+      urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
+      texts: [res.story.caption],
+    });
+    return json(pub.pending ? { ...res.story, ...pendingFieldsD1(pub) } : res.story, 201);
   }
 
   if (action === 'stories' && itemId && request.method === 'DELETE') {
     const storyWhere = `id = ? AND owner_kind = 'company' AND owner_id = ?`;
     const storyBinds = [Number(itemId) || 0, id];
+    const csUrls = await guard.contentUrls(env, 'stories', storyWhere, storyBinds);
     const [, res] = await env.DB.batch([
       archiveStmt(env, 'story', storyWhere, storyBinds, { userId: owned.auth.user.id, reason: 'owner' }),
       env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
     ]);
     if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+    await guard.pendingDeleteStmt(env, 'story', Number(itemId) || 0).run().catch(() => {});
+    await guard.denyUploads(env, csUrls, { onlyUnreferenced: true });
     return json({ ok: true });
   }
 
@@ -1750,6 +1805,8 @@ async function companyApi(request, env, url) {
       JSON.stringify(hours), ordersEnabled ? 1 : 0, customDomain, customDomainStatus,
       now, id
     ).run();
+    // MATN FILTRI — profil kabi: faqat admin navbati (yashirilmaydi).
+    await textGuard.guardText(env, { kind: 'company', id, texts: [value('displayName', 120), value('description', 1200)], ownerCode: id, hide: false });
     return json({ company: await companyWithItems(env, id) });
   }
 
@@ -2397,6 +2454,13 @@ async function ensureCoreSchema(env) {
     apiSaves.ensureTable(env),
     // Reels "qiziq emas" (api/reels.js) — hisob o'chirish batch'i unga yozadi.
     apiReels.ensureSchema(env),
+    // Moderatsiya qo'riqchisi (api/content-guard.js): `content_pending` — lenta
+    // UNIONi unga tayanadi; `deleted_uploads`, `consent_log`.
+    guard.ensureGuardSchema(env),
+    // Post qo'shimchalari (musiqa, reel, ko'rgazma) — ro'yxatlar ularni o'qiydi.
+    apiMusic.ensureExtras(env),
+    // Ko'rgazma reklama joylari (api/showcase-ads.js) — /api/showcase o'qiydi.
+    apiShowcaseAds.ensureSchema(env),
   ]);
   if (!coreSchemaReady) {
     coreSchemaReady = env.DB.batch([
@@ -3191,7 +3255,11 @@ const COMPANY_POST_MAX = 30;
 // o'tkazib yuborardi. Bu yerda qat'iyroq: papka ichida chuqurlashish
 // yo'q, kengaytma ro'yxatdan.
 const UPLOAD_IMAGE_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(png|jpe?g|webp|gif)$/i;
-const UPLOAD_VIDEO_PATH_RE = /^\/uploads\/[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
+// `aud_` / `music_` (audio yuklash yo'llari) va eski /api/upload-audio
+// fayllari (prefikssiz 20 hex `.webm` — boshqa hech qaysi yo'l bunday nom
+// bermaydi) VIDEO sifatida ulanmaydi (2026-10): aks holda video "audio"
+// deb tekshiruvsiz yuklanib, post videosi bo'lib chiqardi.
+const UPLOAD_VIDEO_PATH_RE = /^\/uploads\/(?!aud_|music_|[0-9a-f]{20}\.webm$)[A-Za-z0-9][A-Za-z0-9_-]{0,120}\.(mp4|webm)$/i;
 
 function storyMediaD1(body) {
   const imageUrl = String(body?.imageUrl || '');
@@ -3208,8 +3276,38 @@ function storyMediaD1(body) {
 // qanday dalil qolmasdi.
 const rulesAcceptedD1 = (body) => body?.agreed === true || body?.agreed === 'true';
 
+// So'rovda VIDEO bormi (`videoUrl`, karusel `media`, ko'rgazma `mediaUrls`).
+const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v)$/i;
+function bodyHasVideoD1(body) {
+  if (String(body?.videoUrl || '').trim()) return true;
+  const items = [
+    ...(Array.isArray(body?.media) ? body.media : []),
+    ...(Array.isArray(body?.mediaUrls) ? body.mediaUrls.map((url) => ({ url })) : []),
+  ];
+  return items.some((m) => String(m?.type || '').toLowerCase() === 'video' || VIDEO_EXT_RE.test(String(m?.url ?? m ?? '')));
+}
+
+// KALIT `videoUploadsBlocked` (api/flags.js): postga/istoriyaga VIDEO ulash
+// ham yopiq — eski ilova va to'g'ridan-to'g'ri API ham shu yerdan o'tadi.
+async function videoAttachGateD1(env, body) {
+  if (!bodyHasVideoD1(body)) return null;
+  return (peekFlags(env) || await getFlags(env)).videoUploadsBlocked ? json(VIDEO_UPLOADS_DISABLED, 403) : null;
+}
+
+// BEGONA FAYL (api/content-guard.js `foreignMediaUrls`): boshqa
+// foydalanuvchi yuklagan faylni o'z postiga/istoriyasiga ulab bo'lmaydi.
+// Har fayl uchun bitta parallel HEAD; metama'lumotsiz eski fayl — ruxsat.
+async function foreignMediaGateD1(env, user, urls) {
+  const bad = await guard.foreignMediaUrls(env, user, urls);
+  return bad.length ? json(guard.FOREIGN_MEDIA, 403) : null;
+}
+
 async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
   const nowIso = new Date().toISOString();
+  // Tekshirilmagan medialisi (pending) — faqat egasiga (`pending: true`);
+  // `videosHidden` kaliti — video istoriya hech kimga.
+  const flags = peekFlags(env) || await getFlags(env);
+  const viewerKey = viewerUserId || -1;
   // JAVOBLAR SONI (2026-10, api/story-replies.js) — FAQAT EGASIGA. Ikkinchi
   // so'rov shu to'lqinda, PARALLEL: u faqat tomoshabin egasi bo'lsa qator
   // qaytaradi (egalik sharti SQL ichida), aks holda bo'sh — begonaga
@@ -3219,10 +3317,16 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
       `SELECT s.id, s.image_url, s.video_url, s.caption, s.created_at, s.expires_at,
               (SELECT COUNT(*) FROM story_likes sl WHERE sl.story_id = s.id) AS like_count,
               (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) AS view_count,
-              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked
+              EXISTS(SELECT 1 FROM story_likes sl WHERE sl.story_id = s.id AND sl.user_id = ?) AS liked,
+              ${guard.pendingSql('story', 's.id')} AS pending
          FROM stories s WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
+          AND (NOT ${guard.pendingSql('story', 's.id')}
+               OR (s.owner_kind = 'card' AND EXISTS (SELECT 1 FROM cards oc WHERE oc.code = s.owner_id AND oc.user_id = ?))
+               OR (s.owner_kind = 'company' AND EXISTS (SELECT 1 FROM companies oc WHERE oc.company_id = s.owner_id
+                                                          AND CAST(oc.owner_user_id AS TEXT) = CAST(? AS TEXT))))
+          ${flags.videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
         ORDER BY s.created_at`
-    ).bind(viewerUserId || -1, kind, ownerId, nowIso).all(),
+    ).bind(viewerKey, kind, ownerId, nowIso, viewerKey, viewerKey).all(),
     viewerUserId
       ? apiStoryReplies.ownerReplyCounts(env, kind, ownerId, viewerUserId, nowIso).catch(() => null)
       : Promise.resolve(null),
@@ -3232,6 +3336,7 @@ async function listStoriesD1(env, kind, ownerId, viewerUserId = null) {
     caption: r.caption || '', createdAt: r.created_at, expiresAt: r.expires_at,
     likeCount: Number(r.like_count || 0), liked: !!r.liked,
     viewCount: Number(r.view_count || 0),
+    ...(Number(r.pending) ? { pending: true } : null),
     ...(replies ? { replyCount: replies.get(Number(r.id)) || 0 } : null),
   }));
 }
@@ -6666,24 +6771,40 @@ async function recordsApi(request, env, url) {
       // ko'p ishlatiladigan joyda "u rozilik bergan" degan hech
       // qanday dalil saqlanmasdi.
       if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+      const videoGateP = await videoAttachGateD1(env, body);
+      if (videoGateP) return videoGateP;
       // KARUSEL (api/carousel.js): `media` berilsa, `imageUrl`/`videoUrl`
       // undan olinadi (birinchi rasm — eski ilovalar uchun). Berilmasa —
       // avvalgi yo'l, hech narsa o'zgarmaydi.
-      const mediaIn = parseMediaInput(body);
+      let mediaIn = parseMediaInput(body);
+      // KO'RGAZMA (api/showcase.js): 1..5 rasm, sarlavha, narx, havola.
+      // Shaxsiy postda katalog mahsuloti yo'q (`catalogItemId` e'tiborsiz).
+      let showcaseIn = null;
+      if (wantsShowcase(body)) {
+        showcaseIn = await readShowcase(env, body, {});
+        if (!showcaseIn.ok) return json({ error: showcaseIn.error, ...(showcaseIn.limit ? { limit: showcaseIn.limit } : {}) }, 422);
+        mediaIn = { ok: true, provided: true, imageUrl: showcaseIn.media.imageUrl, videoUrl: null, mediaJson: showcaseIn.media.mediaJson };
+      }
       if (!mediaIn.ok) return json({ error: mediaIn.error, ...(mediaIn.limit ? { limit: mediaIn.limit } : {}) }, 422);
       // REJA (api/scheduled-posts.js): kelajakda, 30 kungacha.
       const plan = parsePublishAt(body?.publishAt);
       if (!plan.ok) return json({ error: plan.error, ...(plan.maxDays ? { maxDays: plan.maxDays } : {}) }, 422);
       const imageUrl = mediaIn.provided ? String(mediaIn.imageUrl || '') : String(body?.imageUrl || '');
       const videoUrl = mediaIn.provided ? String(mediaIn.videoUrl || '') : String(body?.videoUrl || '');
-      const caption = String(body?.caption || '').slice(0, 600);
+      // Ko'rgazma (shartnoma §3) tavsifni `text` bilan ham yuborishi mumkin.
+      const caption = String(body?.caption || (showcaseIn && typeof body?.text === 'string' ? body.text : '') || '').slice(0, 600);
       const okImg = imageUrl.startsWith('/uploads/') && !/[^\w\-./]/.test(imageUrl);
-      const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl);
+      const okVid = videoUrl.startsWith('/uploads/') && /\.(mp4|webm)$/i.test(videoUrl) && !/[^\w\-./]/.test(videoUrl)
+        && !/^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i.test(videoUrl);
       if (!okImg && !okVid) return json({ error: 'bad_image' }, 422);
       const rec = await getRecord(env, code);
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const foreignP = await foreignMediaGateD1(env, user, guard.uploadUrlsOf({
+        imageUrl: okImg ? imageUrl : null, videoUrl: okVid ? videoUrl : null, mediaJson: mediaIn.provided ? mediaIn.mediaJson : null,
+      }));
+      if (foreignP) return foreignP;
       // POST, VIDEO-POST VA REELS HAMMAGA BEPUL (egasining qarori,
       // 2026-10-04; App Store 3.1.1). NFC ID darajasi, Premium yoki
       // sinov muddati tekshirilmaydi — faqat ban va spam chegarasi.
@@ -6696,13 +6817,19 @@ async function recordsApi(request, env, url) {
       // OLDIN tekshiriladi: yomon musiqa bilan post yarim yozilib qolmasin.
       const extrasIn = await apiMusic.readPostExtras(env, body, { hasImage: okImg && !okVid });
       if (!extrasIn.ok) return json({ error: extrasIn.error }, 422);
+      if (showcaseIn) extrasIn.extras.showcase = showcaseIn.showcase;
       const row = await env.DB.prepare(
         `INSERT INTO posts (code, user_id, image_url, video_url, caption, media_json, publish_at) VALUES (?, ?, ?, ?, ?, ?, ?)
          RETURNING id, code, image_url, video_url, caption, created_at, media_json, publish_at`
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null,
         mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? postsTs(plan.ms) : null).first();
       const extras = await apiMusic.savePostExtras(env, 'post', Number(row.id), extrasIn.extras);
-      return json({ ...postRowToJson(row, 0, false), ...extras }, 201);
+      const pub = await afterPublishD1(env, request, {
+        kind: 'post', id: Number(row.id), userId: user.id, body, ownerCode: code,
+        urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
+        texts: [caption, showcaseIn?.showcase?.title],
+      });
+      return json({ ...postRowToJson(row, 0, false), ...extras, ...pendingFieldsD1(pub) }, 201);
     }
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
@@ -6728,12 +6855,16 @@ async function recordsApi(request, env, url) {
       // bo'lsa, to'g'ridan-to'g'ri API ga so'rov yuborib chetlab
       // o'tish mumkin bo'lardi.
       if (!rulesAcceptedD1(body)) return json({ error: 'rules_not_accepted' }, 422);
+      const videoGateS = await videoAttachGateD1(env, body);
+      if (videoGateS) return videoGateS;
       const media = storyMediaD1(body);
       if (!media.ok) return json({ error: 'bad_image' }, 422);
       const rec = await getRecord(env, code);
       if (!rec) return json({ error: 'not_found' }, 404);
       const owner = await getRecordOwner(env, code);
       if (String(owner) !== String(user.id)) return json({ error: 'not_owner' }, 403);
+      const foreignS = await foreignMediaGateD1(env, user, guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }));
+      if (foreignS) return foreignS;
       // Istorya (rasm yoki video) ham hammaga bepul — post bilan bir xil.
       const gateStory = await publishGateD1(env, user);
       if (gateStory) return gateStory;
@@ -6743,7 +6874,12 @@ async function recordsApi(request, env, url) {
         caption: String(body?.caption || '').slice(0, 300),
       });
       if (res.error) return json(res, 409);
-      return json(res.story, 201);
+      const pub = await afterPublishD1(env, request, {
+        kind: 'story', id: res.story.id, userId: user.id, body, ownerCode: code,
+        urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
+        texts: [res.story.caption],
+      });
+      return json(pub.pending ? { ...res.story, ...pendingFieldsD1(pub) } : res.story, 201);
     }
     return null;
   }
@@ -6833,6 +6969,10 @@ async function recordsApi(request, env, url) {
       // before re-enabling paid tiers (tracked as follow-up work).
       const updated = await updateRecord(env, code, record);
       if (!updated) return json({ error: 'not_found' }, 404);
+      // MATN FILTRI (api/text-guard.js) — profilni yashirib bo'lmaydi,
+      // shuning uchun faqat admin navbati (`text_block`/`text_review`) va
+      // ogohlantirish. Xatosi yutiladi.
+      await textGuard.guardText(env, { kind: 'record', id: code, texts: [record.name, record.role, record.about], ownerCode: code, hide: false });
       return json(updated);
     }
 
@@ -7009,6 +7149,8 @@ const uploadQuotaDayD1 = () => new Date().toISOString().slice(0, 10);
 // qachon yana urinish mumkinligini ayta olmasdi.
 const uploadErrorJsonD1 = (up) => json({
   error: up.error,
+  ...(up.error === VIDEO_UPLOADS_DISABLED.error ? { message: VIDEO_UPLOADS_DISABLED.message } : {}),
+  ...(up.error === MODERATION_UNAVAILABLE.error ? { message: MODERATION_UNAVAILABLE.message } : {}),
   ...(up.limitMb ? { limitMb: up.limitMb } : {}),
   ...(up.quotaMb ? { quotaMb: up.quotaMb } : {}),
   ...(up.usedMb != null ? { usedMb: up.usedMb } : {}),
@@ -7186,6 +7328,21 @@ function sniffAnyFileTypeD1(bytes) {
   return null;
 }
 
+// /api/upload-audio uchun: ma'lum AUDIO konteyner (mp3/ID3, MPEG/AAC ADTS
+// freym sinxronizatsiyasi, Ogg, WAV/RIFF, MP4/M4A ftyp, WebM/EBML, FLAC).
+// Rasm, PDF yoki axlat — yo'q.
+function sniffAudioContainerD1(bytes) {
+  if (!bytes || bytes.length < 12) return false;
+  const head = String.fromCharCode(...bytes.slice(0, 12));
+  if (head.startsWith('ID3')) return true;
+  if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0 && !(bytes[2] === 0xff)) return true; // MPEG / ADTS
+  if (head.startsWith('OggS') || head.startsWith('fLaC')) return true;
+  if (head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WAVE') return true;
+  if (head.slice(4, 8) === 'ftyp') return true;
+  if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) return true;
+  return false;
+}
+
 // MOLIYA HUJJATLARI uchun alohida sniffer: bu yerda xlsx va csv ham
 // bo'ladi. `sniffAnyFileTypeD1` ularni bilmaydi va bilishi ham SHART
 // EMAS — profil media'siga xlsx tushishi kerak emas.
@@ -7221,6 +7378,11 @@ async function streamUploadToR2(request, env, opts) {
   const {
     prefix, accept, aliases = {}, actor,
     maxBytes = UPLOAD_MAX_BYTES, sniff = sniffAnyFileTypeD1,
+    // KALIT `videoUploadsBlocked` (api/flags.js): video SAQLANMASDAN rad
+    // etiladi. `audioPrefix` — mijoz AUDIO deb e'lon qilgan (ichi WebM/MP4
+    // konteyner) fayl rad etilmaydi, lekin shu prefiks bilan saqlanadi va
+    // video sifatida ulab bo'lmaydi (UPLOAD_VIDEO_PATH_RE).
+    blockVideo = false, audioPrefix = '',
   } = opts;
   const limitMb = Math.round(maxBytes / (1024 * 1024));
   const declaredLen = Number(request.headers.get('content-length') || 0);
@@ -7273,8 +7435,16 @@ async function streamUploadToR2(request, env, opts) {
     await reader.cancel().catch(() => {});
     return { ok: false, error: 'bad_file', status: 422 };
   }
+  let namePrefix = prefix;
+  if (blockVideo && sniffed.type.startsWith('video/')) {
+    if (audioPrefix && declaredType.startsWith('audio/')) namePrefix = audioPrefix;
+    else {
+      await reader.cancel().catch(() => {});
+      return { ok: false, error: VIDEO_UPLOADS_DISABLED.error, status: 403 };
+    }
+  }
 
-  const filename = `${prefix}_${uploadRandomHex(12)}.${sniffed.ext}`;
+  const filename = `${namePrefix}_${uploadRandomHex(12)}.${sniffed.ext}`;
   const meta = {
     httpMetadata: { contentType: sniffed.type, cacheControl: UPLOAD_CACHE_CONTROL },
     customMetadata: { uploadedAt: new Date().toISOString(), actor: String(actor || '').slice(0, 120) },
@@ -7504,15 +7674,25 @@ async function scanStoredUploadD1(env, up, actor, source, opts = {}) {
   const type = String(up?.type || '');
   const isVideo = type.startsWith('video/');
   if (!up?.ok || (!type.startsWith('image/') && !isVideo)) return null;
-  // Filtr o'chiq (kalit yo'q) — faylni R2 dan qayta o'qishning keragi yo'q.
-  if (!moderationEnabled(env)) return null;
   const key = String(up.url || '').replace(/^\//, '');
+  // NAVBATGA YOZIB BO'LMASA — yuklash rad etiladi va fayl o'chiriladi
+  // (tekshirilmagan fayl jim o'tib ketmasin).
+  const queueOrReject = async () => {
+    if (await queueUncheckedUpload(env, { actor, url: up.url, source })) return null;
+    await env.UPLOADS.delete(key).catch(() => {});
+    return json(MODERATION_UNAVAILABLE, 503);
+  };
+  // Filtr o'chiq (kalit yo'q) — faylni qayta o'qishning keragi yo'q, lekin
+  // u admin navbatiga tushadi (2026-10: avval jim o'tardi).
+  if (!moderationEnabled(env)) return queueOrReject();
   let obj = null;
   try { obj = await env.UPLOADS.get(key); } catch { obj = null; }
-  if (!obj) return null;
+  if (!obj) return queueOrReject();
   const verdict = isVideo
     ? await moderateVideo(env, obj, type, up.size, opts)
     : await moderateImage(env, new Uint8Array(obj.arrayBuffer ? await obj.arrayBuffer() : obj.body), type);
+  // Tekshirilmay o'tdi — admin navbatiga (image-moderation.js).
+  if (verdict.allowed && !verdict.checked) return queueOrReject();
   if (verdict.allowed) return null;
   await env.UPLOADS.delete(key).catch(() => {});
   await logBlockedUpload(env, actor, verdict.category, source);
@@ -7527,7 +7707,22 @@ async function uploadApi(request, env, pathname) {
   // Video tekshiruvi muddati: Nova ilovasi yuklashni 180 s kutadi; eski
   // ilova (butun so'rov 90 s) va sayt uchun qisqaroq.
   const scanOpts = { timeoutMs: request.headers.get('x-app') === 'nova' ? 45_000 : 25_000 };
+  // BAN — yuklash paytida ham (2026-10). Ilgari faqat chop etishda
+  // tekshirilardi: banlangan odam fayl yuklab, havolasini tarqata olardi.
+  if (!isAdmin) {
+    const banned = banGateD1(auth);
+    if (banned) return banned;
+  }
   if (!isAdmin && await rateLimitD1(env, 'upload:user:' + auth.id, 40, 60 * 60_000)) return json({ error: 'too_many_requests' }, 429);
+  // KALIT: video yuklash yopiq (admin yo'llari bundan mustasno). Mijoz
+  // video deb e'lon qilgan bo'lsa — tana o'qilmasdan rad etiladi; aks
+  // holda sehrli baytlar bo'yicha (`blockVideo`), saqlashdan OLDIN.
+  const blockVideo = !isAdmin && (peekFlags(env) || await getFlags(env)).videoUploadsBlocked;
+  const declaredVideo = /^video\//i.test(String(request.headers.get('content-type') || '').trim());
+  if (blockVideo && (pathname === '/api/upload-card-video'
+    || (declaredVideo && ['/api/upload-media', '/api/upload-file', '/api/upload-profile-bg'].includes(pathname)))) {
+    return json(VIDEO_UPLOADS_DISABLED, 403);
+  }
 
   // ─── PROFIL FONI UCHUN MEDIA (GIF / video) — 50 MB ───────────────────
   // 2026-09. Nima uchun ALOHIDA endpoint (mavjud /api/upload emas):
@@ -7549,6 +7744,7 @@ async function uploadApi(request, env, pathname) {
       prefix: 'profilebg', actor,
       accept: ['image/gif', 'video/mp4', 'video/webm'],
       aliases: PROFILE_BG_ALIASES,
+      blockVideo,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'profile-bg', scanOpts);
@@ -7565,6 +7761,7 @@ async function uploadApi(request, env, pathname) {
       maxBytes: STORY_MEDIA_MAX_BYTES,
       // Istoryada faqat rasm/video: PDF yoki mp3 bu yerga tushmasin.
       sniff: sniffMediaTypeD1,
+      blockVideo,
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'media', scanOpts);
@@ -7611,6 +7808,7 @@ async function uploadApi(request, env, pathname) {
       prefix: 'file', actor,
       accept: ['image/', 'video/', 'audio/', 'application/pdf'],
       aliases: UPLOAD_TYPE_ALIASES,
+      blockVideo, audioPrefix: 'aud',
     });
     if (!up.ok) return uploadErrorJsonD1(up);
     const blocked = await scanStoredUploadD1(env, up, actor, 'file', scanOpts);
@@ -7677,20 +7875,32 @@ async function uploadApi(request, env, pathname) {
   if (!b64Quota.ok) {
     return json({ error: b64Quota.error, quotaMb: b64Quota.quotaMb, usedMb: b64Quota.usedMb }, b64Quota.status);
   }
+  // AUDIO HAQIQATAN AUDIO KONTEYNERMI (2026-10, doimiy). Bu yo'l
+  // tekshiruvsiz edi: video "audio/webm" deb yuklanib, keyin post videosi
+  // sifatida ulanardi. Endi sehrli baytlar tekshiriladi va fayl `aud_`
+  // prefiksi bilan saqlanadi — video tekshiruvlari uni qabul qilmaydi.
+  if (isAudio && !sniffAudioContainerD1(bytes)) return json({ error: 'bad_audio' }, 422);
   const ext = isAudio
     ? ({ mpeg: 'mp3', mp3: 'mp3', mp4: 'm4a', 'x-m4a': 'm4a', m4a: 'm4a', ogg: 'ogg', wav: 'wav', webm: 'webm' })[match[2]]
     : (['jpeg', 'jpg'].includes(match[2]) ? 'jpg' : match[2]);
   // Foydalanuvchi rasmi (avatar, post, istorya, katalog) SAQLASHDAN
   // OLDIN tekshiriladi — bloklangan rasm R2 ga umuman tushmaydi.
+  let b64Verdict = null;
   if (!isAudio && !isAdmin) {
     const verdict = await moderateImage(env, bytes, match[1]);
+    b64Verdict = verdict;
     if (!verdict.allowed) {
       await logBlockedUpload(env, actor, verdict.category, 'upload');
       return contentBlockedJsonD1(verdict.category);
     }
   }
-  const filename = `${isAdmin ? 'news_' : ''}${uploadRandomHex(10)}.${ext}`;
+  const filename = `${isAdmin ? 'news_' : isAudio ? 'aud_' : ''}${uploadRandomHex(10)}.${ext}`;
   const b64Url = await putUploadR2(env, filename, bytes, match[1], actor);
+  if (b64Verdict && !b64Verdict.checked
+    && !(await queueUncheckedUpload(env, { actor, url: b64Url, source: 'upload' }))) {
+    await env.UPLOADS.delete(`uploads/${filename}`).catch(() => {});
+    return json(MODERATION_UNAVAILABLE, 503);
+  }
   await uploadQuotaAddD1(env, actor, bytes.length);
   return json({ url: b64Url });
 }
@@ -7770,10 +7980,38 @@ function uploadVideoEdgeUrl(request, url) {
   return url.origin + url.pathname;
 }
 
+// KALIT `videosHidden`: video fayllar ham beriladi EMAS (havola orqali
+// ham). Audio yuklash yo'llarining fayllari (`aud_`, `music_`, eski
+// prefikssiz 20 hex `.webm`) — audio, ular qoladi.
+const UPLOAD_VIDEO_FILE_RE = /\.(mp4|webm|mov|m4v)$/i;
+const UPLOAD_AUDIO_FILE_RE = /^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i;
+
 async function serveUpload(request, env, url, ctx) {
   if (!env.UPLOADS) return null;
   const key = decodeURIComponent(url.pathname).replace(/^\//, '');
   if (!key.startsWith('uploads/') || key.includes('..')) return json({ error: 'bad_path' }, 400);
+  // CHEGARA KESHIDAN OLDIN (2026-10): o'chirilgan kontent fayli
+  // (`deleted_uploads`, api/content-guard.js) va yashirilgan videolar.
+  // Rasm keshda 1 yil turadi — busiz o'chirilgan rasm havola bilan
+  // ochilaverardi. Admin dalilni ko'ra oladi (keshsiz, no-store).
+  const pathOnly = `/${key}`;
+  if (UPLOAD_VIDEO_FILE_RE.test(pathOnly) && !UPLOAD_AUDIO_FILE_RE.test(pathOnly)
+    && (peekFlags(env) || await getFlags(env)).videosHidden) {
+    return json({ error: 'not_found' }, 404, { 'cache-control': 'no-store' });
+  }
+  if (await guard.uploadDenied(env, pathOnly)) {
+    if (typeof caches !== 'undefined' && caches.default) {
+      const edge = new Request(url.origin + url.pathname, { method: 'GET' });
+      (ctx?.waitUntil ? ctx.waitUntil.bind(ctx) : (p) => p)(caches.default.delete(edge).catch(() => {}));
+    }
+    const admin = await requireAdmin(request, env).catch(() => null);
+    if (!admin) return json({ error: 'not_found' }, 404, { 'cache-control': 'no-store' });
+    const obj = request.method === 'HEAD' ? await env.UPLOADS.head(key) : await env.UPLOADS.get(key);
+    if (!obj) return null;
+    const headers = buildUploadResponseHeaders(obj, key);
+    headers.set('cache-control', 'private, no-store');
+    return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+  }
   const videoEdgeUrl = uploadVideoEdgeUrl(request, url);
   if (videoEdgeUrl) {
     try {
@@ -8853,23 +9091,30 @@ export async function postPageResponse(env, url, id) {
                 co.display_name AS name, co.logo_url AS avatar_url
            FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
           WHERE cp.id = ? AND co.status = 'active' AND ${companyOwnerAliveSql('co')}
-            AND ${companyPostLiveSql('cp')}`,
+            AND ${companyPostLiveSql('cp')} AND NOT ${guard.pendingSql('company_post', 'cp.id')}`,
       ).bind(pid).first()
       : await env.DB.prepare(
         `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at,
                 c.name AS name, c.avatar_url AS avatar_url
            FROM posts p JOIN cards c ON c.code = p.code
-          WHERE p.id = ? AND ${ownerAliveSql('c')} AND ${postLiveSql('p')}`,
+          WHERE p.id = ? AND ${ownerAliveSql('c')} AND ${postLiveSql('p')} AND NOT ${guard.pendingSql('post', 'p.id')}`,
       ).bind(pid).first();
   } catch (error) {
     console.error('post page', id, error?.message);
   }
+  // KALIT `videosHidden` — video post sahifasi ham 404.
+  if (row?.video_url && (peekFlags(env) || await getFlags(env)).videosHidden) row = null;
   let views = 0;
+  // Ko'rgazma maydonlari (sarlavha, narx, mahsulot, havola) — music.js.
+  const extra = {};
   if (row) {
-    const v = await apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null);
+    const [v] = await Promise.all([
+      apiComments.viewsFor(env, [{ kind: company ? 'company_post' : 'post', id: pid }]).catch(() => null),
+      apiMusic.attachPostExtras(env, [{ kind: company ? 'company_post' : 'post', id: pid, obj: extra }]).catch(() => {}),
+    ]);
     views = v?.get(`${company ? 'company_post' : 'post'}:${pid}`) || 0;
   }
-  return new Response(postPageHtml(url.origin, row, { company, views }), {
+  return new Response(postPageHtml(url.origin, row, { company, views, extra }), {
     status: row ? 200 : 404,
     headers: {
       'content-type': 'text/html; charset=utf-8',
@@ -8900,7 +9145,10 @@ function openAppScript(origin, appPath) {
     + `if(!document.hidden&&Date.now()-t<3000){location.href='/app';}},1600);});}})();`;
 }
 
-function postPageHtml(origin, row, { company, views }) {
+// "125 000 so'm" — ko'rgazma narxi (oddiy bo'shliq bilan, sayt bilan bir xil).
+const uzsText = (n) => `${String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`;
+
+function postPageHtml(origin, row, { company, views, extra = {} }) {
   const e = ogAttrEscape;
   const shell = (title, head, body) => `<!doctype html>
 <html lang="uz"><head><meta charset="utf-8">
@@ -8931,6 +9179,8 @@ ${head}
   .sec{border:1px solid #3a3630}
   .brand{margin-top:22px;text-align:center;font:700 12px/1 sans-serif;letter-spacing:.32em;color:#6f6a62}
   .nf{padding:30vh 8px 0;text-align:center}
+  .sc{margin:12px 2px 4px}.sc h2{font-size:18px;margin:0 0 2px}.sc .pr{font-weight:800;color:#c9a961;font-size:16px}
+  .sc .lk{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.sc .lk a{border:1px solid #3a3630;border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600;font-size:14px}
 </style></head><body><main>${body}<div class="brand">NFCSTORE</div></main></body></html>`;
 
   if (!row) {
@@ -8976,10 +9226,20 @@ ${head}
       ? `<div class="media img"><img src="${e(image)}" alt="${e(desc)}"></div>`
       : '';
 
+  // KO'RGAZMA (2026-10): sarlavha, narx, katalog mahsuloti va havola.
+  const scItem = extra.showcase ? extra.catalogItem : null;
+  const scPrice = extra.showcase ? (extra.priceUzs != null ? extra.priceUzs : scItem?.priceUzs ?? null) : null;
+  const scLink = extra.showcase && /^https:\/\//i.test(String(extra.linkUrl || '')) ? String(extra.linkUrl) : '';
+  const showcaseHtml = extra.showcase ? `<div class="sc">
+${extra.title ? `<h2>${e(extra.title)}</h2>` : ''}${scPrice != null ? `<div class="pr">${e(uzsText(scPrice))}</div>` : ''}
+${scItem || scLink ? `<div class="lk">${scItem?.companyId ? `<a href="/company/${e(encodeURIComponent(String(scItem.companyId).toLowerCase()))}">Mahsulot${scItem.name ? `: ${e(scItem.name)}` : ''}</a>` : ''}${scLink ? `<a href="${e(scLink)}" target="_blank" rel="noopener noreferrer nofollow">Havolani ochish ↗</a>` : ''}</div>` : ''}
+</div>` : '';
+
   const body = `<a class="top" href="${e(profile)}">
 ${avatar ? `<img class="av" src="${e(avatar)}" alt="">` : '<div class="av"></div>'}
 <div style="min-width:0"><div class="nm">${e(name)}</div><div class="cd">${e(code)}</div></div></a>
 ${media}
+${showcaseHtml}
 <div class="meta"><span>👁 ${Number(views) || 0}</span></div>
 ${caption ? `<div class="cap">${e(caption)}</div>` : ''}
 <div class="btns"><a id="open-app" class="btn pri" href="/app">Ilovada ochish</a><a class="btn sec" href="${e(profile)}">Profil</a></div>
@@ -11160,8 +11420,46 @@ const PUBLISH_PER_HOUR_D1 = 60;
 //     — izoh yo'li bilan bir xil, faqat rostlik tekshiriladi);
 //   • soatlik spam chegarasi.
 // `null` — ruxsat; aks holda tayyor javob.
+// CHOP ETILGANDAN KEYIN (2026-10, api/content-guard.js) — post, istoriya,
+// kompaniya posti/istoriyasi va ko'rgazma uchun BITTA joy:
+//   * tekshirilmagan media bo'lsa — `content_pending` (egasidan boshqaga
+//     ko'rinmaydi) → qaytadi `true`;
+//   * `agreed:true` dalili — `consent_log`;
+//   * matnda so'kinish bo'lsa — admin navbatiga `text_flag` (BLOKLAMAYDI).
+// `kind`: pending turi (post | company_post | story); `reportKind` —
+// shikoyat turi (story / company_story farqlanadi).
+//   * TAQIQLANGAN MATN (2026-10, api/text-guard.js) — ro'yxatdagi so'z
+//     bo'lsa kontent ham `content_pending` ga (`text:<kind>:<id>`), admin
+//     navbatiga `text_block`; shubhali so'z — faqat navbatga `text_review`.
+//     Post/kompaniya posti (Reels, ko'rgazma) uchun ixtiyoriy AI tekshiruvi
+//     (`textAiCheck` kaliti) — `text_ai`.
+// Natija: { pending, textPending } — javobga `pendingFieldsD1` bilan.
+async function afterPublishD1(env, request, { kind, reportKind = kind, id, userId, body, urls, texts = [], ownerCode = '' }) {
+  const mediaPending = await guard.markPendingIfUnchecked(env, kind, id, urls);
+  await guard.logConsent(env, request, userId, body);
+  for (const text of texts) {
+    if (await guard.flagText(env, { kind: reportKind, id, text, ownerCode })) break;
+  }
+  let tg = await textGuard.guardText(env, { kind, reportKind, id, texts, ownerCode });
+  if (!tg.pending && tg.tier !== 'severe' && (kind === 'post' || kind === 'company_post')) {
+    tg = await textGuard.aiGuardText(env, { kind, reportKind, id, texts, ownerCode });
+  }
+  return { pending: mediaPending || !!tg.pending, textPending: !!tg.pending };
+}
+
+// Chop etish javobidagi pending maydonlari. Eski ilova faqat `pending` ni
+// o'qiydi; `pendingReason: 'text'` — yangi ilova "Tekshiruvda" deb ko'rsatsin.
+const pendingFieldsD1 = (pub) => (pub?.pending
+  ? { pending: true, ...(pub.textPending ? { pendingReason: 'text' } : null) }
+  : { pending: false });
+
+// Ban — yuklash paytida ham shu tekshiruv (uploadApi).
+function banGateD1(user) {
+  return user?.bannedUntil ? json({ error: 'banned', bannedUntil: user.bannedUntil }, 403) : null;
+}
 async function publishGateD1(env, user) {
-  if (user?.bannedUntil) return json({ error: 'banned', bannedUntil: user.bannedUntil }, 403);
+  const banned = banGateD1(user);
+  if (banned) return banned;
   if (await rateLimitD1(env, 'publish:u:' + user.id, PUBLISH_PER_HOUR_D1, 60 * 60_000)) {
     return json({ error: 'too_many_requests' }, 429);
   }
@@ -11226,7 +11524,9 @@ function postRowToJson(r, likeCount, liked) {
     createdAt: d && !Number.isNaN(d.getTime()) ? d.getTime() : Date.now(),
     likeCount: Number(likeCount || 0), liked: !!liked,
     mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
+    mediaUrls: mediaOut(r.media_json, r.image_url, r.video_url).map((m) => m.url),
     products: [],
+    pending: !!Number(r.pending || 0),
     ...(scheduledFor ? { scheduledFor } : null),
   };
 }
@@ -11234,12 +11534,19 @@ function postRowToJson(r, likeCount, liked) {
 async function listPostsD1(env, code, viewerUserId) {
   // REJADAGI POST faqat EGASIGA (profil kodi egasi) ko'rinadi — shart
   // SQL ichida, shu so'rovning o'zida (yangi to'lqin yo'q).
+  // TEKSHIRILMAGAN MEDIALI (pending, api/content-guard.js) post ham faqat
+  // egasiga — `pending: true` bilan. KALIT `videosHidden` — video postlar
+  // hech kimga (egasiga ham) chiqmaydi.
+  const flags = peekFlags(env) || await getFlags(env);
   const rows = await env.DB.prepare(
     `SELECT p.id, p.code, p.image_url, p.video_url, p.caption, p.created_at, p.publish_at, p.media_json,
             (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
-            EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked
+            EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked,
+            ${guard.pendingSql('post', 'p.id')} AS pending
      FROM posts p WHERE p.code = ?
-       AND (${postLiveSql('p')} OR EXISTS (SELECT 1 FROM cards oc WHERE oc.code = p.code AND oc.user_id = ?))
+       AND ((${postLiveSql('p')} AND NOT ${guard.pendingSql('post', 'p.id')})
+            OR EXISTS (SELECT 1 FROM cards oc WHERE oc.code = p.code AND oc.user_id = ?))
+       ${flags.videosHidden ? "AND COALESCE(p.video_url, '') = ''" : ''}
      ORDER BY ${effectiveTimeSql('p')} DESC, p.id DESC`
   ).bind(viewerUserId == null ? 0 : viewerUserId, code, viewerUserId == null ? 0 : viewerUserId).all();
   const list = rows.results || [];
@@ -11291,6 +11598,7 @@ async function postsApi(request, env, url) {
     // `retireTargetStmts` izohiga qarang), OXIRIDA postning o'zi.
     // Hammasi egalik sharti bilan tanlanadi va bitta batch'da.
     await apiComments.ensureSchema(env);
+    const postUrls = await guard.contentUrls(env, 'posts', postWhere, postBinds);
     const ownedPost = `SELECT id FROM posts WHERE ${postWhere}`;
     const batch = [
       archiveStmt(env, 'post', postWhere, postBinds, { userId: user.id, reason: 'owner' }),
@@ -11302,6 +11610,9 @@ async function postsApi(request, env, url) {
     const res = results[results.length - 1];
     const changed = Number(res?.meta?.changes || 0);
     if (!changed) return json({ error: 'not_found' }, 404);
+    // Kutish qatori va fayllar (boshqa joyda ishlatilmasa) — content-guard.js.
+    await guard.pendingDeleteStmt(env, 'post', postId).run().catch(() => {});
+    await guard.denyUploads(env, postUrls, { onlyUnreferenced: true });
     return json({ ok: true });
   }
 
@@ -11359,6 +11670,8 @@ async function storiesApi(request, env, url) {
         WHERE s.owner_kind = 'card' AND s.expires_at > ?
           AND ${ownerAliveSql('c')}
           AND c.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)
+          AND NOT ${guard.pendingSql('story', 's.id')}
+          ${(peekFlags(env) || await getFlags(env)).videosHidden ? "AND COALESCE(s.video_url, '') = ''" : ''}
         ORDER BY s.created_at
         LIMIT 200`
     ).bind(user.id, new Date().toISOString(), user.id).all();
@@ -11450,12 +11763,15 @@ async function storiesApi(request, env, url) {
            OR (owner_kind = 'company'
                AND owner_id IN (SELECT company_id FROM companies WHERE owner_user_id = ?)) )`;
   const storyBinds = [Number(m[1]), user.id, user.id, String(user.id)];
+  const storyUrls = await guard.contentUrls(env, 'stories', storyWhere, storyBinds);
   // Avval dalil arxiviga nusxa (content-archive.js), keyin o'chirish.
   const [, res] = await env.DB.batch([
     archiveStmt(env, 'story', storyWhere, storyBinds, { userId: user.id, reason: 'owner' }),
     env.DB.prepare(`DELETE FROM stories WHERE ${storyWhere}`).bind(...storyBinds),
   ]);
   if (!Number(res?.meta?.changes || 0)) return json({ error: 'not_found' }, 404);
+  await guard.pendingDeleteStmt(env, 'story', Number(m[1])).run().catch(() => {});
+  await guard.denyUploads(env, storyUrls, { onlyUnreferenced: true });
   // Layk va ko'rishlar ham ketadi — aks holda ular yetim qoladi.
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM story_likes WHERE story_id = ?`).bind(Number(m[1])),
@@ -11541,6 +11857,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
          WHERE COALESCE(c.hidden_from_directory, 0) = 0
            AND ${ownerAliveSql('c')}
            AND ${postLiveSql('p')}
+           AND NOT ${guard.pendingSql('post', 'p.id')}
         UNION ALL
         SELECT 'post', cp.id, cp.company_id, 'company',
                co.display_name, co.logo_url,
@@ -11551,6 +11868,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
           FROM company_posts cp JOIN companies co ON co.company_id = cp.company_id
          WHERE co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
            AND ${companyPostLiveSql('cp')}
+           AND NOT ${guard.pendingSql('company_post', 'cp.id')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'card',
                c.name, c.avatar_url,
@@ -11562,6 +11880,7 @@ const FEED_UNION_SQL = `SELECT * FROM (
          WHERE s.owner_kind = 'card' AND s.expires_at > ?
            AND COALESCE(c.hidden_from_directory, 0) = 0
            AND ${ownerAliveSql('c')}
+           AND NOT ${guard.pendingSql('story', 's.id')}
         UNION ALL
         SELECT 'story', s.id, s.owner_id, 'company',
                co.display_name, co.logo_url,
@@ -11572,7 +11891,20 @@ const FEED_UNION_SQL = `SELECT * FROM (
           FROM stories s JOIN companies co ON co.company_id = s.owner_id
          WHERE s.owner_kind = 'company' AND s.expires_at > ?
            AND co.status = 'active' AND ${companyOwnerAliveSql('co')} AND ${notDemoCompanySql('co')}
+           AND NOT ${guard.pendingSql('story', 's.id')}
 )`;
+
+/// KALITLARGA MOS UNION (api/flags.js). `videosHidden` — videoli qatorlar
+/// (post va istoriya) UMUMAN chiqmaydi: lenta, Reels, saqlanganlar va
+/// reklama (featured) — hammasi shu so'rovdan o'tadi. Kalit o'chiq bo'lsa
+/// AYNAN `FEED_UNION_SQL` ning o'zi (`?` tartibi ham bir xil).
+/// PENDING (tekshirilmagan media, api/content-guard.js) yuqoridagi UNION
+/// ichida — doimo.
+function feedUnionSqlFor(flags) {
+  return flags?.videosHidden
+    ? `SELECT * FROM (${FEED_UNION_SQL}) WHERE COALESCE(video_url, '') = ''`
+    : FEED_UNION_SQL;
+}
 
 /// Lenta qatorlarini o'qiladigan ko'rinishga keltiradi.
 ///
@@ -11645,6 +11977,8 @@ async function shapeFeedRows(env, rows, viewerId) {
       // va biznes kontakti. Faqat QO'SHILADI — eski maydonlar o'zgarmaydi.
       ...(String(r.kind) === 'post' ? {
         mediaItems: mediaOut(r.media_json, r.image_url, r.video_url),
+        mediaUrls: mediaOut(r.media_json, r.image_url, r.video_url).map((m) => m.url),
+        pending: false,
         products: target === 'company_post' ? (productTags.get(Number(r.id)) || []) : [],
         ...(target === 'company_post' ? {
           contact: companyContactOut({
@@ -11727,8 +12061,9 @@ async function feedApi(request, env, url) {
     const me = await getCurrentUser(request, env);
     if (!me) return json({ error: 'unauthorized' }, 401);
     apiComments.ensureSchema(env).catch(() => {});
+    const fUnion = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
     const fRes = await env.DB.prepare(
-      `${FEED_UNION_SQL}
+      `${fUnion}
        WHERE (author_kind = 'card' AND code IN (
                 SELECT fc.code FROM cards fc JOIN follows ff ON ff.followee_id = fc.user_id
                  WHERE ff.follower_id = ?))
@@ -11756,10 +12091,11 @@ async function feedApi(request, env, url) {
 
   const featuredP = page === 1 ? apiFeatured.activeTargets(env, nowTs()).catch(() => []) : Promise.resolve([]);
   apiComments.ensureSchema(env).catch(() => {});
+  const unionSql = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
   const [user, rows] = await Promise.all([
     getCurrentUser(request, env),
     env.DB.prepare(
-      `${FEED_UNION_SQL}
+      `${unionSql}
        ORDER BY created_at DESC, id DESC
        LIMIT ? OFFSET ?`
     ).bind(0, 0, now, 0, now, limit + 1, offset).all(),
@@ -11773,7 +12109,7 @@ async function feedApi(request, env, url) {
     if (!targets.length) return { targets, rows: [] };
     const where = targets.map(() => '(kind = ? AND id = ?)').join(' OR ');
     const fRows = await env.DB.prepare(
-      `${FEED_UNION_SQL} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
+      `${unionSql} WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 10`
     ).bind(
       viewerId, viewerId, now, viewerId, now,
       // FEATURED `target_kind` izoh turlarini ishlatadi
@@ -11900,8 +12236,9 @@ async function postsByKeysD1(env, keys, viewerId) {
   const vid = Number(viewerId) || 0;
   const now = new Date().toISOString();
   const where = list.map(() => `(kind = 'post' AND author_kind = ? AND id = ?)`).join(' OR ');
+  const unionSql = feedUnionSqlFor(peekFlags(env) || await getFlags(env));
   const [res, blockedList] = await Promise.all([
-    env.DB.prepare(`${FEED_UNION_SQL} WHERE ${where}`)
+    env.DB.prepare(`${unionSql} WHERE ${where}`)
       .bind(vid, vid, now, vid, now, ...list.flatMap((k) => [k.kind === 'company_post' ? 'company' : 'card', Number(k.id)]))
       .all(),
     vid ? apiModeration.blockedByUser(env, vid) : [],
@@ -12206,6 +12543,9 @@ async function coreApi(request, env, url) {
 }
 
 // ---------- hosting/api/* modullari uchun yordamchilar (CONTRACT.md) ----------
+// Admin Telegram ogohlantirishlari (content-guard.js) — mavjud xabarchi orqali.
+guard.setAdminNotifier(sendTelegramMessage);
+
 const H = {
   json, getCurrentUser, getCurrentAdmin, requireAdmin, checkIpWhitelist,
   getRecord, getRecordOwner, rowToRecord, RECORD_COLUMNS, updateRecord, validateRecordBody,
@@ -12249,7 +12589,7 @@ const H = {
   postsByKeys: postsByKeysD1,
   // Reels "Siz uchun" (api/reels.js) — lentaning O'ZI: UNION (maxfiylik,
   // rejadagi post), shakl va `liked`. Ikkinchi nusxa yozilmaydi.
-  feedUnionSql: FEED_UNION_SQL, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
+  feedUnionSql: FEED_UNION_SQL, feedUnionSqlFor, getFlags, peekFlags, shapeFeedRows, feedViewerLikedKeys, feedLikedKey, commentTargetKind,
   // Ish vaqti → "hozir ochiqmi" (api/nearby.js) — kompaniya sahifasidagi
   // `openNow` bilan AYNAN bir qoida (Toshkent vaqti).
   companyOpenNow: (hoursJson) => companyOpenStateD1(normalizeHoursD1(parseJsonArray(hoursJson))),
@@ -12261,7 +12601,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12394,6 +12734,26 @@ export default {
       // Aksiya (egasi, 2026-10-06): mavjud sinovlar BIR MARTA 90 kunga
       // uzaytiriladi (api/trial-promo.js). Eslatmadan OLDIN — aks holda
       // uzaytiriladigan odamga "sinov tugayapti" xabari ketardi.
+      // NFCSTORE Ko'rgazma namunalari — bir marta (api/showcase-samples.js).
+      try {
+        const sc = await seedShowcaseSamples(env);
+        if (sc?.applied) console.log('showcase_samples', JSON.stringify(sc));
+      } catch (e) {
+        console.error('showcase_samples', String(e?.message || e).slice(0, 160));
+      }
+      // NFCSTORE promo reklamalari (Ko'rgazma 1-2 joy) — bir marta (api/showcase-ads.js).
+      try {
+        const ads = await apiShowcaseAds.seedShowcaseAds(env);
+        if (ads?.applied) console.log('showcase_ads', JSON.stringify(ads));
+      } catch (e) {
+        console.error('showcase_ads', String(e?.message || e).slice(0, 160));
+      }
+      try {
+        const mv = await apiShowcaseAds.moveShowcasePromoVideos(env);
+        if (mv?.applied) console.log('showcase_promo_move', JSON.stringify(mv));
+      } catch (e) {
+        console.error('showcase_promo_move', String(e?.message || e).slice(0, 160));
+      }
       try {
         const ext = await applyLaunchTrialExtension(env);
         if (ext?.applied) console.log('launch_trial_extended', JSON.stringify({ users: ext.users, companies: ext.companies }));
@@ -12415,6 +12775,17 @@ export default {
       if (rr && !rr.disabled && (rr.granted || rr.expired || rr.rejected)) {
         console.log('referral_rewards', JSON.stringify({ granted: rr.granted, expired: rr.expired, rejected: rr.rejected }));
       }
+      // TEKSHIRILMAGAN FAYLLAR — Gemini bilan QAYTA tekshiruv (api/moderation-retry.js):
+      // ruxsat — kontent ochiladi; bloklandi — admin o'chirishi kabi o'chiriladi.
+      // Filtr o'chiq bo'lsa hech narsa qilmaydi. Logga faqat sonlar.
+      const mr = await retryUncheckedMedia(env, H, { limit: 20 }).catch(() => null);
+      if (mr && !mr.skipped && mr.checked) {
+        console.log('moderation_recheck', JSON.stringify({ checked: mr.checked, approved: mr.approved, blocked: mr.blocked, still: mr.still }));
+      }
+      // Filtr o'chiq — admin ogohlantiriladi; navbatda tekshiruv kutayotgan
+      // narsa bo'lsa — kuniga bitta Telegram xulosasi (api/content-guard.js).
+      const ca = await guard.cronModerationAlerts(env, { moderationOn: moderationEnabled(env) }).catch(() => null);
+      if (ca?.digest || ca?.moderationOffAlert) console.log('moderation_alerts', JSON.stringify(ca));
     })());
   },
 };

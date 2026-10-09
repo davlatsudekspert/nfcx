@@ -63,6 +63,14 @@ const REQUIRED = {
 const OPTIONAL = new Set([
   'ASSISTANT_MODEL', 'ASSISTANT_OFF', 'AI_API_KEY', 'ANTHROPIC_API_KEY', 'CLAUDE_MODEL',
   'ADMIN_IP_WHITELIST_BYPASS', 'ANDROID_APP_PACKAGE',
+  // Apple In-App Purchase (api/iap-apple.js): '1' bo'lmasa — o'chiq (standart).
+  'IAP_APPLE_ENABLED',
+  // Sandbox xaridi faqat shu ruxsat bilan Premium beradi (standart — hech kimga):
+  // '1' — hammaga (staging); ID ro'yxati — masalan App Review demo hisobi.
+  'IAP_APPLE_ALLOW_SANDBOX', 'IAP_APPLE_SANDBOX_USER_IDS',
+  // Taklif mukofoti (+30 kun Premium) faqat '1' bo'lsa beriladi; yo'q bo'lsa
+  // kutilayotgan yozuvlar to'planadi, lekin hech kimga Premium yozilmaydi.
+  'REFERRAL_REWARD_ENABLED',
 ]);
 
 // wrangler.jsonc o'zi qo'yadigan bog'lanishlar — secret emas.

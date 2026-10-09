@@ -57,6 +57,7 @@
 import { blockedByUser } from './moderation.js';
 import { IMAGE_PATH_RE } from './carousel.js';
 import { archiveStmt } from './content-archive.js';
+import { getFlags, peekFlags } from './flags.js';
 
 export const TITLE_MAX = 24;
 export const MAX_HIGHLIGHTS = 50;
@@ -192,7 +193,19 @@ function highlightOut(h, items, H) {
   };
 }
 
+// KALIT `videosHidden` (api/flags.js) — Aktualdagi video nusxalari ham
+// hech kimga (egasiga ham) ko'rsatilmaydi, istoriya ro'yxati bilan bir xil.
+async function videosHidden(env) {
+  try {
+    return !!(peekFlags(env) || await getFlags(env)).videosHidden;
+  } catch {
+    return false;
+  }
+}
+const visibleItem = (hideVideos) => (r) => r.item_id != null && !(hideVideos && String(r.video_url || ''));
+
 async function loadOne(env, H, id) {
+  const hideP = videosHidden(env);
   const rows = await env.DB.prepare(
     `SELECT h.*, i.id AS item_id, i.story_id, i.image_url, i.video_url, i.caption,
             i.story_created_at, i.created_at AS item_created_at
@@ -201,7 +214,7 @@ async function loadOne(env, H, id) {
   ).bind(id).all();
   const list = rows.results || [];
   if (!list.length) return null;
-  const items = list.filter((r) => r.item_id != null).map((r) => itemOut(r, H));
+  const items = list.filter(visibleItem(await hideP)).map((r) => itemOut(r, H));
   return highlightOut(list[0], items, H);
 }
 
@@ -304,16 +317,20 @@ export async function handle(request, env, url, H) {
     // Egasi, sessiya va to'plamlar BIR to'lqinda; blok ro'yxati — faqat
     // kirgan odam uchun, ikkinchisida.
     const viewerP = H.getCurrentUser(request, env).catch(() => null);
-    const [info, viewer, rows] = await Promise.all([
+    const [info, viewer, rows, hideVideos] = await Promise.all([
       ownerInfo(env, owner),
       viewerP,
       env.DB.prepare(
         `SELECT h.*, i.id AS item_id, i.story_id, i.image_url, i.video_url, i.caption,
                 i.story_created_at, i.created_at AS item_created_at
            FROM story_highlights h LEFT JOIN story_highlight_items i ON i.highlight_id = h.id
+                -- Tekshirilmagan medialisi (pending, api/content-guard.js)
+                -- istoriya nusxasi admin tasdig'igacha ko'rinmaydi.
+                AND NOT EXISTS (SELECT 1 FROM content_pending cpd WHERE cpd.kind = 'story' AND cpd.id = i.story_id)
           WHERE h.owner_kind = ? AND h.owner_id = ?
           ORDER BY h.sort ASC, h.id DESC, i.id ASC`
       ).bind(owner.kind, owner.id).all(),
+      videosHidden(env),
     ]);
     if (!info.exists || info.deleted) return H.json({ highlights: [], canEdit: false });
     const isOwner = !!(viewer && info.userId && info.userId === String(viewer.id));
@@ -326,9 +343,10 @@ export async function handle(request, env, url, H) {
       }
     }
     const byId = new Map();
+    const show = visibleItem(hideVideos);
     for (const r of rows.results || []) {
       if (!byId.has(Number(r.id))) byId.set(Number(r.id), { h: r, items: [] });
-      if (r.item_id != null) byId.get(Number(r.id)).items.push(itemOut(r, H));
+      if (show(r)) byId.get(Number(r.id)).items.push(itemOut(r, H));
     }
     return H.json({
       highlights: [...byId.values()].map(({ h, items }) => highlightOut(h, items, H)),

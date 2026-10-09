@@ -34,11 +34,14 @@ await seedBasic(env);
 const mails = [];
 const tgSends = [];
 let mailStatus = 200;
+// Resend xato javobining TANASI ({statusCode, name, message}). `null` —
+// umumiy "nope". Qabul qiluvchi rad etilganini aynan shu matn aytadi.
+let mailBody = null;
 globalThis.fetch = async (input, init) => {
   const u = String(input);
   if (u.startsWith('https://api.resend.com/')) {
     mails.push(JSON.parse(init.body));
-    return new Response(JSON.stringify(mailStatus === 200 ? { id: 'msg_1' } : { message: 'nope' }),
+    return new Response(JSON.stringify(mailStatus === 200 ? { id: 'msg_1' } : (mailBody || { message: 'nope' })),
       { status: mailStatus, headers: { 'content-type': 'application/json' } });
   }
   if (u.startsWith('https://api.telegram.org/')) {
@@ -134,6 +137,83 @@ const lastMailCode = () => (String(mails[mails.length - 1]?.html || '').match(/>
   const res = await post('/api/auth/request-register-code', { email: 'xato@example.com' });
   check('5) yuborilmasa -> 503', [res.status, (await res.json()).error], [503, 'email_send_failed']);
   mailStatus = 200;
+}
+
+// ===== 5a) Resend QABUL QILUVCHINI rad etsa — 422 bad_email, 503 emas =====
+//
+// Jonli muhitda bir marta: Resend odam yozgan manzilga 422 "Invalid `to`
+// field" qaytardi, bizda esa 503 `email_send_failed` chiqdi — odam umumiy
+// server xatosini ko'rdi, audit uni server xatosi deb sanadi. Boshqa
+// 400/422 lar (kalit, `from`) esa BIZNING xatomiz — ular 503 bo'lib
+// qolishi SHART, aks holda nosozlik "email noto'g'ri" ostida yashirinadi.
+{
+  const ask = async (email, status, body) => {
+    mailStatus = status;
+    mailBody = body;
+    clearLimits();
+    const res = await post('/api/auth/request-register-code', { email });
+    const json = await res.json();
+    mailStatus = 200;
+    mailBody = null;
+    return [res.status, json];
+  };
+
+  let [status, body] = await ask('rad@example.com', 422, {
+    statusCode: 422, name: 'validation_error',
+    message: 'Invalid `to` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.',
+  });
+  check('5a) to rad etildi -> 422 bad_email/rejected', [status, body], [422, { error: 'bad_email', reason: 'rejected' }]);
+  checkTrue('5a) email_send_failed YO‘Q', body.error !== 'email_send_failed');
+
+  // `from` haqidagi 422 — sozlama xatosi, odamniki emas.
+  [status, body] = await ask('from422@example.com', 422, {
+    statusCode: 422, name: 'invalid_from_address',
+    message: 'Invalid `from` field. The email address needs to follow the `email@example.com` or `Name <email@example.com>` format.',
+  });
+  check('5a) from 422 -> hali ham 503', [status, body.error, body.reason], [503, 'email_send_failed', 'http_422']);
+
+  // Noto'g'ri kalit — Resend 400 beradi. Bu ham bizning xatomiz.
+  [status, body] = await ask('key400@example.com', 400, {
+    statusCode: 400, name: 'validation_error', message: 'API key is invalid',
+  });
+  check('5a) API key 400 -> hali ham 503', [status, body.error, body.reason], [503, 'email_send_failed', 'http_400']);
+
+  // `to` YETISHMASA — bu bizning kodimiz xatosi (manzil yuborilmagan).
+  [status, body] = await ask('missing@example.com', 422, {
+    statusCode: 422, name: 'missing_required_field', message: 'Missing `to` field.',
+  });
+  check('5a) missing to -> hali ham 503', [status, body.error], [503, 'email_send_failed']);
+
+  // 403 (domen tasdiqlanmagan) va 429 (limit) — `to` tilga olinsa ham 503.
+  [status, body] = await ask('test403@example.com', 403, {
+    statusCode: 403, name: 'validation_error',
+    message: 'You can only send testing emails to your own email address. To send to other recipients, verify a domain.',
+  });
+  check('5a) 403 -> hali ham 503', [status, body.error, body.reason], [503, 'email_send_failed', 'http_403']);
+  [status, body] = await ask('rate429@example.com', 429, {
+    statusCode: 429, name: 'rate_limit_exceeded', message: 'Too many requests to recipient.',
+  });
+  check('5a) 429 -> hali ham 503', [status, body.error, body.reason], [503, 'email_send_failed', 'http_429']);
+
+  // Tanasi {message} obyekti emas (oddiy matn) — taxmin qilinmaydi, 503.
+  [status, body] = await ask('plain@example.com', 422, 'Invalid `to` field');
+  check('5a) obyekt emas -> 503', [status, body.error], [503, 'email_send_failed']);
+
+  // ARALASH xabarlar: `to` so'zi bor, lekin sabab BIZNIKI (kalit, domen,
+  // massiv shakli, suppression) — himoya qatorlari olib tashlansa shu
+  // holatlar yiqiladi.
+  const mixed = [
+    ['mix1', 422, { statusCode: 422, name: 'validation_error', message: 'Invalid `to` field. Please verify your domain first.' }],
+    ['mix2', 400, { statusCode: 400, name: 'validation_error', message: 'Invalid `to` field: API key cannot send to these recipients.' }],
+    ['mix3', 422, { statusCode: 422, name: 'invalid_from_address', message: 'Invalid `to` field.' }],
+    ['mix4', 422, { statusCode: 422, name: 'validation_error', message: 'The `to` field must contain between 1 and 50 recipients.' }],
+    ['mix5', 422, { statusCode: 422, name: 'validation_error', message: 'The recipient domain is on the suppression list.' }],
+    ['mix6', 422, { statusCode: 422, name: 'validation_error', message: 'Invalid `to` field. `to` must be an array.' }],
+  ];
+  for (const [tag, st, b] of mixed) {
+    [status, body] = await ask(`${tag}@example.com`, st, b);
+    check(`5a) aralash ${tag} -> 503`, [status, body.error], [503, 'email_send_failed']);
+  }
 }
 
 // ===== 5b) JO'NATUVCHI manzili noto'g'ri bo'lsa =====

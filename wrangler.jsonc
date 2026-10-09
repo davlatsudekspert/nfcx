@@ -38,6 +38,9 @@
   // hosting/worker.js'dagi /api/* logikasi HECH QACHON ishga tushmasdi.
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-08-31",
+  // Browser navigation must reach /app and existing dynamic Worker routes.
+  // Keep asset-first serving and avoid a route allowlist that could bypass /api/*.
+  "compatibility_flags": ["assets_navigation_has_no_effect"],
   // SMART PLACEMENT (2026-09, tezlik).
   //
   // Muammo: Worker odatda FOYDALANUVCHIGA eng yaqin serverda ishlaydi,
@@ -53,7 +56,14 @@
   // Bu XAVFSIZ: Cloudflare o'zi o'lchaydi va foyda bo'lmasa avvalgidek
   // chekkada qoldiradi. Statik fayllar (rasm, JS, CSS) bunga umuman
   // bog'liq emas — ular avvalgidek eng yaqin serverdan beriladi.
-  "placement": { "mode": "smart" },
+  //
+  // 2026-10-05: O'CHIRILDI. Baza endi D1 emas — Toshkentdagi VPS
+  // (db.nfcstore.uz). O'lchov (x-nfc-timing, cf-placement): "smart" rejim
+  // Worker'ni Yoxannesburgda (remote-JNB) ishga tushirardi va u yerdan
+  // bazaga har borib-kelish ~262 ms edi; mahalliy (local) ishlaganda
+  // xuddi shu AQSh nuqtasidan ~170 ms. O'zbekistondagi foydalanuvchi
+  // uchun eng yaqin Cloudflare nuqtasi bazaga ham eng yaqin.
+  "placement": { "mode": "off" },
   // Worker loglari. Dashboard'dagi tugmachani yoqish YETARLI EMAS: bu
   // fayl deploy'da sozlamalarning yagona manbai bo'lgani uchun, bu yerda
   // yozilmasa har bir deploy loglarni QAYTA O'CHIRIB qo'yadi (Cloudflare
@@ -134,6 +144,9 @@
       "database_id": "01eed0bb-eb3a-41b1-ab1f-ea14cf001dd8"
     }
   ],
+  // Deploy versiyasi ID'si — O'zbekiston serverida sxema tekshiruvi har
+  // versiya uchun bir marta bajariladi (hosting/worker.js ensureCoreSchema).
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   "r2_buckets": [
     {
       "binding": "UPLOADS",
@@ -204,6 +217,7 @@
   // Bu fayl cron'ning YAGONA manbai: Dashboard'dagi boshqa cron deploy'da o'chadi.
   "triggers": { "crons": ["30 21 * * *"] },
   "vars": {
+    "APP_DOWNLOAD_URL": "https://github.com/davlatsudekspert/nfcstore-downloads/releases/download/v1.1.0-build279/NFCSTORE-Play.apk",
     // HISOBNI BUTUNLAY O'CHIRISH (hosting/api/account-purge.js,
     // ACCOUNT_DELETION_PLAN.md). Egasining qarori (2026-09-25): 30 kunlik
     // o'ylash muddati, pullik ID'lar 90 kundan keyin qayta beriladi.
@@ -213,7 +227,7 @@
     //   ACCOUNT_PURGE_R2: fayllarni R2 dan o'chirish — alohida, keyinroq.
     //   Qolgan to'rttasi egasi javob bermagan savollar: javobgacha "off"
     //   (ma'lumot SAQLANADI).
-    "ACCOUNT_PURGE_MODE": "dry-run",
+    "ACCOUNT_PURGE_MODE": "on",
     "ACCOUNT_PURGE_R2": "off",
     "PURGE_MAX_USERS": "3",
     "PURGE_SUPPORT_MESSAGES": "off",
@@ -227,6 +241,10 @@
     "EVIDENCE_RETENTION_MODE": "on",
     "PAYMENTS_ENABLED": "true",
     "PAYME_SANDBOX": "false",
+    // TAKLIF MUKOFOTI (egasi, 2026-10-06: "1 oy yaxshi"): har bir faol
+    // do'st uchun +30 kun Premium, 7 kun + faollik shartidan keyin
+    // (api/referrals.js). "0" qilinsa mukofot to'xtaydi, pending qoladi.
+    "REFERRAL_REWARD_ENABLED": "1",
     "PAYME_CHECKOUT_DOMAIN": "checkout.paycom.uz",
     "CLICK_RETURN_URL": "https://nfcstore.uz/tolovlar",
     // ANDROID APP LINKS — "NFCSTORE: Raqamli vizitka" (uz.nfcstore.nova).

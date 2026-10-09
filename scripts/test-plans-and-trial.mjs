@@ -27,9 +27,12 @@ check('1) sinov faol', trialActiveD1({ trialExpiresAt: inDays(5) }), true);
 check('1) sinov tugagan', trialActiveD1({ trialExpiresAt: inDays(-1) }), false);
 // Maydon BO'SH — eski hisob. Sinov UMUMAN qo'llanmaydi.
 check('1) maydonsiz hisob — sinov yo‘q', trialActiveD1({}), false);
-checkTrue('1) trialEndsAtD1 ~30 kun', (() => {
+// Aksiya (2026-10): 2026-12-31 18:59:59Z gacha yaratilganlarga 90 kun,
+// keyin 30 — test sanaga bog'liq bo'lmasin (scripts/test-trial-reminders.mjs).
+checkTrue('1) trialEndsAtD1 ~30 kun (aksiyada ~90)', (() => {
+  const want = Date.now() <= Date.parse('2026-12-31T18:59:59.999Z') ? 90 : 30;
   const d = (Date.parse(trialEndsAtD1()) - Date.now()) / DAY;
-  return d > 29.9 && d < 30.1;
+  return d > want - 0.1 && d < want + 0.1;
 })());
 
 // ── 2) PREMIUM MUDDATI — uzaytirish ustiga qo'shiladi ────────────────
@@ -71,9 +74,10 @@ check('5) eski kompaniya cheklovsiz', companyPlanStateD1({ trial_expires_at: nul
 // Sinov davomida — cheklovsiz.
 const inTrial = companyPlanStateD1({ trial_expires_at: inDays(10), plan: 'free' });
 check('5) sinov davomida cheklovsiz', [inTrial.trialActive, inTrial.itemLimit, inTrial.canPost], [true, null, true]);
-// Sinov tugagan, bepul tarif — 5 ta, post/istorya yopiq.
+// Sinov tugagan, bepul tarif — katalog 5 ta, lekin post/istorya OCHIQ
+// (2026-10-04: post va istorya hammaga bepul, App Store 3.1.1).
 const freeAfter = companyPlanStateD1({ trial_expires_at: inDays(-1), plan: 'free' });
-check('5) bepul tarif: 5 ta va post yopiq', [freeAfter.itemLimit, freeAfter.canPost], [5, false]);
+check('5) bepul tarif: 5 ta, post ochiq', [freeAfter.itemLimit, freeAfter.canPost], [5, true]);
 // Sotib olingan nom — cheklovsiz.
 const paidAfter = companyPlanStateD1({ trial_expires_at: inDays(-1), plan: 'paid' });
 check('5) sotib olingan nom cheklovsiz', [paidAfter.itemLimit, paidAfter.canPost], [null, true]);
@@ -102,11 +106,22 @@ check('7) 6-yozuv rad etildi', [sixth.status, sixth.body?.error, sixth.body?.lim
 const after = await j(`/api/companies/${cid}`);
 check('7) mavjud 5 ta yozuv saqlandi', (after.body?.company?.catalog || []).length, 5);
 
-// ── 8) BEPUL TARIFDA ISTORYA VA POST YOPIQ ──────────────────────────
+// ── 8) BEPUL TARIFDA HAM ISTORYA VA POST OCHIQ (2026-10-04) ─────────
+// Sinov tugagan, Premium yo'q, nom sotib olinmagan — baribir yozadi.
+check('8) bepul: plan.canPost = true', (await j(`/api/companies/${cid}`)).body?.company?.plan?.canPost, true);
 const post = await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/a.png' } });
-check('8) post yopiq', [post.status, post.body?.error], [403, 'plan_locked']);
+check('8) bepul: post ochiq', post.status, 201);
+const vpost = await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, videoUrl: '/uploads/a.mp4' } });
+check('8) bepul: video post (Reels) ochiq', vpost.status, 201);
 const story = await j(`/api/companies/${cid}/stories`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/a.png' } });
-check('8) istorya yopiq', [story.status, story.body?.error], [403, 'plan_locked']);
+check('8) bepul: istorya ochiq', story.status, 201);
+// Ban — yagona qulf.
+await env.DB.prepare(`UPDATE users SET banned_until = ? WHERE id = 1`).bind(inDays(3)).run();
+const bannedPost = await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/b.png' } });
+check('8) bloklangan: post yo‘q', [bannedPost.status, bannedPost.body?.error], [403, 'banned']);
+const bannedStory = await j(`/api/companies/${cid}/stories`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/b.png' } });
+check('8) bloklangan: istorya yo‘q', [bannedStory.status, bannedStory.body?.error], [403, 'banned']);
+await env.DB.prepare(`UPDATE users SET banned_until = NULL WHERE id = 1`).run();
 
 // ── 8b) OYLIK PREMIUM — 25 TA, POST/ISTORYA OCHIQ ───────────────────
 // Egasining qarori (2026-09): bepul ID + Premium = 25 ta tovar.
@@ -129,7 +144,7 @@ await env.DB.prepare(`UPDATE users SET premium_expires_at = ? WHERE id = 1`).bin
 const back = await addItem(26);
 check('8b) Premium tugagach yana 5 ta limit', [back.status, back.body?.limit], [409, 5]);
 check('8b) 25 ta yozuv saqlandi', ((await j(`/api/companies/${cid}`)).body?.company?.catalog || []).length, 25);
-check('8b) Premium tugagach post yopiq', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/q.png' } })).body?.error, 'plan_locked');
+check('8b) Premium tugagach ham post ochiq', (await j(`/api/companies/${cid}/posts`, { method: 'POST', cookie: cookie.user, json: { agreed: true, imageUrl: '/uploads/q.png' } })).status, 201);
 // Eski (muddatsiz) Premium ham hisoblanadi.
 await env.DB.prepare(`UPDATE users SET premium_expires_at = NULL, is_premium = 1 WHERE id = 1`).run();
 check('8b) eski muddatsiz Premium ham 25 ta', (await minePlan())?.itemLimit, 25);

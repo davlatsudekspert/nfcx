@@ -23,7 +23,7 @@ const { env } = makeEnv();
 const realPrepare = env.DB.prepare.bind(env.DB);
 let alterSeen = 0;
 env.DB.prepare = (sql) => {
-  if (/ALTER\s+TABLE\s+(cards\s+ADD\s+COLUMN\s+company_id|card_likes\s+ADD\s+COLUMN\s+as_company_id)/i.test(String(sql))) {
+  if (/ALTER\s+TABLE\s+(cards\s+ADD\s+COLUMN\s+"?company_id"?|card_likes\s+ADD\s+COLUMN\s+"?as_company_id"?)/i.test(String(sql))) {
     alterSeen += 1;
     const stub = { bind: () => stub, async run() { return { success: true, meta: { changes: 0 } }; }, async first() { return null; }, async all() { return { results: [] }; } };
     return stub;

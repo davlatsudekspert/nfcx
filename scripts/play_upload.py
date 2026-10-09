@@ -17,12 +17,6 @@ Rejimlar:
            o'zgarmaydi.
   upload — .aab yuklanadi, tanlangan sinov trekiga yangi reliz
            qo'yiladi va tekshiruvga yuboriladi.
-
-Bir nechta trek (egasi, 2026-09-27: "konsolda o'zi aktiv bo'lsin"):
-  TRACK="internal,NFCSTORE" — .aab BIR marta yuklanadi, keyin har trek
-  ALOHIDA edit bilan saqlanadi: ichki sinov darhol faol bo'ladi, yopiq
-  trek Google tekshiruvidan keyin o'zi faol bo'ladi. Yopiq trek
-  saqlanmasa ham ichki trekdagi reliz joyida qoladi.
 """
 import json
 import os
@@ -54,36 +48,6 @@ def check(r, what):
     return r.json() if r.content else {}
 
 
-def release_name(vc):
-    """Konsoldagi nom egasinikiday: "1.1.0 (#261)"."""
-    try:
-        with open("mobile_nova/pubspec.yaml", encoding="utf-8") as fh:
-            for ln in fh:
-                if ln.startswith("version:"):
-                    return f"{ln.split(':', 1)[1].strip().split('+')[0]} (#{vc})"
-    except OSError:
-        pass
-    return vc
-
-
-def release_notes():
-    """«Nima yangi» — APK qurilishi ishlatadigan fayllardan (whatsnew-<til>)."""
-    base = "mobile_nova/distribution/whatsnew"
-    out = []
-    try:
-        names = sorted(os.listdir(base))
-    except OSError:
-        return out
-    for n in names:
-        if not n.startswith("whatsnew-"):
-            continue
-        with open(os.path.join(base, n), encoding="utf-8") as fh:
-            text = fh.read().strip()[:500]
-        if text:
-            out.append({"language": n[len("whatsnew-"):], "text": text})
-    return out
-
-
 def main():
     mode = (os.environ.get("MODE") or "list").strip()
     raw = os.environ.get("PLAY_SA_JSON", "").strip()
@@ -111,81 +75,47 @@ def main():
             f"{r.get('status')}:{'/'.join(r.get('versionCodes', []) or ['-'])}"
             for r in t.get("releases", [])) or "bo'sh"
         print(f"  {t['track']}: {rel}")
-        # Annotatsiya — GitHub API'dan ham o'qiladi (loglar yuklab olinmaydigan
-        # muhitlarda treklar holatini ko'rish uchun). Faqat trek nomi, holat
-        # va versionCode — maxfiy narsa yo'q.
-        names = "; ".join(f"{r.get('name') or '-'} [{r.get('status')}]"
-                          for r in t.get("releases", [])) or "bo'sh"
-        print(f"::notice title=Play trek {t['track']}::{rel} | {names}")
 
     if mode != "upload":
         s.delete(f"{API}/edits/{edit}")
         return
 
-    raw_tracks = (os.environ.get("TRACK") or "").strip()
+    want = (os.environ.get("TRACK") or "").strip()
     ids = [t["track"] for t in tracks]
-    if raw_tracks:
-        wants = [w.strip() for w in raw_tracks.split(",") if w.strip()]
-    else:
+    if not want:
         # Egasining yopiq sinov treki "NFCSTORE" nomli maxsus trek;
         # bo'lmasa standart yopiq trek — `alpha`.
         custom = [i for i in ids if i not in STANDARD]
-        wants = [custom[0] if len(custom) == 1 else "alpha"]
-    for want in wants:
-        if want == "production":
-            fail("Production trekiga bu skript yuklamaydi — faqat sinov treklari.")
-        if ids and want not in ids:
-            fail(f"'{want}' treki topilmadi. Bor treklar: {', '.join(ids)}")
-    print(f"Treklar: {', '.join(wants)}")
+        want = custom[0] if len(custom) == 1 else "alpha"
+    if want == "production":
+        fail("Production trekiga bu skript yuklamaydi — faqat sinov treklari.")
+    if ids and want not in ids:
+        fail(f"'{want}' treki topilmadi. Bor treklar: {', '.join(ids)}")
+    print(f"Trek: {want}")
 
-    # APK qurilishi (nova-apk.yml) har .aab ni ichki trekka o'zi yuklaydi.
-    # Shu versionCode Play'da bo'lsa — qayta yuklanmaydi (Play baribir
-    # "already been used" deb rad etadi), borini trekka qo'yamiz.
-    known = (os.environ.get("VERSION_CODE") or "").strip()
-    have = {str(b.get("versionCode")) for b in
-            check(s.get(f"{API}/edits/{edit}/bundles"), "yuklanganlar").get("bundles", [])}
-    if known and known in have:
-        vc = known
-        print(f"versionCode {vc} Play'da allaqachon bor — qayta yuklanmaydi.")
-    else:
-        path = os.environ["AAB"]
-        if not os.path.exists(path):
-            fail(f"versionCode {known or '?'} Play'da yo'q va .aab artefakti topilmadi — avval APK qurilishini qayta ishga tushiring.")
-        size = os.path.getsize(path) // (1024 * 1024)
-        print(f"Yuklanmoqda: {os.path.basename(path)} ({size} MB)")
-        with open(path, "rb") as f:
-            up = s.post(
-                f"{UPLOAD}/edits/{edit}/bundles",
-                params={"uploadType": "media"},
-                headers={"Content-Type": "application/octet-stream"},
-                data=f,
-                timeout=900,
-            )
-        vc = str(check(up, ".aab yuklash")["versionCode"])
-        if known and vc != known:
-            fail(f"Yuklangan versionCode {vc}, kutilgani {known} — hech narsa saqlanmadi.")
-        print(f"Yuklandi: versionCode {vc}")
+    path = os.environ["AAB"]
+    size = os.path.getsize(path) // (1024 * 1024)
+    print(f"Yuklanmoqda: {os.path.basename(path)} ({size} MB)")
+    with open(path, "rb") as f:
+        up = s.post(
+            f"{UPLOAD}/edits/{edit}/bundles",
+            params={"uploadType": "media"},
+            headers={"Content-Type": "application/octet-stream"},
+            data=f,
+            timeout=900,
+        )
+    vc = str(check(up, ".aab yuklash")["versionCode"])
+    print(f"Yuklandi: versionCode {vc}")
 
     status = (os.environ.get("STATUS") or "completed").strip()
-    done = []
-    for i, want in enumerate(wants):
-        # Birinchi trek .aab yuklangan edit'da; qolganlari yangi edit'da
-        # (yuklangan .aab commit'dan keyin ilovada qoladi).
-        if i > 0:
-            edit = check(s.post(f"{API}/edits"), "edit ochish")["id"]
-        rel = {"name": release_name(vc), "versionCodes": [vc], "status": status}
-        notes = release_notes()
-        if notes:
-            rel["releaseNotes"] = notes
-        body = {"track": want, "releases": [rel]}
-        check(s.put(f"{API}/edits/{edit}/tracks/{want}", json=body), f"{want}: trekka qo'yish")
-        check(s.post(f"{API}/edits/{edit}:commit"), f"{want}: saqlash (commit)")
-        print(f"TAYYOR: {vc} -> {want} ({status})")
-        done.append(want)
+    body = {"track": want, "releases": [{"name": vc, "versionCodes": [vc], "status": status}]}
+    check(s.put(f"{API}/edits/{edit}/tracks/{want}", json=body), "trekka qo'yish")
+    check(s.post(f"{API}/edits/{edit}:commit"), "saqlash (commit)")
+    print(f"TAYYOR: {vc} -> {want} ({status}). Play Console'da tekshiruv holatini ko'ring.")
     summ = os.environ.get("GITHUB_STEP_SUMMARY")
     if summ:
         with open(summ, "a", encoding="utf-8") as fh:
-            fh.write(f"## Google Play\n\nversionCode **{vc}** -> {', '.join(f'**{d}**' for d in done)} ({status})\n")
+            fh.write(f"## Google Play\n\nversionCode **{vc}** -> trek **{want}** ({status})\n")
 
 
 if __name__ == "__main__":

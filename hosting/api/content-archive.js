@@ -31,7 +31,9 @@
 // `highlight` / `highlight_item` (2026-10) — Aktual (highlights.js) admin
 // tomonidan olib tashlanganda yoki uning manbasi bo'lgan istoriya admin
 // tomonidan o'chirilganda: Aktual nusxasi ham dalil bo'lib qoladi.
-export const ARCHIVE_KINDS = ['post', 'company_post', 'story', 'card_video', 'card_file', 'highlight', 'highlight_item'];
+// `catalog_item` (2026-10) — admin shikoyatdan o'chirgan katalog mahsuloti;
+// `media` — admin o'chirgan, hech qaysi kontentga bog'lanmagan fayl.
+export const ARCHIVE_KINDS = ['post', 'company_post', 'story', 'card_video', 'card_file', 'highlight', 'highlight_item', 'catalog_item', 'media'];
 
 const HL = (col) => `(SELECT h.${col} FROM story_highlights h WHERE h.id = src.highlight_id)`;
 
@@ -69,6 +71,20 @@ const SRC = {
     table: 'story_highlights', ownerKind: 'src.owner_kind', ownerId: 'src.owner_id',
     userId: 'src.user_id',
     image: 'src.cover_url', video: 'NULL', file: 'NULL', body: 'src.title',
+  },
+  // Katalog mahsuloti id'si matn (UUID) — `content_id` 0, id esa matn boshida.
+  catalog_item: {
+    table: 'company_catalog_items', ownerKind: `'company'`, ownerId: 'src.company_id',
+    userId: '(SELECT co.owner_user_id FROM companies co WHERE co.company_id = src.company_id)',
+    image: 'src.image_url', video: 'NULL', file: 'NULL',
+    body: `src.id || ' · ' || COALESCE(src.name, '') || ' · ' || COALESCE(src.description, '')`,
+    idExpr: '0',
+  },
+  // Istoriyaga javob (2026-10, text-guard.js) — admin o'chirganda dalil.
+  story_reply: {
+    table: 'story_replies', ownerKind: 'src.owner_kind', ownerId: 'src.owner_id',
+    userId: 'src.user_id',
+    image: 'NULL', video: 'NULL', file: 'NULL', body: 'src.body',
   },
   highlight_item: {
     table: 'story_highlight_items', ownerKind: HL('owner_kind'), ownerId: HL('owner_id'),
@@ -169,7 +185,7 @@ export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
     `INSERT INTO content_archive
        (kind, content_id, owner_kind, owner_id, user_id, image_url, video_url, file_url,
         body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason${withMedia ? ', media_json' : ''})
-     SELECT ?, src.id, COALESCE(${s.ownerKind}, ''), CAST(COALESCE(${s.ownerId}, '') AS TEXT),
+     SELECT ?, ${s.idExpr || 'src.id'}, COALESCE(${s.ownerKind}, ''), CAST(COALESCE(${s.ownerId}, '') AS TEXT),
             CAST(COALESCE(${s.userId}, '') AS TEXT), ${s.image}, ${s.video}, ${s.file},
             COALESCE(${s.body}, ''), src.created_at, ?, ?, ?, ?${withMedia ? ', src.media_json' : ''}
        FROM ${s.table} src
@@ -181,6 +197,21 @@ export function archiveStmt(env, kind, where, binds, by = {}, now = nowTs()) {
     String(by.reason || '').slice(0, 40),
     ...binds,
   );
+}
+
+/// BOG'LANMAGAN FAYL (admin "media" o'chirishi) — manba jadvali yo'q,
+/// to'g'ridan-to'g'ri yozuv. `actor` — yuklagan (R2 metadata `user:12`).
+export function archiveMediaStmt(env, url, { admin = '', reason = 'admin', actor = '' } = {}, now = nowTs()) {
+  const u = String(url || '');
+  const isVideo = /\.(mp4|webm|mov|m4v)$/i.test(u);
+  const uid = /^user:(\d+)$/.exec(String(actor || ''))?.[1] || '';
+  return env.DB.prepare(
+    `INSERT INTO content_archive
+       (kind, content_id, owner_kind, owner_id, user_id, image_url, video_url, file_url,
+        body, created_at, deleted_at, deleted_by_user_id, deleted_by_admin, reason)
+     VALUES ('media', 0, '', '', ?, ?, ?, NULL, ?, NULL, ?, 0, ?, ?)`
+  ).bind(uid, isVideo ? null : u, isVideo ? u : null, `Fayl: ${u}${actor ? ` · ${actor}` : ''}`.slice(0, 400),
+    now, String(admin).slice(0, 64), String(reason).slice(0, 40));
 }
 
 /// Media fayl arxivda turibdimi — R2 dan o'chirishdan oldin so'raladi.

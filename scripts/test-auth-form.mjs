@@ -106,5 +106,15 @@ for (const [label, needle] of [
 // teg shart ichida, yopilgani esa tashqarida.
 check('shartli ochiladigan <div> yo‘q', /\{\s*isRegister\s*&&\s*<(div|form|section|fieldset)[^/>]*>\s*$/m.test(src), false);
 
+// ── 5) Email havolasi bilan parol tiklash (2026-09-28) ─────────────────
+// Havola bilan kelganda Telegram `linkToken` yo'q. Tugma faqat
+// `!linkToken` ga bog'langanida u bu yo'lda HECH QACHON bosilmasdi.
+{
+  const btn = src.match(/<button className="btn btn-gold w-full" disabled=\{([^}]*)\}>/);
+  checkTrue('«Parolni yangilash» tugmasi topildi', btn);
+  checkTrue('email havolasi (resetToken) bilan tugma yoqiladi', btn && /resetToken/.test(btn[1]));
+  checkTrue('Telegram eslatmasi havola yo‘lida yashirin', /\{!resetToken && <p[^>]*>\s*\{t\('Telefon raqamingiz akkauntdagi/.test(src));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

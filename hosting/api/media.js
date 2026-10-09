@@ -29,7 +29,13 @@
 // jadvallarni ham qo'lda yangilang.
 
 import { archiveStmt } from './content-archive.js';
-import { moderateVideo, logBlockedUpload } from './image-moderation.js';
+import { moderateVideo, logBlockedUpload, queueUncheckedUpload } from './image-moderation.js';
+import { getFlags, VIDEO_UPLOADS_DISABLED } from './flags.js';
+import { MODERATION_UNAVAILABLE } from './content-guard.js';
+
+// Audio yuklash yo'llarining fayllari (`aud_`, `music_`, eski prefikssiz
+// 20 hex `.webm`) video sifatida ulanmaydi — worker.js UPLOAD_VIDEO_PATH_RE.
+const AUDIO_UPLOAD_RE = /^\/uploads\/(aud_|music_|[0-9a-f]{20}\.webm$)/i;
 
 const RANK = { free: 0, silver: 1, gold: 2, premium: 3, exclusive: 4 };
 const hasAccess = (access, min) => (RANK[access] ?? 0) >= (RANK[min] ?? 99);
@@ -361,12 +367,19 @@ async function deleteVideo(request, env, H, code, id) {
 
 async function handleVideos(request, env, H, url, code, kind, sub) {
   const m = request.method;
-  if (kind === 'videos' && sub === null && m === 'GET') return H.json({ videos: await listVideos(env, code) });
+  if (kind === 'videos' && sub === null && m === 'GET') {
+    // KALIT `videosHidden` (api/flags.js) — profil videolari ham yashirin.
+    if ((await getFlags(env)).videosHidden) return H.json({ videos: [] });
+    return H.json({ videos: await listVideos(env, code) });
+  }
 
   // POST /api/records/:code/video — raw MP4 body (base64 emas), title/thumb query'da.
   if (kind === 'video' && sub === null && m === 'POST') {
     const ctx = await ownerCtx(request, env, H, code);
     if (ctx.res) return ctx.res;
+    if (ctx.user?.bannedUntil) return H.json({ error: 'banned', bannedUntil: ctx.user.bannedUntil }, 403);
+    // KALIT `videoUploadsBlocked` — ikkala yo'l (havola va xom tana) ham.
+    if ((await getFlags(env)).videoUploadsBlocked) return H.json(VIDEO_UPLOADS_DISABLED, 403);
     if (!hasAccess(ctx.access, FEATURE_MIN.video)) return H.json({ error: 'feature_locked', feature: 'video' }, 403);
     const lim = VIDEO_LIMITS[ctx.access] || VIDEO_LIMITS.free;
     if ((await count(env, 'card_videos', code)) >= lim.count) return H.json({ error: 'limit_reached', limit: lim.count }, 429);
@@ -379,7 +392,7 @@ async function handleVideos(request, env, H, url, code, kind, sub) {
     //    xotirasiga urilardi.
     const urlParam = H.uploadOrSafeUrl(url.searchParams.get('url') || '');
     if (urlParam) {
-      if (!urlParam.startsWith('/uploads/') || !/\.(mp4|webm)$/.test(urlParam)) return H.json({ error: 'bad_file' }, 422);
+      if (!urlParam.startsWith('/uploads/') || !/\.(mp4|webm)$/.test(urlParam) || AUDIO_UPLOAD_RE.test(urlParam)) return H.json({ error: 'bad_file' }, 422);
       const size = Number(url.searchParams.get('size')) > 0 ? Math.round(Number(url.searchParams.get('size'))) : null;
       if (size && size > VIDEO_MAX_MB * 1024 * 1024) return H.json({ error: 'too_large', limit: VIDEO_MAX_MB }, 413);
       const saved = await env.DB.prepare(
@@ -403,7 +416,12 @@ async function handleVideos(request, env, H, url, code, kind, sub) {
     const stored = await env.UPLOADS.get(key).catch(() => null);
     const verdict = stored
       ? await moderateVideo(env, stored, 'video/mp4', bytes.length, { timeoutMs: 25_000 })
-      : { allowed: true };
+      : { allowed: true, checked: false };
+    if (verdict.allowed && !verdict.checked
+      && !(await queueUncheckedUpload(env, { actor: `user:${ctx.user.id}`, url: videoUrl, source: 'card-video' }))) {
+      await env.UPLOADS.delete(key).catch(() => {});
+      return H.json(MODERATION_UNAVAILABLE, 503);
+    }
     if (!verdict.allowed) {
       await env.UPLOADS.delete(key).catch(() => {});
       await logBlockedUpload(env, `user:${ctx.user.id}`, verdict.category, 'card-video');

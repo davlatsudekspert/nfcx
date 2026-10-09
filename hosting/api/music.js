@@ -17,6 +17,8 @@
 //   PATCH  /api/admin/music/:id       (manager+) { title?, artist?, genre?, source?, enabled?, sort? }
 //   DELETE /api/admin/music/:id       (manager+) — ishlatilgan trek o'chirilmaydi (409), yashiriladi
 
+import { catalogItemJson } from './showcase.js';
+
 export const GENRES = ['Ta’sirli', 'Romantik', 'Quvnoq', 'Energiya', 'Zamonaviy', 'Milliy', 'Biznes', 'Chill', 'Klassik', 'Boshqa'];
 
 let ready = null;
@@ -195,6 +197,16 @@ export const REEL_IMAGE_SECONDS = 10;
 const EXTRA_KINDS = new Set(['post', 'company_post']);
 
 let extrasReady = null;
+let extrasOk = false;
+// KO'RGAZMA (2026-10, api/showcase.js) ustunlari — ADD COLUMN, eski
+// qatorlarda standart qiymat. Ustun allaqachon bo'lsa ALTER jim yiqiladi.
+const SHOWCASE_COLUMNS = [
+  'showcase INTEGER NOT NULL DEFAULT 0',
+  'title TEXT',
+  'price_uzs INTEGER',
+  'catalog_item_id TEXT',
+  'link_url TEXT',
+];
 // Reels lentasi (api/reels.js) ham chaqiradi — reel belgisi bo'yicha saralash.
 export function ensureExtras(env) {
   extrasReady ||= env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_extras (
@@ -205,10 +217,21 @@ export function ensureExtras(env) {
       reel INTEGER NOT NULL DEFAULT 0,
       image_seconds INTEGER NOT NULL DEFAULT 10,
       created_at TEXT NOT NULL,
+      ${SHOWCASE_COLUMNS.join(',\n      ')},
       PRIMARY KEY (post_kind, post_id)
-    )`).run().catch((e) => { extrasReady = null; throw e; });
+    )`).run()
+    .then(() => Promise.all(SHOWCASE_COLUMNS.map((c) => env.DB.prepare(`ALTER TABLE post_extras ADD COLUMN ${c}`).run().catch(() => {}))))
+    // Musiqa jadvali ham — ro'yxatlar `post_extras` ni u bilan JOIN qiladi;
+    // jadval yo'q bo'lsa ko'rgazma maydonlari ikkinchi so'rov bilan o'qilardi.
+    .then(() => ensureMusic(env).catch(() => {}))
+    .then(() => { extrasOk = true; })
+    .catch((e) => { extrasReady = null; throw e; });
   return extrasReady;
 }
+
+// Ko'rgazma maydonlari — har post JSON'ida (shartnoma §3). Oddiy postda
+// `showcase: false` va bo'sh qiymatlar.
+const SHOWCASE_DEFAULTS = { showcase: false, title: null, priceUzs: null, linkUrl: null, catalogItem: null };
 
 function musicJson(t, start) {
   return {
@@ -250,7 +273,15 @@ export async function savePostExtras(env, kind, postId, ex) {
   if (!EXTRA_KINDS.has(kind)) return {};
   await ensureExtras(env);
   const stmts = [env.DB.prepare(`DELETE FROM post_extras WHERE post_kind = ? AND post_id = ?`).bind(kind, postId)];
-  if (ex.musicId || ex.reel) {
+  const sc = ex.showcase || null;
+  if (sc) {
+    stmts.push(env.DB.prepare(
+      `INSERT INTO post_extras (post_kind, post_id, music_id, music_start, reel, image_seconds, created_at,
+                                showcase, title, price_uzs, catalog_item_id, link_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`
+    ).bind(kind, postId, ex.musicId, ex.musicStart, ex.reel ? 1 : 0, sc.imageSeconds || REEL_IMAGE_SECONDS,
+      new Date().toISOString(), sc.title, sc.priceUzs, kind === 'company_post' ? sc.catalogItemId : null, sc.linkUrl));
+  } else if (ex.musicId || ex.reel) {
     stmts.push(env.DB.prepare(
       `INSERT INTO post_extras (post_kind, post_id, music_id, music_start, reel, image_seconds, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).bind(kind, postId, ex.musicId, ex.musicStart, ex.reel ? 1 : 0, REEL_IMAGE_SECONDS, new Date().toISOString()));
@@ -259,9 +290,20 @@ export async function savePostExtras(env, kind, postId, ex) {
     stmts.push(env.DB.prepare(`UPDATE music_tracks SET uses = uses + 1 WHERE id = ?`).bind(ex.musicId));
   }
   await env.DB.batch(stmts);
-  const extra = {};
+  const extra = { ...SHOWCASE_DEFAULTS };
   if (ex.track) extra.music = musicJson(ex.track, ex.musicStart);
   if (ex.reel) { extra.reel = true; extra.imageSeconds = REEL_IMAGE_SECONDS; }
+  if (sc) {
+    Object.assign(extra, {
+      showcase: true, title: sc.title, priceUzs: sc.priceUzs, linkUrl: sc.linkUrl,
+      imageSeconds: sc.imageSeconds || REEL_IMAGE_SECONDS,
+    });
+    if (kind === 'company_post' && sc.catalogItemId) {
+      const r = await env.DB.prepare(`SELECT id, company_id, name, price, promotion_price, image_url FROM company_catalog_items WHERE id = ?`)
+        .bind(sc.catalogItemId).first().catch(() => null);
+      extra.catalogItem = catalogItemJson(r);
+    }
+  }
   return extra;
 }
 
@@ -271,18 +313,28 @@ export async function savePostExtras(env, kind, postId, ex) {
 export async function attachPostExtras(env, items) {
   const list = items.filter((i) => EXTRA_KINDS.has(i.kind) && Number(i.id) > 0);
   if (!list.length) return;
+  for (const it of list) Object.assign(it.obj, SHOWCASE_DEFAULTS);
   try {
+    // Iliq isolate'da `await` YO'Q — so'rov sanoqlar bilan bir to'lqinda ketsin.
+    if (!extrasOk) await ensureExtras(env).catch(() => {});
     const out = new Map();
     for (let i = 0; i < list.length; i += 80) {
       const part = list.slice(i, i + 80);
       const where = part.map(() => '(e.post_kind = ? AND e.post_id = ?)').join(' OR ');
       const args = part.flatMap((x) => [x.kind, Number(x.id)]);
+      const cols = `e.post_kind, e.post_id, e.music_start, e.reel, e.image_seconds,
+                e.showcase AS sc_on, e.title AS sc_title, e.price_uzs AS sc_price, e.catalog_item_id AS sc_item, e.link_url AS sc_link`;
+      // Musiqa jadvali hali yo'q bo'lsa (kutubxona hech ochilmagan) — ko'rgazma
+      // va reel maydonlari baribir o'qilsin (JOIN'siz).
       const r = await env.DB.prepare(
-        `SELECT e.post_kind, e.post_id, e.music_start, e.reel, e.image_seconds,
+        `SELECT ${cols},
                 t.id AS t_id, t.title, t.artist, t.genre, t.duration_sec, t.audio_url, t.clip_url, t.enabled
            FROM post_extras e LEFT JOIN music_tracks t ON t.id = e.music_id
           WHERE ${where}`
-      ).bind(...args).all();
+      ).bind(...args).all().catch((e) => {
+        if (!/no such table: music_tracks/i.test(String(e?.message || e))) throw e;
+        return env.DB.prepare(`SELECT ${cols}, NULL AS t_id FROM post_extras e WHERE ${where}`).bind(...args).all();
+      });
       for (const row of r.results || []) out.set(`${row.post_kind}:${Number(row.post_id)}`, row);
     }
     for (const it of list) {
@@ -296,6 +348,30 @@ export async function attachPostExtras(env, items) {
         it.obj.reel = true;
         it.obj.imageSeconds = Number(row.image_seconds) || REEL_IMAGE_SECONDS;
       }
+      if (Number(row.sc_on) === 1) {
+        Object.assign(it.obj, {
+          showcase: true,
+          title: row.sc_title || null,
+          priceUzs: row.sc_price == null ? null : Number(row.sc_price),
+          linkUrl: row.sc_link || null,
+          imageSeconds: Number(row.image_seconds) || REEL_IMAGE_SECONDS,
+        });
+      }
+    }
+    // Katalog mahsuloti — faqat KOMPANIYA posti va faqat O'SHA kompaniyaniki
+    // (JOIN): mahsulot o'chirilsa `catalogItem: null`. Kerak bo'lsagina.
+    const withItem = list.filter((it) => it.kind === 'company_post' && out.get(`company_post:${Number(it.id)}`)?.sc_item);
+    if (withItem.length) {
+      const ids = withItem.map((it) => Number(it.id)).slice(0, 90);
+      const rows = await env.DB.prepare(
+        `SELECT e.post_id AS pid, i.id, i.company_id, i.name, i.price, i.promotion_price, i.image_url
+           FROM post_extras e
+           JOIN company_posts cp ON cp.id = e.post_id
+           JOIN company_catalog_items i ON i.id = e.catalog_item_id AND i.company_id = cp.company_id
+          WHERE e.post_kind = 'company_post' AND e.post_id IN (${ids.map(() => '?').join(',')})`
+      ).bind(...ids).all().catch(() => null);
+      const byPost = new Map((rows?.results || []).map((r) => [Number(r.pid), r]));
+      for (const it of withItem) it.obj.catalogItem = catalogItemJson(byPost.get(Number(it.id)));
     }
   } catch (e) {
     if (!/no such table/i.test(String(e?.message || e))) console.error('post extras', e?.message || e);

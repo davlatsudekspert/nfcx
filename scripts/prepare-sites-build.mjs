@@ -34,6 +34,19 @@ await copyFile(
   new URL('../dist/server/exclusive-pricing.generated.js', import.meta.url),
 );
 
+// O'zbekiston serveri adapterlari (D1/R2 o'rniga sqld/Garage) — worker.js
+// undan import qiladi.
+await copyFile(
+  new URL('../hosting/uz-store.js', import.meta.url),
+  new URL('../dist/server/uz-store.js', import.meta.url),
+);
+
+// Tezlik diagnostikasi (server-timing, /tezlik) — worker.js undan import qiladi.
+await copyFile(
+  new URL('../hosting/speed-diag.js', import.meta.url),
+  new URL('../dist/server/speed-diag.js', import.meta.url),
+);
+
 // Himoya: hosting/ ichidagi hech bir modul '../../src/...' dan import qilmasin —
 // bunday yo'l dist/server/ ichida mavjud emas va wrangler bundle'da yiqiladi.
 {

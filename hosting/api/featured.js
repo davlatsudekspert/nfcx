@@ -51,6 +51,24 @@
 
 import { targetOwner } from './comments.js';
 import { ensureSchema as ensureNotifications } from './notifications.js';
+import { isPending } from './content-guard.js';
+import { getFlags } from './flags.js';
+
+/// MODERATSIYA VA KALITLAR (2026-10): tekshirilmagan medialisi (pending)
+/// kontent ko'tarilmaydi — lenta uni baribir ko'rsatmaydi (pul bekorga
+/// ketardi va admin tasdig'ini chetlab o'tardi). `videosHidden` kaliti
+/// yoqiq bo'lsa video post ham. → xato javob yoki null.
+async function promoContentBlock(env, kind, targetId) {
+  if (await isPending(env, kind === 'company_story' ? 'story' : kind, targetId)) {
+    return [{ error: 'content_pending' }, 409];
+  }
+  if ((await getFlags(env)).videosHidden) {
+    const table = kind === 'company_post' ? 'company_posts' : kind === 'post' ? 'posts' : 'stories';
+    const row = await env.DB.prepare(`SELECT video_url FROM ${table} WHERE id = ?`).bind(Number(targetId)).first().catch(() => null);
+    if (row?.video_url) return [{ error: 'video_hidden' }, 409];
+  }
+  return null;
+}
 
 // ═══ SOTUV 1000 FOYDALANUVCHIDA OCHILADI (egasi, 2026-10-06) ═══
 //
@@ -403,6 +421,8 @@ export async function checkPromoTarget(env, H, userId, kind, targetId, { apple =
   // vaqti kelguncha baribir ko'rsatmaydi — pul olinib, kunlar bekorga
   // o'tib ketardi.
   if (target.scheduled) return { error: [{ error: 'post_scheduled' }, 409] };
+  const blockedPromo = await promoContentBlock(env, kind, targetId);
+  if (blockedPromo) return { error: blockedPromo };
 
   // Bitta kontent uchun ikkita kutilayotgan buyurtma bo'lmasin —
   // odam ikki marta bosib, ikki marta to'lab qo'ymasin.
@@ -755,6 +775,8 @@ export async function handle(request, env, url, H) {
       const target = await targetOwner(env, kind, targetId);
       if (!target.ok) return H.json({ error: 'not_found' }, 404);
       if (target.scheduled) return H.json({ error: 'post_scheduled' }, 409);
+      const blockedPromo = await promoContentBlock(env, kind, targetId);
+      if (blockedPromo) return H.json(...blockedPromo);
       const dup = await env.DB.prepare(
         `SELECT id FROM featured_slots
           WHERE target_kind = ? AND target_id = ? AND ${WEB_BLOCKS_TARGET_SQL}`

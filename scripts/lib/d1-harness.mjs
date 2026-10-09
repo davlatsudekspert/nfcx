@@ -70,7 +70,7 @@ export function makeEnv(extraEnv = {}, opts = {}) {
         async abort() { done = true; collected.clear(); },
       };
     },
-    async head(key) { const o = store.get(key); if (!o) return null; return { size: o.bytes.length, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
+    async head(key) { const o = store.get(key); if (!o) return null; return { size: o.bytes.length, httpEtag: o.httpEtag, customMetadata: { ...o.customMetadata }, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
     async get(key, options = {}) { const o = store.get(key); if (!o) return null; let bytes = o.bytes; if (options.range) bytes = bytes.slice(options.range.offset, options.range.offset + options.range.length); return { body: bytes, httpEtag: o.httpEtag, writeHttpMetadata(h) { if (o.httpMetadata.contentType) h.set('content-type', o.httpMetadata.contentType); } }; },
     // R2 kabi: bitta kalit yoki kalitlar massivi (1000 tagacha).
     async delete(key) { for (const k of Array.isArray(key) ? key : [key]) store.delete(k); },
