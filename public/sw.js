@@ -54,6 +54,10 @@ self.addEventListener('fetch', (event) => {
 
   // API — hech qachon keshlanmaydi, faqat tarmoq.
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
+  // Promo videolar (Ko'rgazma reklamasi, /promo/*.mp4) — brauzer ularni
+  // Range (206) so'rovlari bilan o'qiydi: keshlab bo'lmaydi, keshdan
+  // to'liq javob berilsa Safari videoni ijro etmaydi. Faqat tarmoq.
+  if (url.pathname.startsWith('/promo/') || request.headers.has('range')) return;
 
   // Hashli statik assetlar — o'zgarmas, cache-first.
   if (url.pathname.startsWith('/assets/')) {
