@@ -15,6 +15,7 @@ import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/profile/profile_repository.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
+import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
 import 'package:nfcstore_nova/features/social/media_carousel.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
@@ -89,6 +90,7 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
   WidgetTester tester, {
   required List<ReelsPage> pages,
   int tab = kShowcaseTab,
+  Future<void> Function(ProviderContainer c)? beforeShow,
 }) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
@@ -103,6 +105,7 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
     activeTabProvider.overrideWith((ref) => tab),
   ]);
   addTearDown(c.dispose);
+  await beforeShow?.call(c);
   final pushed = <String>[];
   final router = GoRouter(initialLocation: '/', routes: [
     GoRoute(path: '/', builder: (_, __) => const ShowcaseScreen()),
@@ -453,6 +456,84 @@ void main() {
       await drain(tester);
       expect(v.playing, hasLength(1), reason: 'qaytildi — davom etadi');
       expect(v.created, hasLength(1));
+    });
+  });
+
+  group('ovoz tugmasi — burchakda, bitta, saqlanadi', () {
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    testWidgets(
+        '🔇: musiqa to‘xtaydi, Prefs ga yoziladi, har sahifada va rasm '
+        'ko‘ruvchida bitta tugma', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [
+          _post(id: 1, music: track),
+          _post(id: 2, music: track),
+        ]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+      final l = LUz();
+
+      // Bitta tugma, "+" ostida (ustma-ust emas), sahifadagi eski
+      // karnay ikonkasi yo'q.
+      final mute = find.byKey(const ValueKey('showcase-mute'));
+      expect(mute, findsOneWidget);
+      final plus = tester.getRect(find.byKey(const ValueKey('showcase-create')));
+      final m = tester.getRect(mute);
+      expect(m.top, greaterThanOrEqualTo(plus.bottom));
+      expect(m.center.dx, closeTo(plus.center.dx, 1));
+      expect(find.bySemanticsLabel(l.actionMute), findsOneWidget);
+
+      await tester.tap(mute);
+      await drain(tester);
+      expect(r.c.read(showcaseMutedProvider), isTrue);
+      expect(r.c.read(prefsProvider).showcaseMuted, isTrue,
+          reason: 'ilova qayta ochilganda ham');
+      expect(v.playing, isEmpty, reason: 'o‘chiq — musiqa o‘ynamaydi');
+      expect(find.bySemanticsLabel(l.actionUnmute), findsOneWidget);
+
+      // Keyingi sahifa — baribir jim.
+      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
+          const Offset(0, -600), 2000);
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(v.playing, isEmpty);
+      expect(mute, findsOneWidget);
+
+      // Rasm ko'ruvchida ham o'sha tugma; yoqilsa — musiqa qaytadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-image-0')).last);
+      await settle(tester, frames: 6);
+      final inViewer = find.byKey(const ValueKey('showcase-viewer-mute'));
+      expect(inViewer, findsOneWidget);
+      await tester.tap(inViewer);
+      await drain(tester);
+      expect(r.c.read(showcaseMutedProvider), isFalse);
+      expect(r.c.read(prefsProvider).showcaseMuted, isFalse);
+      expect(v.playing, hasLength(1), reason: 'yoqildi — ko‘ruvchi ostida');
+    });
+
+    testWidgets('saqlangan 🔇 — ochilishda musiqa umuman boshlanmaydi',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      // `_pump` omborni tozalaydi — kalit undan keyin, provayder
+      // birinchi o'qilishidan oldin yoziladi.
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [_post(music: track)]),
+      ], beforeShow: (c) => c.read(prefsProvider).setShowcaseMuted(true));
+      await drain(tester);
+      expect(r.c.read(showcaseMutedProvider), isTrue);
+      expect(v.playing, isEmpty);
     });
   });
 }

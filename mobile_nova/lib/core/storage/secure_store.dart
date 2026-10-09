@@ -122,6 +122,7 @@ class Prefs {
   static const _kCatalogFav = 'nova.catalogFavorites';
   static const _kSavedReels = 'nova.savedReels';
   static const _kAppFlags = 'nova.appFlags';
+  static const _kShowcaseMuted = 'nova.showcaseMuted';
 
   String? get themeId => _p.getString(_kTheme);
   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
@@ -250,4 +251,9 @@ class Prefs {
   /// boshlanadi.
   String? get appFlagsJson => _p.getString(_kAppFlags);
   Future<void> setAppFlagsJson(String v) => _p.setString(_kAppFlags, v);
+
+  /// Ko'rgazma musiqasi o'chirilganmi (burchakdagi 🔇). Sahifalar va
+  /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
+  bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
+  Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
 }

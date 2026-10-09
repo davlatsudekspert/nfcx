@@ -12,10 +12,14 @@ import 'media_frame.dart' show mediaImage;
 /// * pastga surish yoki "orqaga" — yopiladi.
 ///
 /// Rasm kesilmaydi (`contain`) va ekranga mos sifatda ochiladi.
+///
+/// [actions] — yuqori o'ng burchakdagi qo'shimcha tugmalar (masalan,
+/// Ko'rgazmadan ochilganda ovoz tugmasi).
 Future<void> openImageViewer(
   BuildContext context,
   List<String> urls, {
   int initial = 0,
+  List<Widget> actions = const [],
 }) {
   final list = urls.where((u) => u.isNotEmpty).toList();
   if (list.isEmpty) return Future.value();
@@ -27,6 +31,7 @@ Future<void> openImageViewer(
       pageBuilder: (_, __, ___) => ImageViewer(
         urls: list,
         initial: initial.clamp(0, list.length - 1),
+        actions: actions,
       ),
       transitionsBuilder: (_, a, __, child) =>
           FadeTransition(opacity: a, child: child),
@@ -35,10 +40,16 @@ Future<void> openImageViewer(
 }
 
 class ImageViewer extends StatefulWidget {
-  const ImageViewer({super.key, required this.urls, this.initial = 0});
+  const ImageViewer({
+    super.key,
+    required this.urls,
+    this.initial = 0,
+    this.actions = const [],
+  });
 
   final List<String> urls;
   final int initial;
+  final List<Widget> actions;
 
   @override
   State<ImageViewer> createState() => _ImageViewerState();
@@ -137,6 +148,7 @@ class _ImageViewerState extends State<ImageViewer> {
                           ),
                         ),
                       ),
+                    ...widget.actions,
                   ],
                 ),
               ),

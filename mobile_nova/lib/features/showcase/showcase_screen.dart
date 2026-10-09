@@ -46,10 +46,10 @@ import '../social/reels_screen.dart'
         SavedReelsX,
         ViewSession,
         reelsHiddenProvider,
-        reelsMutedProvider,
         savedReelsProvider,
         showReelComments;
 import 'showcase_common.dart';
+import 'showcase_sound.dart';
 
 /// KO'RGAZMA — pastki menyuning 4-tabi (Reels o'rnida, 2026-10).
 ///
@@ -252,7 +252,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
                   visible: i == _index && onTab,
                 ),
               ),
-              _TopBar(onCreate: _create),
+              _TopBar(onCreate: _create, showMute: true),
             ],
           );
         },
@@ -261,9 +261,13 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
   }
 }
 
+/// Sarlavha, "+" va uning ostida ovoz tugmasi (o'ng burchak).
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onCreate});
+  const _TopBar({required this.onCreate, this.showMute = false});
   final VoidCallback onCreate;
+
+  /// Ovoz tugmasi — ro'yxat bor bo'lsa, HAR sahifada bitta joyda.
+  final bool showMute;
 
   @override
   Widget build(BuildContext context) {
@@ -275,6 +279,7 @@ class _TopBar extends StatelessWidget {
           vertical: Gap.sm,
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Text(
@@ -290,12 +295,21 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
             ),
-            NovaIconButton(
-              key: const ValueKey('showcase-create'),
-              icon: Icons.add_rounded,
-              tooltip: l.showcaseCreate,
-              onPressed: onCreate,
-              filled: true,
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NovaIconButton(
+                  key: const ValueKey('showcase-create'),
+                  icon: Icons.add_rounded,
+                  tooltip: l.showcaseCreate,
+                  onPressed: onCreate,
+                  filled: true,
+                ),
+                if (showMute) ...[
+                  const SizedBox(height: Gap.xs),
+                  const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
+                ],
+              ],
             ),
           ],
         ),
@@ -354,8 +368,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
 
   /// Musiqa o'ynashi mumkin. Rasm ko'ruvchi va izohni ochish uni
   /// TO'XTATMAYDI; boshqa ekran (profil, tovar) ochilsa `TickerMode`
-  /// orqali pauza, qaytilganda davom etadi.
-  bool get _audible => _onScreen;
+  /// orqali pauza, qaytilganda davom etadi. Burchakdagi 🔇 — umuman
+  /// o'ynamaydi.
+  bool get _audible => _onScreen && !ref.read(showcaseMutedProvider);
 
   @override
   void initState() {
@@ -510,7 +525,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       }
     }
     if (!_musicReady || !mounted || _music != c || !_audible) return;
-    await c.setVolume(ref.read(reelsMutedProvider) ? 0 : 1);
+    await c.setVolume(1);
     if (!mounted || _music != c || !_audible) return;
     await c.play();
   }
@@ -525,13 +540,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     }
   }
 
-  Future<void> _toggleMute() async {
-    final next = !ref.read(reelsMutedProvider);
-    ref.read(reelsMutedProvider.notifier).state = next;
-    if (_musicReady) await _music?.setVolume(next ? 0 : 1);
-    if (mounted) setState(() {});
-  }
-
   // ── AMALLAR ──────────────────────────────────────────────────────
 
   void _snack(String text) {
@@ -543,7 +551,12 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   Future<void> _openViewer(int i) async {
     setState(() => _viewerOpen = true);
     _sync();
-    await openImageViewer(context, _images, initial: i);
+    await openImageViewer(
+      context,
+      _images,
+      initial: i,
+      actions: const [ShowcaseMuteButton(key: ValueKey('showcase-viewer-mute'))],
+    );
     if (!mounted) return;
     setState(() => _viewerOpen = false);
     _sync();
@@ -678,7 +691,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final following = (mine || p.code.isEmpty)
         ? false
         : ref.watch(followingOfProvider(p.code));
-    final muted = ref.watch(reelsMutedProvider);
+    // Burchakdagi 🔇 bosildi — musiqa shu zahoti to'xtaydi/davom etadi.
+    ref.listen<bool>(showcaseMutedProvider, (_, __) => _sync());
     final navH = MediaQuery.paddingOf(context).bottom;
     final topH = MediaQuery.paddingOf(context).top;
     final link = showcaseLinkKind(p.linkUrl);
@@ -794,14 +808,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                   copiedMessage: l.shareCopied,
                 ),
               ),
-              if (p.music != null)
-                ReelAction(
-                  key: const ValueKey('showcase-mute'),
-                  icon: muted ? NovaIcons.muted : NovaIcons.sound,
-                  label: '',
-                  semantic: muted ? l.actionUnmute : l.actionMute,
-                  onTap: _toggleMute,
-                ),
               ReelAction(
                 key: const ValueKey('showcase-more'),
                 icon: NovaIcons.more,
