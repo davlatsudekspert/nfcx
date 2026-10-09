@@ -61,7 +61,7 @@ jobs:
       run:
         working-directory: labguide
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -86,8 +86,8 @@ jobs:
       run:
         working-directory: labguide
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -161,7 +161,7 @@ jobs:
         working-directory: labguide
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # App Store Connect Xcode 26 / iOS 26 SDK bilan qurilgan buildni
       # talab qiladi — eng yangi barqaror Xcode tanlanadi.
@@ -517,9 +517,36 @@ jobs:
           API_ISSUER_ID: ${{ secrets.LABGUIDE_APPSTORE_ISSUER_ID || secrets.NOVA_APPSTORE_ISSUER_ID || secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
-          xcrun altool --validate-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
-          xcrun altool --upload-app --type ios --file LabGuide-iOS.ipa --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"
-          echo "- Yuklash: **muvaffaqiyatli**" >> "$GITHUB_STEP_SUMMARY"
+          # 1-yo'l: altool (API kalit bilan). Yangi Xcode'da ishlamasa yoki
+          # o'chirilgan bo'lsa — 2-yo'l: Apple'ning rasmiy
+          # `xcodebuild -exportArchive` (destination: upload), o'sha arxiv va imzo.
+          if xcrun altool --validate-app --type ios --file LabGuide-iOS.ipa \
+                 --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID" \
+             && xcrun altool --upload-app --type ios --file LabGuide-iOS.ipa \
+                 --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER_ID"; then
+            echo "- Yuklash (altool): **muvaffaqiyatli**" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "::warning::altool bilan yuklab bo'lmadi — xcodebuild -exportArchive (upload) bilan urinilmoqda"
+          ARCHIVE=build/ios/archive/Runner.xcarchive
+          test -d "$ARCHIVE" || { echo "::error::$ARCHIVE topilmadi"; exit 1; }
+          python3 - <<'PY'
+          import os, plistlib
+          plistlib.dump({'method': 'app-store-connect', 'destination': 'upload',
+                         'teamID': os.environ['IOS_TEAM_ID'], 'signingStyle': 'manual',
+                         'signingCertificate': 'Apple Distribution',
+                         'provisioningProfiles': {os.environ['IOS_BUNDLE_ID']: os.environ['IOS_PROFILE_NAME']},
+                         'manageAppVersionAndBuildNumber': False, 'uploadSymbols': True},
+                        open(os.environ['SIGN_DIR'] + '/UploadOptions.plist', 'wb'))
+          PY
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE" \
+            -exportOptionsPlist "$SIGN_DIR/UploadOptions.plist" \
+            -exportPath "$RUNNER_TEMP/upload" \
+            -authenticationKeyPath "$ASC_KEY_FILE" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID"
+          echo "- Yuklash (xcodebuild upload): **muvaffaqiyatli**" >> "$GITHUB_STEP_SUMMARY"
 
       - name: TestFlight processing holati
         if: env.MODE == 'testflight'
