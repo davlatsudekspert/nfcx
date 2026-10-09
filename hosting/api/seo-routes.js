@@ -136,6 +136,15 @@ export const SEO_ROUTES = {
     ru: { title: 'NFC-наклейки — для магазина, машины и кафе', description: 'NFC-наклейка на дверь, витрину или стекло машины: приложил телефон — открылись цены, каталог, часы работы и Telegram. Продажи даже когда закрыто.' },
     en: { title: 'NFC stickers — for shops, cars and cafés', description: 'An NFC sticker on the door, window or car glass: tap a phone and prices, catalog, hours and Telegram open. Sell even when you are closed.' },
   },
+  // KO'RGAZMA (2026-10) — ilovadagi Ko'rgazma lentasining sayt ko'rinishi.
+  // Worker ulashish rasmini lentaning birinchi rasmidan oladi
+  // (hosting/worker.js, korgazmaShellResponse).
+  korgazma: {
+    path: '/korgazma',
+    uz: { title: 'Ko‘rgazma', description: 'Do‘konlar va odamlarning eng chiroyli ishlari — rasm, narx va havola bilan. NFCSTORE ilovasidagi Ko‘rgazma lentasi.' },
+    ru: { title: 'Витрина', description: 'Лучшие работы магазинов и людей — с фото, ценой и ссылкой. Лента «Витрина» из приложения NFCSTORE.' },
+    en: { title: 'Showcase', description: 'The best work from shops and people — with photos, prices and links. The Showcase feed from the NFCSTORE app.' },
+  },
   shartlar: {
     path: '/shartlar',
     uz: { title: 'Foydalanish shartlari', description: 'NFCSTORE.UZ ommaviy oferta va foydalanish shartlari.' },
@@ -244,7 +253,7 @@ export const SPA_PAGES = new Set([
   'savollar', 'aloqa', 'shartlar', 'maxfiylik', 'privacy', 'delete-account',
   'support', 'contact', 'help', 'yordam', 'terms', 'eula', 'auksion', 'auksion-qoidalari',
   'gifts', 'qollanma', 'admin', 'xabarlar', 'tolovlar', 'karta-dizayni', 'ilova-yuklash',
-  'stikerlar', 'nfc-stiker', 'activate', 'biznes-namuna', 'kotarish',
+  'stikerlar', 'nfc-stiker', 'activate', 'biznes-namuna', 'kotarish', 'korgazma',
   'reyting', 'kompaniyalar', 'bildirishnomalar', 'sozlamalar', 'business', 'company', 'workspace', 'c',
 ]);
 

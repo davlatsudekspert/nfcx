@@ -102,6 +102,8 @@ const TapRedirectPage = lazyPage(() => import('./pages/TapRedirectPage.jsx'));
 const CompanyPublicPage = lazyPage(() => import('./pages/CompanyPublicPage.jsx'));
 const BusinessEntryPage = lazyPage(() => import('./pages/BusinessEntryPage.jsx'));
 const PromotePage = lazyPage(() => import('./pages/PromotePage.jsx'));
+// KO'RGAZMA — ilovadagi Ko'rgazma lentasi saytda (nfcstore.uz/korgazma).
+const KorgazmaPage = lazyPage(() => import('./pages/KorgazmaPage.jsx'));
 const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage.jsx'));
 
 const STATIC_ROUTES = {
@@ -156,6 +158,9 @@ const STATIC_ROUTES = {
   // POSTNI KO'TARISH (Tavsiya etilgan) — iPhone va sayt foydalanuvchilari
   // uchun to'lov sahifasi. iOS ilovada tugma yo'q (App Store qoidasi).
   kotarish: PromotePage,
+  // KO'RGAZMA (2026-10) — ilovadagi Ko'rgazma tabining ochiq sahifasi:
+  // rasm, sarlavha, narx va havola bilan ishlar (GET /api/showcase).
+  korgazma: KorgazmaPage,
 };
 // STATIC_ROUTES'dan tashqari, if-zanjirida ishlov beriladigan sahifalar ham
 // "band" hisoblanadi — aks holda /reyting kabi manzillar profil kodi deb
@@ -407,6 +412,7 @@ export default function App() {
     else if (cleanRoute === 'stikerlar') page = <StickersPage />;
     else if (cleanRoute === 'nfc-stiker') page = <NfcStickerHelpPage />;
     else if (cleanRoute === 'kotarish') page = <PromotePage />;
+    else if (cleanRoute === 'korgazma') page = <KorgazmaPage />;
     // MARKETPLACE MAHSULOTINI FAOLLASHTIRISH.
     //
     // `bare`: saytning sarlavhasi va menyusi KO'RSATILMAYDI. Bu
