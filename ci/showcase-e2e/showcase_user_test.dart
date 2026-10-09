@@ -951,13 +951,18 @@ class _Run {
         r.check(m['still'] == true || m['disposed'] == true || m['player'] == null,
             'YouTube ochiq turganda ko\'rgazma musiqasi o\'ynayapti');
       }
-      // Nazorat videosi ham xato bergan bo'lsa — bu muhit (YouTube shu
-      // qurilma/IP'da embed'ni o'ynatmaydi), ilova xatosi emas: ENV.
-      final controlErr = controlStates.any((x) => x.startsWith('error'));
-      if (r.status == 'FAIL' && fallback && controlErr) {
+      // Nazorat videosi (YouTube'ning o'z videosi) ham o'ynamagan bo'lsa —
+      // bu muhit: YouTube CI IP'ga "Sign in to confirm you're not a bot"
+      // (iOS) / error:150 (Android) beradi. Faqat YouTube ijrosiga oid
+      // muammolar bo'lsa qadam ENV deb belgilanadi; boshqa muammo
+      // (sahifa, musiqa) bo'lsa FAIL qoladi.
+      final controlPlayed = controlStates.contains('playing');
+      final onlyYt = r.problems.every((x) =>
+          x.startsWith('YouTube pleeri') || x.startsWith('YouTube vaqti'));
+      if (r.status == 'FAIL' && !controlPlayed && onlyYt) {
         r.status = 'ENV';
-        r.problems.add('YouTube nazorat videosi ham xato berdi '
-            '(${controlStates.join(',')}) — CI muhiti cheklovi');
+        r.problems.add('nazorat videosi ham o\'ynamadi '
+            '(${controlStates.join(',')}) — CI muhiti cheklovi (YouTube bot-tekshiruvi)');
       }
       r.values['ytShot'] = await screenshot('08_youtube_fullscreen');
       // TASHXIS (faqat pleer o'ynamagan va zaxira panel chiqmagan holda):
