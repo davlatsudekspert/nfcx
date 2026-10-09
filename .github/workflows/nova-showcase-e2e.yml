@@ -52,7 +52,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.android == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile_nova
@@ -173,7 +173,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.ios == 'true'
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 80
     defaults:
       run:
         working-directory: mobile_nova
