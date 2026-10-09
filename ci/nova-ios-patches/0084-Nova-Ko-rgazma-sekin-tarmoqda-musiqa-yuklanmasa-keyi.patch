@@ -1,0 +1,114 @@
+From 268a815680063ef9e42956a019c5b036f1e1d529 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 13:48:55 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20sekin=20tarmoqd?=
+ =?UTF-8?q?a=20musiqa=20yuklanmasa,=20keyingi=20urinishda=20qayta=20yuklan?=
+ =?UTF-8?q?adi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+E2E #9 (Android, Read timed out): yiqilgan pleer qolib, sahifa qayta
+qurilguncha jim edi. Endi yiqilgan pleer yo'q qilinadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../features/showcase/showcase_screen.dart    | 10 ++++++++-
+ .../test/showcase_music_autoplay_test.dart    | 22 +++++++++++++++++++
+ .../test/support/fake_video_platform.dart     | 12 ++++++++++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 9884e1e..206a054 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -753,7 +753,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         _musicReady = true;
+       } catch (_) {
+         if (identical(_musicLoading, loading)) _musicLoading = null;
+-        // Musiqa ochilmadi — sahifa jim davom etadi.
++        // Musiqa ochilmadi (sekin tarmoq: "Read timed out") — sahifa hozircha
++        // jim. Yiqilgan pleer QOLDIRILMAYDI: aks holda keyingi har urinish
++        // (🔇 yoqish, toza rejim, YouTube'dan qaytish) shu o'lik pleerga
++        // urilib, sahifa sahifa qayta qurilguncha jim qolardi (E2E #9).
++        if (_music == c) {
++          _music = null;
++          _musicReady = false;
++          c.dispose();
++        }
+         return;
+       }
+     }
+diff --git a/mobile_nova/test/showcase_music_autoplay_test.dart b/mobile_nova/test/showcase_music_autoplay_test.dart
+index 80839fd..5680052 100644
+--- a/mobile_nova/test/showcase_music_autoplay_test.dart
++++ b/mobile_nova/test/showcase_music_autoplay_test.dart
+@@ -203,6 +203,28 @@ void main() {
+     await tester.pump(const Duration(minutes: 1));
+   });
+ 
++  testWidgets(
++      'Sekin tarmoq: musiqa birinchi marta yuklanmasa, keyingi urinishda '
++      'qayta yuklanadi va o‘ynaydi (o‘lik pleer qolmaydi)', (tester) async {
++    final r = await _app(tester);
++    r.v.failOnce.add('music_60.mp3');
++    r.c.read(routerProvider).go(Routes.showcase);
++    await _frames(tester, 40);
++    expect(_playing(r.v), isEmpty, reason: 'birinchi yuklash yiqildi');
++
++    // Har qanday keyingi urinish (bu yerda 🔇 → 🔊) yangi pleer ochadi.
++    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++    await _frames(tester, 10);
++    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++    await _frames(tester, 40);
++    expect(_playing(r.v), {'music_60.mp3'});
++    expect(r.v.urls.values.where((u) => u.endsWith('music_60.mp3')).length,
++        greaterThanOrEqualTo(2),
++        reason: 'yiqilgan pleer o‘rniga yangisi yaratildi');
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(minutes: 1));
++  });
++
+   testWidgets(
+       'Asosiy karta ko‘rindi -> bosildi -> BOY777: video ovozsiz va '
+       'fokussiz, musiqa o‘ynaydi; surilsa keyingi musiqa', (tester) async {
+diff --git a/mobile_nova/test/support/fake_video_platform.dart b/mobile_nova/test/support/fake_video_platform.dart
+index 0ffee13..fca3edb 100644
+--- a/mobile_nova/test/support/fake_video_platform.dart
++++ b/mobile_nova/test/support/fake_video_platform.dart
+@@ -1,5 +1,6 @@
+ import 'dart:async';
+ 
++import 'package:flutter/services.dart';
+ import 'package:flutter/widgets.dart';
+ import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+ 
+@@ -24,6 +25,9 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+   final disposed = <int>[];
+   final playing = <int>{};
+   final urls = <int, String>{};
++
++  /// Shu bo'lakni o'z ichiga olgan URL BIR MARTA yuklanmaydi (xato beradi).
++  final failOnce = <String>{};
+   final positions = <int, Duration>{};
+   final _events = <int, StreamController<VideoEvent>>{};
+ 
+@@ -48,6 +52,14 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+     _events[id] = c;
+     Future<void>.delayed(initDelay, () {
+       if (c.isClosed) return;
++      // Bir martalik yuklash xatosi (sekin tarmoq) — URL bo'lagi bo'yicha.
++      final fail = failOnce.where((f) => (uri ?? '').contains(f)).toList();
++      if (fail.isNotEmpty) {
++        failOnce.remove(fail.first);
++        c.addError(PlatformException(
++            code: 'VideoError', message: 'Source error: Read timed out'));
++        return;
++      }
+       c.add(VideoEvent(
+         eventType: VideoEventType.initialized,
+         duration: const Duration(seconds: 15),
+-- 
+2.43.0
+
