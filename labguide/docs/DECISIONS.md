@@ -355,3 +355,20 @@ tab va sahifa steki tiklanadi: `MaterialApp.router`, `GoRouter`, `StatefulShellR
 bir tab uchun `restorationScopeId`. Maydonlardagi kiritilgan matn tiklanmaydi (QC seriyasi va
 qoralamalar baribir saqlanadi). Ishga tushish ekrani tizim mavzusiga ergashadi — ilova ichida
 qorong‘i, tizimda yorug‘ bo‘lsa, birinchi kadr yorug‘ fonda chiqadi (platforma cheklovi).
+
+## D-33. Yakuniy mustaqil review tuzatishlari (2026-10-09)
+- **Klaviatura:** past ekranda klaviatura ochilsa, katta sarlavha ro‘yxatga ko‘chib, ro‘yxat
+  indekslari siljirdi — QC da 2-daraja qiymati 1-darajaga yozilib, soxta 1-3s rad chiqishi
+  mumkin edi. Endi ro‘yxatning birinchi o‘rni doim band (`SizedBox.shrink`), joylashuv qarori
+  esa klaviatura ochiq paytda o‘zgarmaydi. Shell ichida `MediaQuery.viewInsets` olib
+  tashlangani uchun klaviatura `View.of(context).viewInsets` dan aniqlanadi.
+- **O‘nlik vergul:** maydonlar ilova tilining o‘nlik belgisi bilan o‘qiladi
+  (`parseFieldNumber`). UZ/RU da “1,500” = 1,5 (QC “Kuzatilgan x̄/SD” 5,125 yozadi va endi
+  saqlanadi); EN da “1,500” avvalgidek ikki ma’noli — rad etiladi, taxmin qilinmaydi.
+- **Boshqa tabga havola:** tab allaqachon bo‘lim ichida bo‘lsa `goBranch` — push qilingan
+  sahifalar va saqlanmagan kiritish yo‘qolmaydi (`go` stekni URL’dan qayta qurardi).
+- **Zaxira va paket:** QC zaxirasidagi `entered` (xulosa va qoidalar) hamda paketdagi barcha satr
+  ro‘yxatlari qabul paytida tekshiriladi — buzuq qiymat keyin ekranda yiqitmaydi, noma’lum
+  xulosa “qabul” bo‘lib ko‘rinmaydi.
+- **Guruh savollari:** mavzusi guruh id si bo‘lgan savol shu guruh bo‘limida chiqadi; har savol
+  mavzu tanlovidan topilishi testlanadi.

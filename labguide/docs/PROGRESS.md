@@ -72,14 +72,14 @@ kelmagan**.
   hisoblangan mmol/L; kirillcha qidiruv; savol manbasi; to‘g‘ri javob uzunligi bo‘yicha
   bilinmaydi (61/71 → 21/71).
 
-## Haqiqiy tekshiruv natijalari (2026-10-08, shu konteynerda va GitHub Actions’da)
+## Haqiqiy tekshiruv natijalari (2026-10-09, shu konteynerda va GitHub Actions’da)
 
 | Tekshiruv | Natija |
 |---|---|
 | `flutter analyze` | No issues found |
-| `flutter test` | **260 / 260 o‘tdi** (unit 165: auth/settings 14, kontent 54, core logic 26, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 35, QC model 14, Westgard qoidalari 18; widget 94: oqimlar, kalkulyatorlar 13, QC 4, grafik 2, TalkBack amallari, sarlavha, tab xotirasi, qoralamalar, holatni tiklash, layout matritsa 34) |
+| `flutter test` | **270 / 270 o‘tdi** (unit 168: auth/settings 14, kontent 56, core logic 27, mashq progressi 2, preanalitika 2, klinik kalkulyatorlar 35, QC model 14, Westgard qoidalari 18; widget 102: oqimlar 35, kalkulyatorlar 13, QC 6, klaviatura 3, tab xotirasi 4, grafik 2, qoralamalar 2, TalkBack amallari, sarlavha, holatni tiklash, layout matritsa 34) |
 | Layout matritsa | 30 konfiguratsiya × 48 yo‘l + past ekran (844×390 ×1.0/×2.0, 320×568 ×2.0) uchala tilda — layout xatosi yo‘q, ro‘yxat maydoni ekranning ≥ 30 % i |
-| Yangi testlar | Har bir tuzatilgan xato uchun test tuzatishsiz **yiqilishi** tekshirildi (TalkBack, past ekran, sarlavha, tab xotirasi) |
+| Yangi testlar | Har bir tuzatilgan xato uchun test tuzatishsiz **yiqilishi** tekshirildi (TalkBack, past ekran, sarlavha, tab xotirasi, klaviatura, vergulli son, QC zaxira, paket ro‘yxatlari, guruh savollari) |
 | Kontrast | Matn ≥ 4.5:1, boshqaruv chegaralari ≥ 3:1 (light va dark) |
 | GitHub Actions run #2, #5 (build) | ✓ testlar, Android release APK (sinov), **imzosiz iOS release build (macOS, Xcode)** |
 | GitHub Actions run #3 (testflight) | Sertifikat va API kalit (NOVA_*) o‘qildi, bundle ID/profil bosqichi o‘tdi; **App Store Connect’da ilova yozuvi yo‘qligi sababli to‘xtadi** |
