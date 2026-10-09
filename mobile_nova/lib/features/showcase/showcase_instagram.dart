@@ -9,6 +9,7 @@ import '../../core/utils/external_link.dart';
 import '../../design/theme/typography.dart';
 import '../../design/tokens/shapes.dart';
 import '../../l10n/gen/app_localizations.dart';
+import 'showcase_fullscreen.dart';
 import 'showcase_video.dart' show webLoadCancelled;
 
 /// KO'RGAZMA — INSTAGRAM POSTI ilova ichida (egasi tasdiqlagan).
@@ -21,8 +22,10 @@ import 'showcase_video.dart' show webLoadCancelled;
 ///   `setMediaPlaybackRequiresUserGesture(false)`, YouTube varag'i bilan
 ///   bir xil; build 330). Reel embed'ning o'zi play bosishni so'rashi
 ///   mumkin — bosilganda darhol o'ynaydi;
+/// * BUTUN EKRANDA (TestFlight 331, YouTube bilan bir xil —
+///   `showcase_fullscreen.dart`): embed qolgan joyni to'ldiradi;
 /// * embed ustida hech narsa yo'q: yopish — tepada, "Instagram'da
-///   ochish" — pastda;
+///   ochish" — pastda; pastga surish yoki "orqaga" ham yopadi;
 /// * embed ichidagi havolalar ("View on Instagram", profil...) WebView
 ///   ichida OCHILMAYDI — tashqarida (`openLink`), ilovada Instagram
 ///   sayti "ichkariga" kirib ketmaydi;
@@ -39,25 +42,21 @@ const kShowcaseInstagramTimeout = Duration(seconds: 20);
 Widget Function(Uri embed, ValueChanged<String> onState)?
     showcaseInstagramEmbedOverride;
 
+/// Embed'ni BUTUN EKRANDA ochadi (YouTube bilan bir xil, TestFlight 331).
 Future<void> showShowcaseInstagram(
   BuildContext context, {
   required String url,
   required Uri embed,
   String title = '',
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: Colors.black,
-    builder: (_) =>
-        ShowcaseInstagramSheet(url: url, embed: embed, title: title),
+  return pushShowcaseFullscreen(
+    context,
+    (_) => ShowcaseInstagramPage(url: url, embed: embed, title: title),
   );
 }
 
-class ShowcaseInstagramSheet extends StatefulWidget {
-  const ShowcaseInstagramSheet({
+class ShowcaseInstagramPage extends StatefulWidget {
+  const ShowcaseInstagramPage({
     super.key,
     required this.url,
     required this.embed,
@@ -69,10 +68,10 @@ class ShowcaseInstagramSheet extends StatefulWidget {
   final String title;
 
   @override
-  State<ShowcaseInstagramSheet> createState() => _ShowcaseInstagramSheetState();
+  State<ShowcaseInstagramPage> createState() => _ShowcaseInstagramPageState();
 }
 
-class _ShowcaseInstagramSheetState extends State<ShowcaseInstagramSheet>
+class _ShowcaseInstagramPageState extends State<ShowcaseInstagramPage>
     with WidgetsBindingObserver {
   final _ctl = _EmbedHandle();
   bool _foreground = true;
@@ -141,80 +140,43 @@ class _ShowcaseInstagramSheetState extends State<ShowcaseInstagramSheet>
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final h = (MediaQuery.sizeOf(context).height * .68).clamp(320.0, 720.0);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.camera_alt_outlined,
-                    color: Colors.white, size: 22),
-                const SizedBox(width: Gap.sm),
-                Expanded(
-                  child: Text(
-                    widget.title.isEmpty ? 'Instagram' : widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: AppType.sans,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+    return ShowcaseFullscreen(
+      key: const ValueKey('showcase-ig-page'),
+      icon: Icons.camera_alt_outlined,
+      title: widget.title.isEmpty ? 'Instagram' : widget.title,
+      closeKey: const ValueKey('showcase-ig-close'),
+      // Embed — o'zi aylanadigan sahifa: qolgan butun joyni egallaydi.
+      body: (context, area) => SizedBox(
+        key: const ValueKey('showcase-ig-area'),
+        width: area.width,
+        height: area.height,
+        child: _error != null
+            ? _Fallback(
+                url: widget.url,
+                message: l.showcaseInstagramUnavailable,
+              )
+            : !_foreground
+                ? const ColoredBox(color: Colors.white)
+                : KeyedSubtree(
+                    key: ValueKey('ig-$_gen'),
+                    child: showcaseInstagramEmbedOverride?.call(
+                            widget.embed, _onState) ??
+                        _InstagramEmbed(
+                          embed: widget.embed,
+                          handle: _ctl,
+                          onState: _onState,
+                        ),
                   ),
-                ),
-                IconButton(
-                  key: const ValueKey('showcase-ig-close'),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  tooltip:
-                      MaterialLocalizations.of(context).closeButtonTooltip,
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
-                ),
-              ],
-            ),
-            const SizedBox(height: Gap.sm),
-            SizedBox(
-              key: const ValueKey('showcase-ig-area'),
-              width: double.infinity,
-              height: h,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: _error != null
-                    ? _Fallback(
-                        url: widget.url,
-                        message: l.showcaseInstagramUnavailable,
-                      )
-                    : !_foreground
-                        ? const ColoredBox(color: Colors.white)
-                        : KeyedSubtree(
-                            key: ValueKey('ig-$_gen'),
-                            child: showcaseInstagramEmbedOverride?.call(
-                                    widget.embed, _onState) ??
-                                _InstagramEmbed(
-                                  embed: widget.embed,
-                                  handle: _ctl,
-                                  onState: _onState,
-                                ),
-                          ),
-              ),
-            ),
-            if (_error == null) ...[
-              const SizedBox(height: Gap.xs),
-              TextButton.icon(
-                key: const ValueKey('showcase-ig-external'),
-                onPressed: () => openLink(widget.url),
-                style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                label: Text(l.showcaseOpenInstagram),
-              ),
-            ],
-          ],
-        ),
       ),
+      footer: _error != null
+          ? null
+          : TextButton.icon(
+              key: const ValueKey('showcase-ig-external'),
+              onPressed: () => openLink(widget.url),
+              style: TextButton.styleFrom(foregroundColor: Colors.white70),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: Text(l.showcaseOpenInstagram),
+            ),
     );
   }
 }

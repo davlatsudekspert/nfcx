@@ -853,7 +853,7 @@ void main() {
       }
     });
 
-    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (varaq
+    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (sahifa
     // shu bosishdan ochiladi) — shunda video o'zi boshlanadi (build 330:
     // "ochilyapti, o'ynab ketmayapti"). `music_embed.dart` bilan bir xil.
     test('pleer: "Videoni ko‘rish" dan keyin o‘zi boshlanadi, ilova '
@@ -871,16 +871,31 @@ void main() {
       expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
       expect(html, contains('"dQw4w9WgXcQ"'));
       for (final shorts in [false, true]) {
-        for (final w in [180.0, 288.0, 358.0, 700.0]) {
-          final s = ShowcaseVideoSheet.playerSize(
-              maxWidth: w, screenHeight: 560, shorts: shorts);
-          expect(s.width, greaterThanOrEqualTo(200), reason: '$w $shorts');
-          expect(s.height, greaterThanOrEqualTo(200), reason: '$w $shorts');
+        for (final a in const [
+          Size(180, 150),
+          Size(288, 560),
+          Size(390, 680),
+          Size(700, 300),
+        ]) {
+          final s = ShowcaseVideoPage.playerSize(a, shorts: shorts);
+          expect(s.width, greaterThanOrEqualTo(200), reason: '$a $shorts');
+          expect(s.height, greaterThanOrEqualTo(200), reason: '$a $shorts');
         }
       }
-      final shorts = ShowcaseVideoSheet.playerSize(
-          maxWidth: 358, screenHeight: 844, shorts: true);
-      expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
+      // BUTUN EKRAN (TestFlight 331): Shorts 9:16 — bo'yini to'ldiradi,
+      // oddiy 16:9 — enini; ikkalasi ham joydan chiqmaydi.
+      const area = Size(390, 680);
+      final shorts = ShowcaseVideoPage.playerSize(area, shorts: true);
+      expect(shorts.height, area.height);
+      expect(shorts.width, closeTo(area.height * 9 / 16, .01));
+      final wide = ShowcaseVideoPage.playerSize(area, shorts: false);
+      expect(wide.width, area.width);
+      expect(wide.height, closeTo(area.width * 9 / 16, .01));
+      // Tor va baland joyda Shorts eni bo'yicha cheklanadi.
+      final narrow =
+          ShowcaseVideoPage.playerSize(const Size(300, 900), shorts: true);
+      expect(narrow.width, 300);
+      expect(narrow.height, closeTo(300 * 16 / 9, .01));
     });
 
     test('WebView o‘tishlari: pleer freymlari ichida, tashqi havola — '
@@ -994,8 +1009,8 @@ void main() {
     });
 
     testWidgets(
-        'varaq ochilsa musiqa pauza, pleer ustida hech narsa yo‘q, '
-        'yopilsa davom etadi', (tester) async {
+        'butun ekranli sahifa ochilsa musiqa pauza, pleer ustida hech '
+        'narsa yo‘q, yopilsa davom etadi', (tester) async {
       final v = FakeVideoPlatform();
       VideoPlayerPlatform.instance = v;
       final yt = fakePlayer();
@@ -1011,14 +1026,20 @@ void main() {
       expect(yt.ids, ['dQw4w9WgXcQ']);
       final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
       expect(player, findsOneWidget);
-      expect(v.playing, isEmpty, reason: 'YouTube varag‘i ochiq — musiqa jim');
+      expect(v.playing, isEmpty, reason: 'YouTube sahifasi ochiq — musiqa jim');
       expect(v.disposed, isEmpty);
 
+      // BUTUN EKRAN: qora sahifa butun ekranni egallaydi, oddiy (16:9)
+      // video enini to'ldiradi va markazda.
+      expect(tester.getRect(find.byKey(const ValueKey('showcase-video-page'))),
+          const Rect.fromLTWH(0, 0, 390, 844));
+      expect(find.byType(BottomSheet), findsNothing, reason: 'varaq emas');
       // Pleer ≥ 200×200 va "YouTube'da ochish" PASTDA, ustida emas.
       final area = tester.getRect(
           find.byKey(const ValueKey('showcase-video-player-area')));
-      expect(area.width, greaterThanOrEqualTo(200));
-      expect(area.height, greaterThanOrEqualTo(200));
+      expect(area.width, 390);
+      expect(area.height, closeTo(390 * 9 / 16, .01));
+      expect(area.center.dx, 195);
       final ext = tester
           .getRect(find.byKey(const ValueKey('showcase-video-external')));
       expect(ext.top, greaterThanOrEqualTo(area.bottom));
@@ -1041,7 +1062,7 @@ void main() {
       expect(v.created, hasLength(1));
     });
 
-    testWidgets('🔇 bo‘lsa varaq yopilgach ham musiqa jim', (tester) async {
+    testWidgets('🔇 bo‘lsa sahifa yopilgach ham musiqa jim', (tester) async {
       final v = FakeVideoPlatform();
       VideoPlayerPlatform.instance = v;
       fakePlayer();
@@ -1058,6 +1079,63 @@ void main() {
       await settle(tester, frames: 10);
       await drain(tester);
       expect(v.playing, isEmpty);
+    });
+
+    testWidgets(
+        'Shorts — bo‘yini to‘ldiradi; pastga surilsa yoki "orqaga" — '
+        'yopiladi, musiqa davom etadi', (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final yt = fakePlayer();
+      await _pump(tester, pages: [
+        ReelsPage(items: [
+          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track),
+        ]),
+      ]);
+      await drain(tester);
+      expect(v.playing, hasLength(1));
+
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(yt.ids, ['dQw4w9WgXcQ']);
+      expect(v.playing, isEmpty);
+      final page =
+          tester.getRect(find.byKey(const ValueKey('showcase-video-page')));
+      final area = tester.getRect(
+          find.byKey(const ValueKey('showcase-video-player-area')));
+      final close =
+          tester.getRect(find.byKey(const ValueKey('showcase-video-close')));
+      final ext = tester
+          .getRect(find.byKey(const ValueKey('showcase-video-external')));
+      // Vertikal: tepa panel va pastki havola orasidagi butun bo'y.
+      expect(area.height, greaterThan(area.width));
+      expect(area.width, closeTo(area.height * 9 / 16, .01));
+      expect(area.top, greaterThanOrEqualTo(close.bottom));
+      expect(ext.top, greaterThanOrEqualTo(area.bottom));
+      expect(area.height, greaterThan(page.height * .7));
+      expect(area.center.dx, 195);
+
+      // Pastga surish (tepa panelda) — yopiladi.
+      await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 300));
+      await settle(tester, frames: 12);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('showcase-video-page')), findsNothing);
+      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+
+      // Kichik surish — yopilmaydi, joyiga qaytadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await settle(tester, frames: 10);
+      await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 40));
+      await settle(tester, frames: 6);
+      expect(find.byKey(const ValueKey('showcase-video-page')), findsOneWidget);
+
+      // "Orqaga" — yopiladi.
+      await tester.binding.handlePopRoute();
+      await settle(tester, frames: 12);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('showcase-video-page')), findsNothing);
+      expect(v.playing, hasLength(1));
     });
 
     testWidgets('101/150 — pleer o‘rnida "YouTube’da ochish"',
@@ -1412,7 +1490,7 @@ void main() {
       expect(find.text(l.showcaseOpenInstagram), findsNothing);
     });
 
-    testWidgets('varaq: musiqa pauza, embed ostida tashqi havola, '
+    testWidgets('butun ekran: musiqa pauza, embed ostida tashqi havola, '
         'yopilsa davom etadi', (tester) async {
       final v = FakeVideoPlatform();
       VideoPlayerPlatform.instance = v;
@@ -1435,14 +1513,24 @@ void main() {
       expect(ig.embeds.single.toString(),
           'https://www.instagram.com/reel/$code/embed/');
       expect(find.byKey(const ValueKey('fake-ig')), findsOneWidget);
-      expect(v.playing, isEmpty, reason: 'Instagram varag‘i ochiq');
+      expect(v.playing, isEmpty, reason: 'Instagram sahifasi ochiq');
       ig.state()('ready');
       await settle(tester, frames: 2);
 
+      // BUTUN EKRAN: embed enini to'liq va tepa panel bilan pastki havola
+      // orasidagi butun bo'yni egallaydi.
+      expect(tester.getRect(find.byKey(const ValueKey('showcase-ig-page'))),
+          const Rect.fromLTWH(0, 0, 390, 844));
+      expect(find.byType(BottomSheet), findsNothing);
       final area = tester.getRect(find.byKey(const ValueKey('showcase-ig-area')));
       final ext =
           tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
+      final close =
+          tester.getRect(find.byKey(const ValueKey('showcase-ig-close')));
+      expect(area.width, 390);
+      expect(area.top, greaterThanOrEqualTo(close.bottom));
       expect(ext.top, greaterThanOrEqualTo(area.bottom));
+      expect(area.height, greaterThan(600));
       await tester.tap(find.byKey(const ValueKey('showcase-ig-external')));
       await settle(tester, frames: 3);
       expect(opened.single.toString(), reelUrl);
@@ -1452,6 +1540,20 @@ void main() {
       await drain(tester);
       expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+
+      // Pastga surish (pastki havola qatorida) ham yopadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(v.playing, isEmpty);
+      final footer =
+          tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
+      await tester.dragFrom(
+          Offset(20, footer.center.dy), const Offset(0, 200));
+      await settle(tester, frames: 12);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('showcase-ig-page')), findsNothing);
+      expect(v.playing, hasLength(1));
     });
 
     testWidgets('yuklanmasa — embed o‘rnida "Instagram’da ochish"',

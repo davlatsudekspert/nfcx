@@ -13,6 +13,7 @@ import '../../design/tokens/shapes.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../profile/music_player.dart' show AudioOwner, audioOwnerProvider;
 import 'showcase_common.dart';
+import 'showcase_fullscreen.dart';
 
 /// KO'RGAZMA VIDEOSI — YouTube'ning RASMIY pleeri ilova ichida.
 ///
@@ -25,16 +26,21 @@ import 'showcase_common.dart';
 ///   asos: `autoplay:1`, zaxira sifatida `onReady` da `playVideo()`,
 ///   iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
 ///   `setMediaPlaybackRequiresUserGesture(false)`. Ovoz o'chirilmaydi.
-///   Varaqni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
+///   Uni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
 ///   o'zi o'ynamaydi;
+/// * BUTUN EKRANDA ochiladi (egasi, TestFlight 331: "silkani bosganda
+///   avto to'liq ochilmayapti"): qora sahifa, pleer qolgan joyni
+///   to'ldiradi — Shorts (9:16) bo'yini, oddiy (16:9) enini, markazda
+///   (`showcase_fullscreen.dart`);
 /// * pleer ustida hech narsa yo'q (yopish tugmasi va "YouTube'da ochish"
 ///   havolasi pleerdan TASHQARIDA — tepada va pastda);
 /// * o'lcham kamida 200×200;
 /// * ilova kimligi: sahifa `https://nfcstore.uz/` bazasi bilan yuklanadi
 ///   (Referer), `origin` va `widget_referrer` — `music_embed.dart` bilan
 ///   bir xil yo'l;
-/// * fonda ijro YO'Q — varaq yopilsa yoki ilova fonga o'tsa pleer
-///   yo'q qilinadi (qaytilganda qaytadan quriladi).
+/// * fonda ijro YO'Q — sahifa yopilsa ("×", pastga surish, "orqaga")
+///   yoki ilova fonga o'tsa pleer yo'q qilinadi (qaytilganda qaytadan
+///   quriladi).
 ///
 /// Video joylashtirishni taqiqlagan bo'lsa (xato 101/150), yuklanmasa
 /// yoki pleer javob bermasa — pleer o'rnida "YouTube'da ochish".
@@ -86,26 +92,22 @@ const kShowcaseVideoReadyTimeout = Duration(seconds: 15);
 Widget Function(String videoId, ValueChanged<String> onState)?
     showcaseYoutubePlayerOverride;
 
-/// Varaqni ochadi. Yopilganda (har qanday yo'l bilan) tugaydi.
+/// Videoni BUTUN EKRANDA ochadi (egasi, TestFlight 331). Yopilganda
+/// ("×", pastga surish, "orqaga") tugaydi.
 Future<void> showShowcaseVideo(
   BuildContext context, {
   required String url,
   required String videoId,
   String title = '',
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: Colors.black,
-    builder: (_) =>
-        ShowcaseVideoSheet(url: url, videoId: videoId, title: title),
+  return pushShowcaseFullscreen(
+    context,
+    (_) => ShowcaseVideoPage(url: url, videoId: videoId, title: title),
   );
 }
 
-class ShowcaseVideoSheet extends ConsumerStatefulWidget {
-  const ShowcaseVideoSheet({
+class ShowcaseVideoPage extends ConsumerStatefulWidget {
+  const ShowcaseVideoPage({
     super.key,
     required this.url,
     required this.videoId,
@@ -116,29 +118,29 @@ class ShowcaseVideoSheet extends ConsumerStatefulWidget {
   final String videoId;
   final String title;
 
-  /// Pleer o'lchami: 16:9 (Shorts — 9:16), lekin hech qachon
-  /// 200×200 dan kichik emas va ekran balandligining ~60% idan oshmaydi.
+  /// Pleer o'lchami — mavjud joyni TO'LDIRADI: oddiy video 16:9 —
+  /// enini (markazda), Shorts 9:16 — bo'yini. Hech qachon 200×200 dan
+  /// kichik emas (YouTube talabi).
   @visibleForTesting
-  static Size playerSize({
-    required double maxWidth,
-    required double screenHeight,
-    required bool shorts,
-  }) {
+  static Size playerSize(Size area, {required bool shorts}) {
     const min = 200.0;
-    final w0 = maxWidth < min ? min : maxWidth;
-    final maxH = screenHeight * .6 < min ? min : screenHeight * .6;
-    if (shorts) {
-      final h = (w0 * 16 / 9).clamp(min, maxH);
-      return Size((h * 9 / 16).clamp(min, w0), h);
+    final w = area.width < min ? min : area.width;
+    final h = area.height < min ? min : area.height;
+    final ratio = shorts ? 9 / 16 : 16 / 9; // eni / bo'yi
+    var pw = w;
+    var ph = w / ratio;
+    if (ph > h) {
+      ph = h;
+      pw = h * ratio;
     }
-    return Size(w0, (w0 * 9 / 16).clamp(min, maxH));
+    return Size(pw < min ? min : pw, ph < min ? min : ph);
   }
 
   @override
-  ConsumerState<ShowcaseVideoSheet> createState() => _ShowcaseVideoSheetState();
+  ConsumerState<ShowcaseVideoPage> createState() => _ShowcaseVideoPageState();
 }
 
-class _ShowcaseVideoSheetState extends ConsumerState<ShowcaseVideoSheet>
+class _ShowcaseVideoPageState extends ConsumerState<ShowcaseVideoPage>
     with WidgetsBindingObserver {
   late final AudioOwner _owner;
   final _ctl = ShowcaseYoutubeController();
@@ -223,88 +225,46 @@ class _ShowcaseVideoSheetState extends ConsumerState<ShowcaseVideoSheet>
   @override
   Widget build(BuildContext context) {
     final l = L.of(context);
-    final mq = MediaQuery.of(context);
     final shorts = isYoutubeShorts(widget.url);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
-        child: LayoutBuilder(builder: (context, c) {
-          final size = ShowcaseVideoSheet.playerSize(
-            maxWidth: c.maxWidth,
-            screenHeight: mq.size.height,
-            shorts: shorts,
-          );
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Sarlavha va yopish — pleerning USTIDA EMAS, tepasida.
-              Row(
-                children: [
-                  const Icon(Icons.smart_display_rounded,
-                      color: Colors.white, size: 22),
-                  const SizedBox(width: Gap.sm),
-                  Expanded(
-                    child: Text(
-                      widget.title.isEmpty ? 'YouTube' : widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: AppType.sans,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+    return ShowcaseFullscreen(
+      key: const ValueKey('showcase-video-page'),
+      icon: Icons.smart_display_rounded,
+      title: widget.title.isEmpty ? 'YouTube' : widget.title,
+      closeKey: const ValueKey('showcase-video-close'),
+      body: (context, area) {
+        final size = ShowcaseVideoPage.playerSize(area, shorts: shorts);
+        // Pleer USTIDA hech narsa yo'q: sarlavha/"×" tepada, havola
+        // pastda — media maydonidan tashqarida.
+        return SizedBox(
+          key: const ValueKey('showcase-video-player-area'),
+          width: size.width,
+          height: size.height,
+          child: _error != null
+              ? _Fallback(url: widget.url, message: l.showcaseVideoUnavailable)
+              : !_foreground
+                  ? const ColoredBox(color: Colors.black)
+                  : KeyedSubtree(
+                      key: ValueKey('yt-$_gen'),
+                      child: showcaseYoutubePlayerOverride?.call(
+                              widget.videoId, _onState) ??
+                          ShowcaseYoutubePlayer(
+                            videoId: widget.videoId,
+                            controller: _ctl,
+                            onState: _onState,
+                          ),
                     ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('showcase-video-close'),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    tooltip: MaterialLocalizations.of(context)
-                        .closeButtonTooltip,
-                    icon: const Icon(Icons.close_rounded,
-                        color: Colors.white),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Gap.sm),
-              SizedBox(
-                key: const ValueKey('showcase-video-player-area'),
-                width: size.width,
-                height: size.height,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: _error != null
-                      ? _Fallback(url: widget.url, message: l.showcaseVideoUnavailable)
-                      : !_foreground
-                          ? const ColoredBox(color: Colors.black)
-                          : KeyedSubtree(
-                              key: ValueKey('yt-$_gen'),
-                              child: showcaseYoutubePlayerOverride?.call(
-                                      widget.videoId, _onState) ??
-                                  ShowcaseYoutubePlayer(
-                                    videoId: widget.videoId,
-                                    controller: _ctl,
-                                    onState: _onState,
-                                  ),
-                            ),
-                ),
-              ),
-              if (_error == null) ...[
-                const SizedBox(height: Gap.xs),
-                // Zaxira yo'l — pleerdan PASTDA, kichik havola.
-                TextButton.icon(
-                  key: const ValueKey('showcase-video-external'),
-                  onPressed: () => openLink(widget.url),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: Text(l.showcaseOpenYoutube),
-                ),
-              ],
-            ],
-          );
-        }),
-      ),
+        );
+      },
+      // Zaxira yo'l — pleerdan PASTDA, kichik havola.
+      footer: _error != null
+          ? null
+          : TextButton.icon(
+              key: const ValueKey('showcase-video-external'),
+              onPressed: () => openLink(widget.url),
+              style: TextButton.styleFrom(foregroundColor: Colors.white70),
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: Text(l.showcaseOpenYoutube),
+            ),
     );
   }
 }

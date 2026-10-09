@@ -68,9 +68,10 @@ import 'showcase_video.dart';
 /// egasi orqali, boshqa ilova ovozi bilan aralashmaydi.
 ///
 /// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
-/// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
-/// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
-/// rasmiy embed sahifasida; profil havolasi — tashqarida.
+/// RASMIY pleeri bilan BUTUN EKRANLI sahifada (`showcase_video.dart`,
+/// TestFlight 331), u ochiq turganda musiqa pauzada. Instagram
+/// post/reel — xuddi shunday, rasmiy embed sahifasida; profil havolasi —
+/// tashqarida.
 ///
 /// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti") —
 /// Reels'dagi bilan bir xil: rasm yoki video BIR MARTA bosilsa hamma
@@ -489,7 +490,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
   bool _viewerOpen = false;
 
-  /// YouTube yoki Instagram varag'i ochiq — musiqa va karusel pauzada
+  /// YouTube yoki Instagram sahifasi ochiq — musiqa va karusel pauzada
   /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
   bool _videoOpen = false;
 
@@ -809,7 +810,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     _sync();
   }
 
-  /// Ichki varaq (YouTube/Instagram) ochiq turganda musiqa pauzada.
+  /// Butun ekranli YouTube/Instagram sahifasi ochiq turganda musiqa
+  /// pauzada; yopilgach (🔇 bo'lmasa) davom etadi.
   Future<void> _withSheet(Future<void> Function() show) async {
     setState(() => _videoOpen = true);
     _sync();
