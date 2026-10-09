@@ -753,7 +753,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         _musicReady = true;
       } catch (_) {
         if (identical(_musicLoading, loading)) _musicLoading = null;
-        // Musiqa ochilmadi — sahifa jim davom etadi.
+        // Musiqa ochilmadi (sekin tarmoq: "Read timed out") — sahifa hozircha
+        // jim. Yiqilgan pleer QOLDIRILMAYDI: aks holda keyingi har urinish
+        // (🔇 yoqish, toza rejim, YouTube'dan qaytish) shu o'lik pleerga
+        // urilib, sahifa sahifa qayta qurilguncha jim qolardi (E2E #9).
+        if (_music == c) {
+          _music = null;
+          _musicReady = false;
+          c.dispose();
+        }
         return;
       }
     }

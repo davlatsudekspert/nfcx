@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -24,6 +25,9 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   final disposed = <int>[];
   final playing = <int>{};
   final urls = <int, String>{};
+
+  /// Shu bo'lakni o'z ichiga olgan URL BIR MARTA yuklanmaydi (xato beradi).
+  final failOnce = <String>{};
   final positions = <int, Duration>{};
   final _events = <int, StreamController<VideoEvent>>{};
 
@@ -48,6 +52,14 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
     _events[id] = c;
     Future<void>.delayed(initDelay, () {
       if (c.isClosed) return;
+      // Bir martalik yuklash xatosi (sekin tarmoq) — URL bo'lagi bo'yicha.
+      final fail = failOnce.where((f) => (uri ?? '').contains(f)).toList();
+      if (fail.isNotEmpty) {
+        failOnce.remove(fail.first);
+        c.addError(PlatformException(
+            code: 'VideoError', message: 'Source error: Read timed out'));
+        return;
+      }
       c.add(VideoEvent(
         eventType: VideoEventType.initialized,
         duration: const Duration(seconds: 15),

@@ -204,6 +204,28 @@ void main() {
   });
 
   testWidgets(
+      'Sekin tarmoq: musiqa birinchi marta yuklanmasa, keyingi urinishda '
+      'qayta yuklanadi va o‘ynaydi (o‘lik pleer qolmaydi)', (tester) async {
+    final r = await _app(tester);
+    r.v.failOnce.add('music_60.mp3');
+    r.c.read(routerProvider).go(Routes.showcase);
+    await _frames(tester, 40);
+    expect(_playing(r.v), isEmpty, reason: 'birinchi yuklash yiqildi');
+
+    // Har qanday keyingi urinish (bu yerda 🔇 → 🔊) yangi pleer ochadi.
+    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+    await _frames(tester, 10);
+    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+    await _frames(tester, 40);
+    expect(_playing(r.v), {'music_60.mp3'});
+    expect(r.v.urls.values.where((u) => u.endsWith('music_60.mp3')).length,
+        greaterThanOrEqualTo(2),
+        reason: 'yiqilgan pleer o‘rniga yangisi yaratildi');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(minutes: 1));
+  });
+
+  testWidgets(
       'Asosiy karta ko‘rindi -> bosildi -> BOY777: video ovozsiz va '
       'fokussiz, musiqa o‘ynaydi; surilsa keyingi musiqa', (tester) async {
     final r = await _app(tester);
