@@ -67,6 +67,7 @@ import { timedDb, newTiming, summarizeTiming, withTimingHeaders, handleSpeedDiag
 import { archiveStmt, ensureArchiveTable, urlArchived, enableArchiveCarousel } from './api/content-archive.js';
 import { moderateImage, moderateVideo, moderationEnabled, logBlockedUpload, queueUncheckedUpload } from './api/image-moderation.js';
 import * as guard from './api/content-guard.js';
+import * as textGuard from './api/text-guard.js';
 import { retryUncheckedMedia } from './api/moderation-retry.js';
 import { MODERATION_UNAVAILABLE } from './api/content-guard.js';
 
@@ -1599,7 +1600,7 @@ async function companyApi(request, env, url) {
       ? ((await apiProductTags.productsFor(env, [Number(row.id)])).get(Number(row.id)) || [])
       : [];
     const scheduledFor = scheduledForMs(row.publish_at);
-    const pending = await afterPublishD1(env, request, {
+    const pub = await afterPublishD1(env, request, {
       kind: 'company_post', id: Number(row.id), userId: owned.auth.user.id, body, ownerCode: id,
       urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
       texts: [row.caption, showcaseIn?.showcase?.title],
@@ -1610,7 +1611,7 @@ async function companyApi(request, env, url) {
         createdAt: row.publish_at || row.created_at, ...extras,
         mediaItems: mediaOut(row.media_json, row.image_url, row.video_url),
         mediaUrls: mediaOut(row.media_json, row.image_url, row.video_url).map((m) => m.url),
-        pending,
+        ...pendingFieldsD1(pub),
         products,
         ...(scheduledFor ? { scheduledFor } : null),
       },
@@ -1655,12 +1656,12 @@ async function companyApi(request, env, url) {
       caption: String(body?.caption || '').slice(0, 300),
     });
     if (res.error) return json(res, 409);
-    const pending = await afterPublishD1(env, request, {
+    const pub = await afterPublishD1(env, request, {
       kind: 'story', reportKind: 'company_story', id: res.story.id, userId: owned.auth.user.id, body, ownerCode: id,
       urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
       texts: [res.story.caption],
     });
-    return json(pending ? { ...res.story, pending: true } : res.story, 201);
+    return json(pub.pending ? { ...res.story, ...pendingFieldsD1(pub) } : res.story, 201);
   }
 
   if (action === 'stories' && itemId && request.method === 'DELETE') {
@@ -1804,6 +1805,8 @@ async function companyApi(request, env, url) {
       JSON.stringify(hours), ordersEnabled ? 1 : 0, customDomain, customDomainStatus,
       now, id
     ).run();
+    // MATN FILTRI — profil kabi: faqat admin navbati (yashirilmaydi).
+    await textGuard.guardText(env, { kind: 'company', id, texts: [value('displayName', 120), value('description', 1200)], ownerCode: id, hide: false });
     return json({ company: await companyWithItems(env, id) });
   }
 
@@ -6821,12 +6824,12 @@ async function recordsApi(request, env, url) {
       ).bind(code, user.id, okImg ? imageUrl : null, okVid ? videoUrl : null, caption || null,
         mediaIn.provided ? mediaIn.mediaJson : null, plan.ms ? postsTs(plan.ms) : null).first();
       const extras = await apiMusic.savePostExtras(env, 'post', Number(row.id), extrasIn.extras);
-      const pending = await afterPublishD1(env, request, {
+      const pub = await afterPublishD1(env, request, {
         kind: 'post', id: Number(row.id), userId: user.id, body, ownerCode: code,
         urls: guard.uploadUrlsOf({ imageUrl: row.image_url, videoUrl: row.video_url, mediaJson: row.media_json }),
         texts: [caption, showcaseIn?.showcase?.title],
       });
-      return json({ ...postRowToJson(row, 0, false), ...extras, pending }, 201);
+      return json({ ...postRowToJson(row, 0, false), ...extras, ...pendingFieldsD1(pub) }, 201);
     }
 
     // ── ISTORYA (shaxsiy profil) ──────────────────────────────────────
@@ -6871,12 +6874,12 @@ async function recordsApi(request, env, url) {
         caption: String(body?.caption || '').slice(0, 300),
       });
       if (res.error) return json(res, 409);
-      const pending = await afterPublishD1(env, request, {
+      const pub = await afterPublishD1(env, request, {
         kind: 'story', id: res.story.id, userId: user.id, body, ownerCode: code,
         urls: guard.uploadUrlsOf({ imageUrl: media.imageUrl, videoUrl: media.videoUrl }),
         texts: [res.story.caption],
       });
-      return json(pending ? { ...res.story, pending: true } : res.story, 201);
+      return json(pub.pending ? { ...res.story, ...pendingFieldsD1(pub) } : res.story, 201);
     }
     return null;
   }
@@ -6966,6 +6969,10 @@ async function recordsApi(request, env, url) {
       // before re-enabling paid tiers (tracked as follow-up work).
       const updated = await updateRecord(env, code, record);
       if (!updated) return json({ error: 'not_found' }, 404);
+      // MATN FILTRI (api/text-guard.js) — profilni yashirib bo'lmaydi,
+      // shuning uchun faqat admin navbati (`text_block`/`text_review`) va
+      // ogohlantirish. Xatosi yutiladi.
+      await textGuard.guardText(env, { kind: 'record', id: code, texts: [record.name, record.role, record.about], ownerCode: code, hide: false });
       return json(updated);
     }
 
@@ -11421,14 +11428,30 @@ const PUBLISH_PER_HOUR_D1 = 60;
 //   * matnda so'kinish bo'lsa — admin navbatiga `text_flag` (BLOKLAMAYDI).
 // `kind`: pending turi (post | company_post | story); `reportKind` —
 // shikoyat turi (story / company_story farqlanadi).
+//   * TAQIQLANGAN MATN (2026-10, api/text-guard.js) — ro'yxatdagi so'z
+//     bo'lsa kontent ham `content_pending` ga (`text:<kind>:<id>`), admin
+//     navbatiga `text_block`; shubhali so'z — faqat navbatga `text_review`.
+//     Post/kompaniya posti (Reels, ko'rgazma) uchun ixtiyoriy AI tekshiruvi
+//     (`textAiCheck` kaliti) — `text_ai`.
+// Natija: { pending, textPending } — javobga `pendingFieldsD1` bilan.
 async function afterPublishD1(env, request, { kind, reportKind = kind, id, userId, body, urls, texts = [], ownerCode = '' }) {
-  const pending = await guard.markPendingIfUnchecked(env, kind, id, urls);
+  const mediaPending = await guard.markPendingIfUnchecked(env, kind, id, urls);
   await guard.logConsent(env, request, userId, body);
   for (const text of texts) {
     if (await guard.flagText(env, { kind: reportKind, id, text, ownerCode })) break;
   }
-  return pending;
+  let tg = await textGuard.guardText(env, { kind, reportKind, id, texts, ownerCode });
+  if (!tg.pending && tg.tier !== 'severe' && (kind === 'post' || kind === 'company_post')) {
+    tg = await textGuard.aiGuardText(env, { kind, reportKind, id, texts, ownerCode });
+  }
+  return { pending: mediaPending || !!tg.pending, textPending: !!tg.pending };
 }
+
+// Chop etish javobidagi pending maydonlari. Eski ilova faqat `pending` ni
+// o'qiydi; `pendingReason: 'text'` — yangi ilova "Tekshiruvda" deb ko'rsatsin.
+const pendingFieldsD1 = (pub) => (pub?.pending
+  ? { pending: true, ...(pub.textPending ? { pendingReason: 'text' } : null) }
+  : { pending: false });
 
 // Ban — yuklash paytida ham shu tekshiruv (uploadApi).
 function banGateD1(user) {

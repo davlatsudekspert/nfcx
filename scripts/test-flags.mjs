@@ -13,6 +13,8 @@ const j = async (e, path, init) => {
   return { status: r.status, body: await r.json().catch(() => null), headers: r.headers };
 };
 const OFF = { reelsHidden: false, videoUploadsBlocked: false, videosHidden: false };
+// Ichki (faqat server) kalitlar — admin ko'radi, /api/app/config ga chiqmaydi.
+const ALL_OFF = { ...OFF, textAiCheck: false };
 
 // 1. Standart — hammasi o'chiq, showcase doim true, no-store.
 let r = await j(env, '/api/app/config');
@@ -28,7 +30,7 @@ check('2) env override on', [r.body?.flags?.reelsHidden, r.body?.flags?.videosHi
 check('3) anon admin flags -> 401', (await j(env, '/api/admin/flags')).status, 401);
 check('3) user cookie -> 401', (await j(env, '/api/admin/flags', { cookie: cookie.user })).status, 401);
 r = await j(env, '/api/admin/flags', { cookie: cookie.admin });
-check('3) admin GET', [r.status, r.body?.flags], [200, OFF]);
+check('3) admin GET', [r.status, r.body?.flags], [200, ALL_OFF]);
 r = await j(env, '/api/admin/flags', { method: 'PUT', cookie: cookie.admin, json: { videoUploadsBlocked: true } });
 check('3) admin PUT ok', [r.status, r.body?.flags?.videoUploadsBlocked], [200, true]);
 r = await j(env, '/api/app/config');
@@ -55,7 +57,7 @@ check('5) fresh read after cache reset', (await getFlags(env)).videoUploadsBlock
 // 6. Baza xatosi — hammasi o'chiq, xato tashlamaydi.
 __resetFlagsCache();
 const broken = { DB: { prepare() { throw new Error('db down'); } } };
-check('6) db error -> all off', await getFlags(broken), OFF);
+check('6) db error -> all off', await getFlags(broken), ALL_OFF);
 check('6) db error + env override', (await getFlags({ ...broken, FLAG_REELS_HIDDEN: '1' })).reelsHidden, true);
 
 // 7. Manager toggle qila oladi.

@@ -44,6 +44,13 @@
 //     OLGAN javoblari o'chadi.
 
 import { ensureSchema as ensureModerationSchema } from './moderation.js';
+import { pendingSql } from './content-guard.js';
+import { guardText } from './text-guard.js';
+
+// MATN FILTRI (2026-10, text-guard.js): taqiqlangan so'zli javob yoziladi,
+// lekin admin tasdiqlaguncha istoriya egasiga KO'RINMAYDI va sanalmaydi
+// (`content_pending`, kind='story_reply').
+const NOT_PENDING_REPLY = (col) => `NOT ${pendingSql('story_reply', col)}`;
 
 const KINDS = { story: 'card', company_story: 'company' };
 export const REPLY_MAX = 500;
@@ -160,7 +167,7 @@ function replyOut(r, H, nowIso) {
 /// so'rov bo'sh qaytadi va natija `null` (begonaga son chiqmaydi).
 export async function ownerReplyCounts(env, ownerKind, ownerId, viewerUserId, nowIso) {
   const rows = await env.DB.prepare(
-    `SELECT s.id AS story_id, (SELECT COUNT(*) FROM story_replies r WHERE r.story_id = s.id) AS n
+    `SELECT s.id AS story_id, (SELECT COUNT(*) FROM story_replies r WHERE r.story_id = s.id AND ${NOT_PENDING_REPLY('r.id')}) AS n
        FROM stories s
       WHERE s.owner_kind = ? AND s.owner_id = ? AND s.expires_at > ?
         AND ((s.owner_kind = 'card' AND EXISTS (SELECT 1 FROM cards c WHERE c.code = s.owner_id AND CAST(c.user_id AS TEXT) = ?))
@@ -192,7 +199,8 @@ export async function handle(request, env, url, H) {
   if (mine) {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
     const { limit, offset } = pageArgs(url);
-    const where = ['r.recipient_user_id = ?', 'NOT EXISTS (SELECT 1 FROM users du WHERE du.id = r.user_id AND du.deleted_at IS NOT NULL)'];
+    const where = ['r.recipient_user_id = ?', 'NOT EXISTS (SELECT 1 FROM users du WHERE du.id = r.user_id AND du.deleted_at IS NOT NULL)',
+      NOT_PENDING_REPLY('r.id')];
     const args = [user.id];
     const sk = url.searchParams.get('storyKind');
     const sid = Number(url.searchParams.get('storyId'));
@@ -243,7 +251,7 @@ export async function handle(request, env, url, H) {
         `SELECT (SELECT COUNT(*) FROM story_views WHERE story_id = ?) AS total,
                 (SELECT COUNT(*) FROM story_views WHERE story_id = ? AND viewer NOT LIKE 'u%') AS guests,
                 (SELECT COUNT(*) FROM story_likes WHERE story_id = ?) AS likes,
-                (SELECT COUNT(*) FROM story_replies WHERE story_id = ?) AS replies`
+                (SELECT COUNT(*) FROM story_replies sr WHERE sr.story_id = ? AND ${NOT_PENDING_REPLY('sr.id')}) AS replies`
       ).bind(storyId, storyId, storyId, storyId).first(),
     ]);
     const list = rows.results || [];
@@ -288,10 +296,14 @@ export async function handle(request, env, url, H) {
     `INSERT INTO story_replies (story_id, story_kind, owner_kind, owner_id, recipient_user_id, user_id, body, emoji, created_at)
      VALUES (?,?,?,?,?,?,?,?,?) RETURNING id`
   ).bind(storyId, storyKind, ownerKind, String(story.owner_id), Number(story.owner_uid), user.id, text, em.emoji, now).first();
+  const guarded = ins?.id && text
+    ? await guardText(env, { kind: 'story_reply', id: Number(ins.id), texts: [text] })
+    : { pending: false };
   return H.json({
     reply: {
       id: Number(ins?.id) || 0, storyKind, storyId, ownerKind, ownerId: String(story.owner_id),
       text, emoji: em.emoji, createdAt: ms(H, now) || Date.now(),
+      ...(guarded.pending ? { pending: true, pendingReason: 'text' } : null),
     },
   }, 201);
 }

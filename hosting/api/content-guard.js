@@ -18,6 +18,9 @@
 //   * TEXT_FLAG — juda aniq so'kinish/haqorat ro'yxati: BLOKLAMAYDI, faqat
 //     admin "Shikoyatlar" navbatiga `reporter_ip='system'`, reason='text_flag'.
 //   * Admin Telegram ogohlantirishlari (chastotasi cheklangan).
+//   * Taqiqlangan MATN (`text_block`/`text_ai`) — text-guard.js: o'sha
+//     `content_pending` ga `text:<kind>:<id>` qatori bilan yoziladi (cron
+//     faqat `/uploads/...` qatorlarini tozalaydi — matnga tegmaydi).
 //
 // Jadvallar `CREATE TABLE IF NOT EXISTS` — mavjud ma'lumotga tegilmaydi.
 
@@ -436,7 +439,8 @@ const alertMem = new Map();
 
 // `key` — admin_settings kaliti (oxirgi xabar vaqti). Avval isolate
 // xotirasi, keyin baza belgisi — ikkalasi ham oraliqni ushlaydi.
-async function alertOnce(env, key, intervalMs, makeText) {
+// text-guard.js ham ishlatadi (`alert_text_block_at`).
+export async function alertOnce(env, key, intervalMs, makeText) {
   const now = Date.now();
   const mem = alertMem.get(key) || 0;
   if (now - mem < intervalMs) return false;

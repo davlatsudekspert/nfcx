@@ -80,6 +80,12 @@ const SRC = {
     body: `src.id || ' · ' || COALESCE(src.name, '') || ' · ' || COALESCE(src.description, '')`,
     idExpr: '0',
   },
+  // Istoriyaga javob (2026-10, text-guard.js) — admin o'chirganda dalil.
+  story_reply: {
+    table: 'story_replies', ownerKind: 'src.owner_kind', ownerId: 'src.owner_id',
+    userId: 'src.user_id',
+    image: 'NULL', video: 'NULL', file: 'NULL', body: 'src.body',
+  },
   highlight_item: {
     table: 'story_highlight_items', ownerKind: HL('owner_kind'), ownerId: HL('owner_id'),
     userId: HL('user_id'),

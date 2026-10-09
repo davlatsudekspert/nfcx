@@ -12,7 +12,7 @@
 //   * Hammasi STANDART O'CHIQ. Deploy qilinganda productionda hech narsa
 //     o'zgarmaydi.
 //   * Manba tartibi: avval env (`FLAG_REELS_HIDDEN`, `FLAG_VIDEO_UPLOADS_BLOCKED`,
-//     `FLAG_VIDEOS_HIDDEN`: "1"/"true" — yoq, "0"/"false" — o'chir), bo'lmasa
+//     `FLAG_VIDEOS_HIDDEN`, `FLAG_TEXT_AI_CHECK`: "1"/"true" — yoq, "0"/"false" — o'chir), bo'lmasa
 //     `admin_settings` (`flag_reels_hidden`, ... = "1"/"0").
 //   * `admin_settings` qiymati isolate ichida ~60 s keshlanadi. Baza xatosi —
 //     hammasi o'chiq (env override baribir ishlaydi).
@@ -20,14 +20,21 @@
 // Marshrutlar:
 //   GET /api/app/config          (ochiq, no-store) → { flags: { reelsHidden, videoUploadsBlocked, videosHidden, showcase: true } }
 //   GET /api/admin/flags         (admin)   → { flags, sources }
-//   PUT /api/admin/flags         (manager+) { reelsHidden?, videoUploadsBlocked?, videosHidden? } → { ok, flags }
+//   PUT /api/admin/flags         (manager+) { reelsHidden?, videoUploadsBlocked?, videosHidden?, textAiCheck? } → { ok, flags }
+//   `textAiCheck` (2026-10, `internal`) — matnni AI bilan tekshirish; faqat
+//   admin ko'radi, /api/app/config ga chiqmaydi.
 
 export const FLAG_DEFS = {
   reelsHidden: { env: 'FLAG_REELS_HIDDEN', key: 'flag_reels_hidden' },
   videoUploadsBlocked: { env: 'FLAG_VIDEO_UPLOADS_BLOCKED', key: 'flag_video_uploads_blocked' },
   videosHidden: { env: 'FLAG_VIDEOS_HIDDEN', key: 'flag_videos_hidden' },
+  // Post/Reels/ko'rgazma matnini Gemini bilan qo'shimcha tekshirish
+  // (text-guard.js `aiGuardText`). Faqat server uchun — ilovaga
+  // (`/api/app/config`) chiqmaydi.
+  textAiCheck: { env: 'FLAG_TEXT_AI_CHECK', key: 'flag_text_ai_check', internal: true },
 };
 const NAMES = Object.keys(FLAG_DEFS);
+const PUBLIC_NAMES = NAMES.filter((n) => !FLAG_DEFS[n].internal);
 export const FLAGS_TTL_MS = 60_000;
 
 export const VIDEO_UPLOADS_DISABLED = {
@@ -54,7 +61,7 @@ async function dbFlags(env, now = Date.now()) {
   const key = cacheKey(env);
   const hit = cache.get(key);
   if (hit && now - hit.at < FLAGS_TTL_MS) return hit.flags;
-  const flags = { reelsHidden: false, videoUploadsBlocked: false, videosHidden: false };
+  const flags = Object.fromEntries(NAMES.map((n) => [n, false]));
   try {
     const rows = await env.DB.prepare(
       `SELECT key, value FROM admin_settings WHERE key IN (${NAMES.map(() => '?').join(',')})`
@@ -108,7 +115,8 @@ export async function handle(request, env, url, H) {
   if (path === '/api/app/config') {
     if (request.method !== 'GET' && request.method !== 'HEAD') return H.json({ error: 'method_not_allowed' }, 405);
     const flags = await getFlags(env);
-    return H.json({ flags: { ...flags, showcase: true } }, 200, { 'cache-control': 'no-store' });
+    const pub = Object.fromEntries(PUBLIC_NAMES.map((n) => [n, flags[n]]));
+    return H.json({ flags: { ...pub, showcase: true } }, 200, { 'cache-control': 'no-store' });
   }
   if (path !== '/api/admin/flags') return null;
   const admin = await H.requireAdmin(request, env);

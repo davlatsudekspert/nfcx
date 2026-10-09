@@ -27,6 +27,7 @@ import {
 import { ensureSchema as ensureCommentsSchema, retireTargetStmts } from './comments.js';
 import { ensureSchema as ensureHighlightsSchema } from './highlights.js';
 import { retryOnAdminList } from './moderation-retry.js';
+import { TEXT_PENDING_REASONS, clearTextPending } from './text-guard.js';
 
 // Shikoyat sabablari. Ro'yxat YOPIQ: erkin matn sabab bo'lsa,
 // adminda saralash imkonsiz bo'lardi va bir xil muammo o'nta xil
@@ -273,6 +274,13 @@ export async function handle(request, env, url, H) {
     // (`content_pending`, content-guard.js) ommaga ochiladi. Kontent
     // o'chirilgan bo'lsa qator baribir yo'q — zarari yo'q.
     if (done && row.target_kind === 'media') await clearPendingUrl(env, String(row.target_id));
+    // TAQIQLANGAN MATN (`text_block`/`text_ai`, text-guard.js) — FAQAT
+    // "Tasdiqlash"/"Hal qilindi" (resolved) ochadi. "Rad etish" (rejected)
+    // kontentni yashirin QOLDIRADI; o'chirish — "Kontentni o'chirish".
+    // Cron bu qatorlarga tegmaydi (u faqat `/uploads/...` ni tozalaydi).
+    if (status === 'resolved' && TEXT_PENDING_REASONS.includes(String(row.reason))) {
+      await clearTextPending(env, String(row.target_kind), String(row.target_id));
+    }
     H.logAdminActivity?.(env, { action: 'report_status', details: `#${one[1]} → ${status}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json({ ok: true, report: reportRowToJson(row) });
   }
@@ -337,6 +345,34 @@ export async function handle(request, env, url, H) {
       adminLabel, resolvedBy: String(admin.username || admin.id || ''), reason: str(body?.reason, 40) || 'admin',
     });
     H.logAdminActivity?.(env, { action: 'content_delete', details: `${kind}#${del[2]} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
+    return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
+  }
+
+  // ISTORIYAGA JAVOB (2026-10, text-guard.js `text_block`) — admin
+  // o'chiradi: dalil arxiviga nusxa, keyin o'chirish; shikoyatlar yopiladi.
+  const delReply = path.match(/^\/api\/admin\/content\/story_reply\/(\d+)$/);
+  if (delReply && request.method === 'DELETE') {
+    const admin = await H.requireAdmin(request, env);
+    if (!admin) return H.json({ error: 'unauthorized' }, 401);
+    const body = await request.json().catch(() => ({}));
+    const replyId = Number(delReply[1]);
+    const adminLabel = `admin#${Number(admin.adminId) || 0}:${String(admin.role || '')}`.slice(0, 64);
+    await ensureGuardSchema(env).catch(() => {});
+    let changed = 0;
+    try {
+      const res = await env.DB.batch([
+        archiveStmt(env, 'story_reply', 'id = ?', [replyId], { admin: adminLabel, reason: str(body?.reason, 40) || 'admin' }),
+        pendingDeleteStmt(env, 'story_reply', replyId),
+        env.DB.prepare(`DELETE FROM story_replies WHERE id = ?`).bind(replyId),
+      ]);
+      changed = Number(res?.[res.length - 1]?.meta?.changes || 0);
+    } catch (e) {
+      if (!/no such table/i.test(String(e?.message || e))) throw e;
+    }
+    await env.DB.prepare(`UPDATE content_reports SET status = 'resolved', resolved_at = ?, resolved_by = ?
+        WHERE target_kind = 'story_reply' AND target_id = ? AND status <> 'resolved'`)
+      .bind(H.nowTs(), String(admin.username || admin.id || ''), String(replyId)).run().catch(() => {});
+    H.logAdminActivity?.(env, { action: 'content_delete', details: `story_reply#${replyId} ${adminLabel}${changed ? '' : ' (allaqachon yo‘q)'}`, ip: H.reqIp?.(request) })?.catch?.(() => {});
     return H.json(changed ? { ok: true } : { ok: true, alreadyGone: true });
   }
 
@@ -539,6 +575,11 @@ async function attachPreviews(env, reports) {
   ],
     byKind.comment, (r) => ({ text: r.body || '', author: r.author_code || '', createdAt: r.created_at || '', imageUrl: '', videoUrl: '',
       ...(r.deleted_at ? { missing: true } : {}) }));
+  await q('story_reply', `SELECT CAST(r.id AS TEXT) AS k, r.body, r.emoji, r.created_at,
+             (SELECT c.code FROM cards c WHERE c.user_id = r.user_id ORDER BY c.is_primary DESC, c.ts ASC LIMIT 1) AS author
+        FROM story_replies r WHERE CAST(r.id AS TEXT) IN (?)`,
+    byKind.story_reply, (r) => ({ text: [r.body, r.emoji].filter(Boolean).join(' '), author: r.author || '', createdAt: r.created_at || '',
+      imageUrl: '', videoUrl: '' }));
   await q('highlight', `SELECT CAST(h.id AS TEXT) AS k, h.owner_kind, h.owner_id, h.title, h.cover_url, h.created_at,
              (SELECT i.image_url FROM story_highlight_items i WHERE i.highlight_id = h.id ORDER BY i.id LIMIT 1) AS first_image
         FROM story_highlights h WHERE CAST(h.id AS TEXT) IN (?)`,
