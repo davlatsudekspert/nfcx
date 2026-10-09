@@ -15,7 +15,7 @@ import worker from '../hosting/worker.js';
 import { SEO_ROUTES, SPA_PAGES, classifySpaPath, seoForRoute } from '../hosting/api/seo-routes.js';
 import { seoForProfile, seoForCompany } from '../src/lib/seo.js';
 import { APP_STORE_STATUS, APP_STORE_URL, appPageTitle } from '../hosting/api/app-store.js';
-import { makeEnv, seedBasic, req, makeChecker } from './lib/d1-harness.mjs';
+import { makeEnv, seedBasic, req, cookie, makeChecker } from './lib/d1-harness.mjs';
 
 const { check, checkTrue, done } = makeChecker();
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
@@ -44,7 +44,7 @@ checkTrue('0) index.html: og:url qattiq yozilmagan', !/<meta[^>]*property="og:ur
 for (const [key, entry] of Object.entries(SEO_ROUTES)) {
   checkTrue(`2) ${key}: uz/ru/en sarlavha va tavsif`, ['uz', 'ru', 'en'].every((l) => entry[l]?.title && entry[l]?.description));
 }
-for (const r of ['privacy', 'delete-account', 'kotarish', 'activate', 'biznes-namuna', 'register', 'stikerlar', 'nfc-stiker', 'ilova-yuklash', 'narxlar']) {
+for (const r of ['privacy', 'delete-account', 'kotarish', 'activate', 'biznes-namuna', 'register', 'stikerlar', 'nfc-stiker', 'ilova-yuklash', 'narxlar', 'korgazma']) {
   checkTrue(`2) /${r} — bosh sahifa matni EMAS`, seoForRoute(r, 'uz').title !== SEO_ROUTES.home.uz.title);
 }
 check('2) /register sarlavhasi', seoForRoute('register', 'uz').title, "Ro'yxatdan o'tish");
@@ -75,6 +75,7 @@ for (const [path, kind] of [
   ['/', 'page'], ['/narxlar', 'page'], ['/NARXLAR', 'page'], ['/delete-account', 'page'], ['/company/create', 'page'],
   ['/VIP001', 'profile'], ['/vip001', 'profile'], ['/12345678', 'profile'], ['/kompaniya', 'profile'],
   ['/c/NFCSTOREUZ', 'dynamic'], ['/company/guldona', 'dynamic'], ["/c/g'oya", 'dynamic'], ['/yangiliklar/9', 'dynamic'],
+  ['/korgazma', 'page'], ['/KORGAZMA', 'page'],
   ['/qr-2', 'dynamic'], ['/i/ABC', 'dynamic'], ['/post/12', 'dynamic'], ['/t/tok_1', 'dynamic'],
   ['/VIP001/menyu', 'dynamic'], ['/business/VIP001', 'dynamic'], ['/workspace/X', 'dynamic'], ['/u/x', 'dynamic'],
   ['/this-is-not-real/xyz', 'unknown'], ['/foo/bar/baz', 'unknown'], ['/a', 'unknown'], ['/wp-login.php', 'unknown'],
@@ -130,6 +131,48 @@ for (const [path, canon] of [['/privacy', '/privacy'], ['/delete-account', '/del
   check(`5) ${path} canonical`, canons(r.html), [`https://nfcstore.uz${canon}`]);
   checkTrue(`5) ${path} — bosh sahifa sarlavhasi emas`, !title(r.html).startsWith(SEO_ROUTES.home.uz.title));
 }
+// KO'RGAZMA (2026-10): /korgazma — o'z sarlavhasi, canonical va ulashish
+// rasmi lentaning birinchi rasmidan (bo'sh lentada — og-cover.png).
+{
+  check('5) /korgazma — SEO sarlavha (uz/ru/en)', ['uz', 'ru', 'en'].map((l) => seoForRoute('korgazma', l).title), ['Ko‘rgazma', 'Витрина', 'Showcase']);
+  check('5) /korgazma indekslanadi', seoForRoute('korgazma', 'uz').noindex, false);
+  const empty = await get('/korgazma');
+  check('5) /korgazma 200', empty.status, 200);
+  check('5) /korgazma sarlavhasi', title(empty.html), `${SEO_ROUTES.korgazma.uz.title} — NFCSTORE.UZ`);
+  check('5) /korgazma tavsifi', meta(empty.html, 'description'), SEO_ROUTES.korgazma.uz.description);
+  check('5) /korgazma canonical (bitta)', canons(empty.html), ['https://nfcstore.uz/korgazma']);
+  check('5) /korgazma og:url', meta(empty.html, 'og:url'), 'https://nfcstore.uz/korgazma');
+  check('5) /korgazma indekslanadi (worker)', meta(empty.html, 'robots'), 'index,follow');
+  checkTrue('5) /korgazma — SPA qobig‘i', empty.html.includes('<div id="root"></div>'));
+  // Lentadagi birinchi rasm — Ko'rgazma ishlovchisining o'zidan.
+  const feed = await worker.fetch(req('/api/showcase?limit=6'), env);
+  const items = (await feed.json()).items || [];
+  const first = items.find((it) => it && it.imageUrl);
+  const ogImg = meta(empty.html, 'og:image');
+  if (first) {
+    const abs = /^https?:/.test(first.imageUrl) ? first.imageUrl : `https://nfcstore.uz${first.imageUrl}`;
+    check('5) /korgazma og:image = lentaning birinchi rasmi', ogImg, abs);
+    check('5) /korgazma twitter:image', meta(empty.html, 'twitter:image'), abs);
+    check('5) /korgazma — og-cover o‘lchami olib tashlangan', meta(empty.html, 'og:image:width'), null);
+  } else {
+    check('5) /korgazma og:image — umumiy banner (bo‘sh lenta)', ogImg, 'https://nfcstore.uz/og-cover.png');
+  }
+  checkTrue('5) /korgazma og:image mutlaq manzil', /^https:\/\//.test(ogImg || ''));
+  // Ko'rgazma posti joylangach — ulashish rasmi o'sha ishning rasmi.
+  const made = await worker.fetch(req('/api/records/VIP001/posts', {
+    method: 'POST', cookie: cookie.user,
+    json: { agreed: true, showcase: true, mediaUrls: ['/uploads/korgazma-1.jpg', '/uploads/korgazma-2.jpg'], title: 'Choynak', text: 'tavsif' },
+  }), env);
+  const madeBody = await made.json().catch(() => ({}));
+  check('5) ko‘rgazma posti yaratildi', [made.status, madeBody.pending], [201, false]);
+  // Lenta "surati" joriy soniyadan oldingi vaqtni oladi (api/reels.js) — post bir soat oldin.
+  await env.DB.prepare(`UPDATE posts SET created_at = datetime('now', '-1 hour') WHERE id = ?`).bind(madeBody.id).run();
+  const withPost = await get('/korgazma');
+  check('5) /korgazma og:image = ishning birinchi rasmi', meta(withPost.html, 'og:image'), 'https://nfcstore.uz/uploads/korgazma-1.jpg');
+  check('5) /korgazma twitter:image', meta(withPost.html, 'twitter:image'), 'https://nfcstore.uz/uploads/korgazma-1.jpg');
+  check('5) /korgazma — og-cover o‘lchamlari olib tashlangan', meta(withPost.html, 'og:image:width'), null);
+  check('5) /korgazma canonical o‘zgarmagan', canons(withPost.html), ['https://nfcstore.uz/korgazma']);
+}
 {
   const r = await get('/login');
   check('5) /login — noindex', meta(r.html, 'robots'), 'noindex,nofollow');
@@ -180,10 +223,27 @@ for (const [path, canon] of [['/privacy', '/privacy'], ['/delete-account', '/del
   const xml = read('public/sitemap-pages.xml');
   const locs = [...xml.matchAll(/<loc>https:\/\/nfcstore\.uz([^<]*)<\/loc>/g)].map((m) => m[1] || '/');
   checkTrue('6) /auksion sitemap‘da YO‘Q (bekor qilingan)', !locs.some((l) => l.startsWith('/auksion')));
-  for (const p of ['/support', '/privacy', '/delete-account']) checkTrue(`6) ${p} sitemap‘da`, locs.includes(p));
+  for (const p of ['/support', '/privacy', '/delete-account', '/korgazma']) checkTrue(`6) ${p} sitemap‘da`, locs.includes(p));
   for (const p of locs) {
     const info = classifySpaPath(p);
     checkTrue(`6) ${p}: sahifa va indekslanadi`, info.kind === 'page' && !seoForRoute(info.route, 'uz').noindex);
+  }
+}
+
+// ── 7) /korgazma sahifasi (src/pages/KorgazmaPage.jsx) ─────────────────
+{
+  const pg = read('src/pages/KorgazmaPage.jsx');
+  const app = read('src/App.jsx');
+  checkTrue('7) App.jsx: /korgazma → KorgazmaPage', /^\s*korgazma: KorgazmaPage,/m.test(app) && /cleanRoute === 'korgazma'\) page = <KorgazmaPage \/>/.test(app));
+  checkTrue('7) lenta: /api/showcase + video=1 + kursor', /\/api\/showcase\?limit=\$\{PAGE_LIMIT\}&video=1/.test(pg) && /cursor=\$\{encodeURIComponent\(cursor\)\}/.test(pg));
+  checkTrue('7) kalit: /api/app/config showcase=false → "tez kunda"', /\/api\/app\/config/.test(pg) && /flags\.showcase === false\) \{ setStatus\('soon'\)/.test(pg));
+  checkTrue('7) "Ko‘proq ko‘rsatish" — tugma (avtomatik aylantirish emas)', /onClick=\{loadMore\}/.test(pg) && !/onScroll|scrollY >/.test(pg));
+  checkTrue('7) tashqi havola: yangi tab + noopener noreferrer nofollow', /target: '_blank', rel: 'noopener noreferrer nofollow'/.test(pg));
+  checkTrue('7) reklama video: ovozsiz, loop, playsInline, preload=none, 60%', /muted\s+loop\s+playsInline/.test(pg) && /preload=\{armed \? 'auto' : 'none'\}/.test(pg) && /intersectionRatio >= 0\.6/.test(pg));
+  checkTrue('7) musiqa saytda chalinmaydi (audio yo‘q)', !/<audio|new Audio\(/.test(pg));
+  checkTrue('7) App Store holati yagona manbadan', /appStoreBadge\(/.test(pg) && !/'Tez kunda'/.test(pg));
+  for (const f of ['src/components/Header.jsx', 'src/components/Footer.jsx']) {
+    checkTrue(`7) ${f}: menyuda Ko‘rgazma`, read(f).includes("['Ko‘rgazma', '/korgazma']"));
   }
 }
 

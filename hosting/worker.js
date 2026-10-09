@@ -9324,6 +9324,15 @@ export function injectRouteSeo(html, meta) {
     out = out.replace(/<\/head>/i, `  <link rel="canonical" href="${ogAttrEscape(meta.url)}" />\n</head>`);
     out = ogReplaceMeta(out, 'property', 'og:url', meta.url);
   }
+  // Sahifaning o'z ulashish rasmi (masalan /korgazma — lentaning birinchi
+  // rasmi). Qobiqdagi 1200x630 o'lchamlari faqat og-cover.png ga tegishli.
+  if (meta.image) {
+    out = ogReplaceMeta(out, 'property', 'og:image', meta.image);
+    out = ogReplaceMeta(out, 'name', 'twitter:image', meta.image);
+    if (meta.imageAlt) out = ogReplaceMeta(out, 'property', 'og:image:alt', meta.imageAlt);
+    out = ogRemoveMeta(out, 'property', 'og:image:width');
+    out = ogRemoveMeta(out, 'property', 'og:image:height');
+  }
   return out;
 }
 
@@ -9358,6 +9367,43 @@ export async function spaShellWithSeo(response, url) {
   headers.delete('content-length');
   headers.delete('etag');
   return new Response(out, { status, headers });
+}
+
+// ── KO'RGAZMA: nfcstore.uz/korgazma (2026-10) ─────────────────────────
+//
+// Sarlavha, tavsif va canonical — SEO_ROUTES dan (boshqa sahifalar kabi).
+// Ulashish rasmi (og:image) — Ko'rgazma lentasining BIRINCHI rasmi, shunda
+// Telegram/WhatsApp kartochkasida umumiy banner emas, haqiqiy ish ko'rinadi.
+// Lenta AYNAN /api/showcase ishlovchisidan olinadi (api/reels.js): maxfiylik,
+// tekshiruvdagi (pending) media, bloklar va `videosHidden` qoidalari o'sha
+// joyda — bu yerda ikkinchi SQL nusxasi yozilmaydi. Lenta bo'sh yoki xato
+// bo'lsa — umumiy og-cover.png (sahifa baribir ochiladi). Ro'yxatning o'zi
+// HTML'ga yozilmaydi: boshqa sahifalar kabi faqat meta.
+export async function korgazmaShellResponse(env, url) {
+  const got = await profileShell(env, url);
+  if (!got) return null;
+  const origin = url.origin;
+  let picked = '';
+  try {
+    const feedUrl = new URL('/api/showcase?limit=6', origin);
+    const res = await apiReels.handle(new Request(feedUrl, { method: 'GET' }), env, feedUrl, H);
+    const body = res && res.ok ? await res.json() : null;
+    const first = (Array.isArray(body?.items) ? body.items : []).find((it) => it && it.imageUrl);
+    picked = first ? String(first.imageUrl) : '';
+  } catch (error) {
+    console.error('korgazma og', error?.message);
+  }
+  const seo = seoForRoute('korgazma', 'uz');
+  const html = injectRouteSeo(got.html, {
+    title: seo.title,
+    description: seo.description,
+    url: origin + seo.path,
+    robots: 'index,follow',
+    // Rasm topilmasa qobiqdagi og-cover.png (1200x630 o'lchamlari bilan) qoladi.
+    image: ogAbsolute(picked, origin),
+    imageAlt: `${seo.title} — NFCSTORE`,
+  });
+  return profileShellResponse(got.shell, html, 300);
 }
 
 // Biznes sahifasining kanonik manzili — ilova va karta ulashadigan
@@ -13130,6 +13176,19 @@ async function handleRequest(request, env, url, ctx) {
         return request.method === 'HEAD' ? new Response(null, page) : page;
       } catch (error) {
         console.error('post page', url.pathname, error);
+      }
+    }
+
+    // Ko'rgazma sahifasi — robot kartochkasida lentaning birinchi rasmi.
+    // Faqat asosiy domenda (kompaniyaning o'z domenida oddiy SPA qobig'i).
+    if (request.method === 'GET' && /^\/korgazma\/?$/i.test(url.pathname)
+      && /(^|\.)nfcstore\.uz$|^localhost$|^127\.0\.0\.1$/.test(url.hostname)) {
+      try {
+        await ensureCoreSchema(env);
+        const shell = await korgazmaShellResponse(env, url);
+        if (shell) return shell;
+      } catch (error) {
+        console.error('korgazma shell', error?.message);
       }
     }
 
