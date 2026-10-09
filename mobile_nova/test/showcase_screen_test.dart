@@ -833,7 +833,7 @@ void main() {
           'ad': adFlag,
           'title': 'Boy777',
           'text': 'Yangi NFC kartalar',
-          'videoUrl': '/promo/nfcstore-boy777.mp4',
+          'videoUrl': '/uploads/promo_boy777.mp4',
           'imageUrl': '/promo/boy777.jpg',
           'linkUrl': 'https://www.instagram.com/nfcstore',
           if (music != null)
@@ -851,16 +851,26 @@ void main() {
     }
 
     int videoId(FakeVideoPlatform v) => v.urls.entries
-        .firstWhere((e) => e.value.endsWith('.mp4') && e.value.contains('promo'))
+        .firstWhere((e) => e.value.endsWith('promo_boy777.mp4'))
         .key;
 
     test('model: ad/featured, nisbiy manzil bazaga ulanadi, poster', () {
       final p = ad();
       expect(p.isShowcaseVideoAd, isTrue);
       expect(p.isAd, isTrue);
-      expect(p.videoUrl, 'https://nfcstore.uz/promo/nfcstore-boy777.mp4');
+      expect(p.videoUrl, 'https://nfcstore.uz/uploads/promo_boy777.mp4');
       expect(p.posterUrl, 'https://nfcstore.uz/promo/boy777.jpg');
       expect(ad(adFlag: false).isShowcaseVideoAd, isTrue, reason: 'featured');
+      // Server videoni `/uploads/` dan beradi (Range/206), poster esa
+      // `/promo/` da; `/promo/` dagi video ham xuddi shunday ulanadi —
+      // maxsus holat yo'q.
+      final promo = Post.fromJson({
+        'id': 901,
+        'ad': true,
+        'videoUrl': '/promo/nfcstore-boy777.mp4',
+      });
+      expect(promo.videoUrl, 'https://nfcstore.uz/promo/nfcstore-boy777.mp4');
+      expect(showcasePlayable(promo), isTrue);
       expect(showcasePlayable(p), isTrue);
       expect(showcasePlayable(p.copyWith(likes: 1)), isTrue);
       // Reklama emas — oddiy video ko'rgazmaga tushmaydi.
@@ -884,7 +894,7 @@ void main() {
       expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
       expect(find.text(LUz().feedSponsored), findsOneWidget);
       expect(v.urls.values,
-          contains('https://nfcstore.uz/promo/nfcstore-boy777.mp4'));
+          contains('https://nfcstore.uz/uploads/promo_boy777.mp4'));
       final id = videoId(v);
       expect(v.playing, {id});
       expect(v.volumeOf[id], 1.0);
