@@ -2047,7 +2047,7 @@ abstract class AppLocalizations {
   /// No description provided for @calcEgfr.
   ///
   /// In en, this message translates to:
-  /// **'eGFR · CKD-EPI 2021'**
+  /// **'eGFR · CKD‑EPI 2021'**
   String get calcEgfr;
 
   /// No description provided for @calcEgfrSub.

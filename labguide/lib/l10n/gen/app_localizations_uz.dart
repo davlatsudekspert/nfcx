@@ -1108,7 +1108,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get calcSectionLab => 'Laboratoriya';
 
   @override
-  String get calcEgfr => 'eGFR · CKD-EPI 2021';
+  String get calcEgfr => 'eGFR · CKD‑EPI 2021';
 
   @override
   String get calcEgfrSub => 'Kreatinin, yosh, jins';

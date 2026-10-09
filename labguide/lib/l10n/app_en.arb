@@ -581,7 +581,7 @@
   "ucErrorRange": "The value is outside the calculable range.",
   "calcSectionClinical": "Clinical formulas",
   "calcSectionLab": "Laboratory",
-  "calcEgfr": "eGFR · CKD-EPI 2021",
+  "calcEgfr": "eGFR · CKD‑EPI 2021",
   "calcEgfrSub": "Creatinine, age, sex",
   "calcAcr": "Albumin/creatinine ratio",
   "calcAcrSub": "Urine ACR · KDIGO A category",

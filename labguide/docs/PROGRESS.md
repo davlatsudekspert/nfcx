@@ -92,6 +92,15 @@ kelmagan**.
 - Screen reader (TalkBack/VoiceOver) bilan qo‘lda tekshiruv (avtomatik semantik testlar bor).
 - Mustaqil tibbiy ekspert review’i — hech bir karta va savol tasdiqlanmagan.
 
+## Do‘kon uchun tayyor materiallar
+
+- [store/APP_STORE.md](store/APP_STORE.md) — nom, subtitle, tavsif, kalit so‘zlar (uz/ru/en),
+  toifa, App Privacy (“Data Not Collected”), yosh reytingi, eksport, TestFlight matnlari.
+- [store/PRIVACY_POLICY.md](store/PRIVACY_POLICY.md) — maxfiylik siyosati (uch tilda); sana va
+  aloqa manzilini egasi to‘ldiradi va ochiq sahifaga joylaydi.
+- `tool/screenshots/store_screenshots_test.dart` — 6.9" iPhone skrinshotlari (1290×2796), uch
+  tilda 6 tadan.
+
 ## Ulanmagan xizmatlar
 
 - Email OTP server (release’da email kirish “hali ulanmagan”; mehmon rejimi to‘liq ishlaydi).

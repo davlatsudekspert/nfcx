@@ -324,7 +324,7 @@
   "ucErrorRange": "Значение вне допустимого диапазона расчёта.",
   "calcSectionClinical": "Клинические формулы",
   "calcSectionLab": "Лабораторные",
-  "calcEgfr": "рСКФ (eGFR) · CKD-EPI 2021",
+  "calcEgfr": "рСКФ (eGFR) · CKD‑EPI 2021",
   "calcEgfrSub": "Креатинин, возраст, пол",
   "calcAcr": "Альбумин/креатинин",
   "calcAcrSub": "ACR мочи · категория A по KDIGO",

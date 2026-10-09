@@ -1125,7 +1125,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get calcSectionLab => 'Лабораторные';
 
   @override
-  String get calcEgfr => 'рСКФ (eGFR) · CKD-EPI 2021';
+  String get calcEgfr => 'рСКФ (eGFR) · CKD‑EPI 2021';
 
   @override
   String get calcEgfrSub => 'Креатинин, возраст, пол';
