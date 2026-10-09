@@ -28,7 +28,8 @@ void main() {
           'yoki jinsiy xarakterdagi tasvirlar, siyosiy targ‘ibot, '
           'shuningdek O‘zbekiston Respublikasi qonunchiligiga zid har '
           'qanday material. Ushbu qoidalar buzilgan taqdirda kontent '
-          'ogohlantirishsiz o‘chiriladi.';
+          'ogohlantirishsiz o‘chiriladi. Joylangan kontent uchun '
+          'javobgarlik to‘liq muallifning o‘zida.';
       expect(uz['rulesBody'], source);
     });
 
@@ -45,9 +46,9 @@ void main() {
       // Ro'yxat qisqartirilib ketmasligi uchun — har til uchun
       // o'sha mavzular nomlanganini tekshiramiz.
       final checks = {
-        'uz': ['diniy', 'pornografik', 'siyosiy', 'qonunchilig'],
-        'ru': ['религиозн', 'порнограф', 'политическ', 'законодательств'],
-        'en': ['religious', 'pornographic', 'political', 'laws'],
+        'uz': ['diniy', 'pornografik', 'siyosiy', 'qonunchilig', 'javobgarlik'],
+        'ru': ['религиозн', 'порнограф', 'политическ', 'законодательств', 'ответственность'],
+        'en': ['religious', 'pornographic', 'political', 'laws', 'responsibility'],
       };
       for (final e in checks.entries) {
         final body = ({'uz': uz, 'ru': ru, 'en': en}[e.key]!['rulesBody']

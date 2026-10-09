@@ -1245,7 +1245,7 @@ class LEn extends L {
 
   @override
   String get rulesBody =>
-      'Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning.';
+      'Published content must not contain: religious propaganda or extremist material, pornographic or sexually explicit images, political propaganda, or any material contrary to the laws of the Republic of Uzbekistan. Content that breaks these rules is removed without warning. The author bears full responsibility for the content they post.';
 
   @override
   String get rulesAccept => 'I have read the rules and agree';
