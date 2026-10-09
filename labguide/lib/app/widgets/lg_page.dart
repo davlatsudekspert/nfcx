@@ -50,6 +50,11 @@ class _LgPageState extends State<LgPage> {
   ScrollDirection _userDirection = ScrollDirection.idle;
   double _largeTitleExtent = 120;
 
+  /// Oxirgi joylashuv qarori. Klaviatura ochiq paytda qayta hisoblanmaydi:
+  /// balandlik kamayib sarlavha ro'yxatga ko'chsa, fokus va kiritilayotgan
+  /// matn boshqa maydonga o'tib ketardi.
+  bool? _pinned;
+
   /// Katta sarlavha o'lchandi; balandlik o'zgarsa (shrift, kenglik) —
   /// joylashuv qarori (ustida qotirilganmi yoki ro'yxat ichidami) qayta
   /// ko'riladi.
@@ -165,11 +170,18 @@ class _LgPageState extends State<LgPage> {
             // past ekranda (landshaft telefon, katta shrift) u joyning katta
             // qismini egallab, kontentni ko'rinmas qilardi: bunda sarlavha
             // ham ro'yxat ichiga o'tadi.
+            // Klaviatura ochilganda qaror o'zgarmaydi (yuqoridagi [_pinned]).
+            // Shell Scaffold'i ichida MediaQuery.viewInsets allaqachon
+            // olib tashlangan — klaviatura oynaning o'zidan aniqlanadi.
+            final keyboardOpen = View.of(context).viewInsets.bottom > 0;
             final available = constraints.maxHeight;
-            final pinned =
-                widget.leadingHero == null &&
-                available >= 420 &&
-                _largeTitleExtent <= available * 0.4;
+            if (!keyboardOpen || _pinned == null) {
+              _pinned =
+                  widget.leadingHero == null &&
+                  available >= 420 &&
+                  _largeTitleExtent <= available * 0.4;
+            }
+            final pinned = _pinned!;
             if (!pinned && _logic.collapsed) _logic.reset();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,8 +222,14 @@ class _LgPageState extends State<LgPage> {
                             horizontal,
                             32 + (insideShell ? 0 : media.padding.bottom),
                           ),
+                          // Birinchi o'rin doim band: qaror o'zgarganda
+                          // kontent elementlarining indeksi (va holati —
+                          // fokus, kiritilgan matn) siljimaydi.
                           children: [
-                            if (!pinned) largeTitle,
+                            if (!pinned)
+                              largeTitle
+                            else
+                              const SizedBox.shrink(),
                             ...widget.children,
                           ],
                         ),
