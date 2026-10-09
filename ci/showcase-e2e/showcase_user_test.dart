@@ -348,11 +348,34 @@ class _Run {
       swipeLog.add('$before->$index page ${p0?.toStringAsFixed(2)}->'
           '${pagerPage?.toStringAsFixed(2)} ok=$ok');
       if (ok) {
-        await wait(const Duration(milliseconds: 900));
+        await settlePager();
         return true;
       }
     }
     return false;
+  }
+
+  /// Sahifa to'liq to'xtadi (butun son) — tugmalar joyida.
+  Future<void> settlePager() async {
+    await waitFor(() {
+      final p = pagerPage;
+      return p == null || (p - p.roundToDouble()).abs() < .01;
+    }, timeout: const Duration(seconds: 5));
+    await wait(const Duration(milliseconds: 500));
+  }
+
+  /// Odam kabi bosish: element ko'rinib, ustida hech narsa bo'lmaguncha
+  /// kutadi; bo'lmasa ham markaziga bosadi (natija yoziladi).
+  Future<String> tapReal(Finder f) async {
+    final ok = await waitFor(() => has(f.hitTestable()),
+        timeout: const Duration(seconds: 6));
+    if (ok) {
+      await t.tap(f.hitTestable().first);
+      return 'hit';
+    }
+    if (!has(f)) return 'missing';
+    await t.tapAt(t.getCenter(f.first, warnIfMissed: false));
+    return 'tapAt(not-hittable)';
   }
 
   Future<bool> goTo(int target) async {
@@ -458,8 +481,14 @@ class _Run {
       await t.enterText(fields.at(0), kTestLogin);
       await t.enterText(fields.at(1), kTestPassword);
       await wait(const Duration(milliseconds: 500));
+      // Klaviatura yopiladi (iOS'da tugma uning ostida qolardi), keyin
       // BITTA kirish urinishi.
-      await t.tap(find.byType(NovaButton).first);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await wait(const Duration(milliseconds: 800));
+      final submit = find.byType(NovaButton).first;
+      await t.ensureVisible(submit);
+      await wait(const Duration(milliseconds: 500));
+      r.values['submitTap'] = await tapReal(find.byType(NovaButton));
       final home = await waitFor(() => has(find.byType(NovaBottomNav)),
           timeout: const Duration(seconds: 45));
       r.values['loginAttempts'] = 1;
@@ -764,7 +793,7 @@ class _Run {
       final btn = inVisible(find.byKey(const ValueKey('showcase-video')));
       r.check(has(btn), '"Videoni ko\'rish" tugmasi yo\'q');
       if (!has(btn)) return;
-      await t.tap(btn.first);
+      r.values['tap'] = await tapReal(btn);
       final opened = await waitFor(() => has(find.byType(ShowcaseVideoPage)),
           timeout: const Duration(seconds: 6));
       r.check(opened, 'ShowcaseVideoPage ochilmadi');
@@ -871,7 +900,7 @@ class _Run {
       final btn = inVisible(find.byKey(const ValueKey('showcase-instagram')));
       r.check(has(btn), '"Instagram\'da ko\'rish" tugmasi yo\'q');
       if (!has(btn)) return;
-      await t.tap(btn.first);
+      r.values['tap'] = await tapReal(btn);
       final opened = await waitFor(() => has(find.byType(ShowcaseInstagramPage)),
           timeout: const Duration(seconds: 6));
       r.check(opened, 'ShowcaseInstagramPage ochilmadi');
