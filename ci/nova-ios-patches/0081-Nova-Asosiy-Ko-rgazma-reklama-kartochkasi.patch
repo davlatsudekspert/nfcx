@@ -1,0 +1,1184 @@
+From f9d7588987149429a3c768b9042bf086f7b666d0 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 05:23:46 +0000
+Subject: [PATCH 81/81] =?UTF-8?q?Nova:=20Asosiy=20=E2=80=94=20Ko'rgazma=20?=
+ =?UTF-8?q?reklama=20kartochkasi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi tasdiqlagan: bosh sahifada (NFC ID kartasi, tezkor amallar va
+storylardan KEYIN, shaxsiy va biznes rejimida) Ko'rgazma reklamasi —
+bitta vertikal karta (~9:16, ekranning yarmicha, yumaloq burchak):
+chap tepada "Reklama", o'ng tepada "×", pastda gradient ustida
+sarlavha. Amallar ustuni yo'q.
+
+- Manba: `GET /api/showcase/ads?video=1&limit=4` (kirish shart emas,
+  `video=1` doim), elementlar Ko'rgazma modeli bilan o'qiladi.
+- Navbat: kun + ilova ochilishlari soni (Prefs) — BOY777, LOL707, ...
+  almashib turadi.
+- Video OVOZSIZ, aylanib — faqat karta ≥ 60% ko'rinsa, Asosiy tab
+  ochiq, ustida boshqa ekran yo'q va ilova oldinda bo'lsa; kamroq
+  ko'rinsa — pauza; ekrandan chiqsa, tab almashsa yoki fonda — pleer
+  yo'q qilinadi. Tarmoq turini aniqlaydigan paket yo'q (yangisi
+  qo'shilmadi) — yengil yo'l: faqat ko'ringanda, doim ovozsiz,
+  boshqa ilova ovozi bilan aralashadi.
+- Bosilsa — Ko'rgazma tabi shu reklama bilan ochiladi
+  (`showcaseFocusProvider`: element birinchi sahifaga qo'yiladi,
+  ro'yxatda bo'lsa takrorlanmaydi) — o'z ovozi/musiqasi, 🔇 va
+  hamma belgilar bilan.
+- "×" — shu kun oxirigacha yashirin (Prefs, sana bilan).
+- So'rov xato, bo'sh javob yoki `showcase` kaliti o'chiq — hech narsa
+  chizilmaydi, bo'sh joy ham qolmaydi; kalit o'chiq bo'lsa so'rov
+  ham ketmaydi.
+- Yangi matnlar (uz/ru/en): "Ko'rgazmada ochish", "Bugun
+  ko'rsatilmasin"; "Reklama" — mavjud `feedSponsored`.
+
+Sinovlar: so'rov (video=1), navbat, bo'sh/xato/kalit o'chiq, "×" —
+bugun yashirin/ertaga qaytadi, bosilsa Ko'rgazma, video faqat
+ko'ringanda va Asosiy tabda, ovozsiz; Ko'rgazmada fokus.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/core/storage/secure_store.dart        |  12 +
+ .../data/repositories/social_repository.dart  |   9 +
+ .../lib/features/home/home_screen.dart        |   6 +
+ .../home/widgets/showcase_ad_card.dart        | 414 ++++++++++++++++++
+ .../features/showcase/showcase_screen.dart    |  44 +-
+ mobile_nova/lib/l10n/arb/app_en.arb           |   4 +-
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   4 +-
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   6 +-
+ .../lib/l10n/gen/app_localizations.dart       |  12 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   6 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   6 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   6 +
+ mobile_nova/test/helpers.dart                 |   5 +
+ mobile_nova/test/home_showcase_ad_test.dart   | 374 ++++++++++++++++
+ mobile_nova/test/showcase_screen_test.dart    |  24 +
+ 15 files changed, 927 insertions(+), 5 deletions(-)
+ create mode 100644 mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+ create mode 100644 mobile_nova/test/home_showcase_ad_test.dart
+
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index 6ef5add..8fb000a 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -123,6 +123,8 @@ class Prefs {
+   static const _kSavedReels = 'nova.savedReels';
+   static const _kAppFlags = 'nova.appFlags';
+   static const _kShowcaseMuted = 'nova.showcaseMuted';
++  static const _kHomeAdHidden = 'nova.homeAdHiddenDay';
++  static const _kHomeAdLaunch = 'nova.homeAdLaunch';
+ 
+   String? get themeId => _p.getString(_kTheme);
+   Future<void> setThemeId(String v) => _p.setString(_kTheme, v);
+@@ -256,4 +258,14 @@ class Prefs {
+   /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
+   bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
+   Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
++
++  /// Asosiydagi Ko'rgazma reklama kartasi "×" bilan yopilgan kun
++  /// (`YYYY-MM-DD`, telefon vaqti). Shu kun tugaguncha karta chiqmaydi.
++  String get homeAdHiddenDay => _p.getString(_kHomeAdHidden) ?? '';
++  Future<void> setHomeAdHiddenDay(String v) => _p.setString(_kHomeAdHidden, v);
++
++  /// Ilova necha marta ochilgani — reklama kartasi navbat bilan
++  /// almashishi uchun (BOY777, LOL707, ...).
++  int get homeAdLaunch => _p.getInt(_kHomeAdLaunch) ?? 0;
++  Future<void> setHomeAdLaunch(int v) => _p.setInt(_kHomeAdLaunch, v);
+ }
+diff --git a/mobile_nova/lib/data/repositories/social_repository.dart b/mobile_nova/lib/data/repositories/social_repository.dart
+index b9c344c..8ad3f49 100644
+--- a/mobile_nova/lib/data/repositories/social_repository.dart
++++ b/mobile_nova/lib/data/repositories/social_repository.dart
+@@ -490,6 +490,15 @@ class SocialRepository {
+     return res.map(ReelsPage.fromJson);
+   }
+ 
++  /// KO'RGAZMA REKLAMALARI — Asosiydagi karta uchun (kirish shart
++  /// emas). Elementlar `/api/showcase` dagi reklama bilan bir xil
++  /// shaklda; `video=1` doim yuboriladi (eski server video bermaydi).
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async {
++    final res = await _api.get<Map<String, dynamic>>('/api/showcase/ads',
++        query: {'video': 1, 'limit': limit});
++    return res.map(ReelsPage.fromJson);
++  }
++
+   /// "QIZIQ EMAS" — server shu reelni bu hisobga boshqa ko'rsatmaydi.
+   ///
+   /// Kompaniya postining `id` si alohida sanaladi (`like` izohiga
+diff --git a/mobile_nova/lib/features/home/home_screen.dart b/mobile_nova/lib/features/home/home_screen.dart
+index a04ac41..a6036dc 100644
+--- a/mobile_nova/lib/features/home/home_screen.dart
++++ b/mobile_nova/lib/features/home/home_screen.dart
+@@ -30,6 +30,7 @@ import '../nfc/qr_sheet.dart';
+ import '../shop/nfc_id_market.dart' show tierLabel;
+ import 'widgets/avatar.dart';
+ import 'widgets/nfc_mobile_section.dart';
++import 'widgets/showcase_ad_card.dart';
+ import 'widgets/identity_card.dart';
+ import 'widgets/mode_switch.dart';
+ import '../../app/profile_context.dart';
+@@ -179,6 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+           ref.invalidate(homeStoriesProvider);
+           ref.invalidate(homeCatalogProvider);
+           ref.invalidate(homeFeedProvider);
++          ref.invalidate(homeShowcaseAdsProvider);
+         },
+         child: NovaScroll(
+           controller: _scroll,
+@@ -329,6 +331,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+               const SizedBox(height: Gap.lg),
+             ],
+             _StoriesRow(user: user),
++            // KO'RGAZMA REKLAMASI — NFC ID kartasi, tezkor amallar va
++            // storylardan KEYIN (eng tepada emas), ikkala rejimda ham.
++            // Reklama yo'q / kalit o'chiq — hech narsa chizilmaydi.
++            const HomeShowcaseAdCard(),
+             // NAMUNA BIZNESLAR — faqat biznesi yo'q odamga, shaxsiy
+             // rejimda, Stories'dan keyin (pastga surmasdan ko'rinsin).
+             if (!business) const HomeSampleBusinesses(),
+diff --git a/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+new file mode 100644
+index 0000000..b7a9491
+--- /dev/null
++++ b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+@@ -0,0 +1,414 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:go_router/go_router.dart';
++import 'package:video_player/video_player.dart';
++
++import '../../../app/app_flags.dart';
++import '../../../app/providers.dart';
++import '../../../data/models/models.dart';
++import '../../../data/repositories/social_repository.dart';
++import '../../../design/theme/typography.dart';
++import '../../../design/tokens/shapes.dart';
++import '../../../l10n/gen/app_localizations.dart';
++import '../../../routing/routes.dart';
++import '../../../routing/shell.dart';
++import '../../profile/music_player.dart' show audioOwnerProvider;
++import '../../showcase/showcase_screen.dart'
++    show showcaseFocusProvider, showcasePlayable;
++import '../../social/engagement.dart' show likeKey;
++import '../../social/media_frame.dart' show mediaImage;
++import '../../social/reels_screen.dart' show reelsInitTimeout;
++import '../../social/visible_fraction.dart';
++
++/// ASOSIYDAGI KO'RGAZMA REKLAMASI (egasi tasdiqlagan, 2026-10).
++///
++/// `GET /api/showcase/ads?video=1&limit=4` — Ko'rgazma lentasidagi
++/// reklama bilan bir xil elementlar. Bosh sahifada BITTA vertikal karta
++/// (NFC ID kartasi, tezkor amallar va storylardan keyin):
++///
++/// * qaysi biri — kun va ilova ochilishi bo'yicha navbat bilan
++///   ([homeAdIndex]): BOY777, LOL707, ... almashib turadi;
++/// * video OVOZSIZ, aylanib o'ynaydi — FAQAT karta kamida 60% ko'rinsa,
++///   Asosiy tab ochiq, ustida boshqa ekran yo'q va ilova oldinda
++///   bo'lsa. Ekrandan chiqsa yoki tab almashsa — pleer yo'q qilinadi.
++///   Ilovada tarmoq turini (Wi‑Fi / mobil) aniqlaydigan paket yo'q,
++///   shuning uchun yengil yo'l: faqat ko'ringanda, doim ovozsiz,
++///   boshqa ilova ovozi bilan aralashadi (Spotify to'xtamaydi);
++/// * bosilsa — Ko'rgazma tabi shu reklama bilan ochiladi (o'sha yerda
++///   o'z ovozi/musiqasi, 🔇 va hamma belgilar bilan);
++/// * "×" — shu kun oxirigacha chiqmaydi;
++/// * so'rov xato, bo'sh javob yoki `showcase` kaliti o'chiq — HECH
++///   NARSA chizilmaydi (bo'sh joy ham qolmaydi).
++
++/// Video shuncha ko'rinsa o'ynaydi.
++const kHomeAdPlayFraction = 0.6;
++
++@visibleForTesting
++DateTime Function() homeAdClock = DateTime.now;
++
++/// Telefon vaqti bo'yicha kun: `YYYY-MM-DD`.
++String homeAdDay(DateTime t) =>
++    '${t.year.toString().padLeft(4, '0')}-'
++    '${t.month.toString().padLeft(2, '0')}-'
++    '${t.day.toString().padLeft(2, '0')}';
++
++/// NAVBAT: kun raqami + ilova ochilishlari soni. Har kuni ham, har
++/// ochilishda ham keyingi reklama chiqadi.
++int homeAdIndex(int count, {required DateTime day, required int launch}) {
++  if (count <= 0) return 0;
++  final d =
++      DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/
++      Duration.millisecondsPerDay;
++  return (d + launch) % count;
++}
++
++/// Reklamalar ro'yxati. Kalit o'chiq yoki xato — bo'sh ro'yxat.
++final homeShowcaseAdsProvider = FutureProvider<List<Post>>((ref) async {
++  final on = ref.watch(appFlagsProvider.select((f) => f.showcase));
++  if (!on) return const [];
++  final res = await ref.watch(socialRepositoryProvider).showcaseAds();
++  final seen = <String>{};
++  return [
++    for (final p in res.valueOrNull?.items ?? const <Post>[])
++      if (p.isAd && showcasePlayable(p) && seen.add(likeKey(p))) p,
++  ];
++});
++
++/// Shu ishga tushirish raqami — ilova ochilganda bir marta oshadi.
++final homeAdLaunchProvider = Provider<int>((ref) {
++  final prefs = ref.watch(prefsProvider);
++  final n = prefs.homeAdLaunch + 1;
++  prefs.setHomeAdLaunch(n).ignore();
++  return n;
++});
++
++/// "×" bosilgan kun (`YYYY-MM-DD`).
++final homeAdHiddenDayProvider = StateProvider<String>(
++  (ref) => ref.watch(prefsProvider).homeAdHiddenDay,
++);
++
++/// Hozir ko'rsatiladigan reklama yoki `null`.
++final homeShowcaseAdProvider = Provider<Post?>((ref) {
++  final ads = ref.watch(homeShowcaseAdsProvider).valueOrNull ?? const [];
++  if (ads.isEmpty) return null;
++  final now = homeAdClock();
++  if (ref.watch(homeAdHiddenDayProvider) == homeAdDay(now)) return null;
++  final i = homeAdIndex(
++    ads.length,
++    day: now,
++    launch: ref.watch(homeAdLaunchProvider),
++  );
++  return ads[i];
++});
++
++class HomeShowcaseAdCard extends ConsumerStatefulWidget {
++  const HomeShowcaseAdCard({super.key});
++
++  @override
++  ConsumerState<HomeShowcaseAdCard> createState() => _HomeShowcaseAdCardState();
++}
++
++class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
++    with WidgetsBindingObserver {
++  Post? _ad;
++  VideoPlayerController? _video;
++  bool _ready = false;
++  bool _failed = false;
++  double _fraction = 0;
++  bool _foreground = true;
++
++  /// Ustida boshqa ekran yo'q va tab ko'rinyapti (`TickerMode`).
++  bool _onStage = true;
++
++  bool get _onHome => ref.read(activeTabProvider) == 0;
++
++  /// Pleer turishi mumkin (aks holda yo'q qilinadi).
++  bool get _present => _fraction > 0 && _onHome && _foreground;
++
++  /// Video o'ynashi mumkin.
++  bool get _shouldPlay =>
++      _present && _onStage && _fraction >= kHomeAdPlayFraction;
++
++  @override
++  void initState() {
++    super.initState();
++    WidgetsBinding.instance.addObserver(this);
++    final s = WidgetsBinding.instance.lifecycleState;
++    _foreground =
++        s == null ||
++        s == AppLifecycleState.resumed ||
++        s == AppLifecycleState.inactive;
++  }
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    final on = TickerMode.of(context);
++    if (on == _onStage) return;
++    _onStage = on;
++    _later();
++  }
++
++  @override
++  void didChangeAppLifecycleState(AppLifecycleState state) {
++    final fg =
++        state == AppLifecycleState.resumed ||
++        state == AppLifecycleState.inactive;
++    if (fg == _foreground) return;
++    _foreground = fg;
++    if (mounted) _sync();
++  }
++
++  @override
++  void dispose() {
++    WidgetsBinding.instance.removeObserver(this);
++    _disposeVideo();
++    super.dispose();
++  }
++
++  /// Kadrdan keyin (build/o'lchov paytida holat o'zgarmasin).
++  void _later() => WidgetsBinding.instance.addPostFrameCallback((_) {
++    if (mounted) _sync();
++  });
++
++  void _onFraction(double f) {
++    _fraction = f;
++    _later();
++  }
++
++  void _sync() {
++    final ad = _ad;
++    if (ad == null || ad.videoUrl.isEmpty || !_present) {
++      _disposeVideo();
++      return;
++    }
++    if (_shouldPlay) {
++      _play(ad);
++    } else {
++      _video?.pause();
++    }
++  }
++
++  Future<void> _play(Post ad) async {
++    if (_failed) return;
++    var c = _video;
++    if (c == null) {
++      c = VideoPlayerController.networkUrl(
++        Uri.parse(ad.videoUrl),
++        // OVOZSIZ — boshqa ilova (musiqa) to'xtatilmaydi.
++        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
++      );
++      _video = c;
++      try {
++        await c.initialize().timeout(reelsInitTimeout);
++        if (!mounted || _video != c) return;
++        await c.setLooping(true);
++        await c.setVolume(0);
++        _ready = true;
++        setState(() {});
++      } catch (_) {
++        // Video ochilmadi — poster qoladi, qayta urinilmaydi.
++        if (mounted && _video == c) {
++          _disposeVideo();
++          setState(() => _failed = true);
++        }
++        return;
++      }
++    }
++    if (!_ready || !mounted || _video != c || !_shouldPlay) return;
++    // Bosh sahifada OVOZ HECH QACHON YO'Q.
++    await c.setVolume(0);
++    if (!mounted || _video != c || !_shouldPlay) return;
++    await c.play();
++  }
++
++  void _disposeVideo() {
++    final v = _video;
++    _video = null;
++    _ready = false;
++    if (v != null) {
++      v.pause().catchError((_) {});
++      v.dispose();
++    }
++  }
++
++  void _open(Post ad) {
++    _disposeVideo();
++    // Tab almashganda boshqa ovoz to'xtaydi (pastki panel kabi).
++    ref.read(audioOwnerProvider).stopAll();
++    ref.read(showcaseFocusProvider.notifier).state = ad;
++    context.go(Routes.showcase);
++  }
++
++  void _hideToday() {
++    final day = homeAdDay(homeAdClock());
++    ref.read(homeAdHiddenDayProvider.notifier).state = day;
++    ref.read(prefsProvider).setHomeAdHiddenDay(day).ignore();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final ad = ref.watch(homeShowcaseAdProvider);
++    ref.listen<int>(activeTabProvider, (_, __) => _later());
++    if (ad == null || _ad == null || likeKey(ad) != likeKey(_ad!)) {
++      if (_ad != null || _video != null) _disposeVideo();
++      _failed = false;
++      _ad = ad;
++      if (ad != null) _later();
++    }
++    if (ad == null) return const SizedBox.shrink();
++
++    final l = L.of(context);
++    final mq = MediaQuery.sizeOf(context);
++    final h = (mq.height * .5).clamp(300.0, 480.0);
++    final c = _video;
++    final poster = ad.posterUrl;
++
++    return Padding(
++      padding: const EdgeInsets.fromLTRB(
++        Gap.screenX,
++        Gap.sm,
++        Gap.screenX,
++        Gap.lg,
++      ),
++      child: Center(
++        child: VisibleFraction(
++          onChanged: _onFraction,
++          child: Semantics(
++            button: true,
++            label: [
++              l.feedSponsored,
++              ad.title,
++              l.homeAdOpen,
++            ].where((e) => e.isNotEmpty).join('. '),
++            child: GestureDetector(
++              key: const ValueKey('home-ad-card'),
++              behavior: HitTestBehavior.opaque,
++              onTap: () => _open(ad),
++              child: SizedBox(
++                width: h * 9 / 16,
++                height: h,
++                child: ClipRRect(
++                  borderRadius: R.gentle,
++                  child: Stack(
++                    fit: StackFit.expand,
++                    children: [
++                      const ColoredBox(color: Colors.black),
++                      if (poster.isNotEmpty)
++                        mediaImage(context, poster, fit: BoxFit.cover),
++                      if (_ready && c != null && c.value.isInitialized)
++                        FittedBox(
++                          fit: BoxFit.cover,
++                          clipBehavior: Clip.hardEdge,
++                          child: SizedBox(
++                            width: c.value.size.width,
++                            height: c.value.size.height,
++                            child: VideoPlayer(
++                              c,
++                              key: const ValueKey('home-ad-player'),
++                            ),
++                          ),
++                        ),
++                      // Pastda nozik gradient — sarlavha o'qilsin.
++                      IgnorePointer(
++                        child: DecoratedBox(
++                          decoration: BoxDecoration(
++                            gradient: LinearGradient(
++                              begin: const Alignment(0, .3),
++                              end: Alignment.bottomCenter,
++                              colors: [
++                                Colors.transparent,
++                                Colors.black.withValues(alpha: .7),
++                              ],
++                            ),
++                          ),
++                        ),
++                      ),
++                      Positioned(
++                        left: Gap.sm,
++                        top: Gap.sm,
++                        child: _Badge(
++                          key: const ValueKey('home-ad-badge'),
++                          text: l.feedSponsored,
++                        ),
++                      ),
++                      Positioned(
++                        right: 2,
++                        top: 2,
++                        child: IconButton(
++                          key: const ValueKey('home-ad-close'),
++                          tooltip: l.homeAdHideToday,
++                          onPressed: _hideToday,
++                          icon: Container(
++                            width: 26,
++                            height: 26,
++                            decoration: BoxDecoration(
++                              color: Colors.black.withValues(alpha: .45),
++                              shape: BoxShape.circle,
++                            ),
++                            child: const Icon(
++                              Icons.close_rounded,
++                              size: 16,
++                              color: Colors.white,
++                            ),
++                          ),
++                        ),
++                      ),
++                      if (ad.title.isNotEmpty)
++                        Positioned(
++                          left: Gap.md,
++                          right: Gap.md,
++                          bottom: Gap.md,
++                          child: Text(
++                            ad.title,
++                            key: const ValueKey('home-ad-title'),
++                            maxLines: 2,
++                            overflow: TextOverflow.ellipsis,
++                            style: const TextStyle(
++                              fontFamily: AppType.sans,
++                              fontSize: 15,
++                              fontWeight: FontWeight.w800,
++                              height: 1.25,
++                              color: Colors.white,
++                              shadows: [
++                                Shadow(color: Colors.black54, blurRadius: 8),
++                              ],
++                            ),
++                          ),
++                        ),
++                    ],
++                  ),
++                ),
++              ),
++            ),
++          ),
++        ),
++      ),
++    );
++  }
++}
++
++class _Badge extends StatelessWidget {
++  const _Badge({super.key, required this.text});
++  final String text;
++
++  @override
++  Widget build(BuildContext context) => Container(
++    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
++    decoration: BoxDecoration(
++      color: Colors.black.withValues(alpha: .45),
++      borderRadius: R.pill,
++    ),
++    child: Text(
++      text,
++      style: const TextStyle(
++        fontFamily: AppType.sans,
++        fontSize: 11,
++        fontWeight: FontWeight.w700,
++        color: Colors.white,
++      ),
++    ),
++  );
++}
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index d2bc126..77f3cb4 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -86,6 +86,11 @@ const kShowcaseStaleAfter = Duration(minutes: 10);
+ @visibleForTesting
+ DateTime Function() showcaseClock = DateTime.now;
+ 
++/// ASOSIYDAGI REKLAMA KARTASI BOSILDI — Ko'rgazma shu element bilan
++/// (birinchi sahifada, o'z ovozi/musiqasi bilan) ochiladi. Ekran uni
++/// o'qib, darhol tozalaydi.
++final showcaseFocusProvider = StateProvider<Post?>((_) => null);
++
+ /// Ko'rgazma davomi (keyingi sahifalar).
+ final showcasePagerProvider = Provider.autoDispose<ReelsPager>(
+   (ref) => ReelsPager(),
+@@ -168,6 +173,28 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+   int _index = 0;
+   DateTime? _loadedAt;
+ 
++  /// Asosiydan ochilgan reklama — ro'yxat boshida turadi (ro'yxatda
++  /// bo'lsa, takrorlanmaydi).
++  Post? _pinned;
++  bool _focusing = false;
++
++  /// [showcaseFocusProvider] dagi elementni birinchi sahifaga qo'yadi.
++  void _takeFocus(Post p) {
++    if (_focusing) return;
++    _focusing = true;
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      _focusing = false;
++      if (!mounted) return;
++      ref.read(showcaseFocusProvider.notifier).state = null;
++      setState(() {
++        _pinned = p;
++        _index = 0;
++      });
++      if (_page.hasClients) _page.jumpToPage(0);
++      _exitClean();
++    });
++  }
++
+   @override
+   void dispose() {
+     _page.dispose();
+@@ -213,11 +240,16 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+     final pager = ref.watch(showcasePagerProvider);
+     final hidden = ref.watch(reelsHiddenProvider);
+     final clean = ref.watch(reelsCleanProvider);
++    final focus = ref.watch(showcaseFocusProvider);
++    if (focus != null) _takeFocus(focus);
+     // Boshqa tabga o'tildi yoki ko'rsatadigan sahifa yo'q — toza rejim
+     // o'z-o'zidan tugaydi (aks holda pastki panel yashirin qolardi).
++    final pinned = _pinned;
+     final hasPages =
+         !list.hasError &&
+-        (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ?? false);
++        ((pinned != null && !hidden.contains(likeKey(pinned))) ||
++            (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ??
++                false));
+     if (clean && (!onTab || !hasPages)) {
+       WidgetsBinding.instance.addPostFrameCallback((_) {
+         if (mounted) _exitClean();
+@@ -254,7 +286,15 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+               _TopBar(onCreate: _create),
+             ],
+           ),
+-          data: (all) {
++          data: (loaded) {
++            final pin = _pinned;
++            final all = pin == null
++                ? loaded
++                : [
++                    pin,
++                    for (final p in loaded)
++                      if (likeKey(p) != likeKey(pin)) p,
++                  ];
+             final items = hidden.isEmpty
+                 ? all
+                 : all.where((p) => !hidden.contains(likeKey(p))).toList();
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 2e01d4a..0ddab80 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1268,5 +1268,7 @@
+   "errShowcasePriceHigh": "The price is too high",
+   "errShowcaseBadLink": "Only an https:// link to YouTube (youtube.com, youtu.be) or Instagram (instagram.com) is accepted",
+   "pendingReview": "Pending review",
+-  "pendingPublished": "Your post will be visible to everyone after review"
++  "pendingPublished": "Your post will be visible to everyone after review",
++  "homeAdOpen": "Open in Showcase",
++  "homeAdHideToday": "Hide for today"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index c693f6b..ba9a3a2 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1268,5 +1268,7 @@
+   "errShowcasePriceHigh": "Слишком большая цена",
+   "errShowcaseBadLink": "Принимается только ссылка https:// на YouTube (youtube.com, youtu.be) или Instagram (instagram.com)",
+   "pendingReview": "Ожидает проверки",
+-  "pendingPublished": "Пост станет виден всем после проверки"
++  "pendingPublished": "Пост станет виден всем после проверки",
++  "homeAdOpen": "Открыть в витрине",
++  "homeAdHideToday": "Скрыть на сегодня"
+ }
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 0b2eda8..c94ec01 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1433,5 +1433,9 @@
+   "pendingReview": "Tekshiruv kutilmoqda",
+   "@pendingReview": {"description": "O‘z postim — media hali tekshirilmagan (faqat egasiga ko‘rinadi)."},
+   "pendingPublished": "Post tekshiruvdan so‘ng hammaga ko‘rinadi",
+-  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."}
++  "@pendingPublished": {"description": "Chop etilgan post `pending: true` qaytganda."},
++  "homeAdOpen": "Ko‘rgazmada ochish",
++  "@homeAdOpen": {"description": "Asosiydagi Ko‘rgazma reklama kartochkasi — bosilsa Ko‘rgazma tabida ochiladi (ekran o‘qigich uchun)."},
++  "homeAdHideToday": "Bugun ko‘rsatilmasin",
++  "@homeAdHideToday": {"description": "Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi."}
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index b2096cd..0a456f6 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6668,6 +6668,18 @@ abstract class L {
+   /// In uz, this message translates to:
+   /// **'Post tekshiruvdan so‘ng hammaga ko‘rinadi'**
+   String get pendingPublished;
++
++  /// Asosiydagi Ko‘rgazma reklama kartochkasi — bosilsa Ko‘rgazma tabida ochiladi (ekran o‘qigich uchun).
++  ///
++  /// In uz, this message translates to:
++  /// **'Ko‘rgazmada ochish'**
++  String get homeAdOpen;
++
++  /// Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi.
++  ///
++  /// In uz, this message translates to:
++  /// **'Bugun ko‘rsatilmasin'**
++  String get homeAdHideToday;
+ }
+ 
+ class _LDelegate extends LocalizationsDelegate<L> {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index c29bafe..3827a6f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3689,4 +3689,10 @@ class LEn extends L {
+   @override
+   String get pendingPublished =>
+       'Your post will be visible to everyone after review';
++
++  @override
++  String get homeAdOpen => 'Open in Showcase';
++
++  @override
++  String get homeAdHideToday => 'Hide for today';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index edd5601..14432ae 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3711,4 +3711,10 @@ class LRu extends L {
+ 
+   @override
+   String get pendingPublished => 'Пост станет виден всем после проверки';
++
++  @override
++  String get homeAdOpen => 'Открыть в витрине';
++
++  @override
++  String get homeAdHideToday => 'Скрыть на сегодня';
+ }
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index 74037ac..d710fd3 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3668,4 +3668,10 @@ class LUz extends L {
+ 
+   @override
+   String get pendingPublished => 'Post tekshiruvdan so‘ng hammaga ko‘rinadi';
++
++  @override
++  String get homeAdOpen => 'Ko‘rgazmada ochish';
++
++  @override
++  String get homeAdHideToday => 'Bugun ko‘rsatilmasin';
+ }
+diff --git a/mobile_nova/test/helpers.dart b/mobile_nova/test/helpers.dart
+index 8e33bfe..de3c37b 100644
+--- a/mobile_nova/test/helpers.dart
++++ b/mobile_nova/test/helpers.dart
+@@ -117,6 +117,11 @@ class FakeSocialRepository extends SocialRepository {
+           {String? cursor, int limit = 10}) async =>
+       const Ok(ReelsPage());
+ 
++  /// Asosiydagi Ko'rgazma reklamasi — sukut bo'yicha yo'q.
++  @override
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async =>
++      const Ok(ReelsPage());
++
+   /// "Qiziq emas" — tarmoqqa chiqmaydi, faqat yoziladi.
+   final hiddenReels = <Post>[];
+ 
+diff --git a/mobile_nova/test/home_showcase_ad_test.dart b/mobile_nova/test/home_showcase_ad_test.dart
+new file mode 100644
+index 0000000..6363142
+--- /dev/null
++++ b/mobile_nova/test/home_showcase_ad_test.dart
+@@ -0,0 +1,374 @@
++import 'dart:io';
++
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_localizations/flutter_localizations.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:go_router/go_router.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/errors/app_error.dart';
++import 'package:nfcstore_nova/core/network/api_client.dart';
++import 'package:nfcstore_nova/core/storage/secure_store.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/app_config_repository.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/home/widgets/showcase_ad_card.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_screen.dart'
++    show showcaseFocusProvider;
++import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
++import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// ASOSIYDAGI KO'RGAZMA REKLAMASI — `/api/showcase/ads?video=1`.
++class _AdsRepo extends FakeSocialRepository {
++  _AdsRepo({this.items = const [], this.fail = false});
++  final List<Post> items;
++  final bool fail;
++  int calls = 0;
++
++  @override
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async {
++    calls++;
++    if (fail) return const Err(AppError(AppErrorKind.offline));
++    return Ok(ReelsPage(items: items));
++  }
++}
++
++class _Api extends ApiClient {
++  final gets = <(String, Map<String, dynamic>?)>[];
++
++  @override
++  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) async {
++    gets.add((path, query));
++    return Ok(
++      <String, dynamic>{
++            'items': [
++              {
++                'id': 900,
++                'ad': true,
++                'featured': true,
++                'adSlot': 3,
++                'title': 'Boy777',
++                'videoUrl': '/uploads/promo_boy777.mp4',
++                'imageUrl': '/promo/boy777.jpg',
++              },
++            ],
++            'hasMore': false,
++            'nextCursor': null,
++          }
++          as T,
++    );
++  }
++}
++
++Post _ad(int id, String name) => Post.fromJson({
++  'id': id,
++  'code': 'NFCSTORE',
++  'authorName': 'NFCSTORE',
++  'ad': true,
++  'featured': true,
++  'title': name,
++  'text': 'Yangi NFC kartalar',
++  'videoUrl': '/uploads/promo_${name.toLowerCase()}.mp4',
++  'imageUrl': '/promo/${name.toLowerCase()}.jpg',
++});
++
++final _boy = _ad(900, 'BOY777');
++final _lol = _ad(901, 'LOL707');
++
++const _card = ValueKey('home-ad-card');
++
++Future<({ProviderContainer c, _AdsRepo repo, GoRouter router})> _pump(
++  WidgetTester tester, {
++  List<Post>? items,
++  bool fail = false,
++  bool flag = true,
++  double above = 120,
++  Future<void> Function(Prefs p)? beforeShow,
++}) async {
++  tester.view.physicalSize = const Size(390 * 3, 844 * 3);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final repo = _AdsRepo(items: items ?? [_boy, _lol], fail: fail);
++  final base = await testOverrides();
++  final prefs = await Prefs.open();
++  // Kalit holati — `AppFlagsController` keshdan boshlanadi.
++  await prefs.setAppFlagsJson(AppFlags(showcase: flag).encode());
++  await beforeShow?.call(prefs);
++  final c = ProviderContainer(
++    overrides: [...base, socialRepositoryProvider.overrideWithValue(repo)],
++  );
++  addTearDown(c.dispose);
++  final router = GoRouter(
++    initialLocation: '/',
++    routes: [
++      GoRoute(
++        path: '/',
++        builder: (_, __) => Scaffold(
++          body: ListView(
++            key: const ValueKey('home-list'),
++            children: [
++              SizedBox(height: above),
++              const HomeShowcaseAdCard(),
++              const SizedBox(height: 1200),
++            ],
++          ),
++        ),
++      ),
++      GoRoute(
++        path: Routes.showcase,
++        builder: (_, __) => const Scaffold(body: Text('SHOWCASE')),
++      ),
++    ],
++  );
++  await tester.pumpWidget(
++    UncontrolledProviderScope(
++      container: c,
++      child: MaterialApp.router(
++        routerConfig: router,
++        theme: buildTheme(NfcTokens.ivory),
++        locale: const Locale('uz'),
++        supportedLocales: LocaleController.supported,
++        localizationsDelegates: const [
++          L.delegate,
++          GlobalMaterialLocalizations.delegate,
++          GlobalWidgetsLocalizations.delegate,
++          GlobalCupertinoLocalizations.delegate,
++        ],
++      ),
++    ),
++  );
++  await settle(tester, frames: 4);
++  await _drain(tester);
++  return (c: c, repo: repo, router: router);
++}
++
++Future<void> _drain(WidgetTester tester) async {
++  await tester.runAsync(
++    () => Future<void>.delayed(const Duration(milliseconds: 40)),
++  );
++  await settle(tester, frames: 4);
++}
++
++void main() {
++  setUpAll(() {
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(
++          const MethodChannel('plugins.flutter.io/path_provider'),
++          (_) async => Directory.systemTemp.createTempSync('nova').path,
++        );
++  });
++  setUp(() => VideoPlayerPlatform.instance = FakeVideoPlatform());
++  tearDown(() => homeAdClock = DateTime.now);
++
++  test('so‘rov: /api/showcase/ads, video=1 doim, Ko‘rgazma modeli', () async {
++    final api = _Api();
++    final res = await SocialRepository(api).showcaseAds();
++    expect(api.gets.single.$1, '/api/showcase/ads');
++    expect(api.gets.single.$2, {'video': 1, 'limit': 4});
++    final p = res.valueOrNull!.items.single;
++    expect(p.isShowcaseVideoAd, isTrue);
++    expect(p.videoUrl, 'https://nfcstore.uz/uploads/promo_boy777.mp4');
++    expect(p.posterUrl, 'https://nfcstore.uz/promo/boy777.jpg');
++  });
++
++  test('navbat: kun va ochilish bo‘yicha almashadi', () {
++    final day = DateTime(2026, 10, 9, 15);
++    final a = homeAdIndex(2, day: day, launch: 1);
++    final b = homeAdIndex(2, day: day, launch: 2);
++    expect(a, isNot(b), reason: 'keyingi ochilish — boshqa reklama');
++    final tomorrow = homeAdIndex(
++      2,
++      day: day.add(const Duration(days: 1)),
++      launch: 1,
++    );
++    expect(tomorrow, isNot(a), reason: 'ertaga — boshqa reklama');
++    // Kun ichidagi soat ahamiyatsiz.
++    expect(homeAdIndex(2, day: DateTime(2026, 10, 9, 1), launch: 1), a);
++    expect(homeAdIndex(0, day: day, launch: 5), 0);
++    for (var n = 1; n <= 4; n++) {
++      final seen = {
++        for (var i = 0; i < n; i++) homeAdIndex(n, day: day, launch: i),
++      };
++      expect(seen, hasLength(n), reason: 'hammasi navbat bilan: $n');
++    }
++    expect(homeAdDay(DateTime(2026, 1, 5)), '2026-01-05');
++  });
++
++  testWidgets('har ochilishda boshqa reklama (BOY777 / LOL707)', (
++    tester,
++  ) async {
++    final titles = <String>{};
++    for (var launch = 0; launch < 2; launch++) {
++      await _pump(tester, beforeShow: (p) => p.setHomeAdLaunch(launch));
++      titles.add(
++        tester.widget<Text>(find.byKey(const ValueKey('home-ad-title'))).data!,
++      );
++      await tester.pumpWidget(const SizedBox());
++    }
++    expect(titles, {'BOY777', 'LOL707'});
++    expect((await Prefs.open()).homeAdLaunch, 2, reason: 'har ochilishda +1');
++    await tester.pump(const Duration(minutes: 1));
++  });
++
++  testWidgets('bo‘sh javob, xato yoki kalit o‘chiq — hech narsa chizilmaydi', (
++    tester,
++  ) async {
++    Future<void> expectNothing() async {
++      expect(find.byKey(_card), findsNothing);
++      expect(find.text(LUz().feedSponsored), findsNothing);
++      // Bo'sh joy ham yo'q: karta o'rni nol balandlikda.
++      expect(tester.getSize(find.byType(HomeShowcaseAdCard)).height, 0);
++      await tester.pumpWidget(const SizedBox());
++    }
++
++    await _pump(tester, items: const []);
++    await expectNothing();
++    await _pump(tester, fail: true);
++    await expectNothing();
++    final off = await _pump(tester, flag: false);
++    expect(off.repo.calls, 0, reason: 'kalit o‘chiq — so‘rov ham yo‘q');
++    await expectNothing();
++  });
++
++  testWidgets('karta: "Reklama", ×, sarlavha; video OVOZSIZ, faqat ko‘rinsa va '
++      'Asosiy tab ochiq bo‘lsa', (tester) async {
++    final v = FakeVideoPlatform();
++    VideoPlayerPlatform.instance = v;
++    final r = await _pump(tester, items: [_boy], above: 1000);
++    // Karta qurilgan (ro'yxat keshida), lekin ekranda emas — pleer yo'q.
++    expect(find.byKey(_card, skipOffstage: false), findsOneWidget);
++    expect(find.text(LUz().feedSponsored, skipOffstage: false), findsOneWidget);
++    expect(
++      find.byKey(const ValueKey('home-ad-close'), skipOffstage: false),
++      findsOneWidget,
++    );
++    expect(v.created, isEmpty, reason: 'ko‘rinmaydi — video ochilmaydi');
++
++    // To'liq ko'rinadi — ovozsiz o'ynaydi.
++    await tester.drag(
++      find.byKey(const ValueKey('home-list')),
++      const Offset(0, -700),
++    );
++    await settle(tester, frames: 4);
++    await _drain(tester);
++    expect(v.created, hasLength(1));
++    final id = v.created.single;
++    expect(v.urls[id], 'https://nfcstore.uz/uploads/promo_boy777.mp4');
++    expect(v.playing, {id});
++    expect(v.volumeOf[id], 0.0, reason: 'Asosiyda ovoz yo‘q');
++    expect(v.mixCalls, [true], reason: 'boshqa ilova ovozi to‘xtamaydi');
++
++    // Kartaning faqat ~30% i ko'rinadi — pauza (pleer saqlanadi).
++    final card = tester.getRect(find.byKey(_card));
++    await tester.drag(
++      find.byKey(const ValueKey('home-list')),
++      Offset(0, -(card.bottom - card.height * .3)),
++    );
++    await settle(tester, frames: 4);
++    await _drain(tester);
++    final now = tester.getRect(find.byKey(_card));
++    expect(now.bottom, lessThan(now.height * .5));
++    expect(v.playing, isEmpty, reason: '60% dan kam ko‘rinadi');
++    expect(v.alive, {id});
++
++    // Yana to'liq ko'rinadi — davom etadi.
++    await tester.drag(
++      find.byKey(const ValueKey('home-list')),
++      Offset(0, card.bottom - card.height * .3),
++    );
++    await settle(tester, frames: 4);
++    await _drain(tester);
++    expect(v.playing, {id});
++
++    // Boshqa tab — yo'q qilinadi; qaytilsa yangi pleer, yana ovozsiz.
++    r.c.read(activeTabProvider.notifier).state = kShowcaseTab;
++    await settle(tester, frames: 4);
++    await _drain(tester);
++    expect(v.playing, isEmpty);
++    expect(v.alive, isEmpty);
++    r.c.read(activeTabProvider.notifier).state = 0;
++    await settle(tester, frames: 4);
++    await _drain(tester);
++    expect(v.created, hasLength(2));
++    expect(v.playing, {v.created.last});
++    expect(v.volumeOf[v.created.last], 0.0);
++
++    // Ilova fonda — yo'q qilinadi.
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
++    await settle(tester, frames: 2);
++    await _drain(tester);
++    expect(v.alive, isEmpty);
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
++    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
++    await settle(tester, frames: 2);
++    await _drain(tester);
++    expect(v.playing, {v.created.last}, reason: 'qaytildi — yana o‘ynaydi');
++    expect(v.volumeOf[v.created.last], 0.0);
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(minutes: 1));
++  });
++
++  testWidgets('× — shu kun oxirigacha yashirin, ertaga qaytadi', (
++    tester,
++  ) async {
++    homeAdClock = () => DateTime(2026, 10, 9, 12);
++    final r = await _pump(tester, items: [_boy]);
++    expect(find.byKey(_card), findsOneWidget);
++    await tester.tap(find.byKey(const ValueKey('home-ad-close')));
++    await settle(tester, frames: 4);
++    expect(find.byKey(_card), findsNothing);
++    expect(r.c.read(prefsProvider).homeAdHiddenDay, '2026-10-09');
++    expect(r.c.read(showcaseFocusProvider), isNull, reason: '× ochmaydi');
++    expect(r.router.routerDelegate.currentConfiguration.uri.toString(), '/');
++    await tester.pumpWidget(const SizedBox());
++
++    // Shu kun, ilova qayta ochildi — hamon yashirin.
++    homeAdClock = () => DateTime(2026, 10, 9, 23, 59);
++    await _pump(
++      tester,
++      items: [_boy],
++      beforeShow: (p) => p.setHomeAdHiddenDay('2026-10-09'),
++    );
++    expect(find.byKey(_card), findsNothing);
++    await tester.pumpWidget(const SizedBox());
++
++    // Ertasi kun — yana chiqadi.
++    homeAdClock = () => DateTime(2026, 10, 10, 8);
++    await _pump(
++      tester,
++      items: [_boy],
++      beforeShow: (p) => p.setHomeAdHiddenDay('2026-10-09'),
++    );
++    expect(find.byKey(_card), findsOneWidget);
++  });
++
++  testWidgets('bosilsa — Ko‘rgazma tabi shu reklama bilan', (tester) async {
++    final v = FakeVideoPlatform();
++    VideoPlayerPlatform.instance = v;
++    final r = await _pump(tester, items: [_lol]);
++    expect(v.playing, hasLength(1));
++    await tester.tap(find.byKey(const ValueKey('home-ad-title')));
++    await settle(tester, frames: 6);
++    await _drain(tester);
++    expect(
++      r.router.routerDelegate.currentConfiguration.uri.toString(),
++      Routes.showcase,
++    );
++    expect(find.text('SHOWCASE'), findsOneWidget);
++    expect(r.c.read(showcaseFocusProvider)?.id, _lol.id);
++    expect(v.alive, isEmpty, reason: 'kartadagi pleer yopildi');
++  });
++}
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 4da6048..849622a 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -1258,6 +1258,30 @@ void main() {
+       expect(v.volumeOf[id], 0.0);
+     });
+ 
++    testWidgets(
++        'Asosiydagi karta bosildi — shu reklama birinchi sahifada, ovozi '
++        'bilan; ro‘yxatda bo‘lsa takrorlanmaydi', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(id: 1), ad(), _post(id: 2)]),
++      ], beforeShow: (c) async =>
++          c.read(showcaseFocusProvider.notifier).state = ad());
++      await drain(tester);
++      expect(r.c.read(showcaseFocusProvider), isNull, reason: 'o‘qildi');
++      // Birinchi sahifa — reklama videosi, o'z ovozi bilan.
++      expect(find.byKey(const ValueKey('showcase-ad-video')), findsOneWidget);
++      final id = videoId(v);
++      expect(v.playing, {id});
++      expect(v.volumeOf[id], 1.0);
++      // Ro'yxatda ikkinchi marta yo'q: 3 sahifa (reklama, 1, 2).
++      final pager = tester.widget<PageView>(
++          find.byKey(const ValueKey('showcase-pager')));
++      expect(pager.childrenDelegate.estimatedChildCount, 3);
++      await tester.pumpWidget(const SizedBox());
++      await tester.pump(const Duration(minutes: 1));
++    });
++
+     testWidgets('ekrandan chiqsa pauza va yo‘q qilinadi; boshqa tab — pauza',
+         (tester) async {
+       final v = FakeVideoPlatform();
+-- 
+2.43.0
+

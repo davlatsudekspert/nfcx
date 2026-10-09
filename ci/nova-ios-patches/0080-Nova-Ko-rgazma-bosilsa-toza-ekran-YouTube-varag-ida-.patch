@@ -1,0 +1,1649 @@
+From 82996f159a544c97b97fd7c3ab23143c9bb9c740 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 05:13:45 +0000
+Subject: [PATCH 80/81] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20bosilsa?=
+ =?UTF-8?q?=20toza=20ekran;=20YouTube=20varag'ida=20video=20o'zi=20boshlan?=
+ =?UTF-8?q?adi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (TestFlight 330):
+
+1. "Bosam o'zi toza ko'rinmayapti, to'liq yozuvlar olinmayapti" —
+   endi HAR ko'rgazma sahifasida (rasm va video reklama) media BIR
+   MARTA bosilsa hamma belgilar yumshoq yo'qoladi: "Ko'rgazma"
+   sarlavhasi, "+", 🔇, muallif, "Reklama", sarlavha, izoh, musiqa,
+   Qo'ng'iroq/Telegram/Xarita/Instagram, amallar ustuni, nuqtalar,
+   gradient va pastki panel (Reels'dagi `reelsCleanProvider` /
+   `ReelsChrome` / `ReelsBackGuard` qayta ishlatildi). Yana bosilsa —
+   qaytadi. Boshqa sahifaga surilsa, tabdan chiqilsa yoki "orqaga" —
+   oddiy holat. Musiqa va video ijrosiga ta'sir yo'q.
+   - Rasmni butun ekranda ochish endi IKKI marta bosish (bitta bosish
+     hamma sahifada bir xil — toza rejim).
+   - Video reklamada "Ko'rgazma" yozuvi yo'q (videoning o'z
+     sarlavhasi bilan ustma-ust tushardi), gradient yengil va faqat
+     pastda.
+
+2. "Videoni ko'rish" — "ochilyapti, o'ynab ketmayapti": odam tugmani
+   o'zi bosgan, shuning uchun video o'zi boshlanadi (`music_embed`
+   bilan bir xil asos): `autoplay:1`, `onReady` da zaxira
+   `playVideo()`, iOS'da `mediaTypesRequiringUserAction` bo'sh,
+   Android'da `setMediaPlaybackRequiresUserGesture(false)`. WebView
+   o'tishlari: ichki freymlar (YouTube iframe, googlevideo, ytimg,
+   about:blank/srcdoc) hech qachon to'silmaydi, asosiy oynada
+   YouTube `/embed/` ham ichida; tashqarida faqat haqiqiy havolalar
+   (tomosha sahifasi, kanal). Bekor qilingan yuklash (-999/102)
+   zaxira panelni ko'rsatmaydi. Instagram varag'ida ham xuddi shu
+   media sozlamalari.
+
+Sinovlar: toza rejim (rasm/video, qaytish, surish/tab, tugmalar),
+ikki bosish — ko'ruvchi, YouTube HTML (autoplay:1, playVideo),
+o'tish qoidalari.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../features/showcase/showcase_instagram.dart |  23 +-
+ .../features/showcase/showcase_screen.dart    | 708 ++++++++++--------
+ .../lib/features/showcase/showcase_video.dart |  87 ++-
+ .../lib/features/social/reels_screen.dart     |  36 +-
+ mobile_nova/lib/routing/shell.dart            |   4 +
+ mobile_nova/test/showcase_screen_test.dart    | 347 ++++++++-
+ 6 files changed, 853 insertions(+), 352 deletions(-)
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_instagram.dart b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+index c32663e..30e5d4b 100644
+--- a/mobile_nova/lib/features/showcase/showcase_instagram.dart
++++ b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+@@ -2,20 +2,25 @@ import 'dart:async';
+ 
+ import 'package:flutter/material.dart';
+ import 'package:webview_flutter/webview_flutter.dart';
++import 'package:webview_flutter_android/webview_flutter_android.dart';
+ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+ 
+ import '../../core/utils/external_link.dart';
+ import '../../design/theme/typography.dart';
+ import '../../design/tokens/shapes.dart';
+ import '../../l10n/gen/app_localizations.dart';
++import 'showcase_video.dart' show webLoadCancelled;
+ 
+ /// KO'RGAZMA — INSTAGRAM POSTI ilova ichida (egasi tasdiqlagan).
+ ///
+ /// Instagram'ning RASMIY ommaviy embed sahifasi ochiladi:
+ /// `https://www.instagram.com/<p|reel>/<kod>/embed/` (token kerak emas).
+ ///
+-/// * avtomatik ijro yo'q — WebView media uchun foydalanuvchi bosishini
+-///   talab qiladi (standart sozlama o'zgartirilmaydi);
++/// * odam "Instagram'da ko'rish" ni O'ZI bosgan — WebView media'ni
++///   to'smaydi (iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
++///   `setMediaPlaybackRequiresUserGesture(false)`, YouTube varag'i bilan
++///   bir xil; build 330). Reel embed'ning o'zi play bosishni so'rashi
++///   mumkin — bosilganda darhol o'ynaydi;
+ /// * embed ustida hech narsa yo'q: yopish — tepada, "Instagram'da
+ ///   ochish" — pastda;
+ /// * embed ichidagi havolalar ("View on Instagram", profil...) WebView
+@@ -305,19 +310,29 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
+   @override
+   void initState() {
+     super.initState();
++    // Media odam bosishini kutmaydi: varaqni u o'zi ochgan (YouTube
++    // varag'i va `music_embed.dart` bilan bir xil sozlama).
+     final PlatformWebViewControllerCreationParams params =
+         WebViewPlatform.instance is WebKitWebViewPlatform
+             ? WebKitWebViewControllerCreationParams(
+                 allowsInlineMediaPlayback: true,
++                mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+               )
+             : const PlatformWebViewControllerCreationParams();
+     _web = WebViewController.fromPlatformCreationParams(params)
+       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+-      ..setBackgroundColor(Colors.white)
++      ..setBackgroundColor(Colors.white);
++    final platform = _web.platform;
++    if (platform is AndroidWebViewController) {
++      platform.setMediaPlaybackRequiresUserGesture(false);
++    }
++    _web
+       ..setNavigationDelegate(NavigationDelegate(
+         onPageFinished: (_) => widget.onState('ready'),
+         onWebResourceError: (e) {
+-          if (e.isForMainFrame ?? false) widget.onState('error:load');
++          if ((e.isForMainFrame ?? false) && !webLoadCancelled(e)) {
++            widget.onState('error:load');
++          }
+         },
+         onHttpError: (e) {
+           final req = e.request?.uri;
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index e004d70..d2bc126 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -42,6 +42,8 @@ import '../social/reels_screen.dart'
+         reelsInitTimeout,
+         ReelAction,
+         ReelCaption,
++        ReelsBackGuard,
++        ReelsChrome,
+         ReelFollowPill,
+         ReelsPager,
+         ReelViewsLabel,
+@@ -67,6 +69,15 @@ import 'showcase_video.dart';
+ /// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
+ /// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
+ /// rasmiy embed sahifasida; profil havolasi — tashqarida.
++///
++/// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti") —
++/// Reels'dagi bilan bir xil: rasm yoki video BIR MARTA bosilsa hamma
++/// belgilar (sarlavha, "+", 🔇, muallif, "Reklama", izoh, tugmalar,
++/// amallar ustuni, nuqtalar, gradient va pastki panel) yumshoq
++/// yo'qoladi; yana bosilsa qaytadi. Boshqa sahifaga surilsa, tabdan
++/// chiqilsa yoki "orqaga" bosilsa — oddiy holatga qaytadi. Musiqa va
++/// video ijrosiga ta'sir qilmaydi. Rasmni butun ekranda ochish — IKKI
++/// MARTA bosish.
+ 
+ /// Ro'yxat shundan eski bo'lsa, tabga qaytilganda qayta yuklanadi
+ /// (Reels bilan bir xil qoida).
+@@ -165,6 +176,12 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+ 
+   void _create() => context.push(Routes.showcaseCreate);
+ 
++  /// Toza rejimdan chiqish (sahifa almashdi, tab yopildi, ro'yxat yo'q).
++  void _exitClean() {
++    final c = ref.read(reelsCleanProvider.notifier);
++    if (c.state) c.state = false;
++  }
++
+   /// Tabga qaytildi — ro'yxat eskirgan bo'lsa yangisi, boshidan.
+   void _onEnter() {
+     final at = _loadedAt;
+@@ -195,79 +212,112 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+     final list = ref.watch(showcaseProvider);
+     final pager = ref.watch(showcasePagerProvider);
+     final hidden = ref.watch(reelsHiddenProvider);
++    final clean = ref.watch(reelsCleanProvider);
++    // Boshqa tabga o'tildi yoki ko'rsatadigan sahifa yo'q — toza rejim
++    // o'z-o'zidan tugaydi (aks holda pastki panel yashirin qolardi).
++    final hasPages =
++        !list.hasError &&
++        (list.valueOrNull?.any((p) => !hidden.contains(likeKey(p))) ?? false);
++    if (clean && (!onTab || !hasPages)) {
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (mounted) _exitClean();
++      });
++    }
+ 
+-    return Scaffold(
+-      backgroundColor: Colors.black,
+-      extendBody: true,
+-      body: list.when(
+-        skipLoadingOnReload: true,
+-        loading: () => const Center(
+-          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+-        ),
+-        error: (e, __) => Stack(
+-          children: [
+-            StatePanel.fromError(
+-              context,
+-              asAppError(e),
+-              onRetry: () => ref.invalidate(showcaseProvider),
+-              onDark: true,
++    // "ORQAGA" AVVAL TOZA REJIMDAN CHIQARADI (Reels bilan bir xil).
++    return ReelsBackGuard(
++      onBack: () {
++        final c = ref.read(reelsCleanProvider.notifier);
++        if (!onTab || !c.state) return false;
++        c.state = false;
++        return true;
++      },
++      child: Scaffold(
++        backgroundColor: Colors.black,
++        extendBody: true,
++        body: list.when(
++          skipLoadingOnReload: true,
++          loading: () => const Center(
++            child: CircularProgressIndicator(
++              color: Colors.white,
++              strokeWidth: 2,
+             ),
+-            _TopBar(onCreate: _create),
+-          ],
+-        ),
+-        data: (all) {
+-          final items = hidden.isEmpty
+-              ? all
+-              : all.where((p) => !hidden.contains(likeKey(p))).toList();
+-          if (items.isEmpty) {
++          ),
++          error: (e, __) => Stack(
++            children: [
++              StatePanel.fromError(
++                context,
++                asAppError(e),
++                onRetry: () => ref.invalidate(showcaseProvider),
++                onDark: true,
++              ),
++              _TopBar(onCreate: _create),
++            ],
++          ),
++          data: (all) {
++            final items = hidden.isEmpty
++                ? all
++                : all.where((p) => !hidden.contains(likeKey(p))).toList();
++            if (items.isEmpty) {
++              return Stack(
++                children: [
++                  StatePanel(
++                    key: const ValueKey('showcase-empty'),
++                    icon: Icons.photo_library_outlined,
++                    title: l.showcaseEmpty,
++                    message: l.showcaseEmptyHint,
++                    actionLabel: l.showcaseCreate,
++                    onAction: _create,
++                    onDark: true,
++                  ),
++                  _TopBar(onCreate: _create),
++                ],
++              );
++            }
++            // Element yashirildi / ro'yxat qisqardi — oxirgisiga.
++            if (_index >= items.length) {
++              final to = items.length - 1;
++              WidgetsBinding.instance.addPostFrameCallback((_) {
++                if (!mounted) return;
++                if (_page.hasClients) _page.jumpToPage(to);
++                setState(() => _index = to);
++              });
++            }
++            final current = items[_index.clamp(0, items.length - 1)];
+             return Stack(
+               children: [
+-                StatePanel(
+-                  key: const ValueKey('showcase-empty'),
+-                  icon: Icons.photo_library_outlined,
+-                  title: l.showcaseEmpty,
+-                  message: l.showcaseEmptyHint,
+-                  actionLabel: l.showcaseCreate,
+-                  onAction: _create,
+-                  onDark: true,
++                PageView.builder(
++                  key: const ValueKey('showcase-pager'),
++                  controller: _page,
++                  scrollDirection: Axis.vertical,
++                  allowImplicitScrolling: true,
++                  itemCount: items.length,
++                  onPageChanged: (i) {
++                    setState(() => _index = i);
++                    pager.nearEnd(i, items.length);
++                    // Yangi sahifa — belgilar bilan ochiladi.
++                    _exitClean();
++                  },
++                  itemBuilder: (context, i) => ShowcasePage(
++                    key: ValueKey('showcase:${likeKey(items[i])}'),
++                    post: items[i],
++                    // Ikki shart: shu sahifa ochiq VA Ko'rgazma tabining
++                    // o'zi ko'rinyapti (tablar yopilmaydi, berkitiladi).
++                    visible: i == _index && onTab,
++                  ),
++                ),
++                _TopBar(
++                  onCreate: _create,
++                  showMute: true,
++                  hidden: clean,
++                  // Video reklamada "Ko'rgazma" yozuvi yo'q: videoning o'z
++                  // sarlavhasi (tepada) bilan ustma-ust tushardi.
++                  showTitle: !current.isShowcaseVideoAd,
+                 ),
+-                _TopBar(onCreate: _create),
+               ],
+             );
+-          }
+-          // Element yashirildi / ro'yxat qisqardi — oxirgisiga.
+-          if (_index >= items.length) {
+-            final to = items.length - 1;
+-            WidgetsBinding.instance.addPostFrameCallback((_) {
+-              if (!mounted) return;
+-              if (_page.hasClients) _page.jumpToPage(to);
+-              setState(() => _index = to);
+-            });
+-          }
+-          return Stack(
+-            children: [
+-              PageView.builder(
+-                key: const ValueKey('showcase-pager'),
+-                controller: _page,
+-                scrollDirection: Axis.vertical,
+-                allowImplicitScrolling: true,
+-                itemCount: items.length,
+-                onPageChanged: (i) {
+-                  setState(() => _index = i);
+-                  pager.nearEnd(i, items.length);
+-                },
+-                itemBuilder: (context, i) => ShowcasePage(
+-                  key: ValueKey('showcase:${likeKey(items[i])}'),
+-                  post: items[i],
+-                  // Ikki shart: shu sahifa ochiq VA Ko'rgazma tabining
+-                  // o'zi ko'rinyapti (tablar yopilmaydi, berkitiladi).
+-                  visible: i == _index && onTab,
+-                ),
+-              ),
+-              _TopBar(onCreate: _create, showMute: true),
+-            ],
+-          );
+-        },
++          },
++        ),
+       ),
+     );
+   }
+@@ -275,55 +325,75 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
+ 
+ /// Sarlavha, "+" va uning ostida ovoz tugmasi (o'ng burchak).
+ class _TopBar extends StatelessWidget {
+-  const _TopBar({required this.onCreate, this.showMute = false});
++  const _TopBar({
++    required this.onCreate,
++    this.showMute = false,
++    this.hidden = false,
++    this.showTitle = true,
++  });
+   final VoidCallback onCreate;
+ 
+   /// Ovoz tugmasi — ro'yxat bor bo'lsa, HAR sahifada bitta joyda.
+   final bool showMute;
+ 
++  /// Toza rejim — butun panel yashirin.
++  final bool hidden;
++
++  /// "Ko'rgazma" yozuvi (video reklamada yo'q).
++  final bool showTitle;
++
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+-    return SafeArea(
+-      child: Padding(
+-        padding: const EdgeInsets.symmetric(
+-          horizontal: Gap.lg,
+-          vertical: Gap.sm,
+-        ),
+-        child: Row(
+-          crossAxisAlignment: CrossAxisAlignment.start,
+-          children: [
+-            Expanded(
+-              child: Text(
+-                l.navShowcase,
+-                maxLines: 1,
+-                overflow: TextOverflow.ellipsis,
+-                style: AppType.displayStyle(
+-                  color: Colors.white,
+-                  size: 24,
+-                  shadows: const [
+-                    Shadow(color: Colors.black54, blurRadius: 12),
+-                  ],
++    return ReelsChrome(
++      key: const ValueKey('showcase-topbar'),
++      hidden: hidden,
++      child: SafeArea(
++        child: Padding(
++          padding: const EdgeInsets.symmetric(
++            horizontal: Gap.lg,
++            vertical: Gap.sm,
++          ),
++          child: Row(
++            crossAxisAlignment: CrossAxisAlignment.start,
++            children: [
++              Expanded(
++                // Yashirin yozuv bosishni ushlamaydi — video bosilaveradi.
++                child: ReelsChrome(
++                  key: const ValueKey('showcase-header'),
++                  hidden: !showTitle,
++                  child: Text(
++                    l.navShowcase,
++                    maxLines: 1,
++                    overflow: TextOverflow.ellipsis,
++                    style: AppType.displayStyle(
++                      color: Colors.white,
++                      size: 24,
++                      shadows: const [
++                        Shadow(color: Colors.black54, blurRadius: 12),
++                      ],
++                    ),
++                  ),
+                 ),
+               ),
+-            ),
+-            Column(
+-              mainAxisSize: MainAxisSize.min,
+-              children: [
+-                NovaIconButton(
+-                  key: const ValueKey('showcase-create'),
+-                  icon: Icons.add_rounded,
+-                  tooltip: l.showcaseCreate,
+-                  onPressed: onCreate,
+-                  filled: true,
+-                ),
+-                if (showMute) ...[
+-                  const SizedBox(height: Gap.xs),
+-                  const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
++              Column(
++                mainAxisSize: MainAxisSize.min,
++                children: [
++                  NovaIconButton(
++                    key: const ValueKey('showcase-create'),
++                    icon: Icons.add_rounded,
++                    tooltip: l.showcaseCreate,
++                    onPressed: onCreate,
++                    filled: true,
++                  ),
++                  if (showMute) ...[
++                    const SizedBox(height: Gap.xs),
++                    const ShowcaseMuteButton(key: ValueKey('showcase-mute')),
++                  ],
+                 ],
+-              ],
+-            ),
+-          ],
++              ),
++            ],
++          ),
+         ),
+       ),
+     );
+@@ -633,6 +703,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+       ..showSnackBar(SnackBar(content: Text(text)));
+   }
+ 
++  /// BITTA BOSISH — TOZA REJIM (Reels kabi): hamma belgilar yashirinadi,
++  /// yana bosilsa qaytadi. Faqat holat almashadi — musiqa/video
++  /// ijrosiga (`_sync`) tegilmaydi.
++  void _toggleClean() {
++    final c = ref.read(reelsCleanProvider.notifier);
++    c.state = !c.state;
++  }
++
+   Future<void> _openViewer(int i) async {
+     setState(() => _viewerOpen = true);
+     _sync();
+@@ -808,6 +886,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         : ref.watch(followingOfProvider(p.code));
+     // Burchakdagi 🔇 bosildi — musiqa shu zahoti to'xtaydi/davom etadi.
+     ref.listen<bool>(showcaseMutedProvider, (_, __) => _sync());
++    // Toza rejim faqat ko'rinayotgan sahifaga tegishli (qo'shni sahifa
++    // surilganda belgilar bilan chiqadi).
++    final clean = widget.visible && ref.watch(reelsCleanProvider);
+     final navH = MediaQuery.paddingOf(context).bottom;
+     final topH = MediaQuery.paddingOf(context).top;
+     final link = showcaseLinkKind(p.linkUrl);
+@@ -820,11 +901,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+       children: [
+         const ColoredBox(color: Colors.black),
+         if (_isVideo)
+-          _AdVideo(
+-            key: const ValueKey('showcase-ad-video'),
+-            poster: p.posterUrl,
+-            controller: _videoReady ? _video : null,
+-            failed: _videoFailed,
++          GestureDetector(
++            behavior: HitTestBehavior.opaque,
++            onTap: _toggleClean,
++            child: _AdVideo(
++              key: const ValueKey('showcase-ad-video'),
++              poster: p.posterUrl,
++              controller: _videoReady ? _video : null,
++              failed: _videoFailed,
++            ),
+           )
+         else
+           PageView.builder(
+@@ -832,10 +917,14 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+             controller: _carousel,
+             itemCount: _images.length,
+             onPageChanged: _onImage,
++            // Bitta bosish — toza rejim (egasi, build 330: har sahifada
++            // bir xil). Rasmni butun ekranda ochish — ikki marta bosish
++            // (ko'ruvchida ham ikki bosish kattalashtiradi).
+             itemBuilder: (context, i) => GestureDetector(
+               key: ValueKey('showcase-image-$i'),
+               behavior: HitTestBehavior.opaque,
+-              onTap: () => _openViewer(i),
++              onTap: _toggleClean,
++              onDoubleTap: () => _openViewer(i),
+               child: Stack(
+                 fit: StackFit.expand,
+                 children: [
+@@ -852,17 +941,22 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+               ),
+             ),
+           ),
+-        // Pastdagi matn o'qilishi uchun gradient.
+-        IgnorePointer(
+-          child: DecoratedBox(
+-            decoration: BoxDecoration(
+-              gradient: LinearGradient(
+-                begin: Alignment.center,
+-                end: Alignment.bottomCenter,
+-                colors: [
+-                  Colors.transparent,
+-                  Colors.black.withValues(alpha: .75),
+-                ],
++        // Pastdagi matn o'qilishi uchun gradient. Video reklamada —
++        // yengilroq va pastroqdan: videoning o'z yozuvlari o'qilsin.
++        ReelsChrome(
++          key: const ValueKey('showcase-gradient'),
++          hidden: clean,
++          child: IgnorePointer(
++            child: DecoratedBox(
++              decoration: BoxDecoration(
++                gradient: LinearGradient(
++                  begin: _isVideo ? const Alignment(0, .4) : Alignment.center,
++                  end: Alignment.bottomCenter,
++                  colors: [
++                    Colors.transparent,
++                    Colors.black.withValues(alpha: _isVideo ? .55 : .75),
++                  ],
++                ),
+               ),
+             ),
+           ),
+@@ -873,205 +967,217 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+             left: 0,
+             right: 0,
+             top: topH + 64,
+-            child: IgnorePointer(
+-              child: Center(
+-                child: CarouselDots(count: _images.length, index: _image),
++            child: ReelsChrome(
++              hidden: clean,
++              child: IgnorePointer(
++                child: Center(
++                  child: CarouselDots(count: _images.length, index: _image),
++                ),
+               ),
+             ),
+           ),
+         Positioned(
+           right: 4,
+           bottom: navH + 30 - Gap.lg / 2,
+-          child: Column(
+-            children: [
+-              ReelAction(
+-                key: const ValueKey('showcase-like'),
+-                icon: like.liked ? NovaIcons.liked : NovaIcons.like,
+-                label: formatCount(like.count),
+-                tint: like.liked ? t.error : Colors.white,
+-                semantic: l.postLike,
+-                onTap: _like,
+-              ),
+-              ReelAction(
+-                key: const ValueKey('showcase-comments'),
+-                icon: NovaIcons.comment,
+-                label: formatCount(_comments ?? p.comments),
+-                semantic: l.postComments,
+-                onTap: () => showReelComments(
+-                  context,
+-                  p,
+-                  onTotal: (n) {
+-                    if (mounted) setState(() => _comments = n);
+-                  },
++          child: ReelsChrome(
++            key: const ValueKey('showcase-rail'),
++            hidden: clean,
++            child: Column(
++              children: [
++                ReelAction(
++                  key: const ValueKey('showcase-like'),
++                  icon: like.liked ? NovaIcons.liked : NovaIcons.like,
++                  label: formatCount(like.count),
++                  tint: like.liked ? t.error : Colors.white,
++                  semantic: l.postLike,
++                  onTap: _like,
+                 ),
+-              ),
+-              ReelAction(
+-                key: const ValueKey('showcase-save'),
+-                icon: saved ? NovaIcons.saved : NovaIcons.save,
+-                label: l.actionSave,
+-                tint: saved ? t.goldOnDark(IdPlate.goldLight) : Colors.white,
+-                semantic: l.actionSave,
+-                onTap: _save,
+-              ),
+-              ReelAction(
+-                key: const ValueKey('showcase-share'),
+-                icon: NovaIcons.share,
+-                label: l.actionShare,
+-                semantic: l.actionShare,
+-                onTap: () => shareWithFeedback(
+-                  context,
+-                  contentShareText(
+-                    caption: [
+-                      p.title,
+-                      p.text,
+-                    ].where((e) => e.isNotEmpty).join('\n'),
+-                    code: p.code,
+-                    company: p.isCompany,
+-                    postId: p.id,
++                ReelAction(
++                  key: const ValueKey('showcase-comments'),
++                  icon: NovaIcons.comment,
++                  label: formatCount(_comments ?? p.comments),
++                  semantic: l.postComments,
++                  onTap: () => showReelComments(
++                    context,
++                    p,
++                    onTotal: (n) {
++                      if (mounted) setState(() => _comments = n);
++                    },
+                   ),
+-                  subject: p.authorName,
+-                  copiedMessage: l.shareCopied,
+                 ),
+-              ),
+-              ReelAction(
+-                key: const ValueKey('showcase-more'),
+-                icon: NovaIcons.more,
+-                label: '',
+-                semantic: l.reportTitle,
+-                onTap: _showMore,
+-              ),
+-            ],
++                ReelAction(
++                  key: const ValueKey('showcase-save'),
++                  icon: saved ? NovaIcons.saved : NovaIcons.save,
++                  label: l.actionSave,
++                  tint: saved ? t.goldOnDark(IdPlate.goldLight) : Colors.white,
++                  semantic: l.actionSave,
++                  onTap: _save,
++                ),
++                ReelAction(
++                  key: const ValueKey('showcase-share'),
++                  icon: NovaIcons.share,
++                  label: l.actionShare,
++                  semantic: l.actionShare,
++                  onTap: () => shareWithFeedback(
++                    context,
++                    contentShareText(
++                      caption: [
++                        p.title,
++                        p.text,
++                      ].where((e) => e.isNotEmpty).join('\n'),
++                      code: p.code,
++                      company: p.isCompany,
++                      postId: p.id,
++                    ),
++                    subject: p.authorName,
++                    copiedMessage: l.shareCopied,
++                  ),
++                ),
++                ReelAction(
++                  key: const ValueKey('showcase-more'),
++                  icon: NovaIcons.more,
++                  label: '',
++                  semantic: l.reportTitle,
++                  onTap: _showMore,
++                ),
++              ],
++            ),
+           ),
+         ),
+         Positioned(
+           left: Gap.lg,
+           right: 72,
+           bottom: navH + 30,
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.start,
+-            mainAxisSize: MainAxisSize.min,
+-            children: [
+-              _AuthorRow(
+-                post: p,
+-                mine: mine,
+-                following: following,
+-                views: _views ?? p.views,
+-                onAuthor: _openAuthor,
+-                onFollow: () async {
+-                  final e = await ref
+-                      .read(followOverridesProvider.notifier)
+-                      .toggle(
+-                        p.code,
+-                        following: following,
+-                        company: p.isCompany,
+-                      );
+-                  if (e != null && mounted) _snack(describeError(l, e));
+-                },
+-              ),
+-              if (p.pending) ...[
+-                const SizedBox(height: Gap.sm),
+-                const PendingBadge(onDark: true),
+-              ],
+-              if (p.isAd) ...[
+-                const SizedBox(height: Gap.sm),
+-                _Pill(
+-                  key: const ValueKey('showcase-sponsored'),
+-                  text: l.feedSponsored,
++          child: ReelsChrome(
++            key: const ValueKey('showcase-info'),
++            hidden: clean,
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              mainAxisSize: MainAxisSize.min,
++              children: [
++                _AuthorRow(
++                  post: p,
++                  mine: mine,
++                  following: following,
++                  views: _views ?? p.views,
++                  onAuthor: _openAuthor,
++                  onFollow: () async {
++                    final e = await ref
++                        .read(followOverridesProvider.notifier)
++                        .toggle(
++                          p.code,
++                          following: following,
++                          company: p.isCompany,
++                        );
++                    if (e != null && mounted) _snack(describeError(l, e));
++                  },
+                 ),
+-              ],
+-              if (p.title.isNotEmpty) ...[
+-                const SizedBox(height: Gap.sm),
+-                Text(
+-                  p.title,
+-                  key: const ValueKey('showcase-title'),
+-                  maxLines: 2,
+-                  overflow: TextOverflow.ellipsis,
+-                  style: const TextStyle(
+-                    fontFamily: AppType.sans,
+-                    fontSize: 17,
+-                    fontWeight: FontWeight.w800,
+-                    height: 1.25,
+-                    color: Colors.white,
+-                    shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
++                if (p.pending) ...[
++                  const SizedBox(height: Gap.sm),
++                  const PendingBadge(onDark: true),
++                ],
++                if (p.isAd) ...[
++                  const SizedBox(height: Gap.sm),
++                  _Pill(
++                    key: const ValueKey('showcase-sponsored'),
++                    text: l.feedSponsored,
+                   ),
+-                ),
+-              ],
+-              if (p.priceUzs != null) ...[
+-                const SizedBox(height: 4),
+-                Text(
+-                  formatUzs(l, p.priceUzs!),
+-                  key: const ValueKey('showcase-price'),
+-                  style: AppType.monoStyle(
+-                    color: IdPlate.goldLight,
+-                    size: 15,
+-                    weight: FontWeight.w700,
++                ],
++                if (p.title.isNotEmpty) ...[
++                  const SizedBox(height: Gap.sm),
++                  Text(
++                    p.title,
++                    key: const ValueKey('showcase-title'),
++                    maxLines: 2,
++                    overflow: TextOverflow.ellipsis,
++                    style: const TextStyle(
++                      fontFamily: AppType.sans,
++                      fontSize: 17,
++                      fontWeight: FontWeight.w800,
++                      height: 1.25,
++                      color: Colors.white,
++                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
++                    ),
+                   ),
+-                ),
+-              ],
+-              if (p.text.isNotEmpty) ...[
+-                const SizedBox(height: Gap.sm),
+-                ReelCaption(
+-                  text: p.text,
+-                  open: _captionOpen,
+-                  onToggle: () => setState(() => _captionOpen = !_captionOpen),
+-                ),
+-              ],
+-              if (p.music != null) ...[
+-                const SizedBox(height: Gap.sm),
+-                MusicChip(
+-                  key: const ValueKey('showcase-music'),
+-                  track: p.music!,
+-                  onDark: true,
+-                  onTap: () => _openMusic(p.music!),
+-                ),
+-              ],
+-              if (postContactActions(p).isNotEmpty) ...[
+-                const SizedBox(height: Gap.sm),
+-                PostContactBar(
+-                  key: const ValueKey('showcase-contact'),
+-                  post: p,
+-                  onDark: true,
+-                ),
+-              ],
+-              if (item != null || link != null) ...[
+-                const SizedBox(height: Gap.sm),
+-                Wrap(
+-                  spacing: Gap.sm,
+-                  runSpacing: 6,
+-                  children: [
+-                    if (item != null)
+-                      _CtaButton(
+-                        key: const ValueKey('showcase-product'),
+-                        icon: Icons.shopping_bag_outlined,
+-                        label: l.showcaseViewProduct,
+-                        primary: true,
+-                        onTap: () => _openProduct(item),
+-                      ),
+-                    if (videoId != null)
+-                      _CtaButton(
+-                        key: const ValueKey('showcase-video'),
+-                        icon: Icons.play_circle_outline_rounded,
+-                        label: l.showcaseWatchVideo,
+-                        onTap: () => _openVideo(videoId),
+-                      )
+-                    else if (igEmbed != null)
+-                      _CtaButton(
+-                        key: const ValueKey('showcase-instagram'),
+-                        icon: Icons.camera_alt_outlined,
+-                        label: l.showcaseWatchInstagram,
+-                        onTap: () => _openInstagram(igEmbed),
+-                      )
+-                    else if (link != null)
+-                      _CtaButton(
+-                        key: const ValueKey('showcase-link'),
+-                        icon: Icons.open_in_new_rounded,
+-                        label: showcaseLinkLabel(l, link),
+-                        onTap: () => openLink(p.linkUrl),
+-                      ),
+-                  ],
+-                ),
++                ],
++                if (p.priceUzs != null) ...[
++                  const SizedBox(height: 4),
++                  Text(
++                    formatUzs(l, p.priceUzs!),
++                    key: const ValueKey('showcase-price'),
++                    style: AppType.monoStyle(
++                      color: IdPlate.goldLight,
++                      size: 15,
++                      weight: FontWeight.w700,
++                    ),
++                  ),
++                ],
++                if (p.text.isNotEmpty) ...[
++                  const SizedBox(height: Gap.sm),
++                  ReelCaption(
++                    text: p.text,
++                    open: _captionOpen,
++                    onToggle: () =>
++                        setState(() => _captionOpen = !_captionOpen),
++                  ),
++                ],
++                if (p.music != null) ...[
++                  const SizedBox(height: Gap.sm),
++                  MusicChip(
++                    key: const ValueKey('showcase-music'),
++                    track: p.music!,
++                    onDark: true,
++                    onTap: () => _openMusic(p.music!),
++                  ),
++                ],
++                if (postContactActions(p).isNotEmpty) ...[
++                  const SizedBox(height: Gap.sm),
++                  PostContactBar(
++                    key: const ValueKey('showcase-contact'),
++                    post: p,
++                    onDark: true,
++                  ),
++                ],
++                if (item != null || link != null) ...[
++                  const SizedBox(height: Gap.sm),
++                  Wrap(
++                    spacing: Gap.sm,
++                    runSpacing: 6,
++                    children: [
++                      if (item != null)
++                        _CtaButton(
++                          key: const ValueKey('showcase-product'),
++                          icon: Icons.shopping_bag_outlined,
++                          label: l.showcaseViewProduct,
++                          primary: true,
++                          onTap: () => _openProduct(item),
++                        ),
++                      if (videoId != null)
++                        _CtaButton(
++                          key: const ValueKey('showcase-video'),
++                          icon: Icons.play_circle_outline_rounded,
++                          label: l.showcaseWatchVideo,
++                          onTap: () => _openVideo(videoId),
++                        )
++                      else if (igEmbed != null)
++                        _CtaButton(
++                          key: const ValueKey('showcase-instagram'),
++                          icon: Icons.camera_alt_outlined,
++                          label: l.showcaseWatchInstagram,
++                          onTap: () => _openInstagram(igEmbed),
++                        )
++                      else if (link != null)
++                        _CtaButton(
++                          key: const ValueKey('showcase-link'),
++                          icon: Icons.open_in_new_rounded,
++                          label: showcaseLinkLabel(l, link),
++                          onTap: () => openLink(p.linkUrl),
++                        ),
++                    ],
++                  ),
++                ],
+               ],
+-            ],
++            ),
+           ),
+         ),
+       ],
+diff --git a/mobile_nova/lib/features/showcase/showcase_video.dart b/mobile_nova/lib/features/showcase/showcase_video.dart
+index ae98709..ae90acd 100644
+--- a/mobile_nova/lib/features/showcase/showcase_video.dart
++++ b/mobile_nova/lib/features/showcase/showcase_video.dart
+@@ -4,6 +4,7 @@ import 'dart:convert';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:webview_flutter/webview_flutter.dart';
++import 'package:webview_flutter_android/webview_flutter_android.dart';
+ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+ 
+ import '../../core/utils/external_link.dart';
+@@ -18,9 +19,14 @@ import 'showcase_common.dart';
+ /// Egasi (build 329): "YouTube'da ochish" o'rniga "Videoni ko'rish" —
+ /// video ilovadan chiqmasdan ko'riladi. YouTube API qoidalari:
+ ///
+-/// * avtomatik ijro YO'Q — `autoplay` berilmaydi, `onReady` da
+-///   `playVideo()` chaqirilmaydi; ijroni odam pleerning O'ZIDA boshlaydi
+-///   (iOS/Android'da ham media "foydalanuvchi bosishini" talab qiladi);
++/// * ijro FAQAT odam "Videoni ko'rish" ni O'ZI bosgandan keyin
++///   boshlanadi (egasi, build 330: "ochilyapti, o'ynab ketmayapti").
++///   Bu — uning harakati davomi, `music_embed.dart` dagi bilan bir xil
++///   asos: `autoplay:1`, zaxira sifatida `onReady` da `playVideo()`,
++///   iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
++///   `setMediaPlaybackRequiresUserGesture(false)`. Ovoz o'chirilmaydi.
++///   Varaqni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
++///   o'zi o'ynamaydi;
+ /// * pleer ustida hech narsa yo'q (yopish tugmasi va "YouTube'da ochish"
+ ///   havolasi pleerdan TASHQARIDA — tepada va pastda);
+ /// * o'lcham kamida 200×200;
+@@ -28,11 +34,48 @@ import 'showcase_common.dart';
+ ///   (Referer), `origin` va `widget_referrer` — `music_embed.dart` bilan
+ ///   bir xil yo'l;
+ /// * fonda ijro YO'Q — varaq yopilsa yoki ilova fonga o'tsa pleer
+-///   yo'q qilinadi (qaytilganda qaytadan, yana avtomatik ijrosiz).
++///   yo'q qilinadi (qaytilganda qaytadan quriladi).
+ ///
+ /// Video joylashtirishni taqiqlagan bo'lsa (xato 101/150), yuklanmasa
+ /// yoki pleer javob bermasa — pleer o'rnida "YouTube'da ochish".
+ 
++/// WebView yuklashi BEKOR QILINDI (xato emas): iOS `NSURLErrorCancelled`
++/// (-999) va WebKit "frame load interrupted" (102) — masalan, sahifa
++/// bo'shatilganda yoki tashqi havola to'xtatilganda. Bular zaxira
++/// panelni ko'rsatmaydi. Android kodlari manfiy va kichik — to'qnashmaydi.
++bool webLoadCancelled(WebResourceError e) =>
++    e.errorCode == -999 || e.errorCode == 102;
++
++/// YouTube pleeri WebView'idagi o'tish ICHIDA qoladimi.
++///
++/// * ichki freym (YouTube'ning o'z iframe'i, `googlevideo`, `ytimg`,
++///   `about:blank`/`srcdoc`, reklama freymlari) — hammasi ichida: ular
++///   ilovadan olib chiqmaydi, to'sib qo'yilsa pleer ishlamaydi;
++/// * asosiy oynada: `about:`/`data:`/`blob:`, bizning bazaviy sahifa
++///   (`nfcstore.uz`) va YouTube'ning `/embed/` sahifasi (iOS iframe'ni
++///   asosiy oyna deb bersa ham pleer to'xtamasin);
++/// * qolgani (tomosha sahifasi, kanal, `youtu.be`, boshqa sayt) —
++///   haqiqiy tashqi havola: ilovada emas, tashqarida ochiladi.
++@visibleForTesting
++bool youtubeNavStaysInside(String url, {required bool mainFrame}) {
++  if (!mainFrame) return true;
++  final u = Uri.tryParse(url.trim());
++  if (u == null) return true;
++  final scheme = u.scheme.toLowerCase();
++  if (scheme == 'about' || scheme == 'data' || scheme == 'blob') return true;
++  if (scheme != 'https') return false;
++  final host = u.host.toLowerCase();
++  if (host == 'nfcstore.uz' || host == 'www.nfcstore.uz') return true;
++  const embedHosts = {
++    'youtube.com',
++    'www.youtube.com',
++    'm.youtube.com',
++    'youtube-nocookie.com',
++    'www.youtube-nocookie.com',
++  };
++  return embedHosts.contains(host) && u.path.startsWith('/embed/');
++}
++
+ /// Pleer shuncha vaqtda tayyor bo'lmasa — zaxira yo'l ko'rsatiladi.
+ const kShowcaseVideoReadyTimeout = Duration(seconds: 15);
+ 
+@@ -353,8 +396,9 @@ class ShowcaseYoutubePlayer extends StatefulWidget {
+ 
+   static const _base = 'https://nfcstore.uz/';
+ 
+-  /// Pleer sahifasi. AVTOMATIK IJRO YO'Q: `autoplay` yo'q va `onReady`
+-  /// faqat holatni xabar qiladi.
++  /// Pleer sahifasi. Odam "Videoni ko'rish" ni bosgan — video o'zi
++  /// boshlanadi: `autoplay:1`, `onReady` da esa zaxira `playVideo()`
++  /// (ba'zi WebView'larda `autoplay` yetarli emas).
+   @visibleForTesting
+   static String html(String id) => '''
+ <!doctype html><html><head>
+@@ -368,9 +412,9 @@ function post(m){try{NfcVideo.postMessage(m)}catch(e){}}
+ window.nfcPause=function(){try{player.pauseVideo()}catch(e){}};
+ function onYouTubeIframeAPIReady(){
+   player=new YT.Player('p',{width:'100%',height:'100%',videoId:${jsonEncode(id)},
+-    playerVars:{playsinline:1,rel:0,controls:1,origin:'https://nfcstore.uz',widget_referrer:'https://nfcstore.uz'},
++    playerVars:{playsinline:1,autoplay:1,rel:0,controls:1,origin:'https://nfcstore.uz',widget_referrer:'https://nfcstore.uz'},
+     events:{
+-      onReady:function(){post('ready')},
++      onReady:function(e){post('ready');try{e.target.playVideo()}catch(x){}},
+       onStateChange:function(e){
+         if(e.data===1)post('playing');else if(e.data===2)post('paused');else if(e.data===0)post('ended');
+       },
+@@ -391,33 +435,38 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
+   @override
+   void initState() {
+     super.initState();
+-    // Media "foydalanuvchi bosishini" talab qiladi (standart) — ijro
+-    // faqat pleerdagi play tugmasidan.
++    // Avtomatik ijro: odam "Videoni ko'rish" ni O'ZI bosgan — bu uning
++    // harakati davomi (`music_embed.dart` bilan bir xil). Ilgari media
++    // "foydalanuvchi bosishini" talab qilardi va iOS'da video pleer
++    // ichida bosilsa ham boshlanmasdi (build 330).
+     final PlatformWebViewControllerCreationParams params =
+         WebViewPlatform.instance is WebKitWebViewPlatform
+             ? WebKitWebViewControllerCreationParams(
+                 allowsInlineMediaPlayback: true,
++                mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+               )
+             : const PlatformWebViewControllerCreationParams();
+     _web = WebViewController.fromPlatformCreationParams(params)
+       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+       ..setBackgroundColor(Colors.black)
+       ..addJavaScriptChannel('NfcVideo',
+-          onMessageReceived: (m) => widget.onState(m.message))
++          onMessageReceived: (m) => widget.onState(m.message));
++    final platform = _web.platform;
++    if (platform is AndroidWebViewController) {
++      platform.setMediaPlaybackRequiresUserGesture(false);
++    }
++    _web
+       ..setNavigationDelegate(NavigationDelegate(
+         onWebResourceError: (e) {
+-          if (e.isForMainFrame ?? false) widget.onState('error:load');
++          if ((e.isForMainFrame ?? false) && !webLoadCancelled(e)) {
++            widget.onState('error:load');
++          }
+         },
+         onNavigationRequest: (r) {
+-          if (!r.isMainFrame) return NavigationDecision.navigate;
+-          final u = Uri.tryParse(r.url);
+-          if (u == null ||
+-              u.scheme == 'about' ||
+-              u.scheme == 'data' ||
+-              u.host == 'nfcstore.uz') {
++          if (youtubeNavStaysInside(r.url, mainFrame: r.isMainFrame)) {
+             return NavigationDecision.navigate;
+           }
+-          // Pleerdagi "YouTube'da ko'rish" va boshqa havolalar —
++          // Pleerdagi "YouTube'da ko'rish", kanal va boshqa havolalar —
+           // ilovaning o'zida emas, tashqarida.
+           openLink(r.url);
+           return NavigationDecision.prevent;
+diff --git a/mobile_nova/lib/features/social/reels_screen.dart b/mobile_nova/lib/features/social/reels_screen.dart
+index f73e4a6..201ba4b 100644
+--- a/mobile_nova/lib/features/social/reels_screen.dart
++++ b/mobile_nova/lib/features/social/reels_screen.dart
+@@ -542,7 +542,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+     // "orqaga" ni pop qila oladigan navigatorga yuboradi (bu — ildiz
+     // navigator) va ilova yopilib qolardi. `BackButtonListener` esa
+     // Router'ning o'zidan birinchi bo'lib so'raladi.
+-    return _BackGuard(
++    return ReelsBackGuard(
+       onBack: () {
+         final c = ref.read(reelsCleanProvider.notifier);
+         if (!onReelsTab || !c.state) return false;
+@@ -680,7 +680,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+                         },
+                 ),
+               ),
+-              _Chrome(
++              ReelsChrome(
+                 hidden: clean,
+                 child: _TopBar(
+                   tab: tab,
+@@ -699,9 +699,13 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+ }
+ 
+ /// "Orqaga" tutqichi — Router bo'lsagina (ilovada doim bor; alohida
+-/// ekran sinovida esa yo'q).
+-class _BackGuard extends StatelessWidget {
+-  const _BackGuard({required this.onBack, required this.child});
++/// ekran sinovida esa yo'q). Ko'rgazma ham shundan foydalanadi.
++class ReelsBackGuard extends StatelessWidget {
++  const ReelsBackGuard({
++    super.key,
++    required this.onBack,
++    required this.child,
++  });
+ 
+   final bool Function() onBack;
+   final Widget child;
+@@ -716,10 +720,14 @@ class _BackGuard extends StatelessWidget {
+   }
+ }
+ 
+-/// Reels ustidagi belgilar — toza rejimda yumshoq yo'qoladi va
+-/// bosishni o'tkazib yuboradi (video bosilganda qaytadi).
+-class _Chrome extends StatelessWidget {
+-  const _Chrome({required this.hidden, required this.child});
++/// Reels (va Ko'rgazma) ustidagi belgilar — toza rejimda yumshoq
++/// yo'qoladi va bosishni o'tkazib yuboradi (media bosilganda qaytadi).
++class ReelsChrome extends StatelessWidget {
++  const ReelsChrome({
++    super.key,
++    required this.hidden,
++    required this.child,
++  });
+ 
+   final bool hidden;
+   final Widget child;
+@@ -1519,7 +1527,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+             const _LateSpinner(),
+           // Pastdagi matn o'qilishi uchun gradient.
+           Positioned.fill(
+-            child: _Chrome(
++            child: ReelsChrome(
+               hidden: hide,
+               child: DecoratedBox(
+                 decoration: BoxDecoration(
+@@ -1567,7 +1575,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+           Positioned(
+             right: 4,
+             bottom: navH + 30 - Gap.lg / 2,
+-            child: _Chrome(
++            child: ReelsChrome(
+               hidden: hide,
+               child: Column(
+               children: [
+@@ -1640,7 +1648,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+             left: Gap.lg,
+             right: 72,
+             bottom: navH + 30,
+-            child: _Chrome(
++            child: ReelsChrome(
+               hidden: hide,
+               child: Column(
+               crossAxisAlignment: CrossAxisAlignment.start,
+@@ -1843,7 +1851,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+               left: Gap.lg,
+               right: Gap.lg,
+               bottom: navH + 12,
+-              child: _Chrome(
++              child: ReelsChrome(
+                 hidden: hide,
+                 child: IgnorePointer(
+                   child: ClipRRect(
+@@ -1870,7 +1878,7 @@ class _ReelPageState extends ConsumerState<_ReelPage>
+               left: Gap.lg,
+               right: Gap.lg,
+               bottom: navH + 12,
+-              child: _Chrome(
++              child: ReelsChrome(
+                 hidden: hide,
+                 child: IgnorePointer(
+                   child: ClipRRect(
+diff --git a/mobile_nova/lib/routing/shell.dart b/mobile_nova/lib/routing/shell.dart
+index d158f35..cf9b4ee 100644
+--- a/mobile_nova/lib/routing/shell.dart
++++ b/mobile_nova/lib/routing/shell.dart
+@@ -30,6 +30,10 @@ final activeTabProvider = StateProvider<int>((_) => 0);
+ /// va telefonning tizim panellari yashiriladi, video butun ekranda
+ /// qoladi (egasi, 2026-09-24: "rolik bosilsa to'liq ekran, belgilarsiz").
+ /// Yana bosilsa yoki "orqaga" — qaytadi.
++///
++/// KO'RGAZMA ham shu holatdan foydalanadi (egasi, build 330: "bosam
++/// o'zi toza ko'rinmayapti"): rasm/video bosilsa sarlavha, tugmalar,
++/// izoh va pastki panel yashirinadi; boshqa sahifaga surilsa qaytadi.
+ final reelsCleanProvider = StateProvider<bool>((_) => false);
+ 
+ /// Ko'rgazma tabining raqami (`HomeShell.tabRoutes`) — qora, butun
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 569bb82..4da6048 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -25,6 +25,8 @@ import 'package:nfcstore_nova/features/showcase/showcase_instagram.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
+ import 'package:nfcstore_nova/features/showcase/showcase_video.dart';
+ import 'package:nfcstore_nova/features/social/media_carousel.dart';
++import 'package:nfcstore_nova/features/social/reels_screen.dart'
++    show ReelsChrome;
+ import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_en.dart';
+ import 'package:nfcstore_nova/l10n/gen/app_localizations_ru.dart';
+@@ -32,6 +34,7 @@ import 'package:nfcstore_nova/l10n/gen/app_localizations_uz.dart';
+ import 'package:nfcstore_nova/routing/routes.dart';
+ import 'package:nfcstore_nova/routing/shell.dart';
+ import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++import 'package:webview_flutter/webview_flutter.dart' show WebResourceError;
+ 
+ import 'helpers.dart';
+ import 'support/fake_video_platform.dart';
+@@ -154,6 +157,32 @@ Future<({ProviderContainer c, List<String> pushed, _Social social})> _pump(
+ int _dot(WidgetTester tester) =>
+     tester.widget<CarouselDots>(find.byType(CarouselDots)).index;
+ 
++/// Ikki marta bosish (rasmni butun ekranda ochish).
++Future<void> _doubleTapAt(WidgetTester tester, Offset at) async {
++  await tester.tapAt(at);
++  await tester.pump(const Duration(milliseconds: 60));
++  await tester.tapAt(at);
++  await settle(tester, frames: 6);
++}
++
++Future<void> _doubleTap(WidgetTester tester, Finder f) =>
++    _doubleTapAt(tester, tester.getCenter(f));
++
++/// Belgi qatlami ko'rinadimi (toza rejimda — yo'q).
++bool _shown(WidgetTester tester, Finder f) =>
++    !tester.widget<ReelsChrome>(f).hidden;
++
++Finder _chrome(String key) => find.byKey(ValueKey(key));
++
++/// Ko'rgazma sahifasidagi hamma belgilar (tepa panel, amallar ustuni,
++/// izoh/tugmalar bloki, gradient).
++const _overlayKeys = [
++  'showcase-topbar',
++  'showcase-rail',
++  'showcase-info',
++  'showcase-gradient',
++];
++
+ void main() {
+   // Rasm keshi (`flutter_cache_manager`) `runAsync` ichida haqiqiy
+   // papka so'raydi — fayl alohida ishga tushirilganda ham yiqilmasin.
+@@ -287,13 +316,21 @@ void main() {
+     expect(_dot(tester), 0);
+   });
+ 
+-  testWidgets('rasm bosilsa — butun ekranda ko‘rish', (tester) async {
+-    await _pump(tester, pages: [
++  testWidgets(
++      'rasm IKKI marta bosilsa — butun ekranda ko‘rish; BIR marta — '
++      'toza rejim, ko‘ruvchi ochilmaydi', (tester) async {
++    final r = await _pump(tester, pages: [
+       ReelsPage(items: [_post(images: 2)]),
+     ]);
+     await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
+     await settle(tester, frames: 6);
++    expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
++    expect(r.c.read(reelsCleanProvider), isTrue);
++
++    await _doubleTap(tester, find.byKey(const ValueKey('showcase-image-0')));
+     expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
++    expect(r.c.read(reelsCleanProvider), isTrue,
++        reason: 'ikki bosish toza rejimni o‘zgartirmaydi');
+   });
+ 
+   testWidgets('bo‘sh — "Hali ko‘rgazma yo‘q" va yaratish', (tester) async {
+@@ -431,12 +468,14 @@ void main() {
+       await drain(tester);
+       expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
+ 
+-      // Rasm butun ekranda — musiqa davom etadi. Ochiq izoh pastki
+-      // yarmini egallaydi, shuning uchun rasmning yuqori qismi bosiladi.
+-      await tester.tapAt(tester
+-          .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
+-          .translate(150, 250));
+-      await settle(tester, frames: 6);
++      // Rasm butun ekranda (ikki bosish) — musiqa davom etadi. Ochiq
++      // izoh pastki yarmini egallaydi, shuning uchun rasmning yuqori
++      // qismi bosiladi.
++      await _doubleTapAt(
++          tester,
++          tester
++              .getTopLeft(find.byKey(const ValueKey('showcase-image-0')))
++              .translate(150, 250));
+       await drain(tester);
+       expect(find.byKey(const ValueKey('image-viewer')), findsOneWidget);
+       expect(v.playing, hasLength(1), reason: 'rasm ko‘ruvchi ochiq');
+@@ -528,8 +567,8 @@ void main() {
+       expect(mute, findsOneWidget);
+ 
+       // Rasm ko'ruvchida ham o'sha tugma; yoqilsa — musiqa qaytadi.
+-      await tester.tap(find.byKey(const ValueKey('showcase-image-0')).last);
+-      await settle(tester, frames: 6);
++      await _doubleTap(
++          tester, find.byKey(const ValueKey('showcase-image-0')).last);
+       final inViewer = find.byKey(const ValueKey('showcase-viewer-mute'));
+       expect(inViewer, findsOneWidget);
+       await tester.tap(inViewer);
+@@ -554,6 +593,224 @@ void main() {
+     });
+   });
+ 
++  /// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti,
++  /// to'liq yozuvlar olinmayapti"). Reels kabi: media BIR MARTA bosilsa
++  /// hamma belgilar yo'qoladi, yana bosilsa qaytadi; boshqa sahifaga
++  /// surilsa yoki tabdan chiqilsa — oddiy holat. Ijroga ta'sir yo'q.
++  group('toza rejim — bosish hamma belgilarni yashiradi', () {
++    const track =
++        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
++
++    Post ad({MusicTrack? music}) => Post.fromJson({
++          'id': 900,
++          'code': 'NFCSTORE',
++          'authorName': 'NFCSTORE',
++          'ad': true,
++          'title': 'Boy777',
++          'text': 'Yangi NFC kartalar',
++          'videoUrl': '/uploads/promo_boy777.mp4',
++          'imageUrl': '/promo/boy777.jpg',
++          'authorKind': 'company',
++          'contact': {
++            'phone': '+998901234567',
++            'telegram': 'https://t.me/nfcstore',
++          },
++          'linkUrl': 'https://www.instagram.com/nfcstore',
++          if (music != null)
++            'music': {
++              'id': music.id,
++              'title': music.title,
++              'clipUrl': music.clipUrl,
++            },
++        });
++
++    Future<void> drain(WidgetTester tester) async {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 40)));
++      await settle(tester, frames: 4);
++    }
++
++    void expectOverlays(WidgetTester tester, {required bool shown}) {
++      for (final k in _overlayKeys) {
++        expect(_shown(tester, _chrome(k)), shown, reason: k);
++        // Yumshoq yo'qolish tugagan: shaffoflik 0/1.
++        final fade = tester.widget<AnimatedOpacity>(find
++            .descendant(of: _chrome(k), matching: find.byType(AnimatedOpacity))
++            .first);
++        expect(fade.opacity, shown ? 1.0 : 0.0, reason: k);
++      }
++    }
++
++    testWidgets(
++        'rasm sahifasi: bosish — sarlavha, +, 🔇, ustun, izoh, nuqtalar '
++        'yo‘qoladi; yana bosish — qaytadi; musiqa to‘xtamaydi',
++        (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(images: 2, music: track)]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++      expectOverlays(tester, shown: true);
++      final dots = find.descendant(
++          of: find.byKey(const ValueKey('showcase-dots')),
++          matching: find.byType(ReelsChrome));
++      expect(_shown(tester, dots), isTrue);
++      expect(_shown(tester, _chrome('showcase-header')), isTrue,
++          reason: 'rasm sahifasida "Ko‘rgazma" yozuvi bor');
++
++      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
++      await settle(tester, frames: 6);
++      await drain(tester);
++      expect(r.c.read(reelsCleanProvider), isTrue);
++      expectOverlays(tester, shown: false);
++      expect(_shown(tester, dots), isFalse);
++      // 🔇 va "+" — tepa panel ichida, u ham yashirin va bosilmaydi.
++      expect(
++          find.ancestor(
++              of: find.byKey(const ValueKey('showcase-mute')),
++              matching: _chrome('showcase-topbar')),
++          findsOneWidget);
++      expect(
++          find.ancestor(
++              of: find.byKey(const ValueKey('showcase-create')),
++              matching: _chrome('showcase-topbar')),
++          findsOneWidget);
++      expect(find.byKey(const ValueKey('image-viewer')), findsNothing);
++      expect(v.playing, hasLength(1), reason: 'musiqa davom etadi');
++      expect(v.created, hasLength(1));
++
++      // Yashirin "like" o'rni bosilsa — like emas, belgilar qaytadi.
++      final likeAt =
++          tester.getCenter(find.byKey(const ValueKey('showcase-like')));
++      await tester.tapAt(likeAt);
++      await settle(tester, frames: 6);
++      await drain(tester);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++      expectOverlays(tester, shown: true);
++      expect(_shown(tester, dots), isTrue);
++      expect(v.playing, hasLength(1));
++      expect(v.created, hasLength(1), reason: 'pleer qayta ochilmagan');
++    });
++
++    testWidgets(
++        'video reklama: "Ko‘rgazma" yozuvi yo‘q, gradient yengil; bosish — '
++        'hammasi yo‘qoladi, video o‘ynayveradi', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [ad()]),
++      ]);
++      await drain(tester);
++      final id = v.urls.entries
++          .firstWhere((e) => e.value.endsWith('promo_boy777.mp4'))
++          .key;
++      expect(v.playing, {id});
++
++      // Oddiy holat: videoning o'z sarlavhasi ustida "Ko'rgazma" yo'q,
++      // "+" va 🔇 qoladi; gradient faqat pastda va yengil.
++      expect(_shown(tester, _chrome('showcase-header')), isFalse);
++      expect(_shown(tester, _chrome('showcase-topbar')), isTrue);
++      final grad = tester
++          .widget<DecoratedBox>(find
++              .descendant(
++                  of: _chrome('showcase-gradient'),
++                  matching: find.byType(DecoratedBox))
++              .first)
++          .decoration as BoxDecoration;
++      final g = grad.gradient! as LinearGradient;
++      expect(g.colors.first.a, 0, reason: 'tepasi shaffof');
++      expect(g.colors.last.a, lessThanOrEqualTo(.6));
++      expect((g.begin as Alignment).y, greaterThan(0),
++          reason: 'faqat pastki qismda');
++      expect(find.byKey(const ValueKey('showcase-contact')), findsOneWidget);
++
++      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
++      await settle(tester, frames: 6);
++      await drain(tester);
++      expect(r.c.read(reelsCleanProvider), isTrue);
++      expectOverlays(tester, shown: false);
++      expect(
++          find.ancestor(
++              of: find.byKey(const ValueKey('showcase-sponsored')),
++              matching: _chrome('showcase-info')),
++          findsOneWidget,
++          reason: '"Reklama" ham yashirin blokda');
++      expect(
++          find.ancestor(
++              of: find.byKey(const ValueKey('showcase-contact')),
++              matching: _chrome('showcase-info')),
++          findsOneWidget);
++      expect(v.playing, {id}, reason: 'video to‘xtamaydi');
++      expect(v.created, hasLength(1));
++
++      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
++      await settle(tester, frames: 6);
++      await drain(tester);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++      expectOverlays(tester, shown: true);
++      expect(_shown(tester, _chrome('showcase-header')), isFalse);
++      expect(v.playing, {id});
++      expect(v.created, hasLength(1));
++      await tester.pumpWidget(const SizedBox());
++      await tester.pump(const Duration(minutes: 1));
++    });
++
++    testWidgets('boshqa sahifaga surilsa — toza rejim tugaydi',
++        (tester) async {
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post(id: 1), _post(id: 2)]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
++      await settle(tester, frames: 6);
++      expect(r.c.read(reelsCleanProvider), isTrue);
++
++      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
++          const Offset(0, -600), 2000);
++      await settle(tester, frames: 10);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++      expect(_shown(tester, _chrome('showcase-topbar')), isTrue);
++      expect(_shown(tester, _chrome('showcase-rail').last), isTrue);
++      expect(_shown(tester, _chrome('showcase-info').last), isTrue);
++    });
++
++    testWidgets('boshqa tabga o‘tilsa — toza rejim tugaydi', (tester) async {
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post()]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-image-0')));
++      await settle(tester, frames: 6);
++      expect(r.c.read(reelsCleanProvider), isTrue);
++      r.c.read(activeTabProvider.notifier).state = 0;
++      await settle(tester, frames: 4);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++    });
++
++    testWidgets('oddiy holatda tugmalar ishlaydi va toza rejimga o‘tmaydi',
++        (tester) async {
++      final r = await _pump(tester, pages: [
++        ReelsPage(items: [_post()]),
++      ]);
++      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++      await settle(tester, frames: 6);
++      expect(r.c.read(showcaseMutedProvider), isTrue);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++
++      await tester.tap(find.byKey(const ValueKey('showcase-more')));
++      await settle(tester, frames: 8);
++      expect(find.byKey(const ValueKey('showcase-report')), findsOneWidget);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++      await tester.tapAt(const Offset(20, 20));
++      await settle(tester, frames: 8);
++
++      await tester.tap(find.byKey(const ValueKey('showcase-product')));
++      await settle(tester, frames: 6);
++      expect(r.pushed, ['/catalog/C7/b9fa1d77-794a-4b7a-b972-aecb1dce7c02']);
++      expect(r.c.read(reelsCleanProvider), isFalse);
++    });
++  });
++
+   group('YouTube — ilova ichida rasmiy pleer', () {
+     test('havoladan video ID: watch, youtu.be, shorts, m., parametrlar',
+         () {
+@@ -596,10 +853,20 @@ void main() {
+       }
+     });
+ 
+-    test('pleer: avtomatik ijro yo‘q, ilova kimligi, ≥ 200×200', () {
++    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (varaq
++    // shu bosishdan ochiladi) — shunda video o'zi boshlanadi (build 330:
++    // "ochilyapti, o'ynab ketmayapti"). `music_embed.dart` bilan bir xil.
++    test('pleer: "Videoni ko‘rish" dan keyin o‘zi boshlanadi, ilova '
++        'kimligi, ≥ 200×200', () {
+       final html = ShowcaseYoutubePlayer.html('dQw4w9WgXcQ');
+-      expect(html, isNot(contains('autoplay')));
+-      expect(html, isNot(contains('playVideo')));
++      expect(html, contains('autoplay:1'));
++      expect(
++          RegExp(r'onReady:function\(e\)\{[^}]*e\.target\.playVideo\(\)')
++              .hasMatch(html),
++          isTrue,
++          reason: 'onReady da zaxira playVideo()');
++      expect(html, isNot(contains('mute')), reason: 'ovoz o‘chirilmaydi');
++      expect(html, contains('playsinline:1'));
+       expect(html, contains("origin:'https://nfcstore.uz'"));
+       expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
+       expect(html, contains('"dQw4w9WgXcQ"'));
+@@ -616,6 +883,58 @@ void main() {
+       expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
+     });
+ 
++    test('WebView o‘tishlari: pleer freymlari ichida, tashqi havola — '
++        'tashqarida', () {
++      // Ichki freymlar (YouTube iframe, googlevideo, ytimg, about:blank,
++      // srcdoc) — hech qachon to'silmaydi.
++      for (final u in [
++        'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1',
++        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
++        'https://rr3---sn-abc.googlevideo.com/videoplayback?x=1',
++        'https://i.ytimg.com/vi/dQw4w9WgXcQ/hq.jpg',
++        'https://googleads.g.doubleclick.net/pagead/id',
++        'about:blank',
++        'about:srcdoc',
++      ]) {
++        expect(youtubeNavStaysInside(u, mainFrame: false), isTrue, reason: u);
++      }
++      // Asosiy oyna: bazaviy sahifa, about:/data:, YouTube embed.
++      for (final u in [
++        'https://nfcstore.uz/',
++        'https://www.nfcstore.uz/',
++        'about:blank',
++        'about:srcdoc',
++        'data:text/html,<html></html>',
++        'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1',
++        'https://youtube.com/embed/dQw4w9WgXcQ',
++        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
++      ]) {
++        expect(youtubeNavStaysInside(u, mainFrame: true), isTrue, reason: u);
++      }
++      // Haqiqiy tashqi havolalar — ilovadan tashqarida.
++      for (final u in [
++        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
++        'https://m.youtube.com/watch?v=dQw4w9WgXcQ',
++        'https://youtu.be/dQw4w9WgXcQ',
++        'https://www.youtube.com/channel/UCabcdefghijk',
++        'https://www.youtube.com/@nfcstore',
++        'https://www.youtube.com/shorts/dQw4w9WgXcQ',
++        'http://www.youtube.com/embed/dQw4w9WgXcQ',
++        'https://evil.com/embed/dQw4w9WgXcQ',
++        'https://youtube.com.evil.com/embed/dQw4w9WgXcQ',
++        'https://accounts.google.com/ServiceLogin',
++      ]) {
++        expect(youtubeNavStaysInside(u, mainFrame: true), isFalse, reason: u);
++      }
++      // Bekor qilingan yuklash (iOS -999, WebKit 102) — zaxira panel emas.
++      WebResourceError err(int code) => WebResourceError(
++          errorCode: code, description: '', isForMainFrame: true);
++      expect(webLoadCancelled(err(-999)), isTrue);
++      expect(webLoadCancelled(err(102)), isTrue);
++      expect(webLoadCancelled(err(-1009)), isFalse, reason: 'internet yo‘q');
++      expect(webLoadCancelled(err(-2)), isFalse, reason: 'Android host');
++    });
++
+     const track =
+         MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+     const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s';
+@@ -781,7 +1100,7 @@ void main() {
+       expect(player, findsOneWidget);
+ 
+       // Fonda — pleer yo'q qilinadi (fonda ijro yo'q), qaytilganda
+-      // YANGI pleer quriladi (yana avtomatik ijrosiz).
++      // YANGI pleer quriladi.
+       expect(yt.ids, hasLength(1));
+       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+-- 
+2.43.0
+
