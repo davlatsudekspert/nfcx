@@ -36,8 +36,10 @@ import '../social/moderation.dart';
 import '../social/music_picker.dart';
 import '../social/pending_badge.dart';
 import '../social/post_contact_bar.dart';
+import '../social/fullscreen_video.dart' show immersiveVideoFit;
 import '../social/reels_screen.dart'
     show
+        reelsInitTimeout,
         ReelAction,
         ReelCaption,
         ReelFollowPill,
@@ -76,9 +78,12 @@ final showcasePagerProvider = Provider.autoDispose<ReelsPager>(
   (ref) => ReelsPager(),
 );
 
-/// Ko'rgazmada ko'rsatsa bo'ladimi: videosiz va rasmi bor.
+/// Ko'rgazmada ko'rsatsa bo'ladimi: rasmli ko'rgazma posti yoki admin
+/// tanlagan VIDEO reklama (`ad`/`featured` + `videoUrl`).
 bool showcasePlayable(Post p) =>
-    !p.isVideo && !p.isStory && p.mediaUrls.isNotEmpty && (p.inShowcase);
+    !p.isStory &&
+    ((!p.isVideo && p.mediaUrls.isNotEmpty && p.inShowcase) ||
+        p.isShowcaseVideoAd);
 
 /// KO'RGAZMA RO'YXATI — `/api/showcase`.
 ///
@@ -104,7 +109,10 @@ final showcaseProvider = FutureProvider.autoDispose<List<Post>>((ref) async {
   if (page == null) {
     final feed = await repo.recentFeed();
     return feed.when(
-      ok: (items) => items.where(showcasePlayable).toList(),
+      // Eski server reklama bermaydi: lentadagi homiylik videosi
+      // ko'rgazmaga tushib qolmasin.
+      ok: (items) =>
+          items.where((p) => !p.isVideo && showcasePlayable(p)).toList(),
       err: (e) => throw first.errorOrNull ?? e,
     );
   }
@@ -342,6 +350,16 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   bool _musicReady = false;
   late final AudioOwner _owner;
 
+  // ── VIDEO REKLAMA ──────────────────────────────────────────────────
+  //
+  // Reels'dagi bilan bir xil: sahifa ko'rinib, tab faol bo'lsa o'ynaydi
+  // (aylanib), ustida boshqa ekran/fon — pauza, sahifadan chiqilsa yo'q
+  // qilinadi. Musiqa bo'lsa video ovozsiz, musiqa o'ynaydi; bo'lmasa
+  // videoning o'z ovozi (🔇 ga bo'ysunadi).
+  VideoPlayerController? _video;
+  bool _videoReady = false;
+  bool _videoFailed = false;
+
   /// Ustida boshqa ekran yo'q (`TickerMode`).
   bool _onStage = true;
 
@@ -363,7 +381,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   late final ViewSession _viewSession = ViewSession(_sendView);
 
   Post get _p => widget.post;
-  List<String> get _images => _p.mediaUrls;
+  List<String> get _images => _isVideo ? const [] : _p.mediaUrls;
+  bool get _isVideo => _p.isShowcaseVideoAd;
+  bool get _hasMusic => (_p.music?.playUrl ?? '').isNotEmpty;
 
   /// Sahifa ekranda: ochiq, tab ko'rinyapti, ustida boshqa (yopiq)
   /// ekran yo'q va ilova oldinda.
@@ -434,6 +454,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     _viewSession.dispose();
     _clock?.dispose();
     _music?.dispose();
+    _video?.dispose();
     _carousel.dispose();
     // `ref.read` EMAS: `dispose()` da u istisno otadi.
     _owner.release(this);
@@ -489,7 +510,60 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       }
       _owner.release(this);
     }
+    _syncVideo();
     if (mounted) setState(() {});
+  }
+
+  void _syncVideo() {
+    if (!_isVideo) return;
+    if (_active) {
+      _playVideo();
+    } else if (!widget.visible) {
+      _disposeVideo();
+    } else {
+      _video?.pause();
+    }
+  }
+
+  Future<void> _playVideo() async {
+    var c = _video;
+    if (c == null) {
+      c = VideoPlayerController.networkUrl(
+        Uri.parse(_p.videoUrl),
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+      );
+      _video = c;
+      _videoFailed = false;
+      try {
+        await c.initialize().timeout(reelsInitTimeout);
+        if (!mounted || _video != c) return;
+        await c.setLooping(true);
+        _videoReady = true;
+        setState(() {});
+      } catch (_) {
+        // Video ochilmadi — poster qoladi, sahifa ishlayveradi.
+        if (mounted && _video == c) setState(() => _videoFailed = true);
+        return;
+      }
+    }
+    if (!_videoReady || !mounted || _video != c || !_active) return;
+    // Musiqa bo'lsa — video ovozsiz; bo'lmasa o'z ovozi (🔇 bo'lmasa),
+    // shunda audio egasi video bo'ladi.
+    final ownSound = !_hasMusic && !ref.read(showcaseMutedProvider);
+    if (ownSound) _owner.take(this, _pauseForOther);
+    await c.setVolume(ownSound ? 1 : 0);
+    if (!mounted || _video != c || !_active) return;
+    await c.play();
+  }
+
+  void _disposeVideo() {
+    final v = _video;
+    _video = null;
+    _videoReady = false;
+    if (v != null) {
+      v.pause().catchError((_) {});
+      v.dispose();
+    }
   }
 
   void _armView() =>
@@ -505,6 +579,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
 
   void _pauseForOther() {
     _music?.pause();
+    // O'z ovozli video ham (boshqa manba ovozni oldi).
+    if (!_hasMusic) _video?.pause();
     if (mounted) setState(() {});
   }
 
@@ -562,7 +638,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       context,
       _images,
       initial: i,
-      actions: const [ShowcaseMuteButton(key: ValueKey('showcase-viewer-mute'))],
+      actions: const [
+        ShowcaseMuteButton(key: ValueKey('showcase-viewer-mute')),
+      ],
     );
     if (!mounted) return;
     setState(() => _viewerOpen = false);
@@ -724,31 +802,39 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: Colors.black),
-        PageView.builder(
-          key: const ValueKey('showcase-carousel'),
-          controller: _carousel,
-          itemCount: _images.length,
-          onPageChanged: _onImage,
-          itemBuilder: (context, i) => GestureDetector(
-            key: ValueKey('showcase-image-$i'),
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _openViewer(i),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Orqada xiralashgan nusxa, ustida rasm BUTUN (kesilmaydi).
-                ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                  child: Opacity(
-                    opacity: .55,
-                    child: mediaImage(context, _images[i], fit: BoxFit.fill),
+        if (_isVideo)
+          _AdVideo(
+            key: const ValueKey('showcase-ad-video'),
+            poster: p.posterUrl,
+            controller: _videoReady ? _video : null,
+            failed: _videoFailed,
+          )
+        else
+          PageView.builder(
+            key: const ValueKey('showcase-carousel'),
+            controller: _carousel,
+            itemCount: _images.length,
+            onPageChanged: _onImage,
+            itemBuilder: (context, i) => GestureDetector(
+              key: ValueKey('showcase-image-$i'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openViewer(i),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Orqada xiralashgan nusxa, ustida rasm BUTUN (kesilmaydi).
+                  ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                    child: Opacity(
+                      opacity: .55,
+                      child: mediaImage(context, _images[i], fit: BoxFit.fill),
+                    ),
                   ),
-                ),
-                mediaImage(context, _images[i], fit: BoxFit.contain),
-              ],
+                  mediaImage(context, _images[i], fit: BoxFit.contain),
+                ],
+              ),
             ),
           ),
-        ),
         // Pastdagi matn o'qilishi uchun gradient.
         IgnorePointer(
           child: DecoratedBox(
@@ -869,7 +955,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                 const SizedBox(height: Gap.sm),
                 const PendingBadge(onDark: true),
               ],
-              if (p.featured) ...[
+              if (p.isAd) ...[
                 const SizedBox(height: Gap.sm),
                 _Pill(
                   key: const ValueKey('showcase-sponsored'),
@@ -964,6 +1050,59 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Video reklama qatlami: poster (xira fon + butun), video tayyor
+/// bo'lgach ustida — Reels kabi ekranni to'ldiradi.
+class _AdVideo extends StatelessWidget {
+  const _AdVideo({
+    super.key,
+    required this.poster,
+    required this.controller,
+    required this.failed,
+  });
+
+  final String poster;
+  final VideoPlayerController? controller;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (poster.isNotEmpty) ...[
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Opacity(
+              opacity: .55,
+              child: mediaImage(context, poster, fit: BoxFit.fill),
+            ),
+          ),
+          mediaImage(context, poster, fit: BoxFit.contain),
+        ],
+        if (c != null && c.value.isInitialized)
+          FittedBox(
+            fit: immersiveVideoFit(c.value.size, MediaQuery.sizeOf(context)),
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox(
+              width: c.value.size.width,
+              height: c.value.size.height,
+              child: VideoPlayer(c, key: const ValueKey('showcase-ad-player')),
+            ),
+          )
+        else if (failed && poster.isEmpty)
+          const Center(
+            child: Icon(
+              Icons.videocam_off_rounded,
+              size: 40,
+              color: Colors.white54,
+            ),
+          ),
       ],
     );
   }

@@ -73,7 +73,11 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
   @override
   Future<void> pause(int playerId) async => playing.remove(playerId);
   @override
-  Future<void> setVolume(int playerId, double volume) async {}
+  Future<void> setVolume(int playerId, double volume) async =>
+      volumeOf[playerId] = volume;
+
+  /// Oxirgi `setVolume` qiymati — ovoz sinovlari uchun.
+  final volumeOf = <int, double>{};
   @override
   Future<void> seekTo(int playerId, Duration position) async =>
       positions[playerId] = position;

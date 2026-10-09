@@ -1395,9 +1395,32 @@ class Post {
     this.linkUrl = '',
     this.catalogItem,
     this.pending = false,
+    this.ad = false,
+    this.videoUrl = '',
+    this.posterUrl = '',
   });
 
   final int id;
+
+  // ── KO'RGAZMA REKLAMASI (admin tanlagan, ≤ 4 ta) ──────────────────
+
+  /// Server `ad: true` — reklama. `featured` ham reklama hisoblanadi
+  /// ([isAd]).
+  final bool ad;
+
+  /// Video manzili (to'liq; nisbiy yo'l — `/uploads/...`,
+  /// `/promo/...` — API bazasiga ulanadi). Video bo'lmasa bo'sh.
+  final String videoUrl;
+
+  /// Video posteri (`imageUrl`) — video ochilguncha ko'rinadi.
+  final String posterUrl;
+
+  /// Reklama/homiylik — "Reklama" belgisi SHART.
+  bool get isAd => ad || featured;
+
+  /// Ko'rgazmadagi VIDEO reklama: faqat ko'rsatiladi (ilovada video
+  /// tanlash/yuklash yo'q).
+  bool get isShowcaseVideoAd => isVideo && isAd && videoUrl.isNotEmpty;
 
   // ── KO'RGAZMA (showcase, shartnoma §3) ─────────────────────────────
 
@@ -1511,6 +1534,9 @@ class Post {
         linkUrl: linkUrl,
         catalogItem: catalogItem,
         pending: pending,
+        ad: ad,
+        videoUrl: videoUrl,
+        posterUrl: posterUrl,
       );
 
   Post copyWith({int? likes, bool? liked, bool? saved, int? comments, int? views}) => Post(
@@ -1543,6 +1569,9 @@ class Post {
         linkUrl: linkUrl,
         catalogItem: catalogItem,
         pending: pending,
+        ad: ad,
+        videoUrl: videoUrl,
+        posterUrl: posterUrl,
       );
 
   factory Post.fromJson(Map<String, dynamic> j) {
@@ -1614,6 +1643,9 @@ class Post {
       linkUrl: _externalLink(j['linkUrl']),
       catalogItem: PostCatalogItem.tryParse(j['catalogItem']),
       pending: _b(j['pending']),
+      ad: _b(j['ad']),
+      videoUrl: _u(j['videoUrl']),
+      posterUrl: _u(j['posterUrl'] ?? j['imageUrl']),
     );
   }
 }

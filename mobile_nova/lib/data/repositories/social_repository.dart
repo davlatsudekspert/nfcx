@@ -475,10 +475,16 @@ class SocialRepository {
   ///
   /// `/api/reels` bilan bir xil shakl; videosiz ko'rgazma postlari va
   /// rasmli reel'lar, homiylik (`featured`) aralash.
+  ///
+  /// `video=1` — HAR so'rovda (birinchi va davom sahifalari): ilova
+  /// video reklamani (`ad: true` + `videoUrl`) ko'rsata oladi. Server
+  /// faqat shu belgi bilan video reklama qo'shadi (eski ilovalarga
+  /// bormaydi).
   Future<Result<ReelsPage>> showcasePage(
       {String? cursor, int limit = 10}) async {
     final res = await _api.get<Map<String, dynamic>>('/api/showcase', query: {
       'limit': limit,
+      'video': 1,
       if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
     });
     return res.map(ReelsPage.fromJson);

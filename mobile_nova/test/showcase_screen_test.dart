@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -151,6 +154,15 @@ int _dot(WidgetTester tester) =>
     tester.widget<CarouselDots>(find.byType(CarouselDots)).index;
 
 void main() {
+  // Rasm keshi (`flutter_cache_manager`) `runAsync` ichida haqiqiy
+  // papka so'raydi — fayl alohida ishga tushirilganda ham yiqilmasin.
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            (_) async => Directory.systemTemp.createTempSync('nova').path);
+  });
+
   group('showcaseLinkKind — faqat https YouTube/Instagram', () {
     test('ruxsat etilganlar', () {
       for (final u in [
@@ -807,4 +819,168 @@ void main() {
       await settle(tester, frames: 10);
     });
   });
+
+  group('video reklama (admin tanlagan)', () {
+    const track =
+        MusicTrack(id: 5, title: 'Kuy', clipUrl: 'https://nfcstore.uz/m.mp3');
+
+    Post ad({int id = 900, MusicTrack? music, bool adFlag = true}) =>
+        Post.fromJson({
+          'id': id,
+          'code': 'NFCSTORE',
+          'authorName': 'NFCSTORE',
+          'featured': !adFlag,
+          'ad': adFlag,
+          'title': 'Boy777',
+          'text': 'Yangi NFC kartalar',
+          'videoUrl': '/promo/nfcstore-boy777.mp4',
+          'imageUrl': '/promo/boy777.jpg',
+          'linkUrl': 'https://www.instagram.com/nfcstore',
+          if (music != null)
+            'music': {
+              'id': music.id,
+              'title': music.title,
+              'clipUrl': music.clipUrl,
+            },
+        });
+
+    Future<void> drain(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 40)));
+      await settle(tester, frames: 4);
+    }
+
+    int videoId(FakeVideoPlatform v) => v.urls.entries
+        .firstWhere((e) => e.value.endsWith('.mp4') && e.value.contains('promo'))
+        .key;
+
+    test('model: ad/featured, nisbiy manzil bazaga ulanadi, poster', () {
+      final p = ad();
+      expect(p.isShowcaseVideoAd, isTrue);
+      expect(p.isAd, isTrue);
+      expect(p.videoUrl, 'https://nfcstore.uz/promo/nfcstore-boy777.mp4');
+      expect(p.posterUrl, 'https://nfcstore.uz/promo/boy777.jpg');
+      expect(ad(adFlag: false).isShowcaseVideoAd, isTrue, reason: 'featured');
+      expect(showcasePlayable(p), isTrue);
+      expect(showcasePlayable(p.copyWith(likes: 1)), isTrue);
+      // Reklama emas — oddiy video ko'rgazmaga tushmaydi.
+      expect(
+          showcasePlayable(Post.fromJson(
+              {'id': 1, 'showcase': true, 'videoUrl': '/uploads/a.mp4'})),
+          isFalse);
+    });
+
+    testWidgets('video pleer + "Reklama", musiqasiz — o‘z ovozi',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [ad()]),
+      ]);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('showcase-ad-video')), findsOneWidget);
+      expect(find.byKey(const ValueKey('showcase-ad-player')), findsOneWidget);
+      expect(find.byKey(const ValueKey('showcase-carousel')), findsNothing);
+      expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
+      expect(find.text(LUz().feedSponsored), findsOneWidget);
+      expect(v.urls.values,
+          contains('https://nfcstore.uz/promo/nfcstore-boy777.mp4'));
+      final id = videoId(v);
+      expect(v.playing, {id});
+      expect(v.volumeOf[id], 1.0);
+      expect(r.c.read(audioOwnerProvider).current, isNotNull);
+
+      // 🔇 — video jim davom etadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+      await drain(tester);
+      expect(v.playing, {id});
+      expect(v.volumeOf[id], 0.0);
+      expect(r.c.read(audioOwnerProvider).current, isNull);
+
+      // 🔊 — ovoz qaytadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+      await drain(tester);
+      expect(v.volumeOf[id], 1.0);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(minutes: 1));
+    });
+
+    testWidgets('musiqali reklama: video ovozsiz, musiqa o‘ynaydi; 🔇 — jim',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      await _pump(tester, pages: [
+        ReelsPage(items: [ad(music: track)]),
+      ]);
+      await drain(tester);
+      final id = videoId(v);
+      final music =
+          v.urls.entries.firstWhere((e) => e.value.endsWith('m.mp3')).key;
+      expect(v.playing, {id, music});
+      expect(v.volumeOf[id], 0.0, reason: 'musiqa bor — video ovozsiz');
+      expect(v.volumeOf[music], 1.0);
+
+      await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+      await drain(tester);
+      expect(v.playing, {id}, reason: 'musiqa to‘xtadi, video jim o‘ynaydi');
+      expect(v.volumeOf[id], 0.0);
+    });
+
+    testWidgets('ekrandan chiqsa pauza va yo‘q qilinadi; boshqa tab — pauza',
+        (tester) async {
+      final v = FakeVideoPlatform();
+      VideoPlayerPlatform.instance = v;
+      final r = await _pump(tester, pages: [
+        ReelsPage(items: [ad(), _post(id: 2)]),
+      ]);
+      await drain(tester);
+      final id = videoId(v);
+      expect(v.playing, {id});
+
+      // Boshqa tab — to'xtaydi va yopiladi.
+      r.c.read(activeTabProvider.notifier).state = 0;
+      await settle(tester, frames: 4);
+      await drain(tester);
+      expect(v.playing, isEmpty);
+      expect(v.alive, isNot(contains(id)));
+
+      // Qaytildi — yangi pleer o'ynaydi.
+      r.c.read(activeTabProvider.notifier).state = kShowcaseTab;
+      await settle(tester, frames: 4);
+      await drain(tester);
+      expect(v.created, hasLength(2), reason: 'yangi pleer');
+      final id2 = v.created.last;
+      expect(v.playing, {id2});
+
+      // Keyingi sahifaga surildi — reklama videosi to'xtaydi.
+      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
+          const Offset(0, -600), 2000);
+      await settle(tester, frames: 10);
+      await drain(tester);
+      expect(v.playing, isEmpty);
+      expect(v.alive, isNot(contains(id2)), reason: 'ko‘rinmaydi — yopildi');
+    });
+  });
+
+  group('/api/showcase so‘rovi', () {
+    test('har sahifada video=1 (birinchi va kursor bilan)', () async {
+      final api = _Api();
+      final repo = SocialRepository(api);
+      await repo.showcasePage();
+      await repo.showcasePage(cursor: 'c1');
+      expect(api.gets.map((g) => g.$1), ['/api/showcase', '/api/showcase']);
+      expect(api.gets[0].$2, {'limit': 10, 'video': 1});
+      expect(api.gets[1].$2, {'limit': 10, 'video': 1, 'cursor': 'c1'});
+    });
+  });
+}
+
+class _Api extends ApiClient {
+  final gets = <(String, Map<String, dynamic>?)>[];
+
+  @override
+  Future<Result<T>> get<T>(String path, {Map<String, dynamic>? query}) async {
+    gets.add((path, query));
+    return Ok(<String, dynamic>{'items': <Object>[]} as T);
+  }
 }
