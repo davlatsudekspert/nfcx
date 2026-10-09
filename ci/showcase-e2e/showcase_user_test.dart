@@ -178,6 +178,10 @@ class _Run {
       r.problems.add('exception: ${redact('$e')}'.split('\n').first);
       _log('[SHOWCASE] exception in $id: ${redact('$e')}\n$st');
     }
+    if (swipeLog.isNotEmpty) {
+      r.values['swipes'] = List.of(swipeLog);
+      swipeLog.clear();
+    }
     if (shot != null) {
       r.values['screenshot'] = await screenshot(shot);
     }
@@ -206,22 +210,34 @@ class _Run {
 
   // ── PLEERLAR ───────────────────────────────────────────────────────
 
+  /// Video emulyatorda dasturiy dekoder bilan sekin o'ynashi mumkin —
+  /// shuning uchun "o'ynayapti" chegarasi videoda pastroq ([minAdvance]),
+  /// tezlik (`rate`) esa alohida yoziladi.
   Future<Map<String, Object?>> playerState(PlayerRec? r,
-      {Duration window = const Duration(seconds: 3)}) async {
+      {Duration window = const Duration(seconds: 3),
+      Duration minAdvance = const Duration(milliseconds: 1500)}) async {
     if (r == null) return {'player': null};
     final a = await measure(spy, r, window: window);
-    return {...r.toJson(), ...a.toJson(), 'moving': a.moving(), 'still': a.still};
+    return {
+      ...r.toJson(),
+      ...a.toJson(),
+      'rate': (a.delta.inMilliseconds / a.window.inMilliseconds)
+          .toStringAsFixed(2),
+      'moving': a.moving(minAdvance: minAdvance),
+      'still': a.still,
+    };
   }
 
   /// [uri] pleeri paydo bo'lib, pozitsiyasi oldinga ketguncha kutadi.
   Future<Map<String, Object?>> waitPlaying(String uri,
-      {Duration timeout = const Duration(seconds: 15)}) async {
+      {Duration timeout = const Duration(seconds: 15),
+      Duration minAdvance = const Duration(milliseconds: 1500)}) async {
     Map<String, Object?> last = {'player': null};
     final sw = Stopwatch()..start();
     while (sw.elapsed < timeout) {
       final r = spy.latest(uri);
       if (r != null && r.playCalled) {
-        last = await playerState(r);
+        last = await playerState(r, minAdvance: minAdvance);
         if (last['moving'] == true) {
           last['waitedMs'] = sw.elapsedMilliseconds;
           return last;
@@ -231,7 +247,7 @@ class _Run {
       }
     }
     final r = spy.latest(uri);
-    if (r != null) last = await playerState(r);
+    if (r != null) last = await playerState(r, minAdvance: minAdvance);
     last['waitedMs'] = sw.elapsedMilliseconds;
     return last;
   }
@@ -291,14 +307,41 @@ class _Run {
       };
 
   /// Odam kabi yuqoriga surish (keyingi sahifa) / pastga (oldingi).
+  final swipeLog = <String>[];
+
+  double? get pagerPage {
+    final f = find.byKey(const ValueKey('showcase-pager'));
+    if (f.evaluate().isEmpty) return null;
+    final pv = t.widget<PageView>(f.first);
+    final ctl = pv.controller;
+    return (ctl != null && ctl.hasClients) ? ctl.page : null;
+  }
+
+  /// Odam kabi barmoq bilan surish: real vaqtda ~300 ms, ekranning
+  /// 55% i (yarmidan ko'p — tezlikdan qat'i nazar sahifa almashadi).
   Future<bool> swipe({required bool next}) async {
     final before = index;
     final pager = find.byKey(const ValueKey('showcase-pager'));
-    final dy = screen.height * .42 * (next ? -1 : 1);
+    if (!has(pager)) {
+      swipeLog.add('pager yo\'q');
+      return false;
+    }
+    final total = screen.height * .55 * (next ? -1 : 1);
     for (var attempt = 0; attempt < 3; attempt++) {
-      await t.fling(pager, Offset(0, dy), 1400, warnIfMissed: false);
+      final p0 = pagerPage;
+      final start = Offset(screen.width * .5,
+          next ? screen.height * .72 : screen.height * .28);
+      final g = await t.startGesture(start);
+      const n = 15;
+      for (var i = 0; i < n; i++) {
+        await g.moveBy(Offset(0, total / n));
+        await t.pump(const Duration(milliseconds: 20));
+      }
+      await g.up();
       final ok = await waitFor(() => index != before && index >= 0,
           timeout: const Duration(seconds: 4));
+      swipeLog.add('$before->$index page ${p0?.toStringAsFixed(2)}->'
+          '${pagerPage?.toStringAsFixed(2)} ok=$ok');
       if (ok) {
         await wait(const Duration(milliseconds: 900));
         return true;
@@ -483,7 +526,8 @@ class _Run {
           '"${l.feedSponsored}" matni kartada yo\'q');
       r.check(has(find.byKey(const ValueKey('home-ad-title'))),
           'karta sarlavhasi yo\'q');
-      final v = await waitPlaying(ad.videoUrl, timeout: const Duration(seconds: 20));
+      final v = await waitPlaying(ad.videoUrl,
+          timeout: const Duration(seconds: 20), minAdvance: const Duration(milliseconds: 500));
       r.values['video'] = v;
       r.check(v['initialized'] == true, 'karta videosi initialize bo\'lmadi');
       r.check(v['moving'] == true, 'karta videosi o\'ynamayapti (pozitsiya joyida)');
@@ -606,7 +650,8 @@ class _Run {
       if (!ok) return;
       final p = visiblePage!.post;
       r.values['page'] = describe(p);
-      final v = await waitPlaying(p.videoUrl, timeout: const Duration(seconds: 20));
+      final v = await waitPlaying(p.videoUrl,
+          timeout: const Duration(seconds: 20), minAdvance: const Duration(milliseconds: 500));
       r.values['video'] = v;
       r.check(v['moving'] == true, 'reklama videosi o\'ynamayapti');
       r.check(v['volume'] == 0.0, 'reklama videosi ovozsiz emas (volume=${v['volume']})');
@@ -645,7 +690,7 @@ class _Run {
           '🔇 dan keyin musiqa hali o\'ynayapti');
       if (page!.isShowcaseVideoAd) {
         final v = await playerState(spy.latest(page.videoUrl),
-            window: const Duration(seconds: 2));
+            window: const Duration(seconds: 2), minAdvance: const Duration(milliseconds: 500));
         r.values['videoWhileMuted'] = v;
         r.check(v['moving'] == true, '🔇 da video to\'xtab qoldi');
       }
@@ -733,22 +778,48 @@ class _Run {
           '${screen.width.toStringAsFixed(0)}x${screen.height.toStringAsFixed(0)}';
       r.check(page0.height >= screen.height - 1 && page0.width >= screen.width - 1,
           'sahifa butun ekranni egallamagan');
+      final web = find.descendant(
+          of: find.byType(ShowcaseVideoPage),
+          matching: find.byType(WebViewWidget));
+      // KUZATUV: sahifaning `post()` xabarlari (ready/playing/error:<kod>)
+      // nusxasi `window.__e2e` ga ham yoziladi — ilovaga o'zgarishsiz
+      // boradi. Zaxira panel chiqsa, sababini (xato kodini) bilish uchun.
+      const hook = '(function(){if(window.__e2eHooked)return "already";'
+          'window.__e2e=window.__e2e||[];var o=window.post;'
+          'window.post=function(m){window.__e2e.push(m);return o(m)};'
+          'window.__e2eHooked=1;return "hooked"})()';
+      const probe = '(function(){try{return (window.__e2e||[]).join(",")+'
+          '" | YT="+(typeof YT)+" st="+(window.player&&player.getPlayerState?'
+          'player.getPlayerState():"-")}catch(e){return "x:"+e}})()';
+      final ytLog = <String>[];
+      if (await waitFor(() => has(web), timeout: const Duration(seconds: 5))) {
+        ytLog.add('hook:${await js(web, hook)}');
+      }
       // 'playing' kelganda pleer audio egaligini oladi.
       final sw = Stopwatch()..start();
-      final playing = await waitFor(
-          () => ownerType == '_ShowcaseVideoPageState' ||
-              has(find.byKey(const ValueKey('showcase-video-fallback'))),
-          timeout: const Duration(seconds: 20));
+      var lastProbe = '';
+      final playing = await waitForAsync<bool>(() async {
+        if (ownerType == '_ShowcaseVideoPageState') return true;
+        if (has(find.byKey(const ValueKey('showcase-video-fallback')))) {
+          return false;
+        }
+        if (has(web)) {
+          final p = await js(web, probe);
+          if (p != lastProbe) {
+            lastProbe = p;
+            ytLog.add('${sw.elapsedMilliseconds}ms $p');
+          }
+        }
+        return null;
+      }, timeout: const Duration(seconds: 20)) ?? false;
+      r.values['ytEvents'] = ytLog;
       r.values['playingAfterMs'] = sw.elapsedMilliseconds;
       r.values['audioOwner'] = ownerType;
       final fallback = has(find.byKey(const ValueKey('showcase-video-fallback')));
       r.values['fallbackShown'] = fallback;
-      r.check(playing && !fallback && ownerType == '_ShowcaseVideoPageState',
+      r.check(playing && !fallback,
           'YouTube pleeri 20 s ichida "playing" bermadi'
           '${fallback ? ' (zaxira panel: video ochilmadi)' : ''}');
-      final web = find.descendant(
-          of: find.byType(ShowcaseVideoPage),
-          matching: find.byType(WebViewWidget));
       if (has(web)) {
         const q = '(function(){try{return player.getPlayerState()+"|"+'
             'player.getCurrentTime().toFixed(2)}catch(e){return "x:"+e}})()';

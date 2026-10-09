@@ -36,13 +36,28 @@ if [ "$PLATFORM" = android ]; then
   LC=$!
 fi
 
+MARKERS="$PWD/showcase-e2e/logcat-all.txt"
+if [ "$PLATFORM" = ios ]; then
+  # Dart `print` iOS'da os_log'ga ham tushadi — real vaqtda.
+  MARKERS="$PWD/showcase-e2e/oslog.txt"
+  xcrun simctl spawn "$DEVICE" log stream --style compact --level debug \
+    --predicate 'eventMessage CONTAINS "E2E_" OR eventMessage CONTAINS "[SHOWCASE]"' \
+    > "$MARKERS" 2>&1 &
+  OSL=$!
+fi
+
 python3 "$HERE/shooter.py" --platform "$PLATFORM" --device "$DEVICE" \
-  --log "$LOG" --out "$OUT" --max 3300 > "$PWD/showcase-e2e/shooter.log" 2>&1 &
+  --log "$LOG" --markers "$MARKERS" --out "$OUT" --max 3300 > "$PWD/showcase-e2e/shooter.log" 2>&1 &
 SH=$!
 
+# macOS'da `timeout` yo'q — bo'lsa ishlatiladi (qadamning o'z chegarasi bor).
+TO=()
+if command -v timeout >/dev/null; then TO=(timeout --foreground -s INT -k 30s 2700)
+elif command -v gtimeout >/dev/null; then TO=(gtimeout --foreground -s INT -k 30s 2700)
+fi
+
 echo "== flutter test ($PLATFORM / $DEVICE)"
-timeout --foreground -s INT -k 30s 2700 \
-  flutter test integration_test/showcase_user_test.dart -d "$DEVICE" "${DEFINES[@]}" \
+${TO[@]+"${TO[@]}"} flutter test integration_test/showcase_user_test.dart -d "$DEVICE" "${DEFINES[@]}" \
   > "$LOG" 2>&1
 code=$?
 echo "EXIT $code" >> "$LOG"
@@ -58,6 +73,8 @@ if [ "$PLATFORM" = android ]; then
   rm -f "$PWD/showcase-e2e/logcat-all.txt"
   adb -s "$DEVICE" shell dumpsys audio > "$PWD/showcase-e2e/dumpsys-audio.txt" 2>/dev/null || true
 fi
+
+if [ "$PLATFORM" = ios ]; then kill "$OSL" 2>/dev/null || true; fi
 
 cat "$PWD/showcase-e2e/shooter.log" || true
 grep -E "\[SHOWCASE\]|E2E_SHOT|E2E_DONE|EXIT " "$LOG" | cut -c1-400 || true

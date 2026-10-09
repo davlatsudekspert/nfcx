@@ -20,7 +20,7 @@ import sys
 import time
 
 SHOT = re.compile(r"E2E_SHOT:([A-Za-z0-9_]+)")
-TMP = re.compile(r"E2E_TMP:(\S+)")
+TMP = re.compile(r"E2E_TMP:(/\S+)")
 
 
 def run(cmd, **kw):
@@ -44,7 +44,18 @@ def capture(a, name):
           f"({os.path.getsize(path) if os.path.exists(path) else 0} B)", flush=True)
 
 
+def ios_tmp(a):
+    """iOS: ilova konteyneri host diskida — `<data>/tmp`."""
+    r = run(["xcrun", "simctl", "get_app_container", a.device, a.bundle, "data"],
+            capture_output=True, text=True)
+    if r and r.returncode == 0 and r.stdout.strip():
+        return r.stdout.strip() + "/tmp"
+    return None
+
+
 def ack(a, tmp, name):
+    if not tmp and a.platform == "ios":
+        tmp = ios_tmp(a)
     if not tmp:
         print("[shooter] E2E_TMP hali kelmagan — ack yozilmadi", flush=True)
         return
@@ -63,44 +74,57 @@ def main():
     p.add_argument("--platform", choices=["android", "ios"], required=True)
     p.add_argument("--device", required=True)
     p.add_argument("--pkg", default="uz.nfcstore.nova.debug")
+    p.add_argument("--bundle", default="uz.nfcstore.nova")
     p.add_argument("--log", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--max", type=int, default=3600)
+    p.add_argument("--markers", default="", help="vergul bilan: qo'shimcha log fayllar")
     a = p.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
-    start = time.time()
-    while not os.path.exists(a.log):
-        if time.time() - start > a.max:
-            return 0
-        time.sleep(0.5)
-
+    # Belgilar bir nechta manbadan: `flutter test` logi (oxirida to'planib
+    # chiqishi mumkin) va qurilma logi (Android logcat / iOS os_log) —
+    # ikkinchisi REAL VAQTDA keladi. Bir xil nom bir marta ishlanadi.
+    sources = [a.log] + [m for m in (a.markers or "").split(",") if m]
+    handles = {}
+    bufs = {}
     tmp = None
     done = set()
-    buf = ""
-    with open(a.log, "r", errors="replace") as f:
-        while time.time() - start < a.max:
-            chunk = f.read()
+    start = time.time()
+    while time.time() - start < a.max:
+        got = False
+        for src in sources:
+            if src not in handles:
+                if not os.path.exists(src):
+                    continue
+                handles[src] = open(src, "r", errors="replace")
+                bufs[src] = ""
+            chunk = handles[src].read()
             if not chunk:
-                time.sleep(0.3)
                 continue
-            buf += chunk
-            lines = buf.split("\n")
-            buf = lines.pop()
+            got = True
+            bufs[src] += chunk
+            lines = bufs[src].split("\n")
+            bufs[src] = lines.pop()
             for line in lines:
                 m = TMP.search(line)
-                if m:
+                if m and not tmp:
                     tmp = m.group(1).strip()
-                    print(f"[shooter] tmp = {tmp}", flush=True)
+                    print(f"[shooter] tmp = {tmp} ({os.path.basename(src)})", flush=True)
                 m = SHOT.search(line)
                 if m and m.group(1) not in done:
                     name = m.group(1)
                     done.add(name)
+                    t0 = time.time()
                     capture(a, name)
                     ack(a, tmp, name)
-                if line.startswith("EXIT "):
+                    print(f"[shooter]   {name}: {os.path.basename(src)}, "
+                          f"t+{t0 - start:.0f}s, {time.time() - t0:.1f}s", flush=True)
+                if src == a.log and line.startswith("EXIT "):
                     print(f"[shooter] test tugadi: {line}", flush=True)
                     return 0
+        if not got:
+            time.sleep(0.25)
     return 0
 
 
