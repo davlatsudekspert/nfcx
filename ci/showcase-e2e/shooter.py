@@ -90,6 +90,8 @@ def main():
     bufs = {}
     tmp = None
     done = set()
+    ios_dir = [None, 0.0]
+    last_poll = [0.0]
     start = time.time()
     while time.time() - start < a.max:
         got = False
@@ -123,6 +125,54 @@ def main():
                 if src == a.log and line.startswith("EXIT "):
                     print(f"[shooter] test tugadi: {line}", flush=True)
                     return 0
+        # So'rov fayllari: test `<tmp>/e2e_req_<nom>` yozadi (Dart `print`
+        # test zonasida ushlanadi va logga faqat OXIRIDA chiqadi — shuning
+        # uchun asosiy kanal shu).
+        if a.platform == "android" and time.time() - last_poll[0] > 0.5:
+            last_poll[0] = time.time()
+            d = tmp or f"/data/user/0/{a.pkg}/code_cache"
+            r = run(["adb", "-s", a.device, "shell", "run-as", a.pkg, "ls", d],
+                    capture_output=True, text=True)
+            names = []
+            if r and r.returncode == 0:
+                names = [x.strip() for x in r.stdout.split() if x.strip().startswith("e2e_req_")]
+            for fn in names:
+                name = fn[len("e2e_req_"):]
+                run(["adb", "-s", a.device, "shell", "run-as", a.pkg, "rm", "-f", f"{d}/{fn}"])
+                if name in done:
+                    continue
+                done.add(name)
+                t0 = time.time()
+                capture(a, name)
+                ack(a, d, name)
+                got = True
+                print(f"[shooter]   {name}: req-file, t+{t0 - start:.0f}s", flush=True)
+        # iOS: konteyner papkasi host diskida.
+        if a.platform == "ios":
+            if not ios_dir[0] or time.time() - ios_dir[1] > 20:
+                d = ios_tmp(a)
+                ios_dir[1] = time.time()
+                if d and d != ios_dir[0]:
+                    ios_dir[0] = d
+                    print(f"[shooter] ios tmp = {d}", flush=True)
+            d = ios_dir[0]
+            if d and os.path.isdir(d):
+                for fn in sorted(os.listdir(d)):
+                    if not fn.startswith("e2e_req_"):
+                        continue
+                    name = fn[len("e2e_req_"):]
+                    try:
+                        os.remove(os.path.join(d, fn))
+                    except OSError:
+                        pass
+                    if name in done:
+                        continue
+                    done.add(name)
+                    t0 = time.time()
+                    capture(a, name)
+                    ack(a, d, name)
+                    got = True
+                    print(f"[shooter]   {name}: req-file, t+{t0 - start:.0f}s", flush=True)
         if not got:
             time.sleep(0.25)
     return 0

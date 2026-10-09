@@ -126,6 +126,16 @@ jobs:
           emulator-options: -no-window -gpu swangle_indirect -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "AVD tayyor"
+      # Ish qizil tugasa ham AVD keshi saqlansin (post-qadam faqat
+      # muvaffaqiyatda saqlaydi).
+      - name: AVD keshini saqlash
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-34-x86_64-audio
       - name: E2E — Android emulyator (ovoz YOQIQ)
         timeout-minutes: 50
         uses: reactivecircus/android-emulator-runner@v2

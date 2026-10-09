@@ -199,6 +199,11 @@ class _Run {
       if (ack.existsSync()) ack.deleteSync();
     } catch (_) {}
     await wait(const Duration(milliseconds: 400));
+    // So'rov fayl orqali ham (iOS: host konteyner papkasini ko'radi —
+    // log kechiksa ham surat aynan shu lahzada).
+    try {
+      File('$tmp/e2e_req_$name').writeAsStringSync(name);
+    } catch (_) {}
     _log('E2E_SHOT:$name');
     final sw = Stopwatch()..start();
     while (sw.elapsed < const Duration(seconds: 25)) {
@@ -215,7 +220,7 @@ class _Run {
   /// tezlik (`rate`) esa alohida yoziladi.
   Future<Map<String, Object?>> playerState(PlayerRec? r,
       {Duration window = const Duration(seconds: 3),
-      Duration minAdvance = const Duration(milliseconds: 1500)}) async {
+      Duration minAdvance = const Duration(milliseconds: 800)}) async {
     if (r == null) return {'player': null};
     final a = await measure(spy, r, window: window);
     return {
@@ -231,7 +236,7 @@ class _Run {
   /// [uri] pleeri paydo bo'lib, pozitsiyasi oldinga ketguncha kutadi.
   Future<Map<String, Object?>> waitPlaying(String uri,
       {Duration timeout = const Duration(seconds: 15),
-      Duration minAdvance = const Duration(milliseconds: 1500)}) async {
+      Duration minAdvance = const Duration(milliseconds: 800)}) async {
     Map<String, Object?> last = {'player': null};
     final sw = Stopwatch()..start();
     while (sw.elapsed < timeout) {
@@ -786,7 +791,8 @@ class _Run {
       // boradi. Zaxira panel chiqsa, sababini (xato kodini) bilish uchun.
       const hook = '(function(){if(window.__e2eHooked)return "already";'
           'window.__e2e=window.__e2e||[];var o=window.post;'
-          'window.post=function(m){window.__e2e.push(m);return o(m)};'
+          'window.post=function(m){window.__e2e.push(m);'
+          'try{console.log("E2E_YT:"+m)}catch(e){}return o(m)};'
           'window.__e2eHooked=1;return "hooked"})()';
       const probe = '(function(){try{return (window.__e2e||[]).join(",")+'
           '" | YT="+(typeof YT)+" st="+(window.player&&player.getPlayerState?'
@@ -811,7 +817,8 @@ class _Run {
           }
         }
         return null;
-      }, timeout: const Duration(seconds: 20)) ?? false;
+      }, timeout: const Duration(seconds: 20),
+          every: const Duration(milliseconds: 150)) ?? false;
       r.values['ytEvents'] = ytLog;
       r.values['playingAfterMs'] = sw.elapsedMilliseconds;
       r.values['audioOwner'] = ownerType;
@@ -885,7 +892,10 @@ class _Run {
         if (!has(web)) return null;
         last = await js(web,
             '(function(){return document.readyState+"|"+(document.body?document.body.innerText.length:0)+"|"+document.images.length+"|"+location.host})()');
-        return last.startsWith('complete|') ? last : null;
+        // Boshlang'ich `about:blank` emas — Instagram sahifasining o'zi.
+        return last.startsWith('complete|') && last.contains('instagram')
+            ? last
+            : null;
       }, timeout: const Duration(seconds: 25));
       r.values['page_state'] = loaded ?? last;
       r.check(loaded != null && loaded != 'fallback',
