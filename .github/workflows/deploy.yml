@@ -97,7 +97,7 @@ jobs:
           node scripts/test-uz-store.mjs
           node scripts/test-uz-sql-keywords.mjs
           node scripts/test-uz-cold-start.mjs
-          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost test-featured-sales test-referral-rewards test-admin-apple test-admin-audit test-phone-unchanged test-unchecked-queue test-flags test-video-guard test-showcase test-showcase-samples test-moderation-pending test-foreign-media test-moderation-cron test-moderation-list-retry; do
+          for t in test-auth test-account-deletion test-media test-stories test-seo-profiles test-order-expire-sweep test-follow-count-consistency test-company-follow-stats test-upload-edge-cache test-audio-upload test-content-views test-carousel test-product-tags test-highlights test-story-replies test-saves-collections test-nearby test-scheduled-posts test-post-contact test-feed-following test-support-replies test-reels-ranking test-legal-requests test-trial-reminders test-admin-premium-grant test-trial-promo test-apple-jws test-iap-apple test-iap-apple-boost test-featured-sales test-referral-rewards test-admin-apple test-admin-audit test-phone-unchanged test-unchecked-queue test-flags test-video-guard test-showcase test-showcase-samples test-showcase-ads test-moderation-pending test-foreign-media test-moderation-cron test-moderation-list-retry; do
             echo "== UZ adapter: $t"; UZ_ADAPTER_TEST=1 node scripts/$t.mjs | tail -n 1
             [ "${PIPESTATUS[0]}" = 0 ] || exit 1
           done
@@ -394,6 +394,10 @@ jobs:
       # NFCSTORE'ning o'z Ko'rgazma namunalari — bir marta, dublikatsiz.
       - name: Ko'rgazma namunalari (NFCSTORE)
         run: node scripts/test-showcase-samples.mjs
+      # Ko'rgazma reklamasi: admin 4 ta joy (video faqat shu yo'l bilan), lenta
+      # aralashuvi, blok/pending/o'chirilgan/videosHidden, promo seed bir marta.
+      - name: Ko'rgazma reklamasi (admin joylari)
+        run: node scripts/test-showcase-ads.mjs
       # Pending, 503 moderation_unavailable, consent_log, deleted_uploads, text_flag, cron qayta tekshiruv.
       - name: Moderatsiya — pending va qattiqlashtirish
         run: node scripts/test-moderation-pending.mjs
