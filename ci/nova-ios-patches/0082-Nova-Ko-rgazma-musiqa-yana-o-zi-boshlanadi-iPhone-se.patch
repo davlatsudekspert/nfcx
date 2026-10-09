@@ -1,0 +1,634 @@
+From e7a7f273adb8c3b09f97897e58c056c187ef5dc9 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 09:06:03 +0000
+Subject: [PATCH 82/83] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20musiqa=20?=
+ =?UTF-8?q?yana=20o'zi=20boshlanadi=20(iPhone=20sessiyasi,=20saqlangan=20?=
+ =?UTF-8?q?=F0=9F=94=87,=20ovozsiz=20video=20fokusi)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (TestFlight 331): "BOY777 da musiqa avto qo'yilmayapti", "hamma
+joyda avto aytmayapti" — skrinshotlarda burchakda CHIZILGAN karnay.
+
+Sabablar:
+
+1. Saqlangan 🔇. Chizilgan karnay = `showcaseMutedProvider` true; u
+   holda `_audible` false va hech bir sahifada `_playMusic` umuman
+   chaqirilmaydi (BOY777 da video ham ovozsiz). Qiymatni faqat
+   burchakdagi tugma yozadi va u `nova.showcaseMuted` da ilova qayta
+   ochilsa ham saqlanadi (330 dan beri) — bir bosish butun Ko'rgazmani
+   doimiy jim qoldirgan. Endi kalit `nova.showcaseMuted.v2`: eski
+   qiymat bir marta tashlanadi, standart — ovoz bor; yangi 🔇
+   avvalgidek saqlanadi (eski kalit tozalanadi).
+
+2. iPhone audio sessiyasi hech kimniki emas edi. `video_player` uni
+   faqat birinchi pleerda `.playback` qiladi, keyin har pleer faqat
+   `mixWithOthers` belgisini o'sha paytdagi turkumga qo'yadi
+   (FVPVideoPlayerPlugin.m). Asosiydagi ovozsiz karta
+   (`mixWithOthers: true`) sessiyani aralashuvchi qoldiradi, YouTube/
+   Instagram WebView'i esa uni uzishi mumkin; AppDelegate'da sessiyaga
+   tegadigan kod yo'q edi. Endi `uz.nfcstore.nova/audio` kanali
+   (AppDelegate `NovaAudioSession`, yangi paket yo'q): Ko'rgazma
+   musiqasi va o'z ovozli reklama videosi `play()` dan OLDIN
+   `claimPlayback()` — `.playback`, aralashmaydi, faol (kamera/mikrofon
+   `.playAndRecord` bo'lsa turkumga tegilmaydi). Android'da hech narsa.
+
+3. Musiqali video reklamada ovozsiz video ham `mixWithOthers: false`
+   edi — Android'da u audio fokusni musiqadan tortib olardi va
+   ExoPlayer musiqani to'xtatardi. Endi musiqa bo'lsa video Android'da
+   fokus olmaydi (iOS'da belgi butun sessiyaga ta'sir qiladi — `false`
+   qoladi). `mixWithOthers` platformada umumiy belgi bo'lgani uchun
+   video pleer musiqa pleeri ochilgandan keyin ochiladi (poster turadi,
+   kutish `reelsInitTimeout` bilan cheklangan).
+
+Tekshirildi: toza rejim (`reelsCleanProvider`) va `showcaseFocusProvider`
+ijroni to'smaydi; audio egasini ovozsiz video olmaydi.
+
+Sinovlar (`showcase_music_autoplay_test.dart`, butun ilova — shell,
+tablar): eski 🔇 tashlanadi va birinchi sahifa musiqasi o'zi boshlanadi,
+ikonka holatni ko'rsatadi; Asosiy karta ko'rindi -> bosildi -> BOY777:
+video ovozsiz va fokussiz, musiqa o'ynaydi, audio egasi — musiqa,
+surilsa keyingi sahifa musiqasi; iPhone: sessiya musiqa `play()` idan
+oldin olinadi; AppDelegate kanali. f9d7588 da uchalasi ham yiqiladi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/ios/Runner/AppDelegate.swift      |  45 +++
+ mobile_nova/lib/core/media/audio_session.dart |  35 +++
+ .../lib/core/storage/secure_store.dart        |  18 +-
+ .../features/showcase/showcase_screen.dart    |  46 ++-
+ .../test/showcase_music_autoplay_test.dart    | 285 ++++++++++++++++++
+ .../test/support/fake_video_platform.dart     |   5 +
+ 6 files changed, 430 insertions(+), 4 deletions(-)
+ create mode 100644 mobile_nova/lib/core/media/audio_session.dart
+ create mode 100644 mobile_nova/test/showcase_music_autoplay_test.dart
+
+diff --git a/mobile_nova/ios/Runner/AppDelegate.swift b/mobile_nova/ios/Runner/AppDelegate.swift
+index b9af233..4d20a48 100644
+--- a/mobile_nova/ios/Runner/AppDelegate.swift
++++ b/mobile_nova/ios/Runner/AppDelegate.swift
+@@ -12,10 +12,55 @@ import UIKit
+     if let registrar = self.registrar(forPlugin: "NovaVideoExport") {
+       NovaVideoExport.register(messenger: registrar.messenger())
+     }
++    if let registrar = self.registrar(forPlugin: "NovaAudioSession") {
++      NovaAudioSession.register(messenger: registrar.messenger())
++    }
+     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+   }
+ }
+ 
++/// ILOVA OVOZI — iPhone audio sessiyasi (egasi, TestFlight 331:
++/// "Ko'rgazmada musiqa avto qo'yilmayapti").
++///
++/// `AVAudioSession` butun ilova uchun BITTA. `video_player` uni faqat
++/// birinchi pleerda `.playback` qiladi, keyin har pleer ochilganda faqat
++/// `mixWithOthers` belgisini o'sha paytdagi turkumga qo'shadi/olib
++/// tashlaydi. Asosiydagi ovozsiz reklama kartasi (`mixWithOthers: true`)
++/// sessiyani "aralashuvchi" qilib qoldirardi, WebView (YouTube/Instagram)
++/// esa o'z ijrosi bilan sessiyani to'xtatib (uzib) qo'yishi mumkin —
++/// ilovada sessiyani qayta yoqadigan joy yo'q edi. Natija: musiqa
++/// "o'ynayapti", lekin eshitilmaydi yoki umuman boshlanmaydi.
++///
++/// Dart (`lib/core/media/audio_session.dart`) Ko'rgazma musiqasi yoki
++/// ovozli video `play()` dan OLDIN `playback` ni chaqiradi: turkum
++/// `.playback` (jim rejim tugmasiga bo'ysunmaydi), aralashmaydi (boshqa
++/// ilova ovozi to'xtaydi), sessiya faol. Kamera/mikrofon
++/// (`.playAndRecord`) ishlayotgan bo'lsa turkumga tegilmaydi.
++enum NovaAudioSession {
++  static func register(messenger: FlutterBinaryMessenger) {
++    let channel = FlutterMethodChannel(
++      name: "uz.nfcstore.nova/audio", binaryMessenger: messenger)
++    channel.setMethodCallHandler { call, result in
++      switch call.method {
++      case "playback":
++        let session = AVAudioSession.sharedInstance()
++        do {
++          if session.category != .playAndRecord {
++            try session.setCategory(.playback, mode: .default, options: [])
++          }
++          try session.setActive(true)
++          result(true)
++        } catch {
++          // Sessiya band (masalan, qo'ng'iroq) — ijro odatdagidek urinadi.
++          result(false)
++        }
++      default:
++        result(FlutterMethodNotImplemented)
++      }
++    }
++  }
++}
++
+ /// iPhone videosi (.MOV, ko'pincha HEVC) → 1080p H.264 .mp4.
+ ///
+ /// HEVC hamma Android telefon va brauzerda o'ynamaydi; H.264 esa
+diff --git a/mobile_nova/lib/core/media/audio_session.dart b/mobile_nova/lib/core/media/audio_session.dart
+new file mode 100644
+index 0000000..d6a82c2
+--- /dev/null
++++ b/mobile_nova/lib/core/media/audio_session.dart
+@@ -0,0 +1,35 @@
++import 'package:flutter/foundation.dart';
++import 'package:flutter/services.dart';
++
++/// ILOVA OVOZI — iPhone audio sessiyasi (egasi, TestFlight 331:
++/// "Ko'rgazmada musiqa avto qo'yilmayapti").
++///
++/// `AVAudioSession` butun ilova uchun BITTA va uni hamma o'zgartiradi:
++///
++/// * `video_player` faqat BIRINCHI pleerda turkumni `.playback` qiladi;
++///   keyingi har pleer ochilganda faqat `mixWithOthers` belgisini
++///   o'sha paytdagi turkumga qo'yadi/olib tashlaydi (yangi paket emas —
++///   `video_player_avfoundation`, `FVPVideoPlayerPlugin.m`);
++/// * Asosiydagi ovozsiz reklama kartasi (`mixWithOthers: true`) sessiyani
++///   "aralashuvchi" qilib qoldiradi;
++/// * YouTube/Instagram WebView'i o'z ijrosi bilan sessiyani uzib
++///   qo'yishi mumkin.
++///
++/// Ilovada sessiyani qayta yoqadigan joy yo'q edi. Endi Ko'rgazma
++/// musiqasi (yoki o'z ovozli video reklama) `play()` dan OLDIN
++/// [claimPlayback] ni chaqiradi: iOS'da turkum `.playback`
++/// (aralashmaydi), sessiya faol (`ios/Runner/AppDelegate.swift`,
++/// `NovaAudioSession`). Android'da hech narsa qilinmaydi — u yerda
++/// fokusni har pleerning o'zi oladi.
++const audioSessionChannel = MethodChannel('uz.nfcstore.nova/audio');
++
++/// iOS: ilova ovozi uchun sessiyani tayyorlaydi. Xato yoki kanal yo'q
++/// (sinov, eski build) — jim o'tadi, ijro odatdagidek urinadi.
++Future<void> claimPlayback() async {
++  if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
++  try {
++    await audioSessionChannel.invokeMethod<bool>('playback');
++  } catch (_) {
++    // Sessiya band yoki kanal yo'q — pleer baribir `play()` qiladi.
++  }
++}
+diff --git a/mobile_nova/lib/core/storage/secure_store.dart b/mobile_nova/lib/core/storage/secure_store.dart
+index 8fb000a..7846557 100644
+--- a/mobile_nova/lib/core/storage/secure_store.dart
++++ b/mobile_nova/lib/core/storage/secure_store.dart
+@@ -122,7 +122,15 @@ class Prefs {
+   static const _kCatalogFav = 'nova.catalogFavorites';
+   static const _kSavedReels = 'nova.savedReels';
+   static const _kAppFlags = 'nova.appFlags';
+-  static const _kShowcaseMuted = 'nova.showcaseMuted';
++  /// `.v2` (TestFlight 331): 330–331 da saqlangan 🔇 BIR MARTA
++  /// tashlanadi. Egasining telefonida u yoqilib qolgan edi (burchakda
++  /// chizilgan karnay) va butun Ko'rgazma ilova qayta ochilsa ham jim
++  /// turardi — o'sha paytda iPhone'da musiqa boshqa sababdan (audio
++  /// sessiya, `audio_session.dart`) eshitilmasdi, ya'ni tugma "ovozni
++  /// yoqish" deb bosilgan bo'lishi mumkin. Yangi kalitda standart —
++  /// ovoz bor; keyin bosilgan 🔇 avvalgidek saqlanadi.
++  static const _kShowcaseMuted = 'nova.showcaseMuted.v2';
++  static const _kShowcaseMutedLegacy = 'nova.showcaseMuted';
+   static const _kHomeAdHidden = 'nova.homeAdHiddenDay';
+   static const _kHomeAdLaunch = 'nova.homeAdLaunch';
+ 
+@@ -257,7 +265,13 @@ class Prefs {
+   /// Ko'rgazma musiqasi o'chirilganmi (burchakdagi 🔇). Sahifalar va
+   /// ilova qayta ochilishi orasida saqlanadi. Standart — ovoz bor.
+   bool get showcaseMuted => _p.getBool(_kShowcaseMuted) ?? false;
+-  Future<void> setShowcaseMuted(bool v) => _p.setBool(_kShowcaseMuted, v);
++  Future<void> setShowcaseMuted(bool v) async {
++    await _p.setBool(_kShowcaseMuted, v);
++    // Eski kalit qolmasin (o'qilmaydi, faqat tozalanadi).
++    if (_p.containsKey(_kShowcaseMutedLegacy)) {
++      await _p.remove(_kShowcaseMutedLegacy);
++    }
++  }
+ 
+   /// Asosiydagi Ko'rgazma reklama kartasi "×" bilan yopilgan kun
+   /// (`YYYY-MM-DD`, telefon vaqti). Shu kun tugaguncha karta chiqmaydi.
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 77f3cb4..a428d52 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -1,12 +1,14 @@
+ import 'dart:async';
+ import 'dart:ui' show ImageFilter;
+ 
++import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:video_player/video_player.dart';
+ 
+ import '../../app/profile_context.dart';
++import '../../core/media/audio_session.dart';
+ import '../../core/utils/external_link.dart';
+ import '../../core/utils/result.dart';
+ import '../../core/utils/sharing.dart';
+@@ -472,6 +474,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   bool _videoReady = false;
+   bool _videoFailed = false;
+ 
++  /// Musiqa pleeri ochilmoqda (`initialize()`); video shuni kutadi.
++  Future<void>? _musicLoading;
++  bool _videoWaiting = false;
++
+   /// Ustida boshqa ekran yo'q (`TickerMode`).
+   bool _onStage = true;
+ 
+@@ -640,9 +646,33 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   Future<void> _playVideo() async {
+     var c = _video;
+     if (c == null) {
++      // Musiqa pleeri hali ochilmoqda — video undan KEYIN ochiladi
++      // (poster turadi). `mixWithOthers` pleer platformasida UMUMIY
++      // belgi va har `initialize()` uni `create` dan oldin qo'yadi: ikki
++      // pleer bir vaqtda ochilsa, musiqa videoning belgisi bilan
++      // yaratilib qolardi.
++      final music = _musicLoading;
++      if (music != null) {
++        if (_videoWaiting) return;
++        _videoWaiting = true;
++        await music.timeout(reelsInitTimeout, onTimeout: () {});
++        _videoWaiting = false;
++        if (!mounted || _video != null || !_active) return;
++      }
+       c = VideoPlayerController.networkUrl(
+         Uri.parse(_p.videoUrl),
+-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
++        // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
++        // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video
++        // fokusni musiqadan tortib olardi va ExoPlayer musiqani
++        // to'xtatardi (TestFlight 331: "BOY777 da musiqa avto
++        // qo'yilmayapti"). iOS'da pleerlarning alohida fokusi yo'q —
++        // u yerda belgi butun sessiyani "aralashuvchi" qilardi, shuning
++        // uchun `false` qoladi; sessiyani musiqa o'zi oladi
++        // ([claimPlayback]).
++        videoPlayerOptions: VideoPlayerOptions(
++          mixWithOthers:
++              _hasMusic && defaultTargetPlatform == TargetPlatform.android,
++        ),
+       );
+       _video = c;
+       _videoFailed = false;
+@@ -665,6 +695,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     if (ownSound) _owner.take(this, _pauseForOther);
+     await c.setVolume(ownSound ? 1 : 0);
+     if (!mounted || _video != c || !_active) return;
++    // O'z ovozi bilan — iOS audio sessiyasi shu video uchun.
++    if (ownSound) await claimPlayback();
++    if (!mounted || _video != c || !_active) return;
+     await c.play();
+   }
+ 
+@@ -708,13 +741,17 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+       );
+       _music = c;
++      final init = c.initialize();
++      final loading = _musicLoading = init.catchError((_) {});
+       try {
+-        await c.initialize();
++        await init;
++        if (identical(_musicLoading, loading)) _musicLoading = null;
+         if (!mounted || _music != c) return;
+         await c.setLooping(true);
+         if (m.playFrom > Duration.zero) await c.seekTo(m.playFrom);
+         _musicReady = true;
+       } catch (_) {
++        if (identical(_musicLoading, loading)) _musicLoading = null;
+         // Musiqa ochilmadi — sahifa jim davom etadi.
+         return;
+       }
+@@ -722,6 +759,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     if (!_musicReady || !mounted || _music != c || !_audible) return;
+     await c.setVolume(1);
+     if (!mounted || _music != c || !_audible) return;
++    // iOS: sessiya `.playback`, faol — Asosiydagi ovozsiz karta, ovozsiz
++    // reklama videosi yoki WebView uni qanday qoldirgan bo'lsa ham.
++    await claimPlayback();
++    if (!mounted || _music != c || !_audible) return;
+     await c.play();
+   }
+ 
+@@ -729,6 +770,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     final m = _music;
+     _music = null;
+     _musicReady = false;
++    _musicLoading = null;
+     if (m != null) {
+       m.pause().catchError((_) {});
+       m.dispose();
+diff --git a/mobile_nova/test/showcase_music_autoplay_test.dart b/mobile_nova/test/showcase_music_autoplay_test.dart
+new file mode 100644
+index 0000000..80839fd
+--- /dev/null
++++ b/mobile_nova/test/showcase_music_autoplay_test.dart
+@@ -0,0 +1,285 @@
++import 'dart:io';
++
++import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/app/providers.dart';
++import 'package:nfcstore_nova/core/media/audio_session.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/icons/nova_icons.dart';
++import 'package:nfcstore_nova/features/profile/music_player.dart'
++    show audioOwnerProvider;
++import 'package:nfcstore_nova/features/showcase/showcase_sound.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// KO'RGAZMA MUSIQASI O'ZI BOSHLANADI (egasi, TestFlight 331: "musiqa
++/// avto qo'yilmayapti", "hamma joyda avto aytmayapti").
++///
++/// Butun ilova (`NovaApp`, haqiqiy shell va tablar) bilan: Asosiyda
++/// ovozsiz reklama kartasi ko'rindi -> Ko'rgazma. Server javobi
++/// haqiqiysiga o'xshash: BOY777 — video reklama + kutubxona musiqasi
++/// (`clipUrl` bo'sh, `audioUrl` nisbiy).
++
++Map<String, dynamic> _music(int id) => {
++      'id': id,
++      'title': 'Silk Road Fire',
++      'artist': 'NeomSongs',
++      'audioUrl': '/uploads/music_$id.mp3',
++      'clipUrl': '',
++      'start': 0,
++    };
++
++final _boy = Post.fromJson({
++  'id': 54,
++  'code': 'NFCSTOREUZ',
++  'authorKind': 'company',
++  'showcase': true,
++  'ad': true,
++  'featured': true,
++  'title': 'BOY777 — premium NFC ID',
++  'imageUrl': '/promo/nfcstore-boy777.jpg',
++  'videoUrl': '/uploads/promo_boy777.mp4',
++  'mediaUrls': ['/uploads/promo_boy777.mp4'],
++  'mediaItems': [
++    {'url': '/uploads/promo_boy777.mp4', 'type': 'video'},
++  ],
++  'linkUrl': 'https://www.instagram.com/reel/Ddy4e1cjVY9/',
++  'music': _music(28),
++});
++
++Post _image(int id, int music) => Post.fromJson({
++      'id': id,
++      'code': 'NFCSTOREUZ',
++      'authorKind': 'company',
++      'showcase': true,
++      'title': 'P$id',
++      'imageUrl': '/uploads/p$id.jpg',
++      'mediaUrls': ['/uploads/p$id.jpg'],
++      'music': _music(music),
++    });
++
++class _Repo extends FakeSocialRepository {
++  @override
++  Future<Result<ReelsPage>> showcasePage(
++          {String? cursor, int limit = 10}) async =>
++      Ok(ReelsPage(items: [_image(50, 60), _boy, _image(48, 63)]));
++
++  @override
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async =>
++      Ok(ReelsPage(items: [_boy]));
++}
++
++/// Soxta platforma + `play` tartibi (iOS sessiyasi undan OLDIN).
++class _Video extends FakeVideoPlatform {
++  _Video(this.log);
++  final List<String> log;
++
++  @override
++  Future<void> play(int playerId) {
++    log.add('play:${urls[playerId]!.split('/').last}');
++    return super.play(playerId);
++  }
++}
++
++Future<void> _frames(WidgetTester tester, [int n = 30]) async {
++  for (var i = 0; i < n; i++) {
++    await tester.pump(const Duration(milliseconds: 50));
++    // `VideoPlayerController.dispose` haqiqiy asinxron ishni kutadi.
++    if (i % 5 == 0) {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 5)));
++    }
++  }
++}
++
++String _name(FakeVideoPlatform v, int id) => v.urls[id]!.split('/').last;
++
++Set<String> _playing(FakeVideoPlatform v) =>
++    {for (final id in v.playing) _name(v, id)};
++
++int _player(FakeVideoPlatform v, String file) =>
++    v.urls.entries.lastWhere((e) => e.value.endsWith(file)).key;
++
++Future<({ProviderContainer c, _Video v, List<String> log})> _app(
++  WidgetTester tester, {
++  Future<void> Function(SharedPreferences p)? prefs,
++  List<String>? log,
++}) async {
++  tester.view.physicalSize = const Size(1170, 2532);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  log ??= <String>[];
++  final v = _Video(log);
++  VideoPlayerPlatform.instance = v;
++  final base = await testOverrides();
++  await prefs?.call(await SharedPreferences.getInstance());
++  final c = ProviderContainer(overrides: [
++    ...base,
++    socialRepositoryProvider.overrideWithValue(_Repo()),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(
++    UncontrolledProviderScope(container: c, child: const NovaApp()),
++  );
++  await _frames(tester, 60);
++  return (c: c, v: v, log: log);
++}
++
++/// Asosiydagi reklama kartasigacha suriladi (video ovozsiz o'ynaydi).
++Future<void> _showHomeCard(WidgetTester tester) async {
++  final card = find.byKey(const ValueKey('home-ad-card'));
++  await tester.dragUntilVisible(
++      card, find.byType(Scrollable).first, const Offset(0, -200));
++  await _frames(tester, 20);
++}
++
++IconData _muteIcon(WidgetTester tester) => tester
++    .widget<Icon>(find.descendant(
++        of: find.byKey(const ValueKey('showcase-mute')),
++        matching: find.byType(Icon)))
++    .icon!;
++
++void main() {
++  setUpAll(() {
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(
++            const MethodChannel('plugins.flutter.io/path_provider'),
++            (_) async => Directory.systemTemp.createTempSync('nova').path);
++  });
++
++  test('iOS: AppDelegate audio sessiya kanalini ro‘yxatdan o‘tkazadi', () {
++    final src = File('ios/Runner/AppDelegate.swift').readAsStringSync();
++    expect(src, contains('NovaAudioSession.register'));
++    expect(src, contains('"uz.nfcstore.nova/audio"'));
++    expect(src, contains('case "playback"'));
++    expect(src, contains('setCategory(.playback'));
++    expect(src, contains('setActive(true)'));
++    expect(audioSessionChannel.name, 'uz.nfcstore.nova/audio');
++  });
++
++  testWidgets(
++      '330–331 da saqlangan 🔇 tashlanadi: standart — ovoz bor, tabga '
++      'kirilsa birinchi sahifa musiqasi o‘zi boshlanadi; ikonka holatni '
++      'ko‘rsatadi', (tester) async {
++    final r = await _app(tester,
++        prefs: (p) => p.setBool('nova.showcaseMuted', true));
++    expect(r.c.read(prefsProvider).showcaseMuted, isFalse);
++    expect(r.c.read(showcaseMutedProvider), isFalse);
++
++    r.c.read(routerProvider).go(Routes.showcase);
++    await _frames(tester, 40);
++    expect(_playing(r.v), {'music_60.mp3'},
++        reason: 'birinchi sahifa — musiqa o‘zi');
++    // Ovoz yoqiq — oddiy karnay; o'chiq — chizilgan.
++    expect(_muteIcon(tester), NovaIcons.sound);
++
++    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++    await _frames(tester, 10);
++    expect(_playing(r.v), isEmpty);
++    expect(_muteIcon(tester), NovaIcons.muted);
++    final prefs = await SharedPreferences.getInstance();
++    expect(prefs.getBool('nova.showcaseMuted.v2'), isTrue,
++        reason: 'yangi 🔇 saqlanadi');
++    expect(prefs.containsKey('nova.showcaseMuted'), isFalse,
++        reason: 'eski kalit tozalandi');
++
++    await tester.tap(find.byKey(const ValueKey('showcase-mute')));
++    await _frames(tester, 10);
++    expect(_playing(r.v), {'music_60.mp3'});
++    expect(_muteIcon(tester), NovaIcons.sound);
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(minutes: 1));
++  });
++
++  testWidgets(
++      'Asosiy karta ko‘rindi -> bosildi -> BOY777: video ovozsiz va '
++      'fokussiz, musiqa o‘ynaydi; surilsa keyingi musiqa', (tester) async {
++    final r = await _app(tester);
++    await _showHomeCard(tester);
++    final card = _player(r.v, 'promo_boy777.mp4');
++    expect(_playing(r.v), {'promo_boy777.mp4'});
++    expect(r.v.mixOf[card], isTrue, reason: 'Asosiydagi karta aralashadi');
++
++    await tester.tap(find.byKey(const ValueKey('home-ad-card')));
++    await _frames(tester, 40);
++    expect(r.c.read(activeTabProvider), kShowcaseTab);
++    expect(r.v.alive, isNot(contains(card)), reason: 'karta pleeri yopildi');
++    final video = _player(r.v, 'promo_boy777.mp4');
++    final music = _player(r.v, 'music_28.mp3');
++    expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++    expect(r.v.volumeOf[video], 0.0, reason: 'musiqa bor — video ovozsiz');
++    expect(r.v.volumeOf[music], 1.0);
++    // Ovozsiz video audio fokusni olmaydi (Android'da musiqani
++    // to'xtatardi); musiqa — oladi (boshqa ilova ovozi to'xtaydi).
++    expect(r.v.mixOf[video], isTrue);
++    expect(r.v.mixOf[music], isFalse);
++    expect(r.c.read(audioOwnerProvider).current, isNotNull,
++        reason: 'audio egasi — musiqa (ovozsiz video olmaydi)');
++
++    await tester.fling(find.byKey(const ValueKey('showcase-pager')),
++        const Offset(0, -600), 2000);
++    await _frames(tester, 30);
++    // Reklama birinchi sahifaga qo'yilgan: keyingisi — ro'yxat boshi.
++    expect(_playing(r.v), {'music_60.mp3'}, reason: 'keyingi sahifa');
++    expect(r.v.alive, isNot(contains(music)));
++    expect(r.v.alive, isNot(contains(video)));
++
++    // Asosiyga va qaytib — karta yana ovozsiz o'ynadi, Ko'rgazmada
++    // shu sahifa musiqasi yana o'zi boshlanadi.
++    r.c.read(routerProvider).go(Routes.home);
++    await _frames(tester, 20);
++    r.c.read(routerProvider).go(Routes.showcase);
++    await _frames(tester, 30);
++    expect(_playing(r.v), {'music_60.mp3'});
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(minutes: 1));
++  });
++
++  testWidgets(
++      'iPhone: musiqa play() dan OLDIN audio sessiya olinadi (Asosiydagi '
++      'aralashuvchi kartadan keyin ham)', (tester) async {
++    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
++    final log = <String>[];
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(audioSessionChannel, (call) async {
++      log.add('session:${call.method}');
++      return true;
++    });
++    addTearDown(() => TestDefaultBinaryMessengerBinding
++        .instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(audioSessionChannel, null));
++    try {
++      final r = await _app(tester, log: log);
++      await _showHomeCard(tester);
++      expect(_playing(r.v), {'promo_boy777.mp4'});
++      expect(log.where((e) => e.startsWith('session')), isEmpty,
++          reason: 'ovozsiz karta sessiyani olmaydi');
++      log.clear();
++
++      await tester.tap(find.byKey(const ValueKey('home-ad-card')));
++      await _frames(tester, 40);
++      final all = [...log];
++      expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++      final musicPlay = all.indexOf('play:music_28.mp3');
++      expect(musicPlay, greaterThan(0));
++      expect(all.sublist(0, musicPlay), contains('session:playback'),
++          reason: 'sessiya musiqadan oldin');
++      await tester.pumpWidget(const SizedBox());
++      await tester.pump(const Duration(minutes: 1));
++    } finally {
++      debugDefaultTargetPlatformOverride = null;
++    }
++  });
++}
+diff --git a/mobile_nova/test/support/fake_video_platform.dart b/mobile_nova/test/support/fake_video_platform.dart
+index d92c561..0ffee13 100644
+--- a/mobile_nova/test/support/fake_video_platform.dart
++++ b/mobile_nova/test/support/fake_video_platform.dart
+@@ -43,6 +43,7 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+     final id = _next++;
+     created.add(id);
+     urls[id] = uri ?? '';
++    if (mixCalls.isNotEmpty) mixOf[id] = mixCalls.last;
+     final c = StreamController<VideoEvent>();
+     _events[id] = c;
+     Future<void>.delayed(initDelay, () {
+@@ -94,6 +95,10 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+   /// sinovlari uchun.
+   final mixCalls = <bool>[];
+ 
++  /// Pleer yaratilganda amalda bo'lgan `mixWithOthers` (controller uni
++  /// `create` dan oldin yuboradi). `true` — audio fokusni olmaydi.
++  final mixOf = <int, bool>{};
++
+   @override
+   Widget buildView(int playerId) => _frame(playerId);
+ 
+-- 
+2.43.0
+

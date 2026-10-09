@@ -1,0 +1,897 @@
+From b46fd7e0db6c65a48d949dcf5aa57dc27ab16b55 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Fri, 9 Oct 2026 09:12:53 +0000
+Subject: [PATCH 83/83] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20YouTube?=
+ =?UTF-8?q?=20va=20Instagram=20butun=20ekranda=20ochiladi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (TestFlight 331): "silkani bosganda avto to'liq ochilmayapti" —
+"Videoni ko'rish" pastdan varaq ochardi (video o'ynardi), endi butun
+ekran.
+
+- `showShowcaseVideo` / `showShowcaseInstagram` — ildiz navigatorda
+  butun ekranli qora sahifa (`showcase_fullscreen.dart`,
+  `fullscreenDialog`), telefon kesigi va pastki chiziq hisobga olinadi
+  (`SafeArea`), status bar oq.
+- Tepada belgi, sarlavha va "×"; o'rtada rasmiy pleer/embed qolgan
+  BUTUN joyni egallaydi: YouTube Shorts (9:16) — bo'yini, oddiy (16:9)
+  — enini, markazda (kamida 200×200); Instagram embed — butun joy;
+  pastda kichik "YouTube'da / Instagram'da ochish". Pleer/embed ustida
+  hech narsa yo'q (YouTube qoidasi).
+- Yopish: "×", "orqaga" yoki pastga surish — surish faqat media
+  tashqarisida (tepa panel, pastki havola, bo'sh qora joy), media
+  ustidagi harakat pleerning o'ziga qoladi; kichik surish — joyiga
+  qaytadi.
+- O'zgarmagan: bosilgandan keyin avtomatik ijro, yopilganda/fonda
+  pauza va sahifani bo'shatish, zaxira panel (101/150, yuklanmaslik,
+  javobsizlik), ochiq turganda Ko'rgazma musiqasi pauzada va yopilgach
+  davom etadi (🔇 bo'lmasa), lenta kartasidan ochish.
+
+Sinovlar: sahifa butun ekran (varaq emas), oddiy video enini va Shorts
+bo'yini to'ldiradi, "×"/havola pleerdan tashqarida; pastga surish va
+"orqaga" yopadi, kichik surish yopmaydi, musiqa davom etadi; Instagram
+embed butun joyda, pastga surish yopadi; o'lcham hisobi
+(`ShowcaseVideoPage.playerSize`).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../showcase/showcase_fullscreen.dart         | 158 ++++++++++++++++
+ .../features/showcase/showcase_instagram.dart | 132 +++++--------
+ .../features/showcase/showcase_screen.dart    |  12 +-
+ .../lib/features/showcase/showcase_video.dart | 178 +++++++-----------
+ mobile_nova/test/showcase_screen_test.dart    | 136 +++++++++++--
+ 5 files changed, 400 insertions(+), 216 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/showcase_fullscreen.dart
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_fullscreen.dart b/mobile_nova/lib/features/showcase/showcase_fullscreen.dart
+new file mode 100644
+index 0000000..2536f7f
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/showcase_fullscreen.dart
+@@ -0,0 +1,158 @@
++import 'dart:math' as math;
++
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++
++import '../../design/theme/typography.dart';
++import '../../design/tokens/shapes.dart';
++
++/// KO'RGAZMA — YouTube va Instagram BUTUN EKRANDA (egasi, TestFlight
++/// 331: "silkani bosganda avto to'liq ochilmayapti").
++///
++/// Ilgari pastdan varaq (bottom sheet) ochilardi; endi odam "Videoni
++/// ko'rish" / "Instagram'da ko'rish" ni bosishi bilan butun ekranli
++/// qora sahifa ochiladi:
++///
++/// * tepada — belgi, sarlavha va "×" (media maydonidan TASHQARIDA);
++/// * o'rtada — rasmiy pleer/embed qolgan butun joyni egallaydi (o'lchamni
++///   [ShowcaseFullscreen.body] o'zi tanlaydi), ustida HECH NARSA yo'q;
++/// * pastda — kichik "... da ochish" havolasi;
++/// * pastga surish (media tashqarisida — tepa panel, pastki havola yoki
++///   bo'sh qora joy), "×" yoki "orqaga" — yopiladi. Media ustida
++///   surish pleerning o'ziga qoladi (YouTube vaqt chizig'i va h.k.);
++/// * telefon kesigi va pastki chiziq hisobga olinadi (`SafeArea`).
++Future<void> pushShowcaseFullscreen(
++  BuildContext context,
++  WidgetBuilder builder,
++) {
++  return Navigator.of(context, rootNavigator: true).push<void>(
++    MaterialPageRoute<void>(fullscreenDialog: true, builder: builder),
++  );
++}
++
++class ShowcaseFullscreen extends StatefulWidget {
++  const ShowcaseFullscreen({
++    super.key,
++    required this.icon,
++    required this.title,
++    required this.closeKey,
++    required this.body,
++    this.footer,
++  });
++
++  final IconData icon;
++  final String title;
++  final Key closeKey;
++
++  /// Media — `area` (tepa panel va pastki havoladan qolgan joy) ichida,
++  /// markazda.
++  final Widget Function(BuildContext context, Size area) body;
++
++  /// Pastdagi kichik havola (yoki `null` — zaxira panel ko'rinsa).
++  final Widget? footer;
++
++  /// Shuncha pastga surilsa (yoki tez surilsa) — yopiladi.
++  static const closeDistance = 110.0;
++  static const closeVelocity = 700.0;
++
++  @override
++  State<ShowcaseFullscreen> createState() => _ShowcaseFullscreenState();
++}
++
++class _ShowcaseFullscreenState extends State<ShowcaseFullscreen> {
++  double _drag = 0;
++
++  void _close() => Navigator.of(context).maybePop();
++
++  void _onDrag(DragUpdateDetails d) =>
++      setState(() => _drag = math.max(0, _drag + d.delta.dy));
++
++  void _onDragEnd(DragEndDetails d) {
++    if (_drag > ShowcaseFullscreen.closeDistance ||
++        (d.primaryVelocity ?? 0) > ShowcaseFullscreen.closeVelocity) {
++      _close();
++    } else {
++      setState(() => _drag = 0);
++    }
++  }
++
++  /// Pastga surib yopish — faqat media TASHQARISIDA.
++  Widget _swipe(Widget child) => GestureDetector(
++        behavior: HitTestBehavior.translucent,
++        onVerticalDragUpdate: _onDrag,
++        onVerticalDragEnd: _onDragEnd,
++        onVerticalDragCancel: () => setState(() => _drag = 0),
++        child: child,
++      );
++
++  @override
++  Widget build(BuildContext context) {
++    final title = Padding(
++      padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.xs, Gap.xs, Gap.xs),
++      child: Row(
++        children: [
++          Icon(widget.icon, color: Colors.white, size: 22),
++          const SizedBox(width: Gap.sm),
++          Expanded(
++            child: Text(
++              widget.title,
++              maxLines: 1,
++              overflow: TextOverflow.ellipsis,
++              style: const TextStyle(
++                fontFamily: AppType.sans,
++                fontSize: 15,
++                fontWeight: FontWeight.w700,
++                color: Colors.white,
++              ),
++            ),
++          ),
++          IconButton(
++            key: widget.closeKey,
++            onPressed: _close,
++            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
++            icon: const Icon(Icons.close_rounded, color: Colors.white),
++          ),
++        ],
++      ),
++    );
++    return AnnotatedRegion<SystemUiOverlayStyle>(
++      value: SystemUiOverlayStyle.light,
++      child: Scaffold(
++        backgroundColor: Colors.black,
++        body: Transform.translate(
++          offset: Offset(0, _drag),
++          child: Stack(
++            fit: StackFit.expand,
++            children: [
++              // Media atrofidagi bo'sh qora joy ham surib yopiladi.
++              _swipe(const ColoredBox(color: Colors.black)),
++              SafeArea(
++                child: Column(
++                  children: [
++                    _swipe(title),
++                    Expanded(
++                      child: LayoutBuilder(
++                        builder: (context, box) => Center(
++                          child: widget.body(context, box.biggest),
++                        ),
++                      ),
++                    ),
++                    if (widget.footer != null)
++                      _swipe(
++                        Padding(
++                          padding: const EdgeInsets.symmetric(
++                            vertical: Gap.xs,
++                          ),
++                          child: Center(child: widget.footer),
++                        ),
++                      ),
++                  ],
++                ),
++              ),
++            ],
++          ),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/mobile_nova/lib/features/showcase/showcase_instagram.dart b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+index 30e5d4b..05e2f9a 100644
+--- a/mobile_nova/lib/features/showcase/showcase_instagram.dart
++++ b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+@@ -9,6 +9,7 @@ import '../../core/utils/external_link.dart';
+ import '../../design/theme/typography.dart';
+ import '../../design/tokens/shapes.dart';
+ import '../../l10n/gen/app_localizations.dart';
++import 'showcase_fullscreen.dart';
+ import 'showcase_video.dart' show webLoadCancelled;
+ 
+ /// KO'RGAZMA — INSTAGRAM POSTI ilova ichida (egasi tasdiqlagan).
+@@ -21,8 +22,10 @@ import 'showcase_video.dart' show webLoadCancelled;
+ ///   `setMediaPlaybackRequiresUserGesture(false)`, YouTube varag'i bilan
+ ///   bir xil; build 330). Reel embed'ning o'zi play bosishni so'rashi
+ ///   mumkin — bosilganda darhol o'ynaydi;
++/// * BUTUN EKRANDA (TestFlight 331, YouTube bilan bir xil —
++///   `showcase_fullscreen.dart`): embed qolgan joyni to'ldiradi;
+ /// * embed ustida hech narsa yo'q: yopish — tepada, "Instagram'da
+-///   ochish" — pastda;
++///   ochish" — pastda; pastga surish yoki "orqaga" ham yopadi;
+ /// * embed ichidagi havolalar ("View on Instagram", profil...) WebView
+ ///   ichida OCHILMAYDI — tashqarida (`openLink`), ilovada Instagram
+ ///   sayti "ichkariga" kirib ketmaydi;
+@@ -39,25 +42,21 @@ const kShowcaseInstagramTimeout = Duration(seconds: 20);
+ Widget Function(Uri embed, ValueChanged<String> onState)?
+     showcaseInstagramEmbedOverride;
+ 
++/// Embed'ni BUTUN EKRANDA ochadi (YouTube bilan bir xil, TestFlight 331).
+ Future<void> showShowcaseInstagram(
+   BuildContext context, {
+   required String url,
+   required Uri embed,
+   String title = '',
+ }) {
+-  return showModalBottomSheet<void>(
+-    context: context,
+-    useRootNavigator: true,
+-    isScrollControlled: true,
+-    showDragHandle: true,
+-    backgroundColor: Colors.black,
+-    builder: (_) =>
+-        ShowcaseInstagramSheet(url: url, embed: embed, title: title),
++  return pushShowcaseFullscreen(
++    context,
++    (_) => ShowcaseInstagramPage(url: url, embed: embed, title: title),
+   );
+ }
+ 
+-class ShowcaseInstagramSheet extends StatefulWidget {
+-  const ShowcaseInstagramSheet({
++class ShowcaseInstagramPage extends StatefulWidget {
++  const ShowcaseInstagramPage({
+     super.key,
+     required this.url,
+     required this.embed,
+@@ -69,10 +68,10 @@ class ShowcaseInstagramSheet extends StatefulWidget {
+   final String title;
+ 
+   @override
+-  State<ShowcaseInstagramSheet> createState() => _ShowcaseInstagramSheetState();
++  State<ShowcaseInstagramPage> createState() => _ShowcaseInstagramPageState();
+ }
+ 
+-class _ShowcaseInstagramSheetState extends State<ShowcaseInstagramSheet>
++class _ShowcaseInstagramPageState extends State<ShowcaseInstagramPage>
+     with WidgetsBindingObserver {
+   final _ctl = _EmbedHandle();
+   bool _foreground = true;
+@@ -141,80 +140,43 @@ class _ShowcaseInstagramSheetState extends State<ShowcaseInstagramSheet>
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+-    final h = (MediaQuery.sizeOf(context).height * .68).clamp(320.0, 720.0);
+-    return SafeArea(
+-      top: false,
+-      child: Padding(
+-        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
+-        child: Column(
+-          mainAxisSize: MainAxisSize.min,
+-          children: [
+-            Row(
+-              children: [
+-                const Icon(Icons.camera_alt_outlined,
+-                    color: Colors.white, size: 22),
+-                const SizedBox(width: Gap.sm),
+-                Expanded(
+-                  child: Text(
+-                    widget.title.isEmpty ? 'Instagram' : widget.title,
+-                    maxLines: 1,
+-                    overflow: TextOverflow.ellipsis,
+-                    style: const TextStyle(
+-                      fontFamily: AppType.sans,
+-                      fontSize: 15,
+-                      fontWeight: FontWeight.w700,
+-                      color: Colors.white,
+-                    ),
++    return ShowcaseFullscreen(
++      key: const ValueKey('showcase-ig-page'),
++      icon: Icons.camera_alt_outlined,
++      title: widget.title.isEmpty ? 'Instagram' : widget.title,
++      closeKey: const ValueKey('showcase-ig-close'),
++      // Embed — o'zi aylanadigan sahifa: qolgan butun joyni egallaydi.
++      body: (context, area) => SizedBox(
++        key: const ValueKey('showcase-ig-area'),
++        width: area.width,
++        height: area.height,
++        child: _error != null
++            ? _Fallback(
++                url: widget.url,
++                message: l.showcaseInstagramUnavailable,
++              )
++            : !_foreground
++                ? const ColoredBox(color: Colors.white)
++                : KeyedSubtree(
++                    key: ValueKey('ig-$_gen'),
++                    child: showcaseInstagramEmbedOverride?.call(
++                            widget.embed, _onState) ??
++                        _InstagramEmbed(
++                          embed: widget.embed,
++                          handle: _ctl,
++                          onState: _onState,
++                        ),
+                   ),
+-                ),
+-                IconButton(
+-                  key: const ValueKey('showcase-ig-close'),
+-                  onPressed: () => Navigator.of(context).maybePop(),
+-                  tooltip:
+-                      MaterialLocalizations.of(context).closeButtonTooltip,
+-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+-                ),
+-              ],
+-            ),
+-            const SizedBox(height: Gap.sm),
+-            SizedBox(
+-              key: const ValueKey('showcase-ig-area'),
+-              width: double.infinity,
+-              height: h,
+-              child: ClipRRect(
+-                borderRadius: BorderRadius.circular(14),
+-                child: _error != null
+-                    ? _Fallback(
+-                        url: widget.url,
+-                        message: l.showcaseInstagramUnavailable,
+-                      )
+-                    : !_foreground
+-                        ? const ColoredBox(color: Colors.white)
+-                        : KeyedSubtree(
+-                            key: ValueKey('ig-$_gen'),
+-                            child: showcaseInstagramEmbedOverride?.call(
+-                                    widget.embed, _onState) ??
+-                                _InstagramEmbed(
+-                                  embed: widget.embed,
+-                                  handle: _ctl,
+-                                  onState: _onState,
+-                                ),
+-                          ),
+-              ),
+-            ),
+-            if (_error == null) ...[
+-              const SizedBox(height: Gap.xs),
+-              TextButton.icon(
+-                key: const ValueKey('showcase-ig-external'),
+-                onPressed: () => openLink(widget.url),
+-                style: TextButton.styleFrom(foregroundColor: Colors.white70),
+-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+-                label: Text(l.showcaseOpenInstagram),
+-              ),
+-            ],
+-          ],
+-        ),
+       ),
++      footer: _error != null
++          ? null
++          : TextButton.icon(
++              key: const ValueKey('showcase-ig-external'),
++              onPressed: () => openLink(widget.url),
++              style: TextButton.styleFrom(foregroundColor: Colors.white70),
++              icon: const Icon(Icons.open_in_new_rounded, size: 16),
++              label: Text(l.showcaseOpenInstagram),
++            ),
+     );
+   }
+ }
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index a428d52..9884e1e 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -68,9 +68,10 @@ import 'showcase_video.dart';
+ /// egasi orqali, boshqa ilova ovozi bilan aralashmaydi.
+ ///
+ /// YouTube havolasi — "Videoni ko'rish": ilova ichida, YouTube'ning
+-/// RASMIY pleeri bilan alohida varaqda (`showcase_video.dart`), varaq
+-/// ochiq turganda musiqa pauzada. Instagram post/reel — xuddi shunday,
+-/// rasmiy embed sahifasida; profil havolasi — tashqarida.
++/// RASMIY pleeri bilan BUTUN EKRANLI sahifada (`showcase_video.dart`,
++/// TestFlight 331), u ochiq turganda musiqa pauzada. Instagram
++/// post/reel — xuddi shunday, rasmiy embed sahifasida; profil havolasi —
++/// tashqarida.
+ ///
+ /// TOZA REJIM (egasi, build 330: "bosam o'zi toza ko'rinmayapti") —
+ /// Reels'dagi bilan bir xil: rasm yoki video BIR MARTA bosilsa hamma
+@@ -489,7 +490,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   /// shaffof marshrut, sahifa ekrandan chiqmaydi.
+   bool _viewerOpen = false;
+ 
+-  /// YouTube yoki Instagram varag'i ochiq — musiqa va karusel pauzada
++  /// YouTube yoki Instagram sahifasi ochiq — musiqa va karusel pauzada
+   /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
+   bool _videoOpen = false;
+ 
+@@ -809,7 +810,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     _sync();
+   }
+ 
+-  /// Ichki varaq (YouTube/Instagram) ochiq turganda musiqa pauzada.
++  /// Butun ekranli YouTube/Instagram sahifasi ochiq turganda musiqa
++  /// pauzada; yopilgach (🔇 bo'lmasa) davom etadi.
+   Future<void> _withSheet(Future<void> Function() show) async {
+     setState(() => _videoOpen = true);
+     _sync();
+diff --git a/mobile_nova/lib/features/showcase/showcase_video.dart b/mobile_nova/lib/features/showcase/showcase_video.dart
+index ae90acd..d885749 100644
+--- a/mobile_nova/lib/features/showcase/showcase_video.dart
++++ b/mobile_nova/lib/features/showcase/showcase_video.dart
+@@ -13,6 +13,7 @@ import '../../design/tokens/shapes.dart';
+ import '../../l10n/gen/app_localizations.dart';
+ import '../profile/music_player.dart' show AudioOwner, audioOwnerProvider;
+ import 'showcase_common.dart';
++import 'showcase_fullscreen.dart';
+ 
+ /// KO'RGAZMA VIDEOSI — YouTube'ning RASMIY pleeri ilova ichida.
+ ///
+@@ -25,16 +26,21 @@ import 'showcase_common.dart';
+ ///   asos: `autoplay:1`, zaxira sifatida `onReady` da `playVideo()`,
+ ///   iOS'da `mediaTypesRequiringUserAction` bo'sh, Android'da
+ ///   `setMediaPlaybackRequiresUserGesture(false)`. Ovoz o'chirilmaydi.
+-///   Varaqni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
++///   Uni ochmasdan (lentada, ko'rgazma sahifasida) hech narsa
+ ///   o'zi o'ynamaydi;
++/// * BUTUN EKRANDA ochiladi (egasi, TestFlight 331: "silkani bosganda
++///   avto to'liq ochilmayapti"): qora sahifa, pleer qolgan joyni
++///   to'ldiradi — Shorts (9:16) bo'yini, oddiy (16:9) enini, markazda
++///   (`showcase_fullscreen.dart`);
+ /// * pleer ustida hech narsa yo'q (yopish tugmasi va "YouTube'da ochish"
+ ///   havolasi pleerdan TASHQARIDA — tepada va pastda);
+ /// * o'lcham kamida 200×200;
+ /// * ilova kimligi: sahifa `https://nfcstore.uz/` bazasi bilan yuklanadi
+ ///   (Referer), `origin` va `widget_referrer` — `music_embed.dart` bilan
+ ///   bir xil yo'l;
+-/// * fonda ijro YO'Q — varaq yopilsa yoki ilova fonga o'tsa pleer
+-///   yo'q qilinadi (qaytilganda qaytadan quriladi).
++/// * fonda ijro YO'Q — sahifa yopilsa ("×", pastga surish, "orqaga")
++///   yoki ilova fonga o'tsa pleer yo'q qilinadi (qaytilganda qaytadan
++///   quriladi).
+ ///
+ /// Video joylashtirishni taqiqlagan bo'lsa (xato 101/150), yuklanmasa
+ /// yoki pleer javob bermasa — pleer o'rnida "YouTube'da ochish".
+@@ -86,26 +92,22 @@ const kShowcaseVideoReadyTimeout = Duration(seconds: 15);
+ Widget Function(String videoId, ValueChanged<String> onState)?
+     showcaseYoutubePlayerOverride;
+ 
+-/// Varaqni ochadi. Yopilganda (har qanday yo'l bilan) tugaydi.
++/// Videoni BUTUN EKRANDA ochadi (egasi, TestFlight 331). Yopilganda
++/// ("×", pastga surish, "orqaga") tugaydi.
+ Future<void> showShowcaseVideo(
+   BuildContext context, {
+   required String url,
+   required String videoId,
+   String title = '',
+ }) {
+-  return showModalBottomSheet<void>(
+-    context: context,
+-    useRootNavigator: true,
+-    isScrollControlled: true,
+-    showDragHandle: true,
+-    backgroundColor: Colors.black,
+-    builder: (_) =>
+-        ShowcaseVideoSheet(url: url, videoId: videoId, title: title),
++  return pushShowcaseFullscreen(
++    context,
++    (_) => ShowcaseVideoPage(url: url, videoId: videoId, title: title),
+   );
+ }
+ 
+-class ShowcaseVideoSheet extends ConsumerStatefulWidget {
+-  const ShowcaseVideoSheet({
++class ShowcaseVideoPage extends ConsumerStatefulWidget {
++  const ShowcaseVideoPage({
+     super.key,
+     required this.url,
+     required this.videoId,
+@@ -116,29 +118,29 @@ class ShowcaseVideoSheet extends ConsumerStatefulWidget {
+   final String videoId;
+   final String title;
+ 
+-  /// Pleer o'lchami: 16:9 (Shorts — 9:16), lekin hech qachon
+-  /// 200×200 dan kichik emas va ekran balandligining ~60% idan oshmaydi.
++  /// Pleer o'lchami — mavjud joyni TO'LDIRADI: oddiy video 16:9 —
++  /// enini (markazda), Shorts 9:16 — bo'yini. Hech qachon 200×200 dan
++  /// kichik emas (YouTube talabi).
+   @visibleForTesting
+-  static Size playerSize({
+-    required double maxWidth,
+-    required double screenHeight,
+-    required bool shorts,
+-  }) {
++  static Size playerSize(Size area, {required bool shorts}) {
+     const min = 200.0;
+-    final w0 = maxWidth < min ? min : maxWidth;
+-    final maxH = screenHeight * .6 < min ? min : screenHeight * .6;
+-    if (shorts) {
+-      final h = (w0 * 16 / 9).clamp(min, maxH);
+-      return Size((h * 9 / 16).clamp(min, w0), h);
++    final w = area.width < min ? min : area.width;
++    final h = area.height < min ? min : area.height;
++    final ratio = shorts ? 9 / 16 : 16 / 9; // eni / bo'yi
++    var pw = w;
++    var ph = w / ratio;
++    if (ph > h) {
++      ph = h;
++      pw = h * ratio;
+     }
+-    return Size(w0, (w0 * 9 / 16).clamp(min, maxH));
++    return Size(pw < min ? min : pw, ph < min ? min : ph);
+   }
+ 
+   @override
+-  ConsumerState<ShowcaseVideoSheet> createState() => _ShowcaseVideoSheetState();
++  ConsumerState<ShowcaseVideoPage> createState() => _ShowcaseVideoPageState();
+ }
+ 
+-class _ShowcaseVideoSheetState extends ConsumerState<ShowcaseVideoSheet>
++class _ShowcaseVideoPageState extends ConsumerState<ShowcaseVideoPage>
+     with WidgetsBindingObserver {
+   late final AudioOwner _owner;
+   final _ctl = ShowcaseYoutubeController();
+@@ -223,88 +225,46 @@ class _ShowcaseVideoSheetState extends ConsumerState<ShowcaseVideoSheet>
+   @override
+   Widget build(BuildContext context) {
+     final l = L.of(context);
+-    final mq = MediaQuery.of(context);
+     final shorts = isYoutubeShorts(widget.url);
+-    return SafeArea(
+-      top: false,
+-      child: Padding(
+-        padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
+-        child: LayoutBuilder(builder: (context, c) {
+-          final size = ShowcaseVideoSheet.playerSize(
+-            maxWidth: c.maxWidth,
+-            screenHeight: mq.size.height,
+-            shorts: shorts,
+-          );
+-          return Column(
+-            mainAxisSize: MainAxisSize.min,
+-            children: [
+-              // Sarlavha va yopish — pleerning USTIDA EMAS, tepasida.
+-              Row(
+-                children: [
+-                  const Icon(Icons.smart_display_rounded,
+-                      color: Colors.white, size: 22),
+-                  const SizedBox(width: Gap.sm),
+-                  Expanded(
+-                    child: Text(
+-                      widget.title.isEmpty ? 'YouTube' : widget.title,
+-                      maxLines: 1,
+-                      overflow: TextOverflow.ellipsis,
+-                      style: const TextStyle(
+-                        fontFamily: AppType.sans,
+-                        fontSize: 15,
+-                        fontWeight: FontWeight.w700,
+-                        color: Colors.white,
+-                      ),
++    return ShowcaseFullscreen(
++      key: const ValueKey('showcase-video-page'),
++      icon: Icons.smart_display_rounded,
++      title: widget.title.isEmpty ? 'YouTube' : widget.title,
++      closeKey: const ValueKey('showcase-video-close'),
++      body: (context, area) {
++        final size = ShowcaseVideoPage.playerSize(area, shorts: shorts);
++        // Pleer USTIDA hech narsa yo'q: sarlavha/"×" tepada, havola
++        // pastda — media maydonidan tashqarida.
++        return SizedBox(
++          key: const ValueKey('showcase-video-player-area'),
++          width: size.width,
++          height: size.height,
++          child: _error != null
++              ? _Fallback(url: widget.url, message: l.showcaseVideoUnavailable)
++              : !_foreground
++                  ? const ColoredBox(color: Colors.black)
++                  : KeyedSubtree(
++                      key: ValueKey('yt-$_gen'),
++                      child: showcaseYoutubePlayerOverride?.call(
++                              widget.videoId, _onState) ??
++                          ShowcaseYoutubePlayer(
++                            videoId: widget.videoId,
++                            controller: _ctl,
++                            onState: _onState,
++                          ),
+                     ),
+-                  ),
+-                  IconButton(
+-                    key: const ValueKey('showcase-video-close'),
+-                    onPressed: () => Navigator.of(context).maybePop(),
+-                    tooltip: MaterialLocalizations.of(context)
+-                        .closeButtonTooltip,
+-                    icon: const Icon(Icons.close_rounded,
+-                        color: Colors.white),
+-                  ),
+-                ],
+-              ),
+-              const SizedBox(height: Gap.sm),
+-              SizedBox(
+-                key: const ValueKey('showcase-video-player-area'),
+-                width: size.width,
+-                height: size.height,
+-                child: ClipRRect(
+-                  borderRadius: BorderRadius.circular(14),
+-                  child: _error != null
+-                      ? _Fallback(url: widget.url, message: l.showcaseVideoUnavailable)
+-                      : !_foreground
+-                          ? const ColoredBox(color: Colors.black)
+-                          : KeyedSubtree(
+-                              key: ValueKey('yt-$_gen'),
+-                              child: showcaseYoutubePlayerOverride?.call(
+-                                      widget.videoId, _onState) ??
+-                                  ShowcaseYoutubePlayer(
+-                                    videoId: widget.videoId,
+-                                    controller: _ctl,
+-                                    onState: _onState,
+-                                  ),
+-                            ),
+-                ),
+-              ),
+-              if (_error == null) ...[
+-                const SizedBox(height: Gap.xs),
+-                // Zaxira yo'l — pleerdan PASTDA, kichik havola.
+-                TextButton.icon(
+-                  key: const ValueKey('showcase-video-external'),
+-                  onPressed: () => openLink(widget.url),
+-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
+-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+-                  label: Text(l.showcaseOpenYoutube),
+-                ),
+-              ],
+-            ],
+-          );
+-        }),
+-      ),
++        );
++      },
++      // Zaxira yo'l — pleerdan PASTDA, kichik havola.
++      footer: _error != null
++          ? null
++          : TextButton.icon(
++              key: const ValueKey('showcase-video-external'),
++              onPressed: () => openLink(widget.url),
++              style: TextButton.styleFrom(foregroundColor: Colors.white70),
++              icon: const Icon(Icons.open_in_new_rounded, size: 16),
++              label: Text(l.showcaseOpenYoutube),
++            ),
+     );
+   }
+ }
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 849622a..314ace8 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -853,7 +853,7 @@ void main() {
+       }
+     });
+ 
+-    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (varaq
++    // Ijro faqat odam "Videoni ko'rish" ni O'ZI bosgandan keyin (sahifa
+     // shu bosishdan ochiladi) — shunda video o'zi boshlanadi (build 330:
+     // "ochilyapti, o'ynab ketmayapti"). `music_embed.dart` bilan bir xil.
+     test('pleer: "Videoni ko‘rish" dan keyin o‘zi boshlanadi, ilova '
+@@ -871,16 +871,31 @@ void main() {
+       expect(html, contains("widget_referrer:'https://nfcstore.uz'"));
+       expect(html, contains('"dQw4w9WgXcQ"'));
+       for (final shorts in [false, true]) {
+-        for (final w in [180.0, 288.0, 358.0, 700.0]) {
+-          final s = ShowcaseVideoSheet.playerSize(
+-              maxWidth: w, screenHeight: 560, shorts: shorts);
+-          expect(s.width, greaterThanOrEqualTo(200), reason: '$w $shorts');
+-          expect(s.height, greaterThanOrEqualTo(200), reason: '$w $shorts');
++        for (final a in const [
++          Size(180, 150),
++          Size(288, 560),
++          Size(390, 680),
++          Size(700, 300),
++        ]) {
++          final s = ShowcaseVideoPage.playerSize(a, shorts: shorts);
++          expect(s.width, greaterThanOrEqualTo(200), reason: '$a $shorts');
++          expect(s.height, greaterThanOrEqualTo(200), reason: '$a $shorts');
+         }
+       }
+-      final shorts = ShowcaseVideoSheet.playerSize(
+-          maxWidth: 358, screenHeight: 844, shorts: true);
+-      expect(shorts.height, greaterThan(shorts.width), reason: 'vertikal');
++      // BUTUN EKRAN (TestFlight 331): Shorts 9:16 — bo'yini to'ldiradi,
++      // oddiy 16:9 — enini; ikkalasi ham joydan chiqmaydi.
++      const area = Size(390, 680);
++      final shorts = ShowcaseVideoPage.playerSize(area, shorts: true);
++      expect(shorts.height, area.height);
++      expect(shorts.width, closeTo(area.height * 9 / 16, .01));
++      final wide = ShowcaseVideoPage.playerSize(area, shorts: false);
++      expect(wide.width, area.width);
++      expect(wide.height, closeTo(area.width * 9 / 16, .01));
++      // Tor va baland joyda Shorts eni bo'yicha cheklanadi.
++      final narrow =
++          ShowcaseVideoPage.playerSize(const Size(300, 900), shorts: true);
++      expect(narrow.width, 300);
++      expect(narrow.height, closeTo(300 * 16 / 9, .01));
+     });
+ 
+     test('WebView o‘tishlari: pleer freymlari ichida, tashqi havola — '
+@@ -994,8 +1009,8 @@ void main() {
+     });
+ 
+     testWidgets(
+-        'varaq ochilsa musiqa pauza, pleer ustida hech narsa yo‘q, '
+-        'yopilsa davom etadi', (tester) async {
++        'butun ekranli sahifa ochilsa musiqa pauza, pleer ustida hech '
++        'narsa yo‘q, yopilsa davom etadi', (tester) async {
+       final v = FakeVideoPlatform();
+       VideoPlayerPlatform.instance = v;
+       final yt = fakePlayer();
+@@ -1011,14 +1026,20 @@ void main() {
+       expect(yt.ids, ['dQw4w9WgXcQ']);
+       final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
+       expect(player, findsOneWidget);
+-      expect(v.playing, isEmpty, reason: 'YouTube varag‘i ochiq — musiqa jim');
++      expect(v.playing, isEmpty, reason: 'YouTube sahifasi ochiq — musiqa jim');
+       expect(v.disposed, isEmpty);
+ 
++      // BUTUN EKRAN: qora sahifa butun ekranni egallaydi, oddiy (16:9)
++      // video enini to'ldiradi va markazda.
++      expect(tester.getRect(find.byKey(const ValueKey('showcase-video-page'))),
++          const Rect.fromLTWH(0, 0, 390, 844));
++      expect(find.byType(BottomSheet), findsNothing, reason: 'varaq emas');
+       // Pleer ≥ 200×200 va "YouTube'da ochish" PASTDA, ustida emas.
+       final area = tester.getRect(
+           find.byKey(const ValueKey('showcase-video-player-area')));
+-      expect(area.width, greaterThanOrEqualTo(200));
+-      expect(area.height, greaterThanOrEqualTo(200));
++      expect(area.width, 390);
++      expect(area.height, closeTo(390 * 9 / 16, .01));
++      expect(area.center.dx, 195);
+       final ext = tester
+           .getRect(find.byKey(const ValueKey('showcase-video-external')));
+       expect(ext.top, greaterThanOrEqualTo(area.bottom));
+@@ -1041,7 +1062,7 @@ void main() {
+       expect(v.created, hasLength(1));
+     });
+ 
+-    testWidgets('🔇 bo‘lsa varaq yopilgach ham musiqa jim', (tester) async {
++    testWidgets('🔇 bo‘lsa sahifa yopilgach ham musiqa jim', (tester) async {
+       final v = FakeVideoPlatform();
+       VideoPlayerPlatform.instance = v;
+       fakePlayer();
+@@ -1060,6 +1081,63 @@ void main() {
+       expect(v.playing, isEmpty);
+     });
+ 
++    testWidgets(
++        'Shorts — bo‘yini to‘ldiradi; pastga surilsa yoki "orqaga" — '
++        'yopiladi, musiqa davom etadi', (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final yt = fakePlayer();
++      await _pump(tester, pages: [
++        ReelsPage(items: [
++          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track),
++        ]),
++      ]);
++      await drain(tester);
++      expect(v.playing, hasLength(1));
++
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(yt.ids, ['dQw4w9WgXcQ']);
++      expect(v.playing, isEmpty);
++      final page =
++          tester.getRect(find.byKey(const ValueKey('showcase-video-page')));
++      final area = tester.getRect(
++          find.byKey(const ValueKey('showcase-video-player-area')));
++      final close =
++          tester.getRect(find.byKey(const ValueKey('showcase-video-close')));
++      final ext = tester
++          .getRect(find.byKey(const ValueKey('showcase-video-external')));
++      // Vertikal: tepa panel va pastki havola orasidagi butun bo'y.
++      expect(area.height, greaterThan(area.width));
++      expect(area.width, closeTo(area.height * 9 / 16, .01));
++      expect(area.top, greaterThanOrEqualTo(close.bottom));
++      expect(ext.top, greaterThanOrEqualTo(area.bottom));
++      expect(area.height, greaterThan(page.height * .7));
++      expect(area.center.dx, 195);
++
++      // Pastga surish (tepa panelda) — yopiladi.
++      await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 300));
++      await settle(tester, frames: 12);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('showcase-video-page')), findsNothing);
++      expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
++
++      // Kichik surish — yopilmaydi, joyiga qaytadi.
++      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await settle(tester, frames: 10);
++      await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 40));
++      await settle(tester, frames: 6);
++      expect(find.byKey(const ValueKey('showcase-video-page')), findsOneWidget);
++
++      // "Orqaga" — yopiladi.
++      await tester.binding.handlePopRoute();
++      await settle(tester, frames: 12);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('showcase-video-page')), findsNothing);
++      expect(v.playing, hasLength(1));
++    });
++
+     testWidgets('101/150 — pleer o‘rnida "YouTube’da ochish"',
+         (tester) async {
+       final opened = <Uri>[];
+@@ -1412,7 +1490,7 @@ void main() {
+       expect(find.text(l.showcaseOpenInstagram), findsNothing);
+     });
+ 
+-    testWidgets('varaq: musiqa pauza, embed ostida tashqi havola, '
++    testWidgets('butun ekran: musiqa pauza, embed ostida tashqi havola, '
+         'yopilsa davom etadi', (tester) async {
+       final v = FakeVideoPlatform();
+       VideoPlayerPlatform.instance = v;
+@@ -1435,14 +1513,24 @@ void main() {
+       expect(ig.embeds.single.toString(),
+           'https://www.instagram.com/reel/$code/embed/');
+       expect(find.byKey(const ValueKey('fake-ig')), findsOneWidget);
+-      expect(v.playing, isEmpty, reason: 'Instagram varag‘i ochiq');
++      expect(v.playing, isEmpty, reason: 'Instagram sahifasi ochiq');
+       ig.state()('ready');
+       await settle(tester, frames: 2);
+ 
++      // BUTUN EKRAN: embed enini to'liq va tepa panel bilan pastki havola
++      // orasidagi butun bo'yni egallaydi.
++      expect(tester.getRect(find.byKey(const ValueKey('showcase-ig-page'))),
++          const Rect.fromLTWH(0, 0, 390, 844));
++      expect(find.byType(BottomSheet), findsNothing);
+       final area = tester.getRect(find.byKey(const ValueKey('showcase-ig-area')));
+       final ext =
+           tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
++      final close =
++          tester.getRect(find.byKey(const ValueKey('showcase-ig-close')));
++      expect(area.width, 390);
++      expect(area.top, greaterThanOrEqualTo(close.bottom));
+       expect(ext.top, greaterThanOrEqualTo(area.bottom));
++      expect(area.height, greaterThan(600));
+       await tester.tap(find.byKey(const ValueKey('showcase-ig-external')));
+       await settle(tester, frames: 3);
+       expect(opened.single.toString(), reelUrl);
+@@ -1452,6 +1540,20 @@ void main() {
+       await drain(tester);
+       expect(find.byKey(const ValueKey('fake-ig')), findsNothing);
+       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
++
++      // Pastga surish (pastki havola qatorida) ham yopadi.
++      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await settle(tester, frames: 10);
++      await drain(tester);
++      expect(v.playing, isEmpty);
++      final footer =
++          tester.getRect(find.byKey(const ValueKey('showcase-ig-external')));
++      await tester.dragFrom(
++          Offset(20, footer.center.dy), const Offset(0, 200));
++      await settle(tester, frames: 12);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('showcase-ig-page')), findsNothing);
++      expect(v.playing, hasLength(1));
+     });
+ 
+     testWidgets('yuklanmasa — embed o‘rnida "Instagram’da ochish"',
+-- 
+2.43.0
+
