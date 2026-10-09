@@ -184,7 +184,7 @@ class SourceRef {
           SourceRef.fromJson((r as Map).cast<String, Object?>()),
       ];
     }
-    final ids = (json['source_ids'] as List? ?? const []).cast<String>();
+    final ids = _strings(json['source_ids'], 'source_ids');
     return [
       for (final id in ids)
         SourceRef(
@@ -403,7 +403,7 @@ class Analyte {
       tagline: json['tagline'] == null
           ? null
           : LocalizedText.fromJson(json['tagline']),
-      synonyms: (json['synonyms'] as List? ?? const []).cast<String>(),
+      synonyms: _strings(json['synonyms'], 'synonyms'),
       group: json['group']! as String,
       specimen: json['specimen'] == null
           ? null
@@ -412,8 +412,8 @@ class Analyte {
           ? null
           : LocalizedText.fromJson(json['population']),
       method: json['method'] as String?,
-      units: (json['units'] as List? ?? const []).cast<String>(),
-      sections: (json['sections'] as List? ?? const []).cast<String>(),
+      units: _strings(json['units'], 'units'),
+      sections: _strings(json['sections'], 'sections'),
       claims: [
         for (final c in json['claims'] as List? ?? const [])
           Claim.fromJson((c as Map).cast<String, Object?>()),
@@ -426,7 +426,7 @@ class Analyte {
         for (final r in json['reference_intervals'] as List? ?? const [])
           ReferenceInterval.fromJson((r as Map).cast<String, Object?>()),
       ],
-      sourceIds: (json['source_ids'] as List? ?? const []).cast<String>(),
+      sourceIds: _strings(json['source_ids'], 'source_ids'),
       reviewState: ReviewState.parse(review['state'] as String? ?? 'pending'),
       reviewerId: review['reviewer_id'] as String?,
       reviewedAt: review['reviewed_at'] as String?,
@@ -435,7 +435,7 @@ class Analyte {
             in ((json['translation_review'] as Map?) ?? const {}).entries)
           e.key as String: e.value as String,
       },
-      related: (json['related'] as List? ?? const []).cast<String>(),
+      related: _strings(json['related'], 'related'),
       conversion: json['conversion'] == null
           ? null
           : UnitConversion.fromJson(
@@ -546,7 +546,7 @@ class QuizQuestion {
       basis: LocalizedText.fromJson(json['basis']),
       refs: SourceRef.listFromJson(json),
       reviewState: ReviewState.parse(json['review_state'] as String),
-      topicIds: (json['topic_ids'] as List? ?? const []).cast<String>(),
+      topicIds: _strings(json['topic_ids'], 'topic_ids'),
     );
   }
 
@@ -758,7 +758,7 @@ class LibraryItem {
     id: json['id']! as String,
     kind: LibraryItemKind.parse(json['kind']! as String),
     title: json['title']! as String,
-    authors: (json['authors'] as List? ?? const []).cast<String>(),
+    authors: _strings(json['authors'], 'authors'),
     year: json['year'] as int?,
     edition: json['edition'] as String?,
     publisher: json['publisher'] as String?,
@@ -768,7 +768,7 @@ class LibraryItem {
       for (final c in json['categories']! as List)
         LibraryCategory.parse(c as String),
     ],
-    topics: (json['topics'] as List? ?? const []).cast<String>(),
+    topics: _strings(json['topics'], 'topics'),
     providedBy: json['provided_by'] as String?,
     receivedAt: json['received_at'] as String?,
     importState: ImportState.parse(json['import_state']! as String),
@@ -848,8 +848,8 @@ class Lesson {
     id: json['id']! as String,
     title: LocalizedText.fromJson(json['title']),
     groupId: json['group'] as String?,
-    analyteIds: (json['analyte_ids'] as List? ?? const []).cast<String>(),
-    quizIds: (json['quiz_ids'] as List? ?? const []).cast<String>(),
+    analyteIds: _strings(json['analyte_ids'], 'analyte_ids'),
+    quizIds: _strings(json['quiz_ids'], 'quiz_ids'),
     refs: SourceRef.listFromJson(json),
     reviewState: ReviewState.parse(
       json['review_state'] as String? ?? 'pending',
@@ -1258,4 +1258,15 @@ class ContentPack {
       }
     }
   }
+}
+
+/// JSON satrlar ro'yxati — darhol tekshiriladi (`cast` dangasa: buzuq
+/// element paket qabul qilingandan keyin, ekran qurilayotganda yiqitardi).
+List<String> _strings(Object? raw, String field) {
+  if (raw == null) return const [];
+  if (raw is! List) throw FormatException('$field: expected a list');
+  return List.unmodifiable([
+    for (final v in raw)
+      if (v is String) v else throw FormatException('$field: not a string: $v'),
+  ]);
 }

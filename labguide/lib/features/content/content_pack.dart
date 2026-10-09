@@ -57,7 +57,7 @@ class PackManifest {
     packId: json['pack_id']! as String,
     version: json['version']! as String,
     minSchema: json['min_schema']! as int,
-    languages: (json['languages']! as List).cast<String>(),
+    languages: [for (final l in json['languages']! as List) l as String],
     licence: json['licence']! as String,
     files: [
       for (final f in json['files']! as List)

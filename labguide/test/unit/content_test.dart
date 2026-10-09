@@ -227,6 +227,37 @@ void main() {
       );
     });
 
+    // Satr o'rniga son: paket qabul qilinmasligi kerak — aks holda xato
+    // keyin (qidiruv yoki karta chizilayotganda) chiqardi.
+    test('non-string list items in the pack or manifest', () {
+      void mutate(void Function(Map<String, Object?> json) edit) {
+        final json = packJson();
+        edit(json);
+        final (manifest, files) = packWithManifest(json);
+        expect(
+          () => verifyPack(manifestBytes: manifest, files: files),
+          throwsA(isA<PackRejected>()),
+        );
+      }
+
+      Map<String, Object?> firstOf(Map<String, Object?> j, String key) =>
+          ((j[key]! as List).first as Map).cast<String, Object?>();
+      mutate((j) => firstOf(j, 'analytes')['synonyms'] = [1]);
+      mutate((j) => firstOf(j, 'analytes')['related'] = 'glucose');
+      mutate((j) => firstOf(j, 'quiz')['topic_ids'] = [null]);
+
+      final (manifest, files) = packWithManifest(packJson());
+      final m = (jsonDecode(utf8.decode(manifest)) as Map)
+        ..['languages'] = ['uz', 2];
+      expect(
+        () => verifyPack(
+          manifestBytes: Uint8List.fromList(utf8.encode(jsonEncode(m))),
+          files: files,
+        ),
+        throwsA(isA<PackRejected>()),
+      );
+    });
+
     test('missing file, garbage manifest, wrong pack id', () {
       expect(
         () => verifyPack(manifestBytes: bundled('manifest.json'), files: {}),
