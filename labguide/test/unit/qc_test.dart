@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:labguide/core/storage/kv_store.dart';
 import 'package:labguide/features/qc/qc_controller.dart';
 import 'package:labguide/features/qc/qc_model.dart';
+import 'package:labguide/features/qc/qc_rules.dart';
 
 void main() {
   group('QcStats', () {
@@ -218,9 +219,20 @@ void main() {
       final (c, _, set) = await setup();
       await c.addRun(set.id, {'L1': 5.1, 'L2': 15.2}, note: 'ok');
       final json = c.exportJson();
+      expect(json, contains('"entered":{"verdict":"accept","rules":[]}'));
       final parsed = QcController.parseBackup(json);
       expect(parsed.sets.single.name, 'Glucose');
       expect(parsed.runsOf(set.id).single.note, 'ok');
+
+      for (final v in QcVerdict.values) {
+        final run = QcRun.fromJson({
+          'id': 'r',
+          'at': '2026-10-08T09:00:00.000',
+          'values': {'L1': 5.0},
+          'entered': {'verdict': v.name, 'rules': <String>[]},
+        });
+        expect(run.enteredVerdict, v.name);
+      }
 
       final other = QcController(MemoryKeyValueStore());
       await other.restore(parsed);
@@ -232,6 +244,13 @@ void main() {
         '{"version": 1, "sets": [], "runs": {"x": []}}',
         json.replaceFirst('"sd":0.2', '"sd":0'),
         json.replaceFirst('"L1":5.1', '"L9":5.1'),
+        // Audit izi ham tekshiriladi: buzuq qiymat keyin ekranda
+        // (lazy cast) yiqitmasin yoki noma'lum xulosa “qabul” bo'lib
+        // ko'rinmasin.
+        json.replaceFirst('"rules":[]', '"rules":[1]'),
+        json.replaceFirst('"rules":[]', '"rules":"1-3s"'),
+        json.replaceFirst('"verdict":"accept"', '"verdict":"bogus"'),
+        json.replaceFirst('"verdict":"accept"', '"verdict":3'),
       ]) {
         expect(
           () => QcController.parseBackup(bad),

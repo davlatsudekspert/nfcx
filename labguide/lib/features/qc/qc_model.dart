@@ -228,6 +228,16 @@ class QcRun {
 
   factory QcRun.fromJson(Map<String, Object?> json) {
     final entered = (json['entered'] as Map?)?.cast<String, Object?>();
+    final verdict = entered?['verdict'];
+    if (entered != null && !_verdicts.contains(verdict)) {
+      throw FormatException('unknown entered verdict: $verdict');
+    }
+    // Ro'yxat darhol tekshiriladi (`cast` dangasa — buzuq element keyin
+    // ekran qurilayotganda yiqitardi).
+    final rules = <String>[
+      for (final r in entered?['rules'] as List? ?? const [])
+        if (r is String) r else throw FormatException('bad rule code: $r'),
+    ];
     return QcRun(
       id: json['id']! as String,
       at: DateTime.parse(json['at']! as String),
@@ -236,10 +246,13 @@ class QcRun {
           e.key as String: (e.value as num).toDouble(),
       },
       note: json['note'] as String?,
-      enteredVerdict: entered?['verdict'] as String?,
-      enteredRules: (entered?['rules'] as List? ?? const []).cast<String>(),
+      enteredVerdict: verdict as String?,
+      enteredRules: List.unmodifiable(rules),
     );
   }
+
+  /// `QcVerdict` nomlari (qc_rules.dart; test bir xilligini tekshiradi).
+  static const _verdicts = {'accept', 'warning', 'reject'};
 
   final String id;
   final DateTime at;
