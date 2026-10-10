@@ -1064,7 +1064,145 @@ class _Run {
       }
     }, shot: '10_after_instagram');
 
+    // j. ASOSIY KARTA BOSILDI -> VIDEO REKLAMA (TestFlight 332) ───────
+    // Egasi (iOS 332 / Android 319): "BOY777 va LOL ni ko'rgazmada
+    // ochilsa musiqa bor, rolikni o'zi ishlamayapti". Odamning haqiqiy
+    // yo'li: Asosiy tab -> reklama kartasi bosiladi -> Ko'rgazma shu
+    // reklama bilan ochiladi. Video POZITSIYASI oldinga ketishi shart
+    // (faqat poster yoki qotgan kadr — FAIL). Keyin ikkinchi reklama
+    // (BOY777 <-> LOL707) surib, so'ng tabdan chiqib qaytish (reklama
+    // sahifasi joriy turganda).
+    await step('j', 'Asosiy karta → Ko\'rgazma: BOY777 va LOL707 videosi o\'ynaydi',
+        (r) async {
+      final nav = find.byType(NovaBottomNav);
+      Finder tabIcon(IconData a, IconData b) {
+        final f = find.descendant(of: nav, matching: find.byIcon(a));
+        return has(f) ? f : find.descendant(of: nav, matching: find.byIcon(b));
+      }
+
+      final home = tabIcon(Icons.home_outlined, Icons.home_rounded);
+      r.check(has(home), 'Asosiy tabi topilmadi');
+      if (!has(home)) return;
+      await t.tap(home.first);
+      await waitFor(() => c.read(activeTabProvider) == 0,
+          timeout: const Duration(seconds: 6));
+      await wait(const Duration(seconds: 1));
+      final ad = c.read(homeShowcaseAdProvider);
+      r.check(ad != null, 'Asosiyda reklama kartasi yo\'q');
+      if (ad == null) return;
+      r.values['cardAd'] = describe(ad);
+      final card = find.byKey(const ValueKey('home-ad-card'));
+      r.check(await scrollToHomeCard(), 'reklama kartasi ekranda ko\'rinmadi');
+      if (!has(card)) return;
+      r.values['tap'] = await tapReal(card);
+      final opened = await waitFor(() {
+        final p = visiblePage?.post;
+        return c.read(activeTabProvider) == kShowcaseTab &&
+            p != null &&
+            likeKey(p) == likeKey(ad);
+      }, timeout: const Duration(seconds: 10));
+      r.check(opened, 'Ko\'rgazma shu reklama sahifasi bilan ochilmadi');
+      if (!opened) return;
+      r.values['first'] = await adPlaying(r, visiblePage!.post, 'karta');
+      r.values['firstShot'] = await screenshot('11_card_tap_ad_video');
+
+      // Ikkinchi reklama (surib).
+      final other = ad.title.contains('BOY777') ? 'LOL707' : 'BOY777';
+      var found = false;
+      for (var i = 0; i < 12; i++) {
+        final p = visiblePage?.post;
+        if (p != null && p.isShowcaseVideoAd && p.title.contains(other)) {
+          found = true;
+          break;
+        }
+        if (!await swipe(next: true)) break;
+      }
+      r.check(found, '$other sahifasiga surib bo\'lmadi');
+      if (found) {
+        r.values['second'] = await adPlaying(r, visiblePage!.post, other);
+        r.values['secondShot'] = await screenshot('12_second_ad_video');
+      }
+
+      // Tabdan chiqib qaytish — reklama sahifasi joriy turganda.
+      final back = visiblePage?.post;
+      if (back != null && back.isShowcaseVideoAd) {
+        await t.tap(tabIcon(Icons.home_outlined, Icons.home_rounded).first);
+        await waitFor(() => c.read(activeTabProvider) == 0,
+            timeout: const Duration(seconds: 6));
+        await wait(const Duration(seconds: 2));
+        await t.tap(
+            tabIcon(Icons.collections_outlined, Icons.collections_rounded)
+                .first);
+        final again = await waitFor(() {
+          final p = visiblePage?.post;
+          return p != null && likeKey(p) == likeKey(back);
+        }, timeout: const Duration(seconds: 10));
+        r.check(again, 'qaytilganda o\'sha reklama sahifasi emas');
+        if (again) {
+          r.values['afterReturn'] = await adPlaying(r, back, 'qaytish');
+        }
+      }
+      r.values['adVideoPlayers'] = {
+        for (final u in {ad.videoUrl, if (back != null) back.videoUrl})
+          shortUri(u): spy.all.where((p) => p.uri == u).length,
+      };
+    }, shot: '13_ad_after_return');
+
     _finish();
+  }
+
+  /// Asosiyda reklama kartasi to'liq ko'ringuncha odam kabi suradi.
+  Future<bool> scrollToHomeCard() async {
+    final card = find.byKey(const ValueKey('home-ad-card'));
+    Finder scroller() => has(card)
+        ? find.ancestor(of: card, matching: find.byType(Scrollable)).first
+        : find.byType(Scrollable).first;
+    for (var i = 0; i < 14; i++) {
+      var dy = -260.0;
+      if (has(card)) {
+        final rect = t.getRect(card);
+        final top = MediaQuery.paddingOf(t.element(card)).top + 8;
+        final bottom = screen.height - 110;
+        if (rect.top >= top && rect.bottom <= bottom) return true;
+        dy = rect.bottom > bottom
+            ? -(rect.bottom - bottom + 20).clamp(60.0, 320.0)
+            : (top - rect.top + 20).clamp(60.0, 320.0);
+      }
+      await t.timedDrag(scroller(), Offset(0, dy),
+          const Duration(milliseconds: 700),
+          warnIfMissed: false);
+      await wait(const Duration(milliseconds: 700));
+    }
+    return false;
+  }
+
+  /// Joriy reklama sahifasining videosi HAQIQATAN o'ynayapti (pozitsiya
+  /// oldinga ketadi), musiqali bo'lsa — ovozsiz, kadr chizilgan va
+  /// musiqa ham o'ynaydi.
+  Future<Map<String, Object?>> adPlaying(
+      StepResult r, Post p, String tag) async {
+    final name = p.title.split(' ').first;
+    final v = await waitPlaying(p.videoUrl,
+        timeout: const Duration(seconds: 25),
+        minAdvance: const Duration(milliseconds: 500));
+    r.check(v['moving'] == true,
+        '$tag: $name videosi o\'ynamayapti (pozitsiya joyida, ${v['waitedMs']} ms)');
+    final mu = p.music?.playUrl ?? '';
+    if (mu.isNotEmpty) {
+      r.check(v['volume'] == 0.0,
+          '$tag: $name videosi ovozsiz emas (volume=${v['volume']})');
+    }
+    r.check(has(inVisible(find.byKey(const ValueKey('showcase-ad-player')))),
+        '$tag: $name video kadri chizilmagan (poster turibdi)');
+    v['spinnerAfterPlay'] = has(find.descendant(
+        of: inVisible(find.byKey(const ValueKey('showcase-ad-loading'))),
+        matching: find.byType(CircularProgressIndicator)));
+    if (mu.isNotEmpty) {
+      final m = await waitPlaying(mu, timeout: const Duration(seconds: 15));
+      v['musicMoving'] = m['moving'];
+      r.check(m['moving'] == true, '$tag: $name musiqasi o\'ynamayapti');
+    }
+    return v;
   }
 
   String mu(Post p) => p.music?.playUrl ?? '';

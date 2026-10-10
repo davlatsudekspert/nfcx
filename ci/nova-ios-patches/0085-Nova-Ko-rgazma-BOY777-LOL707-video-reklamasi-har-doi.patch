@@ -1,0 +1,1197 @@
+From 5203156484d2629ddb2959e1d6930e01074c43ea Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 06:47:32 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20BOY777/LOL707?=
+ =?UTF-8?q?=20video=20reklamasi=20har=20doim=20o'zi=20boshlanadi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi (TestFlight 332 / Android 319): "BOY777 va LOL ni ko'rgazmada
+ochilsa musiqa bor, rolikni o'zi ishlamayapti".
+
+Sabablar:
+- video musiqa pleerining TO'LIQ yuklanishini (20 s gacha) kutardi,
+  keyin o'zi yana 20 s — sekin tarmoqda faqat poster va musiqa;
+- initialize() yiqilsa yoki ulgurmasa o'lik pleer qolardi va sahifada
+  turganda video hech qachon qayta ochilmasdi (Asosiy kartada ham);
+- tashqaridan to'xtatilgan video (iOS sessiyasi/uzilish — plagin o'zi
+  davom ettirmaydi) qayta qo'yilmasdi;
+- yuklanayotgani ko'rinmasdi.
+
+Tuzatish (AdVideoLoader — Ko'rgazma sahifasi va Asosiy karta uchun):
+- yiqilgan/osilgan pleer yo'q qilinadi, 3 s dan keyin o'zi qayta
+  ochiladi (2 marta), keyingi har holat o'zgarishida ham;
+- iOS'da video musiqani kutmaydi; Android'da mixWithOthers tartibi
+  uchun ko'pi bilan ~2 s kutadi;
+- o'ynashi kerak bo'lgan video to'xtab qolsa 2 s da qayta play();
+  musiqa sessiyani olgach ovozsiz video yana play();
+- video boshlanguncha poster ustida nozik aylana.
+
+Sinovlar: test/showcase_ad_video_test.dart (7 ta, eski kodda yiqiladi).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../home/widgets/showcase_ad_card.dart        |  89 ++---
+ .../features/showcase/ad_video_loader.dart    | 290 ++++++++++++++
+ .../features/showcase/showcase_screen.dart    | 151 ++++----
+ mobile_nova/test/showcase_ad_video_test.dart  | 355 ++++++++++++++++++
+ .../test/support/fake_video_platform.dart     |  29 +-
+ 5 files changed, 773 insertions(+), 141 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/ad_video_loader.dart
+ create mode 100644 mobile_nova/test/showcase_ad_video_test.dart
+
+diff --git a/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+index b7a9491..a1b1dc2 100644
+--- a/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
++++ b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+@@ -1,5 +1,3 @@
+-import 'dart:async';
+-
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+@@ -15,11 +13,11 @@ import '../../../l10n/gen/app_localizations.dart';
+ import '../../../routing/routes.dart';
+ import '../../../routing/shell.dart';
+ import '../../profile/music_player.dart' show audioOwnerProvider;
++import '../../showcase/ad_video_loader.dart';
+ import '../../showcase/showcase_screen.dart'
+     show showcaseFocusProvider, showcasePlayable;
+ import '../../social/engagement.dart' show likeKey;
+ import '../../social/media_frame.dart' show mediaImage;
+-import '../../social/reels_screen.dart' show reelsInitTimeout;
+ import '../../social/visible_fraction.dart';
+ 
+ /// ASOSIYDAGI KO'RGAZMA REKLAMASI (egasi tasdiqlagan, 2026-10).
+@@ -113,9 +111,22 @@ class HomeShowcaseAdCard extends ConsumerStatefulWidget {
+ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+     with WidgetsBindingObserver {
+   Post? _ad;
+-  VideoPlayerController? _video;
+-  bool _ready = false;
+-  bool _failed = false;
++
++  /// OVOZSIZ — boshqa ilova (musiqa) to'xtatilmaydi. Yiqilsa yo'q
++  /// qilinib qayta ochiladi (avval bir marta yiqilsa, reklama
++  /// almashguncha faqat poster qolardi).
++  late final AdVideoLoader _video = AdVideoLoader(
++    url: () => _ad?.videoUrl ?? '',
++    onChanged: () {
++      if (mounted) setState(() {});
++    },
++    mixWithOthers: () => true,
++    beforePlay: (c) async {
++      // Bosh sahifada OVOZ HECH QACHON YO'Q.
++      await c.setVolume(0);
++      return mounted && _shouldPlay;
++    },
++  );
+   double _fraction = 0;
+   bool _foreground = true;
+ 
+@@ -164,7 +175,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+   @override
+   void dispose() {
+     WidgetsBinding.instance.removeObserver(this);
+-    _disposeVideo();
++    _video.dispose();
+     super.dispose();
+   }
+ 
+@@ -181,61 +192,18 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+   void _sync() {
+     final ad = _ad;
+     if (ad == null || ad.videoUrl.isEmpty || !_present) {
+-      _disposeVideo();
++      _video.reset();
+       return;
+     }
+     if (_shouldPlay) {
+-      _play(ad);
++      _video.play();
+     } else {
+-      _video?.pause();
+-    }
+-  }
+-
+-  Future<void> _play(Post ad) async {
+-    if (_failed) return;
+-    var c = _video;
+-    if (c == null) {
+-      c = VideoPlayerController.networkUrl(
+-        Uri.parse(ad.videoUrl),
+-        // OVOZSIZ — boshqa ilova (musiqa) to'xtatilmaydi.
+-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+-      );
+-      _video = c;
+-      try {
+-        await c.initialize().timeout(reelsInitTimeout);
+-        if (!mounted || _video != c) return;
+-        await c.setLooping(true);
+-        await c.setVolume(0);
+-        _ready = true;
+-        setState(() {});
+-      } catch (_) {
+-        // Video ochilmadi — poster qoladi, qayta urinilmaydi.
+-        if (mounted && _video == c) {
+-          _disposeVideo();
+-          setState(() => _failed = true);
+-        }
+-        return;
+-      }
+-    }
+-    if (!_ready || !mounted || _video != c || !_shouldPlay) return;
+-    // Bosh sahifada OVOZ HECH QACHON YO'Q.
+-    await c.setVolume(0);
+-    if (!mounted || _video != c || !_shouldPlay) return;
+-    await c.play();
+-  }
+-
+-  void _disposeVideo() {
+-    final v = _video;
+-    _video = null;
+-    _ready = false;
+-    if (v != null) {
+-      v.pause().catchError((_) {});
+-      v.dispose();
++      _video.pause();
+     }
+   }
+ 
+   void _open(Post ad) {
+-    _disposeVideo();
++    _video.reset();
+     // Tab almashganda boshqa ovoz to'xtaydi (pastki panel kabi).
+     ref.read(audioOwnerProvider).stopAll();
+     ref.read(showcaseFocusProvider.notifier).state = ad;
+@@ -253,8 +221,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+     final ad = ref.watch(homeShowcaseAdProvider);
+     ref.listen<int>(activeTabProvider, (_, __) => _later());
+     if (ad == null || _ad == null || likeKey(ad) != likeKey(_ad!)) {
+-      if (_ad != null || _video != null) _disposeVideo();
+-      _failed = false;
++      _video.reset();
+       _ad = ad;
+       if (ad != null) _later();
+     }
+@@ -263,7 +230,8 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+     final l = L.of(context);
+     final mq = MediaQuery.sizeOf(context);
+     final h = (mq.height * .5).clamp(300.0, 480.0);
+-    final c = _video;
++    final c = _video.controller;
++    final playing = _shouldPlay;
+     final poster = ad.posterUrl;
+ 
+     return Padding(
+@@ -298,7 +266,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+                       const ColoredBox(color: Colors.black),
+                       if (poster.isNotEmpty)
+                         mediaImage(context, poster, fit: BoxFit.cover),
+-                      if (_ready && c != null && c.value.isInitialized)
++                      if (c != null && c.value.isInitialized)
+                         FittedBox(
+                           fit: BoxFit.cover,
+                           clipBehavior: Clip.hardEdge,
+@@ -311,6 +279,11 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+                             ),
+                           ),
+                         ),
++                      AdVideoSpinner(
++                        key: const ValueKey('home-ad-loading'),
++                        loading: playing && _video.loading,
++                        controller: playing ? c : null,
++                      ),
+                       // Pastda nozik gradient — sarlavha o'qilsin.
+                       IgnorePointer(
+                         child: DecoratedBox(
+diff --git a/mobile_nova/lib/features/showcase/ad_video_loader.dart b/mobile_nova/lib/features/showcase/ad_video_loader.dart
+new file mode 100644
+index 0000000..fa6e360
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/ad_video_loader.dart
+@@ -0,0 +1,290 @@
++import 'dart:async';
++
++import 'package:flutter/material.dart';
++import 'package:video_player/video_player.dart';
++
++import '../social/reels_screen.dart' show reelsInitTimeout;
++
++/// REKLAMA VIDEOSI PLEERI — Ko'rgazmadagi video reklama sahifasi va
++/// Asosiydagi reklama kartasi uchun (egasi, TestFlight 332: "BOY777 va
++/// LOL ni ko'rgazmada ochilsa musiqa bor, rolikni o'zi ishlamayapti").
++///
++/// Avval ikkala joyda ham pleer bir marta ochilardi: `initialize()`
++/// xato bersa yoki 20 s da ulgurmasa, yiqilgan pleer qolar va sahifa
++/// qayta qurilguncha video HECH QACHON boshlanmasdi (faqat poster).
++/// Ko'rgazmada esa video yana musiqa pleeri to'liq yuklanishini (yana
++/// 20 s gacha) kutardi. Endi:
++///
++/// * yiqilgan/ulgurmagan pleer DARHOL yo'q qilinadi, [kAdVideoRetryDelay]
++///   dan keyin o'zi qayta ochiladi ([kAdVideoAutoRetries] marta), keyingi
++///   har [play] ham qayta urinadi;
++/// * o'ynashi kerak bo'lgan video tashqaridan to'xtatilsa (iOS audio
++///   sessiyasi o'zgardi, uzilish, Android'da xato) — [kAdVideoGuardEvery]
++///   da qaytadan `play()`; pleer xato holatida bo'lsa — yangisi;
++/// * [loading] — poster ustidagi nozik aylana uchun.
++class AdVideoLoader {
++  AdVideoLoader({
++    required this.url,
++    required this.onChanged,
++    this.mixWithOthers = _no,
++    this.blocked = _no,
++    this.beforePlay,
++  });
++
++  static bool _no() => false;
++
++  /// Video manzili (pleer ochilayotgan paytdagi).
++  final String Function() url;
++
++  /// Holat o'zgardi (poster/video/aylana qayta chizilsin).
++  final VoidCallback onChanged;
++
++  /// `VideoPlayerOptions.mixWithOthers` (ochilayotgan paytdagi).
++  final bool Function() mixWithOthers;
++
++  /// `true` — pleer hozircha YARATILMAYDI, 50 ms dan keyin yana
++  /// so'raladi (eng ko'pi ~2 s, keyin baribir ochiladi). Android'da
++  /// `mixWithOthers` platformadagi umumiy belgi: musiqa pleeri
++  /// ochilayotganda video ham ochilsa, musiqa videoning belgisi bilan
++  /// yaratilib qolardi.
++  final bool Function() blocked;
++
++  /// `play()` dan oldin (ovoz balandligi, audio sessiya). `false` —
++  /// hozir o'ynamaydi.
++  final Future<bool> Function(VideoPlayerController c)? beforePlay;
++
++  VideoPlayerController? _c;
++  bool _ready = false;
++  bool _want = false;
++  bool _failed = false;
++  bool _disposed = false;
++  int _attempts = 0;
++  int _autoRetries = 0;
++  int _blockedTicks = 0;
++  Timer? _wait;
++  Timer? _retry;
++  Timer? _guard;
++
++  /// Tayyor pleer (aks holda poster ko'rinadi).
++  VideoPlayerController? get controller => _ready ? _c : null;
++
++  /// Oxirgi urinish yiqildi.
++  bool get failed => _failed;
++
++  /// O'ynashi kerak, lekin video hali yo'q: ochilmoqda yoki birozdan
++  /// keyin o'zi qayta urinadi.
++  bool get loading =>
++      _want &&
++      !_ready &&
++      (_c != null ||
++          _wait != null ||
++          (_retry != null && _autoRetries < kAdVideoAutoRetries));
++
++  /// Video o'ynashi kerak: pleer yo'q bo'lsa ochiladi, tayyor bo'lsa
++  /// `play()`.
++  void play() {
++    if (_disposed) return;
++    _want = true;
++    _guard ??= Timer.periodic(kAdVideoGuardEvery, (_) => _check());
++    if (_c == null) {
++      // Yiqilgandan keyingi qisqa tanaffusda yangi pleer ochilmaydi
++      // (Asosiyda har surishda chaqiriladi).
++      if (_wait == null && _retry == null) _create();
++      return;
++    }
++    if (_ready) _start();
++  }
++
++  /// Ustida boshqa ekran / tab yashirin — pleer turadi, pauzada.
++  void pause() {
++    _want = false;
++    _stopGuard();
++    _wait?.cancel();
++    _wait = null;
++    _c?.pause();
++  }
++
++  /// Sahifa ekrandan chiqdi — pleer yo'q qilinadi, hisob boshidan.
++  void reset() {
++    pause();
++    _retry?.cancel();
++    _retry = null;
++    _drop();
++    _failed = false;
++    _attempts = 0;
++    _autoRetries = 0;
++    _blockedTicks = 0;
++  }
++
++  void dispose() {
++    reset();
++    _disposed = true;
++  }
++
++  /// Ijro tashqaridan to'xtatilgan bo'lishi mumkin (masalan, iOS audio
++  /// sessiyasi musiqa uchun qayta olindi) — o'ynashi kerak bo'lsa, qaytadan.
++  void resume() {
++    if (_want && _ready) _start();
++  }
++
++  void _stopGuard() {
++    _guard?.cancel();
++    _guard = null;
++  }
++
++  void _drop() {
++    final c = _c;
++    _c = null;
++    _ready = false;
++    if (c != null) {
++      c.pause().catchError((_) {});
++      c.dispose();
++    }
++  }
++
++  void _create() {
++    if (_disposed || !_want || _c != null) return;
++    if (_blockedTicks < 40 && blocked()) {
++      _blockedTicks++;
++      _wait = Timer(const Duration(milliseconds: 50), () {
++        _wait = null;
++        _create();
++      });
++      return;
++    }
++    _blockedTicks = 0;
++    final c = VideoPlayerController.networkUrl(
++      Uri.parse(url()),
++      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: mixWithOthers()),
++    );
++    _c = c;
++    _failed = false;
++    _attempts++;
++    onChanged();
++    _init(c);
++  }
++
++  Future<void> _init(VideoPlayerController c) async {
++    try {
++      // Qayta urinishda — sekin tarmoq ehtimoli katta, muddat uzunroq.
++      await c.initialize().timeout(
++        _attempts > 1 ? reelsInitTimeout * 2 : reelsInitTimeout,
++      );
++      if (_c != c) return;
++      await c.setLooping(true);
++      if (_c != c) return;
++      _ready = true;
++    } catch (_) {
++      if (_c != c) return;
++      _fail();
++      return;
++    }
++    onChanged();
++    await _start();
++  }
++
++  /// Pleer yo'q qilinadi (o'lik pleer qolmaydi), birozdan keyin yangisi.
++  void _fail() {
++    _drop();
++    _failed = true;
++    _retry?.cancel();
++    _retry = Timer(kAdVideoRetryDelay, () {
++      _retry = null;
++      if (!_disposed &&
++          _want &&
++          _c == null &&
++          _autoRetries < kAdVideoAutoRetries) {
++        _autoRetries++;
++        _create();
++      }
++      onChanged();
++    });
++    onChanged();
++  }
++
++  Future<void> _start() async {
++    final c = _c;
++    if (!_ready || c == null || !_want) return;
++    final hook = beforePlay;
++    if (hook != null && !await hook(c)) return;
++    if (_c != c || !_want) return;
++    await c.play();
++  }
++
++  void _check() {
++    if (_disposed || !_want) return;
++    final c = _c;
++    if (c == null || !_ready) return;
++    final v = c.value;
++    if (v.hasError) {
++      _fail();
++    } else if (!v.isPlaying) {
++      _start();
++    }
++  }
++}
++
++/// Yiqilgandan keyin shuncha kutib qayta ochiladi.
++const kAdVideoRetryDelay = Duration(seconds: 3);
++
++/// Sahifa ochiq turganda o'zi necha marta qayta urinadi (keyingisi —
++/// sahifa/karta yana ko'ringanda).
++const kAdVideoAutoRetries = 2;
++
++/// O'ynashi kerak bo'lgan video to'xtab qolmaganini tekshirish oralig'i.
++const kAdVideoGuardEvery = Duration(seconds: 2);
++
++/// Poster ustidagi nozik "yuklanmoqda" aylanasi — video hali
++/// boshlanmagan bo'lsa (ochilmoqda, qayta urinadi yoki birinchi kadrlar
++/// kutilmoqda). Video yura boshlagach yo'qoladi.
++class AdVideoSpinner extends StatelessWidget {
++  const AdVideoSpinner({
++    super.key,
++    required this.loading,
++    required this.controller,
++  });
++
++  /// Pleer hali tayyor emas ([AdVideoLoader.loading]).
++  final bool loading;
++
++  /// Tayyor pleer — birinchi kadrlar kelguncha (bufer) ham aylanadi.
++  final VideoPlayerController? controller;
++
++  static bool waiting(VideoPlayerValue v) =>
++      v.position <= Duration.zero && (v.isBuffering || !v.isPlaying);
++
++  @override
++  Widget build(BuildContext context) {
++    final c = controller;
++    if (loading) return const _Ring();
++    if (c == null) return const SizedBox.shrink();
++    return ValueListenableBuilder<VideoPlayerValue>(
++      valueListenable: c,
++      builder: (_, v, __) =>
++          waiting(v) ? const _Ring() : const SizedBox.shrink(),
++    );
++  }
++}
++
++class _Ring extends StatelessWidget {
++  const _Ring();
++
++  @override
++  Widget build(BuildContext context) => IgnorePointer(
++    child: Center(
++      child: Container(
++        width: 44,
++        height: 44,
++        padding: const EdgeInsets.all(11),
++        decoration: BoxDecoration(
++          color: Colors.black.withValues(alpha: .35),
++          shape: BoxShape.circle,
++        ),
++        child: const CircularProgressIndicator(
++          strokeWidth: 2,
++          color: Colors.white70,
++        ),
++      ),
++    ),
++  );
++}
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 206a054..7b24803 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -41,7 +41,6 @@ import '../social/post_contact_bar.dart';
+ import '../social/fullscreen_video.dart' show immersiveVideoFit;
+ import '../social/reels_screen.dart'
+     show
+-        reelsInitTimeout,
+         ReelAction,
+         ReelCaption,
+         ReelsBackGuard,
+@@ -54,6 +53,7 @@ import '../social/reels_screen.dart'
+         reelsHiddenProvider,
+         savedReelsProvider,
+         showReelComments;
++import 'ad_video_loader.dart';
+ import 'showcase_common.dart';
+ import 'showcase_instagram.dart';
+ import 'showcase_sound.dart';
+@@ -463,6 +463,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   AnimationController? _clock;
+   VideoPlayerController? _music;
+   bool _musicReady = false;
++
++  /// Musiqa pleeri ochilmoqda (`initialize()`).
++  bool _musicOpening = false;
+   late final AudioOwner _owner;
+ 
+   // ── VIDEO REKLAMA ──────────────────────────────────────────────────
+@@ -471,13 +474,33 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   // (aylanib), ustida boshqa ekran/fon — pauza, sahifadan chiqilsa yo'q
+   // qilinadi. Musiqa bo'lsa video ovozsiz, musiqa o'ynaydi; bo'lmasa
+   // videoning o'z ovozi (🔇 ga bo'ysunadi).
+-  VideoPlayerController? _video;
+-  bool _videoReady = false;
+-  bool _videoFailed = false;
+-
+-  /// Musiqa pleeri ochilmoqda (`initialize()`); video shuni kutadi.
+-  Future<void>? _musicLoading;
+-  bool _videoWaiting = false;
++  //
++  // Pleer [AdVideoLoader] da: yiqilsa/ulgurmasa yo'q qilinib qayta
++  // ochiladi, tashqaridan to'xtatilsa yana `play()` (TestFlight 332:
++  // "musiqa bor, rolikni o'zi ishlamayapti").
++  late final AdVideoLoader _ad = AdVideoLoader(
++    url: () => _p.videoUrl,
++    onChanged: () {
++      if (mounted) setState(() {});
++    },
++    // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
++    // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video fokusni
++    // musiqadan tortib olardi va ExoPlayer musiqani to'xtatardi
++    // (TestFlight 331: "BOY777 da musiqa avto qo'yilmayapti"). iOS'da
++    // pleerlarning alohida fokusi yo'q — u yerda belgi butun sessiyani
++    // "aralashuvchi" qilardi, shuning uchun `false` qoladi; sessiyani
++    // musiqa o'zi oladi ([claimPlayback]).
++    mixWithOthers: () => _hasMusic && _android,
++    // ANDROID: `mixWithOthers` pleer platformasida UMUMIY belgi va har
++    // `initialize()` uni `create` dan oldin qo'yadi — ikki pleer bir
++    // vaqtda ochilsa, musiqa videoning belgisi bilan yaratilib qolardi.
++    // Shuning uchun video musiqa ochilayotganini kutadi, lekin endi
++    // ENG KO'PI ~2 s ([AdVideoLoader.blocked]; `create` millisekundlarda
++    // o'tadi), avvalgidek 20 s emas. iOS'da umuman kutmaydi (u yerda
++    // ikkala pleer ham `mixWithOthers: false`).
++    blocked: () => _android && _musicOpening,
++    beforePlay: _prepareVideo,
++  );
+ 
+   /// Ustida boshqa ekran yo'q (`TickerMode`).
+   bool _onStage = true;
+@@ -503,6 +526,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   List<String> get _images => _isVideo ? const [] : _p.mediaUrls;
+   bool get _isVideo => _p.isShowcaseVideoAd;
+   bool get _hasMusic => (_p.music?.playUrl ?? '').isNotEmpty;
++  static bool get _android => defaultTargetPlatform == TargetPlatform.android;
+ 
+   /// Sahifa ekranda: ochiq, tab ko'rinyapti, ustida boshqa (yopiq)
+   /// ekran yo'q va ilova oldinda.
+@@ -573,7 +597,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     _viewSession.dispose();
+     _clock?.dispose();
+     _music?.dispose();
+-    _video?.dispose();
++    _ad.dispose();
+     _carousel.dispose();
+     // `ref.read` EMAS: `dispose()` da u istisno otadi.
+     _owner.release(this);
+@@ -636,80 +660,25 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   void _syncVideo() {
+     if (!_isVideo) return;
+     if (_active) {
+-      _playVideo();
++      _ad.play();
+     } else if (!widget.visible) {
+-      _disposeVideo();
++      _ad.reset();
+     } else {
+-      _video?.pause();
++      _ad.pause();
+     }
+   }
+ 
+-  Future<void> _playVideo() async {
+-    var c = _video;
+-    if (c == null) {
+-      // Musiqa pleeri hali ochilmoqda — video undan KEYIN ochiladi
+-      // (poster turadi). `mixWithOthers` pleer platformasida UMUMIY
+-      // belgi va har `initialize()` uni `create` dan oldin qo'yadi: ikki
+-      // pleer bir vaqtda ochilsa, musiqa videoning belgisi bilan
+-      // yaratilib qolardi.
+-      final music = _musicLoading;
+-      if (music != null) {
+-        if (_videoWaiting) return;
+-        _videoWaiting = true;
+-        await music.timeout(reelsInitTimeout, onTimeout: () {});
+-        _videoWaiting = false;
+-        if (!mounted || _video != null || !_active) return;
+-      }
+-      c = VideoPlayerController.networkUrl(
+-        Uri.parse(_p.videoUrl),
+-        // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
+-        // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video
+-        // fokusni musiqadan tortib olardi va ExoPlayer musiqani
+-        // to'xtatardi (TestFlight 331: "BOY777 da musiqa avto
+-        // qo'yilmayapti"). iOS'da pleerlarning alohida fokusi yo'q —
+-        // u yerda belgi butun sessiyani "aralashuvchi" qilardi, shuning
+-        // uchun `false` qoladi; sessiyani musiqa o'zi oladi
+-        // ([claimPlayback]).
+-        videoPlayerOptions: VideoPlayerOptions(
+-          mixWithOthers:
+-              _hasMusic && defaultTargetPlatform == TargetPlatform.android,
+-        ),
+-      );
+-      _video = c;
+-      _videoFailed = false;
+-      try {
+-        await c.initialize().timeout(reelsInitTimeout);
+-        if (!mounted || _video != c) return;
+-        await c.setLooping(true);
+-        _videoReady = true;
+-        setState(() {});
+-      } catch (_) {
+-        // Video ochilmadi — poster qoladi, sahifa ishlayveradi.
+-        if (mounted && _video == c) setState(() => _videoFailed = true);
+-        return;
+-      }
+-    }
+-    if (!_videoReady || !mounted || _video != c || !_active) return;
+-    // Musiqa bo'lsa — video ovozsiz; bo'lmasa o'z ovozi (🔇 bo'lmasa),
+-    // shunda audio egasi video bo'ladi.
++  /// Video `play()` dan oldin: musiqa bo'lsa — ovozsiz; bo'lmasa o'z
++  /// ovozi (🔇 bo'lmasa), shunda audio egasi video bo'ladi.
++  Future<bool> _prepareVideo(VideoPlayerController c) async {
++    if (!mounted || !_active) return false;
+     final ownSound = !_hasMusic && !ref.read(showcaseMutedProvider);
+     if (ownSound) _owner.take(this, _pauseForOther);
+     await c.setVolume(ownSound ? 1 : 0);
+-    if (!mounted || _video != c || !_active) return;
++    if (!mounted || !_active) return false;
+     // O'z ovozi bilan — iOS audio sessiyasi shu video uchun.
+     if (ownSound) await claimPlayback();
+-    if (!mounted || _video != c || !_active) return;
+-    await c.play();
+-  }
+-
+-  void _disposeVideo() {
+-    final v = _video;
+-    _video = null;
+-    _videoReady = false;
+-    if (v != null) {
+-      v.pause().catchError((_) {});
+-      v.dispose();
+-    }
++    return mounted && _active;
+   }
+ 
+   void _armView() =>
+@@ -726,7 +695,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   void _pauseForOther() {
+     _music?.pause();
+     // O'z ovozli video ham (boshqa manba ovozni oldi).
+-    if (!_hasMusic) _video?.pause();
++    if (!_hasMusic && _isVideo) _ad.pause();
+     if (mounted) setState(() {});
+   }
+ 
+@@ -742,17 +711,16 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+       );
+       _music = c;
+-      final init = c.initialize();
+-      final loading = _musicLoading = init.catchError((_) {});
++      _musicOpening = true;
+       try {
+-        await init;
+-        if (identical(_musicLoading, loading)) _musicLoading = null;
++        await c.initialize();
++        if (_music == c) _musicOpening = false;
+         if (!mounted || _music != c) return;
+         await c.setLooping(true);
+         if (m.playFrom > Duration.zero) await c.seekTo(m.playFrom);
+         _musicReady = true;
+       } catch (_) {
+-        if (identical(_musicLoading, loading)) _musicLoading = null;
++        if (_music == c) _musicOpening = false;
+         // Musiqa ochilmadi (sekin tarmoq: "Read timed out") — sahifa hozircha
+         // jim. Yiqilgan pleer QOLDIRILMAYDI: aks holda keyingi har urinish
+         // (🔇 yoqish, toza rejim, YouTube'dan qaytish) shu o'lik pleerga
+@@ -773,13 +741,17 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     await claimPlayback();
+     if (!mounted || _music != c || !_audible) return;
+     await c.play();
++    // iOS: sessiya qayta olinganda ovozsiz reklama videosi to'xtab
++    // qolishi mumkin (pleer plagini uzilishdan keyin o'zi davom
++    // ettirmaydi) — o'ynashi kerak bo'lsa, qaytadan.
++    if (mounted && _isVideo) _ad.resume();
+   }
+ 
+   void _disposeMusic() {
+     final m = _music;
+     _music = null;
+     _musicReady = false;
+-    _musicLoading = null;
++    _musicOpening = false;
+     if (m != null) {
+       m.pause().catchError((_) {});
+       m.dispose();
+@@ -999,8 +971,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+             child: _AdVideo(
+               key: const ValueKey('showcase-ad-video'),
+               poster: p.posterUrl,
+-              controller: _videoReady ? _video : null,
+-              failed: _videoFailed,
++              controller: _ad.controller,
++              failed: _ad.failed && !_ad.loading,
++              loading: _active && _ad.loading,
++              active: _active,
+             ),
+           )
+         else
+@@ -1285,12 +1259,20 @@ class _AdVideo extends StatelessWidget {
+     required this.poster,
+     required this.controller,
+     required this.failed,
++    required this.loading,
++    required this.active,
+   });
+ 
+   final String poster;
+   final VideoPlayerController? controller;
+   final bool failed;
+ 
++  /// Video hali ochilmoqda / qayta urinadi — poster ustida aylana.
++  final bool loading;
++
++  /// Sahifa ekranda va video o'ynashi kerak (pauzada aylana yo'q).
++  final bool active;
++
+   @override
+   Widget build(BuildContext context) {
+     final c = controller;
+@@ -1325,6 +1307,11 @@ class _AdVideo extends StatelessWidget {
+               color: Colors.white54,
+             ),
+           ),
++        AdVideoSpinner(
++          key: const ValueKey('showcase-ad-loading'),
++          loading: loading,
++          controller: active ? c : null,
++        ),
+       ],
+     );
+   }
+diff --git a/mobile_nova/test/showcase_ad_video_test.dart b/mobile_nova/test/showcase_ad_video_test.dart
+new file mode 100644
+index 0000000..f46cb59
+--- /dev/null
++++ b/mobile_nova/test/showcase_ad_video_test.dart
+@@ -0,0 +1,355 @@
++import 'dart:io';
++
++import 'package:flutter/foundation.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/core/media/audio_session.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/routing/shell.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// KO'RGAZMA VIDEO REKLAMASI O'ZI BOSHLANADI (egasi, TestFlight 332 /
++/// Android 319: "BOY777 va LOL ni ko'rgazmada ochilsa musiqa bor,
++/// rolikni o'zi ishlamayapti").
++///
++/// Haqiqiy yo'l bilan: butun ilova, Asosiydagi reklama kartasi bosiladi
++/// -> Ko'rgazma shu reklama bilan ochiladi. Sabablar:
++///
++/// * video musiqa pleerining TO'LIQ yuklanishini (20 s gacha) kutardi;
++/// * `initialize()` yiqilsa yoki 20 s da ulgurmasa — o'lik pleer qolar,
++///   sahifada turganda video hech qachon boshlanmasdi;
++/// * tashqaridan to'xtatilgan (iOS sessiyasi) video qayta qo'yilmasdi;
++/// * Asosiydagi karta ham bir marta yiqilsa — reklama almashguncha faqat
++///   poster.
++
++Map<String, dynamic> _music(int id) => {
++      'id': id,
++      'title': 'Silk Road Fire',
++      'artist': 'NeomSongs',
++      'audioUrl': '/uploads/music_$id.mp3',
++      'clipUrl': '',
++      'start': 0,
++    };
++
++Post _ad(String name, int id, int music) => Post.fromJson({
++      'id': id,
++      'code': 'NFCSTOREUZ',
++      'authorKind': 'company',
++      'showcase': true,
++      'ad': true,
++      'featured': true,
++      'title': name,
++      'imageUrl': '/promo/nfcstore-${name.toLowerCase()}.jpg',
++      'videoUrl': '/uploads/promo_${name.toLowerCase()}.mp4',
++      'mediaUrls': ['/uploads/promo_${name.toLowerCase()}.mp4'],
++      'mediaItems': [
++        {'url': '/uploads/promo_${name.toLowerCase()}.mp4', 'type': 'video'},
++      ],
++      'linkUrl': 'https://www.instagram.com/reel/Ddy4e1cjVY9/',
++      'music': _music(music),
++    });
++
++final _boy = _ad('BOY777', 54, 28);
++final _lol = _ad('LOL707', 55, 29);
++
++Post _image(int id, int music) => Post.fromJson({
++      'id': id,
++      'code': 'NFCSTOREUZ',
++      'authorKind': 'company',
++      'showcase': true,
++      'title': 'P$id',
++      'imageUrl': '/uploads/p$id.jpg',
++      'mediaUrls': ['/uploads/p$id.jpg'],
++      'music': _music(music),
++    });
++
++class _Repo extends FakeSocialRepository {
++  @override
++  Future<Result<ReelsPage>> showcasePage(
++          {String? cursor, int limit = 10}) async =>
++      Ok(ReelsPage(items: [_image(50, 60), _boy, _lol, _image(48, 63)]));
++
++  @override
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async =>
++      Ok(ReelsPage(items: [_boy]));
++}
++
++class _Video extends FakeVideoPlatform {
++  _Video(this.log);
++  final List<String> log;
++
++  @override
++  Future<void> play(int playerId) {
++    log.add('play:${urls[playerId]!.split('/').last}');
++    return super.play(playerId);
++  }
++}
++
++Future<void> _frames(WidgetTester tester, [int n = 30]) async {
++  for (var i = 0; i < n; i++) {
++    await tester.pump(const Duration(milliseconds: 50));
++    if (i % 5 == 0) {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 5)));
++    }
++  }
++}
++
++String _name(FakeVideoPlatform v, int id) => v.urls[id]!.split('/').last;
++
++Set<String> _playing(FakeVideoPlatform v) =>
++    {for (final id in v.playing) _name(v, id)};
++
++int _player(FakeVideoPlatform v, String file) =>
++    v.urls.entries.lastWhere((e) => e.value.endsWith(file)).key;
++
++int _opened(FakeVideoPlatform v, String file) =>
++    v.urls.values.where((u) => u.endsWith(file)).length;
++
++Finder _ring(String key) => find.descendant(
++    of: find.byKey(ValueKey(key)),
++    matching: find.byType(CircularProgressIndicator));
++
++Future<({ProviderContainer c, _Video v, List<String> log})> _app(
++  WidgetTester tester, {
++  void Function(_Video v)? setup,
++  List<String>? log,
++}) async {
++  tester.view.physicalSize = const Size(1170, 2532);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  log ??= <String>[];
++  final v = _Video(log);
++  setup?.call(v);
++  VideoPlayerPlatform.instance = v;
++  final base = await testOverrides();
++  final c = ProviderContainer(overrides: [
++    ...base,
++    socialRepositoryProvider.overrideWithValue(_Repo()),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(
++    UncontrolledProviderScope(container: c, child: const NovaApp()),
++  );
++  await _frames(tester, 60);
++  return (c: c, v: v, log: log);
++}
++
++Future<void> _showHomeCard(WidgetTester tester) async {
++  final card = find.byKey(const ValueKey('home-ad-card'));
++  await tester.dragUntilVisible(
++      card, find.byType(Scrollable).first, const Offset(0, -200));
++  await _frames(tester, 20);
++}
++
++/// Asosiydagi karta bosiladi -> Ko'rgazma, BOY777 birinchi sahifada.
++Future<void> _openFromHome(WidgetTester tester, ProviderContainer c) async {
++  await tester.tap(find.byKey(const ValueKey('home-ad-card')));
++  await tester.pump();
++  expect(c.read(activeTabProvider), anyOf(0, kShowcaseTab));
++}
++
++Future<void> _end(WidgetTester tester) async {
++  await tester.pumpWidget(const SizedBox());
++  await tester.pump(const Duration(minutes: 1));
++}
++
++/// iPhone: audio sessiya kanali (sinovda yo'q) — chaqiruvlar yoziladi.
++/// Platforma belgisi sinov tanasi ICHIDA qaytariladi (aks holda
++/// `flutter_test` invariant xatosi).
++Future<void> _onIos(List<String> log, Future<void> Function() body) async {
++  debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
++  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++      .setMockMethodCallHandler(audioSessionChannel, (call) async {
++    log.add('session:${call.method}');
++    return true;
++  });
++  try {
++    await body();
++  } finally {
++    debugDefaultTargetPlatformOverride = null;
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(audioSessionChannel, null);
++  }
++}
++
++void main() {
++  setUpAll(() {
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(
++            const MethodChannel('plugins.flutter.io/path_provider'),
++            (_) async => Directory.systemTemp.createTempSync('nova').path);
++  });
++
++  testWidgets(
++      'Asosiy karta -> Ko‘rgazma: video birinchi marta yuklanmasa, o‘lik '
++      'pleer qolmaydi — bir necha soniyadan keyin O‘ZI qayta ochiladi va '
++      'o‘ynaydi (sahifadan chiqmasdan)', (tester) async {
++    final r = await _app(tester);
++    await _showHomeCard(tester);
++    expect(_playing(r.v), {'promo_boy777.mp4'}, reason: 'karta o‘ynaydi');
++    r.v.failOnce.add('promo_boy777.mp4');
++
++    await _openFromHome(tester, r.c);
++    await _frames(tester, 30);
++    expect(r.c.read(activeTabProvider), kShowcaseTab);
++    expect(_playing(r.v), {'music_28.mp3'},
++        reason: 'birinchi yuklash yiqildi, musiqa o‘ynaydi');
++    final dead = _player(r.v, 'promo_boy777.mp4');
++    expect(r.v.alive, isNot(contains(dead)), reason: 'yiqilgan pleer yopildi');
++    expect(_ring('showcase-ad-loading'), findsOneWidget,
++        reason: 'qayta urinish kutilmoqda — poster ustida aylana');
++
++    await _frames(tester, 80);
++    expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'},
++        reason: 'o‘zi qayta ochildi');
++    final video = _player(r.v, 'promo_boy777.mp4');
++    expect(video, isNot(dead));
++    expect(r.v.volumeOf[video], 0.0, reason: 'musiqa bor — ovozsiz');
++    expect(r.v.mixOf[video], isTrue, reason: 'Android: fokusni olmaydi');
++    expect(_ring('showcase-ad-loading'), findsNothing,
++        reason: 'video o‘ynayapti — aylana yo‘q');
++    await _end(tester);
++  });
++
++  testWidgets(
++      'Video 20 s da ochilmasa (osilib qoldi) — yo‘q qilinadi va yangisi '
++      'o‘ynaydi', (tester) async {
++    final r = await _app(tester);
++    await _showHomeCard(tester);
++    r.v.hangOnce.add('promo_boy777.mp4');
++    await _openFromHome(tester, r.c);
++    await _frames(tester, 30);
++    expect(_playing(r.v), {'music_28.mp3'});
++    final hung = _player(r.v, 'promo_boy777.mp4');
++    expect(_ring('showcase-ad-loading'), findsOneWidget,
++        reason: 'ochilmoqda — aylana');
++
++    await tester.pump(const Duration(seconds: 20));
++    await _frames(tester, 100);
++    expect(r.v.alive, isNot(contains(hung)), reason: 'osilgan pleer yopildi');
++    expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++    await _end(tester);
++  });
++
++  testWidgets(
++      'iPhone: musiqa sekin yuklansa ham video uni KUTMAYDI (darhol '
++      'o‘ynaydi); musiqa kelgach — ikkalasi', (tester) async {
++    final log = <String>[];
++    await _onIos(log, () async {
++      final r = await _app(tester,
++          log: log,
++          setup: (v) => v.slow['music_28.mp3'] = const Duration(seconds: 15));
++      await _showHomeCard(tester);
++      await _openFromHome(tester, r.c);
++      await _frames(tester, 40);
++      expect(_playing(r.v), {'promo_boy777.mp4'},
++          reason: 'video musiqani 20 s kutmaydi');
++      final video = _player(r.v, 'promo_boy777.mp4');
++      expect(r.v.mixOf[video], isFalse, reason: 'iOS: sessiya aralashmaydi');
++      expect(r.v.volumeOf[video], 0.0);
++
++      await tester.pump(const Duration(seconds: 14));
++      await _frames(tester, 20);
++      expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++      final all = [...r.log];
++      final musicPlay = all.indexOf('play:music_28.mp3');
++      expect(all.sublist(0, musicPlay), contains('session:playback'));
++      expect(all.sublist(musicPlay), contains('play:promo_boy777.mp4'),
++          reason: 'sessiya olingach ovozsiz video qayta play() qilinadi');
++      await _end(tester);
++    });
++  });
++
++  testWidgets(
++      'Android: musiqa sekin yuklansa video ko‘pi bilan ~2 s kutadi, '
++      'audio fokus tartibi saqlanadi', (tester) async {
++    final r = await _app(tester,
++        setup: (v) => v.slow['music_28.mp3'] = const Duration(seconds: 15));
++    await _showHomeCard(tester);
++    await _openFromHome(tester, r.c);
++    await _frames(tester, 60);
++    expect(_playing(r.v), {'promo_boy777.mp4'},
++        reason: 'video musiqani 20 s kutmaydi');
++    final video = _player(r.v, 'promo_boy777.mp4');
++    final music = _player(r.v, 'music_28.mp3');
++    expect(r.v.mixOf[video], isTrue);
++    expect(r.v.mixOf[music], isFalse, reason: 'musiqa o‘z belgisi bilan');
++    await tester.pump(const Duration(seconds: 14));
++    await _frames(tester, 20);
++    expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++    await _end(tester);
++  });
++
++  testWidgets(
++      'iPhone: o‘ynayotgan video tashqaridan to‘xtatilsa (audio sessiya '
++      'uzilishi) — o‘zi davom etadi', (tester) async {
++    final log = <String>[];
++    await _onIos(log, () async {
++      final r = await _app(tester, log: log);
++      await _showHomeCard(tester);
++      await _openFromHome(tester, r.c);
++      await _frames(tester, 40);
++      expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++      final video = _player(r.v, 'promo_boy777.mp4');
++
++      log.clear();
++      r.v.externalPause(video);
++      expect(_playing(r.v), {'music_28.mp3'});
++      await _frames(tester, 60);
++      expect(log, contains('play:promo_boy777.mp4'));
++      expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'},
++          reason: 'o‘ynashi kerak edi — qayta play()');
++      expect(r.v.alive, contains(video), reason: 'o‘sha pleer, yangisi emas');
++      await _end(tester);
++    });
++  });
++
++  testWidgets(
++      'Video sekin ochilayotganda poster ustida aylana; o‘ynagach yo‘qoladi. '
++      'Surib LOL707 ga — u ham o‘ynaydi', (tester) async {
++    final r = await _app(tester);
++    await _showHomeCard(tester);
++    r.v.slow['promo_boy777.mp4'] = const Duration(seconds: 4);
++    await _openFromHome(tester, r.c);
++    await _frames(tester, 20);
++    expect(_playing(r.v), {'music_28.mp3'});
++    expect(_ring('showcase-ad-loading'), findsOneWidget);
++    await _frames(tester, 80);
++    expect(_playing(r.v), {'promo_boy777.mp4', 'music_28.mp3'});
++    expect(_ring('showcase-ad-loading'), findsNothing);
++
++    // Keyingi sahifalar: P50, keyin LOL707.
++    for (var i = 0; i < 2; i++) {
++      await tester.fling(find.byKey(const ValueKey('showcase-pager')),
++          const Offset(0, -600), 2000);
++      await _frames(tester, 30);
++    }
++    expect(_playing(r.v), {'promo_lol707.mp4', 'music_29.mp3'});
++    await _end(tester);
++  });
++
++  testWidgets(
++      'Asosiydagi karta: video yiqilsa poster qoladi, bir necha soniyadan '
++      'keyin o‘zi qayta ochiladi', (tester) async {
++    final r = await _app(tester,
++        setup: (v) => v.failOnce.add('promo_boy777.mp4'));
++    await _showHomeCard(tester);
++    expect(_playing(r.v), isEmpty, reason: 'birinchi yuklash yiqildi');
++    expect(_ring('home-ad-loading'), findsOneWidget);
++    await _frames(tester, 80);
++    expect(_playing(r.v), {'promo_boy777.mp4'});
++    expect(_opened(r.v, 'promo_boy777.mp4'), 2);
++    expect(r.v.volumeOf[_player(r.v, 'promo_boy777.mp4')], 0.0);
++    expect(_ring('home-ad-loading'), findsNothing);
++    await _end(tester);
++  });
++}
+diff --git a/mobile_nova/test/support/fake_video_platform.dart b/mobile_nova/test/support/fake_video_platform.dart
+index fca3edb..4ec4be3 100644
+--- a/mobile_nova/test/support/fake_video_platform.dart
++++ b/mobile_nova/test/support/fake_video_platform.dart
+@@ -28,6 +28,14 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+ 
+   /// Shu bo'lakni o'z ichiga olgan URL BIR MARTA yuklanmaydi (xato beradi).
+   final failOnce = <String>{};
++
++  /// Shu bo'lakli URL BIR MARTA umuman javob bermaydi (`initialize()`
++  /// osilib qoladi — sekin/uzilgan tarmoq).
++  final hangOnce = <String>{};
++
++  /// Shu bo'lakli URL [initDelay] dan tashqari yana shuncha sekin
++  /// yuklanadi (masalan, faqat musiqa sekin).
++  final slow = <String, Duration>{};
+   final positions = <int, Duration>{};
+   final _events = <int, StreamController<VideoEvent>>{};
+ 
+@@ -50,7 +58,16 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+     if (mixCalls.isNotEmpty) mixOf[id] = mixCalls.last;
+     final c = StreamController<VideoEvent>();
+     _events[id] = c;
+-    Future<void>.delayed(initDelay, () {
++    final hang = hangOnce.where((f) => (uri ?? '').contains(f)).toList();
++    if (hang.isNotEmpty) {
++      hangOnce.remove(hang.first);
++      return id;
++    }
++    var extra = Duration.zero;
++    slow.forEach((f, d) {
++      if ((uri ?? '').contains(f) && d > extra) extra = d;
++    });
++    Future<void>.delayed(initDelay + extra, () {
+       if (c.isClosed) return;
+       // Bir martalik yuklash xatosi (sekin tarmoq) — URL bo'lagi bo'yicha.
+       final fail = failOnce.where((f) => (uri ?? '').contains(f)).toList();
+@@ -72,6 +89,16 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+   @override
+   Stream<VideoEvent> videoEventsFor(int playerId) => _events[playerId]!.stream;
+ 
++  /// Ijroni TASHQARIDAN to'xtatadi (iOS: audio sessiya uzilishi — AVPlayer
++  /// o'zi to'xtaydi va plagin `isPlaying: false` yuboradi).
++  void externalPause(int playerId) {
++    playing.remove(playerId);
++    _events[playerId]?.add(VideoEvent(
++      eventType: VideoEventType.isPlayingStateUpdate,
++      isPlaying: false,
++    ));
++  }
++
+   @override
+   Future<void> dispose(int playerId) async {
+     disposed.add(playerId);
+-- 
+2.43.0
+
