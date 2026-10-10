@@ -12807,6 +12807,12 @@ export default {
         console.error('showcase_promo_720', String(e?.message || e).slice(0, 160));
       }
       try {
+        const mvV4 = await apiShowcaseAds.moveShowcasePromoVideosV4(env);
+        if (mvV4?.applied) console.log('showcase_promo_v4', JSON.stringify(mvV4));
+      } catch (e) {
+        console.error('showcase_promo_v4', String(e?.message || e).slice(0, 160));
+      }
+      try {
         const ext = await applyLaunchTrialExtension(env);
         if (ext?.applied) console.log('launch_trial_extended', JSON.stringify({ users: ext.users, companies: ext.companies }));
       } catch (e) {

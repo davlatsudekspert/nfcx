@@ -17,6 +17,7 @@ import {
   seedShowcaseAds, __resetShowcaseAdsCaches, SHOWCASE_ADS_MIGRATION, ADS_COMPANY, PROMO_ADS,
   moveShowcasePromoVideos, PROMO_VIDEO_MIGRATION, promoUploadName,
   moveShowcasePromoVideos720, PROMO_720_MIGRATION, promo720Name, promo720AssetUrl,
+  moveShowcasePromoVideosV4, PROMO_V4_MIGRATION, promoV4Name, promoV4AssetUrl,
 } from '../hosting/api/showcase-ads.js';
 import { seedShowcaseSamples, SAMPLES, SAMPLES_V2, SHOWCASE_SAMPLES_V2_MIGRATION } from '../hosting/api/showcase-samples.js';
 import { cleanShowcaseLink } from '../hosting/api/showcase.js';
@@ -417,6 +418,8 @@ check('9) re-run: no asset reads, no posts left on /promo', [r.applied, assetHit
 env.ASSETS = realAssets;
 
 // ═══ 10. Promo mp4 720p yengil nusxa (`showcase_ads_v3_720p`) ═══
+// v4 (11-bo'lim) bu bo'limdagi lenta so'rovlarida ishlamasin — vaqtincha belgi.
+sqlite.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, 'test-hold')`).run(PROMO_V4_MIGRATION, new Date().toISOString());
 check('10) names', PROMO_ADS.map((a) => [promo720AssetUrl(a.videoUrl), promo720Name(a.videoUrl)]),
   [['/promo/nfcstore-boy777-720.mp4', 'promo_boy777_720.mp4'], ['/promo/nfcstore-lol707-720.mp4', 'promo_lol707_720.mp4']]);
 const m720 = () => sqlite.prepare(`SELECT COUNT(*) AS n FROM app_migrations WHERE name = ?`).get(PROMO_720_MIGRATION).n;
@@ -508,6 +511,48 @@ check('10) urls after', [
   sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(lolPost).video_url,
   sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(otherId).video_url,
 ], ['/uploads/admin_custom.mp4', '/uploads/promo_lol707_720.mp4', '/uploads/promo_boy777.mp4']);
+env.ASSETS = realAssets;
+
+// ═══ 11. Promo mp4 v4 — ovoz yo'lagi bilan (`showcase_ads_v4_audio`) ═══
+check('11) names', PROMO_ADS.map((a) => [promoV4AssetUrl(a.videoUrl), promoV4Name(a.videoUrl)]),
+  [['/promo/nfcstore-boy777-v4.mp4', 'promo_boy777_v4.mp4'], ['/promo/nfcstore-lol707-v4.mp4', 'promo_lol707_v4.mp4']]);
+sqlite.prepare(`DELETE FROM app_migrations WHERE name = ? AND detail = 'test-hold'`).run(PROMO_V4_MIGRATION);
+const mV4 = () => sqlite.prepare(`SELECT COUNT(*) AS n FROM app_migrations WHERE name = ?`).get(PROMO_V4_MIGRATION).n;
+const urlOf = (id) => sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(id).video_url;
+// Holat: boy — admin o'zgartirgan, lol — v3 manzilda, OTHERCO — boshqa kompaniya.
+sqlite.prepare(`UPDATE company_posts SET video_url = ? WHERE id = ?`).run('/uploads/promo_boy777_720.mp4', otherId);
+const v3Row = sqlite.prepare(`SELECT name, applied_at, detail FROM app_migrations WHERE name = ?`).get(PROMO_720_MIGRATION);
+sqlite.prepare(`DELETE FROM app_migrations WHERE name = ?`).run(PROMO_720_MIGRATION);
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideosV4(env, at(100));
+check('11) no v3 marker -> waits', [r.applied, r.reason, mV4()], [false, 'no_v3', 0]);
+sqlite.prepare(`INSERT INTO app_migrations (name, applied_at, detail) VALUES (?,?,?)`).run(v3Row.name, v3Row.applied_at, v3Row.detail);
+const hitsV4 = [];
+let serveV4 = () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+env.ASSETS = { fetch: async (req) => { const u = new URL(req.url).pathname; hitsV4.push(u); return serveV4(u); } };
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideosV4(env, at(100));
+check('11) html fallback rejected, nothing moved', [r.applied, r.reason, mV4(), urlOf(lolPost)], [false, 'asset_200', 0, '/uploads/promo_lol707_720.mp4']);
+r = await moveShowcasePromoVideosV4(env, at(101));
+check('11) within retry window', [r.reason, hitsV4.length], ['retry_later', 1]);
+serveV4 = () => new Response(sizeMp4(100 * 1024, 3), { status: 200, headers: { 'content-type': 'video/mp4' } });
+r = await moveShowcasePromoVideosV4(env, at(112));
+check('11) exactly 100 KB rejected', [r.applied, r.reason, mV4()], [false, 'asset_small', 0]);
+serveV4 = (u) => new Response(sizeMp4(150 * 1024, u.includes('boy') ? 4 : 5), { status: 200, headers: { 'content-type': 'video/mp4' } });
+r = await moveShowcasePromoVideosV4(env, at(123));
+check('11) moved only exact v3 url of NFCSTOREUZ', [r.applied, r.moved?.map((m) => [m.from, m.to, m.posts])], [true, [
+  ['/uploads/promo_boy777_720.mp4', '/uploads/promo_boy777_v4.mp4', 0], ['/uploads/promo_lol707_720.mp4', '/uploads/promo_lol707_v4.mp4', 1]]]);
+check('11) urls after', [urlOf(boyPost), urlOf(lolPost), urlOf(otherId)],
+  ['/uploads/admin_custom.mp4', '/uploads/promo_lol707_v4.mp4', '/uploads/promo_boy777_720.mp4']);
+const putV4 = await env.UPLOADS.head('uploads/promo_lol707_v4.mp4');
+check('11) new keys stored', [putV4?.size, (await env.UPLOADS.head('uploads/promo_boy777_v4.mp4'))?.size], [150 * 1024, 150 * 1024]);
+res = await call('/uploads/promo_lol707_v4.mp4', { headers: { Range: 'bytes=0-7' } });
+check('11) v4 key Range -> 206 video/mp4', [res.status, res.headers.get('content-type')], [206, 'video/mp4']);
+check('11) old v3 keys untouched', [!!(await env.UPLOADS.head('uploads/promo_lol707_720.mp4'))], [true]);
+hitsV4.length = 0;
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideosV4(env, at(200));
+check('11) idempotent: marker -> no-op, no asset reads', [r.applied, mV4(), hitsV4.length], [false, 1, 0]);
 env.ASSETS = realAssets;
 
 done();

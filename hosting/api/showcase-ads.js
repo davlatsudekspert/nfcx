@@ -98,7 +98,7 @@ export function ensureSchema(env) {
   }
   return p;
 }
-export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); moved = new WeakMap(); movedRetry = new WeakMap(); moved720 = new WeakMap(); movedRetry720 = new WeakMap(); }
+export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); moved = new WeakMap(); movedRetry = new WeakMap(); moved720 = new WeakMap(); movedRetry720 = new WeakMap(); movedV4 = new WeakMap(); movedRetryV4 = new WeakMap(); }
 
 /// Lenta uchun: yoqilgan joylar, slot tartibida. Jadval yo'q / xato — [].
 /// → [{ slot, key: 'kind:id', kind, id, createdAt }]
@@ -490,5 +490,73 @@ export async function moveShowcasePromoVideos720(env, { now = new Date(), origin
   await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, ?)`)
     .bind(PROMO_720_MIGRATION, now.toISOString(), out.map((m) => `${m.to}:${m.posts}`).join(',')).run();
   moved720.set(k, true);
+  return { applied: true, moved: out };
+}
+
+// ═══ PROMO VIDEOLAR v4 — OVOZ YO'LAGI BILAN (bir marta, 2026-10) ═══
+//
+// Haqiqiy iPhone'da (TestFlight 334) 720p nusxa ochilmadi: cheksiz aylana,
+// simulyatorda va Safari'da esa o'ynaydi. Telefonda ishlaydigan videolardan
+// farqi — ovoz yo'lagi yo'q va rang belgilari yo'q edi. v4 nusxa: H.264 High,
+// bt709, SAR 1:1, faststart va AAC ovoz yo'lagi (postning o'z musiqasi:
+// BOY777 — "Silk Road Fire", LOL707 — "Yurak"; ilova videoni baribir ovozsiz
+// qo'yib, musiqani alohida o'ynaydi). v3 dan KEYIN, xuddi shu tartib: assets
+// (`/promo/nfcstore-*-v4.mp4`) -> YANGI kalit (`uploads/promo_*_v4.mp4`), faqat
+// video_url'i aynan v3 manzilga teng NFCSTOREUZ postlari o'tkaziladi. Eski
+// kalitlar o'chirilmaydi; admin o'zgartirgan post tegilmaydi.
+export const PROMO_V4_MIGRATION = 'showcase_ads_v4_audio';
+export const promoV4AssetUrl = (videoUrl) => String(videoUrl).replace(/\.mp4$/, '-v4.mp4');
+export const promoV4Name = (videoUrl) => promoUploadName(videoUrl).replace(/\.mp4$/, '_v4.mp4');
+let movedV4 = new WeakMap();
+let movedRetryV4 = new WeakMap();
+
+/// → { applied: false, reason? } | { applied: true, moved: [{ from, to, posts }] }
+export async function moveShowcasePromoVideosV4(env, { now = new Date(), origin = 'https://nfcstore.uz' } = {}) {
+  if (!env?.DB || !env.UPLOADS || !env.ASSETS) return { applied: false, reason: 'no_bindings' };
+  const k = keyOf(env);
+  if (movedV4.get(k)) return { applied: false, reason: 'cached' };
+  if ((movedRetryV4.get(k) || 0) > now.getTime()) return { applied: false, reason: 'retry_later' };
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "app_migrations" (
+    name TEXT PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL, detail TEXT
+  )`).run();
+  const seen = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(PROMO_V4_MIGRATION).first();
+  if (seen) { movedV4.set(k, true); return { applied: false }; }
+  // v3 (720p) avval bajarilishi shart — postlar o'sha manzildan o'tadi.
+  const v3 = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(PROMO_720_MIGRATION).first();
+  if (!v3) return { applied: false, reason: 'no_v3' };
+
+  const later = (reason) => { movedRetryV4.set(k, now.getTime() + PROMO_RETRY_MS); return { applied: false, reason }; };
+  for (const a of PROMO_ADS) {
+    const key = `uploads/${promoV4Name(a.videoUrl)}`;
+    let exists = null;
+    try { exists = await env.UPLOADS.head(key); } catch { exists = null; }
+    if (!exists) {
+      let res;
+      try { res = await env.ASSETS.fetch(new Request(origin + promoV4AssetUrl(a.videoUrl))); } catch { return later('asset_fetch'); }
+      const ct = String(res.headers.get('content-type') || '');
+      if (!res.ok || !/^video\/mp4/i.test(ct)) return later(`asset_${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length <= PROMO_720_MIN_BYTES) return later('asset_small');
+      try {
+        await env.UPLOADS.put(key, bytes, {
+          httpMetadata: { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000, immutable' },
+          customMetadata: { uploadedAt: now.toISOString(), actor: `seed:${PROMO_V4_MIGRATION}` },
+        });
+      } catch { return later('upload_put'); }
+    }
+  }
+  const out = [];
+  for (const a of PROMO_ADS) {
+    const from = `/uploads/${promo720Name(a.videoUrl)}`;
+    const to = `/uploads/${promoV4Name(a.videoUrl)}`;
+    const r = await env.DB.prepare(`UPDATE company_posts SET video_url = ? WHERE company_id = ? AND video_url = ?`)
+      .bind(to, ADS_COMPANY, from).run();
+    out.push({ from, to, posts: Number(r?.meta?.changes || 0) });
+  }
+  await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, ?)`)
+    .bind(PROMO_V4_MIGRATION, now.toISOString(), out.map((m) => `${m.to}:${m.posts}`).join(',')).run();
+  movedV4.set(k, true);
   return { applied: true, moved: out };
 }
