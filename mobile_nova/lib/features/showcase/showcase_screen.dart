@@ -41,7 +41,6 @@ import '../social/post_contact_bar.dart';
 import '../social/fullscreen_video.dart' show immersiveVideoFit;
 import '../social/reels_screen.dart'
     show
-        reelsInitTimeout,
         ReelAction,
         ReelCaption,
         ReelsBackGuard,
@@ -54,6 +53,7 @@ import '../social/reels_screen.dart'
         reelsHiddenProvider,
         savedReelsProvider,
         showReelComments;
+import 'ad_video_loader.dart';
 import 'showcase_common.dart';
 import 'showcase_instagram.dart';
 import 'showcase_sound.dart';
@@ -463,6 +463,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   AnimationController? _clock;
   VideoPlayerController? _music;
   bool _musicReady = false;
+
+  /// Musiqa pleeri ochilmoqda (`initialize()`).
+  bool _musicOpening = false;
   late final AudioOwner _owner;
 
   // ── VIDEO REKLAMA ──────────────────────────────────────────────────
@@ -471,13 +474,33 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   // (aylanib), ustida boshqa ekran/fon — pauza, sahifadan chiqilsa yo'q
   // qilinadi. Musiqa bo'lsa video ovozsiz, musiqa o'ynaydi; bo'lmasa
   // videoning o'z ovozi (🔇 ga bo'ysunadi).
-  VideoPlayerController? _video;
-  bool _videoReady = false;
-  bool _videoFailed = false;
-
-  /// Musiqa pleeri ochilmoqda (`initialize()`); video shuni kutadi.
-  Future<void>? _musicLoading;
-  bool _videoWaiting = false;
+  //
+  // Pleer [AdVideoLoader] da: yiqilsa/ulgurmasa yo'q qilinib qayta
+  // ochiladi, tashqaridan to'xtatilsa yana `play()` (TestFlight 332:
+  // "musiqa bor, rolikni o'zi ishlamayapti").
+  late final AdVideoLoader _ad = AdVideoLoader(
+    url: () => _p.videoUrl,
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+    // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
+    // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video fokusni
+    // musiqadan tortib olardi va ExoPlayer musiqani to'xtatardi
+    // (TestFlight 331: "BOY777 da musiqa avto qo'yilmayapti"). iOS'da
+    // pleerlarning alohida fokusi yo'q — u yerda belgi butun sessiyani
+    // "aralashuvchi" qilardi, shuning uchun `false` qoladi; sessiyani
+    // musiqa o'zi oladi ([claimPlayback]).
+    mixWithOthers: () => _hasMusic && _android,
+    // ANDROID: `mixWithOthers` pleer platformasida UMUMIY belgi va har
+    // `initialize()` uni `create` dan oldin qo'yadi — ikki pleer bir
+    // vaqtda ochilsa, musiqa videoning belgisi bilan yaratilib qolardi.
+    // Shuning uchun video musiqa ochilayotganini kutadi, lekin endi
+    // ENG KO'PI ~2 s ([AdVideoLoader.blocked]; `create` millisekundlarda
+    // o'tadi), avvalgidek 20 s emas. iOS'da umuman kutmaydi (u yerda
+    // ikkala pleer ham `mixWithOthers: false`).
+    blocked: () => _android && _musicOpening,
+    beforePlay: _prepareVideo,
+  );
 
   /// Ustida boshqa ekran yo'q (`TickerMode`).
   bool _onStage = true;
@@ -503,6 +526,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   List<String> get _images => _isVideo ? const [] : _p.mediaUrls;
   bool get _isVideo => _p.isShowcaseVideoAd;
   bool get _hasMusic => (_p.music?.playUrl ?? '').isNotEmpty;
+  static bool get _android => defaultTargetPlatform == TargetPlatform.android;
 
   /// Sahifa ekranda: ochiq, tab ko'rinyapti, ustida boshqa (yopiq)
   /// ekran yo'q va ilova oldinda.
@@ -573,7 +597,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     _viewSession.dispose();
     _clock?.dispose();
     _music?.dispose();
-    _video?.dispose();
+    _ad.dispose();
     _carousel.dispose();
     // `ref.read` EMAS: `dispose()` da u istisno otadi.
     _owner.release(this);
@@ -636,80 +660,25 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   void _syncVideo() {
     if (!_isVideo) return;
     if (_active) {
-      _playVideo();
+      _ad.play();
     } else if (!widget.visible) {
-      _disposeVideo();
+      _ad.reset();
     } else {
-      _video?.pause();
+      _ad.pause();
     }
   }
 
-  Future<void> _playVideo() async {
-    var c = _video;
-    if (c == null) {
-      // Musiqa pleeri hali ochilmoqda — video undan KEYIN ochiladi
-      // (poster turadi). `mixWithOthers` pleer platformasida UMUMIY
-      // belgi va har `initialize()` uni `create` dan oldin qo'yadi: ikki
-      // pleer bir vaqtda ochilsa, musiqa videoning belgisi bilan
-      // yaratilib qolardi.
-      final music = _musicLoading;
-      if (music != null) {
-        if (_videoWaiting) return;
-        _videoWaiting = true;
-        await music.timeout(reelsInitTimeout, onTimeout: () {});
-        _videoWaiting = false;
-        if (!mounted || _video != null || !_active) return;
-      }
-      c = VideoPlayerController.networkUrl(
-        Uri.parse(_p.videoUrl),
-        // Musiqa bo'lsa video DOIM ovozsiz va Android'da audio fokusni
-        // OLMAYDI (`mixWithOthers: true`): aks holda ovozsiz video
-        // fokusni musiqadan tortib olardi va ExoPlayer musiqani
-        // to'xtatardi (TestFlight 331: "BOY777 da musiqa avto
-        // qo'yilmayapti"). iOS'da pleerlarning alohida fokusi yo'q —
-        // u yerda belgi butun sessiyani "aralashuvchi" qilardi, shuning
-        // uchun `false` qoladi; sessiyani musiqa o'zi oladi
-        // ([claimPlayback]).
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers:
-              _hasMusic && defaultTargetPlatform == TargetPlatform.android,
-        ),
-      );
-      _video = c;
-      _videoFailed = false;
-      try {
-        await c.initialize().timeout(reelsInitTimeout);
-        if (!mounted || _video != c) return;
-        await c.setLooping(true);
-        _videoReady = true;
-        setState(() {});
-      } catch (_) {
-        // Video ochilmadi — poster qoladi, sahifa ishlayveradi.
-        if (mounted && _video == c) setState(() => _videoFailed = true);
-        return;
-      }
-    }
-    if (!_videoReady || !mounted || _video != c || !_active) return;
-    // Musiqa bo'lsa — video ovozsiz; bo'lmasa o'z ovozi (🔇 bo'lmasa),
-    // shunda audio egasi video bo'ladi.
+  /// Video `play()` dan oldin: musiqa bo'lsa — ovozsiz; bo'lmasa o'z
+  /// ovozi (🔇 bo'lmasa), shunda audio egasi video bo'ladi.
+  Future<bool> _prepareVideo(VideoPlayerController c) async {
+    if (!mounted || !_active) return false;
     final ownSound = !_hasMusic && !ref.read(showcaseMutedProvider);
     if (ownSound) _owner.take(this, _pauseForOther);
     await c.setVolume(ownSound ? 1 : 0);
-    if (!mounted || _video != c || !_active) return;
+    if (!mounted || !_active) return false;
     // O'z ovozi bilan — iOS audio sessiyasi shu video uchun.
     if (ownSound) await claimPlayback();
-    if (!mounted || _video != c || !_active) return;
-    await c.play();
-  }
-
-  void _disposeVideo() {
-    final v = _video;
-    _video = null;
-    _videoReady = false;
-    if (v != null) {
-      v.pause().catchError((_) {});
-      v.dispose();
-    }
+    return mounted && _active;
   }
 
   void _armView() =>
@@ -726,7 +695,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   void _pauseForOther() {
     _music?.pause();
     // O'z ovozli video ham (boshqa manba ovozni oldi).
-    if (!_hasMusic) _video?.pause();
+    if (!_hasMusic && _isVideo) _ad.pause();
     if (mounted) setState(() {});
   }
 
@@ -742,17 +711,16 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
       );
       _music = c;
-      final init = c.initialize();
-      final loading = _musicLoading = init.catchError((_) {});
+      _musicOpening = true;
       try {
-        await init;
-        if (identical(_musicLoading, loading)) _musicLoading = null;
+        await c.initialize();
+        if (_music == c) _musicOpening = false;
         if (!mounted || _music != c) return;
         await c.setLooping(true);
         if (m.playFrom > Duration.zero) await c.seekTo(m.playFrom);
         _musicReady = true;
       } catch (_) {
-        if (identical(_musicLoading, loading)) _musicLoading = null;
+        if (_music == c) _musicOpening = false;
         // Musiqa ochilmadi (sekin tarmoq: "Read timed out") — sahifa hozircha
         // jim. Yiqilgan pleer QOLDIRILMAYDI: aks holda keyingi har urinish
         // (🔇 yoqish, toza rejim, YouTube'dan qaytish) shu o'lik pleerga
@@ -773,13 +741,17 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     await claimPlayback();
     if (!mounted || _music != c || !_audible) return;
     await c.play();
+    // iOS: sessiya qayta olinganda ovozsiz reklama videosi to'xtab
+    // qolishi mumkin (pleer plagini uzilishdan keyin o'zi davom
+    // ettirmaydi) — o'ynashi kerak bo'lsa, qaytadan.
+    if (mounted && _isVideo) _ad.resume();
   }
 
   void _disposeMusic() {
     final m = _music;
     _music = null;
     _musicReady = false;
-    _musicLoading = null;
+    _musicOpening = false;
     if (m != null) {
       m.pause().catchError((_) {});
       m.dispose();
@@ -999,8 +971,10 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             child: _AdVideo(
               key: const ValueKey('showcase-ad-video'),
               poster: p.posterUrl,
-              controller: _videoReady ? _video : null,
-              failed: _videoFailed,
+              controller: _ad.controller,
+              failed: _ad.failed && !_ad.loading,
+              loading: _active && _ad.loading,
+              active: _active,
             ),
           )
         else
@@ -1285,11 +1259,19 @@ class _AdVideo extends StatelessWidget {
     required this.poster,
     required this.controller,
     required this.failed,
+    required this.loading,
+    required this.active,
   });
 
   final String poster;
   final VideoPlayerController? controller;
   final bool failed;
+
+  /// Video hali ochilmoqda / qayta urinadi — poster ustida aylana.
+  final bool loading;
+
+  /// Sahifa ekranda va video o'ynashi kerak (pauzada aylana yo'q).
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -1325,6 +1307,11 @@ class _AdVideo extends StatelessWidget {
               color: Colors.white54,
             ),
           ),
+        AdVideoSpinner(
+          key: const ValueKey('showcase-ad-loading'),
+          loading: loading,
+          controller: active ? c : null,
+        ),
       ],
     );
   }

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,11 +13,11 @@ import '../../../l10n/gen/app_localizations.dart';
 import '../../../routing/routes.dart';
 import '../../../routing/shell.dart';
 import '../../profile/music_player.dart' show audioOwnerProvider;
+import '../../showcase/ad_video_loader.dart';
 import '../../showcase/showcase_screen.dart'
     show showcaseFocusProvider, showcasePlayable;
 import '../../social/engagement.dart' show likeKey;
 import '../../social/media_frame.dart' show mediaImage;
-import '../../social/reels_screen.dart' show reelsInitTimeout;
 import '../../social/visible_fraction.dart';
 
 /// ASOSIYDAGI KO'RGAZMA REKLAMASI (egasi tasdiqlagan, 2026-10).
@@ -113,9 +111,22 @@ class HomeShowcaseAdCard extends ConsumerStatefulWidget {
 class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
     with WidgetsBindingObserver {
   Post? _ad;
-  VideoPlayerController? _video;
-  bool _ready = false;
-  bool _failed = false;
+
+  /// OVOZSIZ — boshqa ilova (musiqa) to'xtatilmaydi. Yiqilsa yo'q
+  /// qilinib qayta ochiladi (avval bir marta yiqilsa, reklama
+  /// almashguncha faqat poster qolardi).
+  late final AdVideoLoader _video = AdVideoLoader(
+    url: () => _ad?.videoUrl ?? '',
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+    mixWithOthers: () => true,
+    beforePlay: (c) async {
+      // Bosh sahifada OVOZ HECH QACHON YO'Q.
+      await c.setVolume(0);
+      return mounted && _shouldPlay;
+    },
+  );
   double _fraction = 0;
   bool _foreground = true;
 
@@ -164,7 +175,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _disposeVideo();
+    _video.dispose();
     super.dispose();
   }
 
@@ -181,61 +192,18 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
   void _sync() {
     final ad = _ad;
     if (ad == null || ad.videoUrl.isEmpty || !_present) {
-      _disposeVideo();
+      _video.reset();
       return;
     }
     if (_shouldPlay) {
-      _play(ad);
+      _video.play();
     } else {
-      _video?.pause();
-    }
-  }
-
-  Future<void> _play(Post ad) async {
-    if (_failed) return;
-    var c = _video;
-    if (c == null) {
-      c = VideoPlayerController.networkUrl(
-        Uri.parse(ad.videoUrl),
-        // OVOZSIZ — boshqa ilova (musiqa) to'xtatilmaydi.
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-      );
-      _video = c;
-      try {
-        await c.initialize().timeout(reelsInitTimeout);
-        if (!mounted || _video != c) return;
-        await c.setLooping(true);
-        await c.setVolume(0);
-        _ready = true;
-        setState(() {});
-      } catch (_) {
-        // Video ochilmadi — poster qoladi, qayta urinilmaydi.
-        if (mounted && _video == c) {
-          _disposeVideo();
-          setState(() => _failed = true);
-        }
-        return;
-      }
-    }
-    if (!_ready || !mounted || _video != c || !_shouldPlay) return;
-    // Bosh sahifada OVOZ HECH QACHON YO'Q.
-    await c.setVolume(0);
-    if (!mounted || _video != c || !_shouldPlay) return;
-    await c.play();
-  }
-
-  void _disposeVideo() {
-    final v = _video;
-    _video = null;
-    _ready = false;
-    if (v != null) {
-      v.pause().catchError((_) {});
-      v.dispose();
+      _video.pause();
     }
   }
 
   void _open(Post ad) {
-    _disposeVideo();
+    _video.reset();
     // Tab almashganda boshqa ovoz to'xtaydi (pastki panel kabi).
     ref.read(audioOwnerProvider).stopAll();
     ref.read(showcaseFocusProvider.notifier).state = ad;
@@ -253,8 +221,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
     final ad = ref.watch(homeShowcaseAdProvider);
     ref.listen<int>(activeTabProvider, (_, __) => _later());
     if (ad == null || _ad == null || likeKey(ad) != likeKey(_ad!)) {
-      if (_ad != null || _video != null) _disposeVideo();
-      _failed = false;
+      _video.reset();
       _ad = ad;
       if (ad != null) _later();
     }
@@ -263,7 +230,8 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
     final l = L.of(context);
     final mq = MediaQuery.sizeOf(context);
     final h = (mq.height * .5).clamp(300.0, 480.0);
-    final c = _video;
+    final c = _video.controller;
+    final playing = _shouldPlay;
     final poster = ad.posterUrl;
 
     return Padding(
@@ -298,7 +266,7 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
                       const ColoredBox(color: Colors.black),
                       if (poster.isNotEmpty)
                         mediaImage(context, poster, fit: BoxFit.cover),
-                      if (_ready && c != null && c.value.isInitialized)
+                      if (c != null && c.value.isInitialized)
                         FittedBox(
                           fit: BoxFit.cover,
                           clipBehavior: Clip.hardEdge,
@@ -311,6 +279,11 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
                             ),
                           ),
                         ),
+                      AdVideoSpinner(
+                        key: const ValueKey('home-ad-loading'),
+                        loading: playing && _video.loading,
+                        controller: playing ? c : null,
+                      ),
                       // Pastda nozik gradient — sarlavha o'qilsin.
                       IgnorePointer(
                         child: DecoratedBox(

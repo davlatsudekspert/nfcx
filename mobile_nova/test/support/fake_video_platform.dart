@@ -28,6 +28,14 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
 
   /// Shu bo'lakni o'z ichiga olgan URL BIR MARTA yuklanmaydi (xato beradi).
   final failOnce = <String>{};
+
+  /// Shu bo'lakli URL BIR MARTA umuman javob bermaydi (`initialize()`
+  /// osilib qoladi — sekin/uzilgan tarmoq).
+  final hangOnce = <String>{};
+
+  /// Shu bo'lakli URL [initDelay] dan tashqari yana shuncha sekin
+  /// yuklanadi (masalan, faqat musiqa sekin).
+  final slow = <String, Duration>{};
   final positions = <int, Duration>{};
   final _events = <int, StreamController<VideoEvent>>{};
 
@@ -50,7 +58,16 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
     if (mixCalls.isNotEmpty) mixOf[id] = mixCalls.last;
     final c = StreamController<VideoEvent>();
     _events[id] = c;
-    Future<void>.delayed(initDelay, () {
+    final hang = hangOnce.where((f) => (uri ?? '').contains(f)).toList();
+    if (hang.isNotEmpty) {
+      hangOnce.remove(hang.first);
+      return id;
+    }
+    var extra = Duration.zero;
+    slow.forEach((f, d) {
+      if ((uri ?? '').contains(f) && d > extra) extra = d;
+    });
+    Future<void>.delayed(initDelay + extra, () {
       if (c.isClosed) return;
       // Bir martalik yuklash xatosi (sekin tarmoq) — URL bo'lagi bo'yicha.
       final fail = failOnce.where((f) => (uri ?? '').contains(f)).toList();
@@ -71,6 +88,16 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
 
   @override
   Stream<VideoEvent> videoEventsFor(int playerId) => _events[playerId]!.stream;
+
+  /// Ijroni TASHQARIDAN to'xtatadi (iOS: audio sessiya uzilishi — AVPlayer
+  /// o'zi to'xtaydi va plagin `isPlaying: false` yuboradi).
+  void externalPause(int playerId) {
+    playing.remove(playerId);
+    _events[playerId]?.add(VideoEvent(
+      eventType: VideoEventType.isPlayingStateUpdate,
+      isPlaying: false,
+    ));
+  }
 
   @override
   Future<void> dispose(int playerId) async {
