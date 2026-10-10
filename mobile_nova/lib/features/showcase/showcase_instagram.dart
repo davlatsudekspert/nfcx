@@ -268,6 +268,7 @@ class _InstagramEmbed extends StatefulWidget {
 
 class _InstagramEmbedState extends State<_InstagramEmbed> {
   late final WebViewController _web;
+  final _taps = EmbedTapClock();
 
   @override
   void initState() {
@@ -310,8 +311,14 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
               instagramEmbedStaysInside(widget.embed, r.url)) {
             return NavigationDecision.navigate;
           }
-          // "View on Instagram" va boshqa havolalar — tashqarida.
-          openLink(r.url);
+          // "View on Instagram" va boshqa havolalar — tashqarida, lekin
+          // faqat odam bosganda. Sahifaning o'z yo'naltirishi (kirish
+          // devori va h.k.) ilovani tark ettirmaydi — zaxira panel.
+          if (_taps.recent) {
+            openLink(r.url);
+          } else {
+            widget.onState('error:redirect');
+          }
           return NavigationDecision.prevent;
         },
       ))
@@ -327,5 +334,6 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
   }
 
   @override
-  Widget build(BuildContext context) => WebViewWidget(controller: _web);
+  Widget build(BuildContext context) =>
+      _taps.wrap(WebViewWidget(controller: _web));
 }

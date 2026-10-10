@@ -390,6 +390,7 @@ function onYouTubeIframeAPIReady(){
 }
 
 class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
+  final _taps = EmbedTapClock();
   late final WebViewController _web;
 
   @override
@@ -427,8 +428,9 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
             return NavigationDecision.navigate;
           }
           // Pleerdagi "YouTube'da ko'rish", kanal va boshqa havolalar —
-          // ilovaning o'zida emas, tashqarida.
-          openLink(r.url);
+          // ilovaning o'zida emas, tashqarida; faqat odam bosganda
+          // (sahifaning o'z yo'naltirishi ilovani tark ettirmaydi).
+          if (_taps.recent) openLink(r.url);
           return NavigationDecision.prevent;
         },
       ))
@@ -451,5 +453,6 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
   }
 
   @override
-  Widget build(BuildContext context) => WebViewWidget(controller: _web);
+  Widget build(BuildContext context) =>
+      _taps.wrap(WebViewWidget(controller: _web));
 }

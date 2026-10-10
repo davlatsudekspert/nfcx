@@ -156,3 +156,28 @@ class _ShowcaseFullscreenState extends State<ShowcaseFullscreen> {
     );
   }
 }
+
+/// Embed (YouTube/Instagram) ichidagi havola faqat odam O'ZI bosganda
+/// tashqarida ochiladi. Sahifaning o'zi yo'naltirsa (masalan Instagram
+/// kirish sahifasiga) ilova Safari/brauzerga "otilib" chiqmaydi —
+/// zaxira panel ko'rsatiladi.
+class EmbedTapClock {
+  /// Bosishdan keyin shu vaqt ichidagi navigatsiya — odamniki.
+  static const window = Duration(seconds: 3);
+
+  DateTime? _at;
+
+  void touched() => _at = DateTime.now();
+
+  bool get recent {
+    final at = _at;
+    return at != null && DateTime.now().difference(at) <= window;
+  }
+
+  /// [child] ga tegilganini yozadi (bosishni o'zi ushlamaydi).
+  Widget wrap(Widget child) => Listener(
+    behavior: HitTestBehavior.translucent,
+    onPointerDown: (_) => touched(),
+    child: child,
+  );
+}
