@@ -99,7 +99,7 @@
 // (account-purge.js) tozalanadi.
 
 import { seedShowcaseSamples } from './showcase-samples.js';
-import { seedShowcaseAds, moveShowcasePromoVideos, enabledSlots, slotMatchesRow } from './showcase-ads.js';
+import { seedShowcaseAds, moveShowcasePromoVideos, moveShowcasePromoVideos720, enabledSlots, slotMatchesRow } from './showcase-ads.js';
 import { blockedByUser } from './moderation.js';
 import { activeTargets } from './featured.js';
 import { ensureExtras } from './music.js';
@@ -580,6 +580,7 @@ export async function handle(request, env, url, H) {
     await seedShowcaseAds(env).catch((e) => console.error('showcase_ads', String(e?.message || e).slice(0, 160)));
     // Promo mp4 — iPhone uchun Range qo'llaydigan /uploads ga (bir marta).
     await moveShowcasePromoVideos(env).catch((e) => console.error('showcase_promo_move', String(e?.message || e).slice(0, 160)));
+    await moveShowcasePromoVideos720(env).catch((e) => console.error('showcase_promo_720', String(e?.message || e).slice(0, 160)));
     return listReels(request, env, url, H, 'showcase');
   }
   // Asosiy ekrandagi reklama kartochkasi — Ko'rgazma joylari (1–4), xuddi
@@ -588,6 +589,7 @@ export async function handle(request, env, url, H) {
     if (request.method !== 'GET') return H.json({ error: 'method_not_allowed' }, 405);
     await seedShowcaseAds(env).catch((e) => console.error('showcase_ads', String(e?.message || e).slice(0, 160)));
     await moveShowcasePromoVideos(env).catch((e) => console.error('showcase_promo_move', String(e?.message || e).slice(0, 160)));
+    await moveShowcasePromoVideos720(env).catch((e) => console.error('showcase_promo_720', String(e?.message || e).slice(0, 160)));
     const res = await listReels(request, env, url, H, 'showcase', { adsOnly: true });
     // Kursor kerak emas — bir martalik ro'yxat; qisqa keshsiz.
     return res;

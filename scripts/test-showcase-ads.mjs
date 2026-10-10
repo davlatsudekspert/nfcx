@@ -8,13 +8,15 @@
 //   * boshlang'ich promo reklama (BOY777, LOL707) — bir marta, dublikatsiz,
 //     o'chirilsa qaytmaydi; post sahifasida og:video /promo/...;
 //   * Ko'rgazma namunalari 2-to'plami (`showcase_samples_v2`);
-//   * promo mp4 assets'dan /uploads ga (iPhone uchun Range/206) — bir marta.
+//   * promo mp4 assets'dan /uploads ga (iPhone uchun Range/206) — bir marta;
+//   * 720p yengil nusxa (`showcase_ads_v3_720p`) — v2 dan keyin, yangi kalit, bir marta.
 //   node scripts/test-showcase-ads.mjs
 import { setupSocial, cookie, makeChecker } from './lib/social-fixture.mjs';
 import { sha256Hex } from './lib/d1-harness.mjs';
 import {
   seedShowcaseAds, __resetShowcaseAdsCaches, SHOWCASE_ADS_MIGRATION, ADS_COMPANY, PROMO_ADS,
   moveShowcasePromoVideos, PROMO_VIDEO_MIGRATION, promoUploadName,
+  moveShowcasePromoVideos720, PROMO_720_MIGRATION, promo720Name, promo720AssetUrl,
 } from '../hosting/api/showcase-ads.js';
 import { seedShowcaseSamples, SAMPLES, SAMPLES_V2, SHOWCASE_SAMPLES_V2_MIGRATION } from '../hosting/api/showcase-samples.js';
 import { cleanShowcaseLink } from '../hosting/api/showcase.js';
@@ -385,7 +387,7 @@ check('9) html fallback rejected', [r.applied, r.reason], [false, 'asset_200']);
 const fakeMp4 = (tag) => { const b = new Uint8Array(4096); b.set([0, 0, 0, 24, 102, 116, 121, 112]); b[100] = tag; return b; };
 const assetHits = [];
 env.ASSETS = { fetch: async (req) => {
-  const u = new URL(req.url).pathname; assetHits.push(u);
+  const u = new URL(req.url).pathname; if (!u.includes('-720')) assetHits.push(u);
   return new Response(fakeMp4(u.includes('boy') ? 1 : 2), { status: 200, headers: { 'content-type': 'video/mp4' } });
 } };
 r = await moveShowcasePromoVideos(env, { now: new Date(Date.now() + 22 * 60_000) });
@@ -412,6 +414,100 @@ sqlite.prepare(`DELETE FROM app_migrations WHERE name = ?`).run(PROMO_VIDEO_MIGR
 __resetShowcaseAdsCaches();
 r = await moveShowcasePromoVideos(env);
 check('9) re-run: no asset reads, no posts left on /promo', [r.applied, assetHits.length, r.moved?.map((m) => m.posts)], [true, 2, [0, 0]]);
+env.ASSETS = realAssets;
+
+// ═══ 10. Promo mp4 720p yengil nusxa (`showcase_ads_v3_720p`) ═══
+check('10) names', PROMO_ADS.map((a) => [promo720AssetUrl(a.videoUrl), promo720Name(a.videoUrl)]),
+  [['/promo/nfcstore-boy777-720.mp4', 'promo_boy777_720.mp4'], ['/promo/nfcstore-lol707-720.mp4', 'promo_lol707_720.mp4']]);
+const m720 = () => sqlite.prepare(`SELECT COUNT(*) AS n FROM app_migrations WHERE name = ?`).get(PROMO_720_MIGRATION).n;
+const v2Urls = ['/uploads/promo_boy777.mp4', '/uploads/promo_lol707.mp4'];
+const v3Urls = ['/uploads/promo_boy777_720.mp4', '/uploads/promo_lol707_720.mp4'];
+check('10) before: posts on v2 urls', promoPosts().slice().sort(), v2Urls);
+const sizeMp4 = (n, tag) => { const b = new Uint8Array(n); b.set([0, 0, 0, 24, 102, 116, 121, 112]); b[100] = tag; return b; };
+const T0 = Date.now() + 60 * 60_000;
+const at = (min) => ({ now: new Date(T0 + min * 60_000) });
+// v2 belgisi yo'q bo'lsa — v3 kutadi.
+const v2Row = sqlite.prepare(`SELECT name, applied_at, detail FROM app_migrations WHERE name = ?`).get(PROMO_VIDEO_MIGRATION);
+sqlite.prepare(`DELETE FROM app_migrations WHERE name = ?`).run(PROMO_VIDEO_MIGRATION);
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideos720(env, at(0));
+check('10) no v2 marker -> waits', [r.applied, r.reason, m720()], [false, 'no_v2', 0]);
+sqlite.prepare(`INSERT INTO app_migrations (name, applied_at, detail) VALUES (?,?,?)`).run(v2Row.name, v2Row.applied_at, v2Row.detail);
+// Assets 404.
+const hits720 = [];
+let serve = () => new Response('nope', { status: 404 });
+env.ASSETS = { fetch: async (req) => { const u = new URL(req.url).pathname; hits720.push(u); return serve(u); } };
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideos720(env, at(0));
+check('10) asset 404 -> retry later', [r.applied, r.reason, m720(), promoPosts().slice().sort()], [false, 'asset_404', 0, v2Urls]);
+r = await moveShowcasePromoVideos720(env, at(1));
+check('10) within retry window', [r.reason, hits720.length], ['retry_later', 1]);
+// HTML (SPA fallback) mp4 emas.
+serve = () => new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+r = await moveShowcasePromoVideos720(env, at(11));
+check('10) html fallback rejected', [r.applied, r.reason, m720()], [false, 'asset_200', 0]);
+// Juda kichik / aynan 100 KB — rad.
+serve = () => new Response(sizeMp4(50 * 1024, 1), { status: 200, headers: { 'content-type': 'video/mp4' } });
+r = await moveShowcasePromoVideos720(env, at(22));
+check('10) tiny asset rejected', [r.applied, r.reason, m720()], [false, 'asset_small', 0]);
+serve = () => new Response(sizeMp4(100 * 1024, 1), { status: 200, headers: { 'content-type': 'video/mp4' } });
+r = await moveShowcasePromoVideos720(env, at(33));
+check('10) exactly 100 KB rejected', [r.applied, r.reason, m720()], [false, 'asset_small', 0]);
+check('10) nothing written on failures', [await env.UPLOADS.head('uploads/promo_boy777_720.mp4'), await env.UPLOADS.head('uploads/promo_lol707_720.mp4'), promoPosts().slice().sort()], [null, null, v2Urls]);
+// Ikkinchi asset buzuq bo'lsa ham belgi yo'q (birinchisi omborga tushishi mumkin, postlar emas).
+serve = (u) => (u.includes('lol')
+  ? new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } })
+  : new Response(sizeMp4(150 * 1024, 1), { status: 200, headers: { 'content-type': 'video/mp4' } }));
+r = await moveShowcasePromoVideos720(env, at(44));
+check('10) 2nd asset bad -> no marker, posts untouched', [r.applied, r.reason, m720(), promoPosts().slice().sort()], [false, 'asset_200', 0, v2Urls]);
+// Yaxshi assetlar.
+hits720.length = 0;
+serve = (u) => new Response(sizeMp4(150 * 1024, u.includes('boy') ? 1 : 2), { status: 200, headers: { 'content-type': 'video/mp4' } });
+r = await moveShowcasePromoVideos720(env, at(55));
+check('10) moved', [r.applied, r.moved?.map((m) => [m.from, m.to, m.posts])], [true, [
+  ['/uploads/promo_boy777.mp4', '/uploads/promo_boy777_720.mp4', 1], ['/uploads/promo_lol707.mp4', '/uploads/promo_lol707_720.mp4', 1]]]);
+check('10) marker + posts', [m720(), promoPosts().slice().sort()], [1, v3Urls]);
+check('10) lol asset read; boy already in store (from failed run) not re-read', hits720, ['/promo/nfcstore-lol707-720.mp4']);
+check('10) new keys stored', [(await env.UPLOADS.head('uploads/promo_boy777_720.mp4'))?.size, (await env.UPLOADS.head('uploads/promo_lol707_720.mp4'))?.size], [150 * 1024, 150 * 1024]);
+check('10) old keys kept untouched', [(await env.UPLOADS.head('uploads/promo_boy777.mp4'))?.size, (await env.UPLOADS.head('uploads/promo_lol707.mp4'))?.size], [4096, 4096]);
+res = await call('/uploads/promo_boy777_720.mp4', { headers: { Range: 'bytes=0-7' } });
+check('10) new key Range -> 206', [res.status, res.headers.get('content-range'), res.headers.get('content-type')], [206, `bytes 0-7/${150 * 1024}`, 'video/mp4']);
+res = await call('/uploads/promo_boy777.mp4', { headers: { Range: 'bytes=0-7' } });
+check('10) old key still 206', [res.status, res.headers.get('content-range')], [206, 'bytes 0-7/4096']);
+items = flat(await feedAll(10));
+const adVids = items.filter((it) => it.ad && it.videoUrl);
+checkTrue('10) feed ad videos are the 720p urls', adVids.length > 0 && adVids.every((it) => v3Urls.includes(it.videoUrl)));
+checkTrue('10) poster stays /promo jpg', adVids.every((it) => it.imageUrl.startsWith('/promo/') && it.imageUrl.endsWith('.jpg')));
+items = flat(await feedAll(10, undefined, '/api/showcase/ads?video=1'));
+checkTrue('10) /api/showcase/ads urls', items.filter((it) => it.ad && it.videoUrl).every((it) => v3Urls.includes(it.videoUrl)));
+// Bir marta.
+const hitsDone = hits720.length;
+r = await moveShowcasePromoVideos720(env, at(66));
+check('10) cached', [r.applied, r.reason], [false, 'cached']);
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideos720(env, at(66));
+check('10) marker -> once, no asset reads', [r.applied, hits720.length], [false, hitsDone]);
+// Marker o'chirilsa qayta ishga tushadi, lekin hech narsa buzmaydi (idempotent).
+sqlite.prepare(`DELETE FROM app_migrations WHERE name = ?`).run(PROMO_720_MIGRATION);
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideos720(env, at(77));
+check('10) re-run idempotent: no reads, 0 posts', [r.applied, hits720.length, r.moved?.map((m) => m.posts), promoPosts().slice().sort()], [true, hitsDone, [0, 0], v3Urls]);
+// Admin video_url'ni o'zgartirgan post tegilmaydi; boshqa kompaniya ham.
+sqlite.prepare(`DELETE FROM app_migrations WHERE name = ?`).run(PROMO_720_MIGRATION);
+const boyPost = sqlite.prepare(`SELECT id FROM company_posts WHERE company_id = ? AND video_url = ?`).get(ADS_COMPANY, '/uploads/promo_boy777_720.mp4').id;
+const lolPost = sqlite.prepare(`SELECT id FROM company_posts WHERE company_id = ? AND video_url = ?`).get(ADS_COMPANY, '/uploads/promo_lol707_720.mp4').id;
+sqlite.prepare(`UPDATE company_posts SET video_url = ? WHERE id = ?`).run('/uploads/admin_custom.mp4', boyPost);
+sqlite.prepare(`UPDATE company_posts SET video_url = ? WHERE id = ?`).run('/uploads/promo_lol707.mp4', lolPost);
+const otherId = Number(sqlite.prepare(`INSERT INTO company_posts (company_id, image_url, video_url, caption, created_at) VALUES (?,?,?,?,?) RETURNING id`)
+  .get('OTHERCO', null, '/uploads/promo_boy777.mp4', 'other', new Date().toISOString()).id);
+__resetShowcaseAdsCaches();
+r = await moveShowcasePromoVideos720(env, at(88));
+check('10) admin-changed untouched, only exact v2 url moved', [r.applied, r.moved?.map((m) => m.posts)], [true, [0, 1]]);
+check('10) urls after', [
+  sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(boyPost).video_url,
+  sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(lolPost).video_url,
+  sqlite.prepare(`SELECT video_url FROM company_posts WHERE id = ?`).get(otherId).video_url,
+], ['/uploads/admin_custom.mp4', '/uploads/promo_lol707_720.mp4', '/uploads/promo_boy777.mp4']);
 env.ASSETS = realAssets;
 
 done();
