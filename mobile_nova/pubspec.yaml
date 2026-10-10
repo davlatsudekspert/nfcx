@@ -41,6 +41,9 @@ dependencies:
   url_launcher: ^6.3.1
   image_picker: ^1.1.2
   video_player: ^2.9.2
+  # Video diagnostikasi (lib/core/media/video_diag.dart) + Reels testlari
+  # (soxta platforma). `video_player` ning o'zi shu paketga tayanadi.
+  video_player_platform_interface: ^6.2.0
   nfc_manager: ^3.5.0
   app_links: ^6.3.2
   file_picker: ^11.0.3
@@ -65,11 +68,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
-  # Reels testlari: soxta video platformasi (haqiqiy dekodersiz
-  # oldindan yuklash / yo'q qilish / tabdan chiqishni sinash uchun).
-  # `video_player` ning o'zi shu paketga tayanadi — yangi kod emas.
-  video_player_platform_interface: ^6.2.0
 
   # HAQIQIY HISOB E2E — emulyatorda ishlaydi, haqiqiy backendga
   # ulanadi. Oddiy `flutter test` bu papkani ko'rmaydi, shuning uchun

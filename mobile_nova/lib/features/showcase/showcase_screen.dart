@@ -1195,7 +1195,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             ),
           ),
         // Pastdagi matn o'qilishi uchun gradient. Video reklamada —
-        // yengilroq va pastroqdan: videoning o'z yozuvlari o'qilsin.
+        // KUCHLIROQ va balandroqdan: pastki matn (muallif, "Reklama",
+        // sarlavha, Batafsil, CTA) videoning o'z "NFCSTORE" yozuvi va
+        // pushti (LOL707) kadr ustida o'qilmasdi (egasi, iPhone).
         ReelsChrome(
           key: const ValueKey('showcase-gradient'),
           hidden: clean,
@@ -1203,12 +1205,19 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: _isVideo ? const Alignment(0, .4) : Alignment.center,
+                  begin: _isVideo ? const Alignment(0, .05) : Alignment.center,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: _isVideo ? .55 : .75),
-                  ],
+                  colors: _isVideo
+                      ? [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: .35),
+                          Colors.black.withValues(alpha: .82),
+                        ]
+                      : [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: .75),
+                        ],
+                  stops: _isVideo ? const [0, .55, 1] : null,
                 ),
               ),
             ),

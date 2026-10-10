@@ -753,9 +753,15 @@ void main() {
           .decoration as BoxDecoration;
       final g = grad.gradient! as LinearGradient;
       expect(g.colors.first.a, 0, reason: 'tepasi shaffof');
-      expect(g.colors.last.a, lessThanOrEqualTo(.6));
-      expect((g.begin as Alignment).y, greaterThan(0),
-          reason: 'faqat pastki qismda');
+      // Video reklamada gradient KUCHLI va balandroqdan boshlanadi (pastki
+      // matn videoning "NFCSTORE" yozuvi/pushti kadr ustida o'qilsin):
+      // begin y=.05, [shaffof, qora .35 @.55, qora .82].
+      expect(g.colors, hasLength(3));
+      expect(g.colors.last.a, closeTo(.82, .01));
+      expect(g.colors[1].a, closeTo(.35, .01));
+      expect(g.stops, [0, .55, 1]);
+      expect((g.begin as Alignment).y, closeTo(.05, 1e-9),
+          reason: 'ekran o\'rtasidan pastroqda boshlanadi, tepasi toza');
       // MINIMAL: aloqa tugmalari sahifada yo'q — varaqda.
       expect(find.byKey(const ValueKey('showcase-contact')), findsNothing);
       expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);

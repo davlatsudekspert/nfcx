@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'app/providers.dart';
+import 'core/media/video_diag.dart';
 import 'core/storage/secure_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Video diagnostikasi (uzun bosish bilan ochiladi); ilovaga ta'sir qilmaydi.
+  installVideoDiag();
 
   // Saqlangan mavzu va til BIRINCHI kadrdan oldin o'qiladi: aks holda
   // ilova bir lahza standart mavzuda chaqnab, keyin almashardi.

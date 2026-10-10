@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/media/audio_session.dart';
+import '../../core/media/video_diag.dart';
 import '../../data/models/models.dart' show MusicTrack;
 import '../../design/theme/typography.dart';
 import '../../design/tokens/shapes.dart';
@@ -206,6 +207,14 @@ class _AdFullscreenPlayerState extends ConsumerState<AdFullscreenPlayer> {
         body: Stack(
           fit: StackFit.expand,
           children: [
+            // Uzun bosish — video diagnostikasi (egasi skrinshot qiladi).
+            Positioned.fill(
+              child: GestureDetector(
+                key: const ValueKey('ad-fullscreen-diag'),
+                behavior: HitTestBehavior.opaque,
+                onLongPress: () => showVideoDiag(context),
+              ),
+            ),
             if (ready)
               Center(
                 child: FittedBox(

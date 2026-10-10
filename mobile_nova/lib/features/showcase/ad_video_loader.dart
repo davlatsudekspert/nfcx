@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/media/video_diag.dart';
 import '../social/reels_screen.dart' show reelsInitTimeout;
 
 /// REKLAMA VIDEOSI PLEERI — Ko'rgazmadagi video reklama sahifasi va
@@ -405,12 +406,15 @@ class _PosterUntilPlayingState extends State<PosterUntilPlaying> {
 }
 
 /// Poster ustidagi aylana.
+///
+/// Uzun bosish — video diagnostikasi ([showVideoDiag]); oddiy bosish
+/// pastdagi vidjetlarga o'tadi (translucent, ~64x64 maydon).
 class VideoLoadingRing extends StatelessWidget {
   const VideoLoadingRing({super.key});
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: Center(
+  Widget build(BuildContext context) => Center(
+    child: VideoDiagLongPress(
       child: Container(
         width: 44,
         height: 44,
