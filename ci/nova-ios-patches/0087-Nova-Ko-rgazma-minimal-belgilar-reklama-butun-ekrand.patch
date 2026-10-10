@@ -1,0 +1,2401 @@
+From 2abc835bf41235817c569969f5ad8cba39909561 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 11:58:55 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20minimal=20belgi?=
+ =?UTF-8?q?lar,=20reklama=20butun=20ekranda=20(ovozli),=20video=20qotib=20?=
+ =?UTF-8?q?qolishi=20tuzatildi?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Ko'rgazma sahifasi: muallif, sarlavha (2 qator), BITTA tugma (tovar > YouTube > Instagram > havola). Izoh, musiqa, aloqa, narx va qo'shimcha havolalar «Batafsil» varag'ida.
+- Reklama videosini bosish — butun ekranli pleer (× , 🔊/🔇, yagona tugma); reklamada audio yo'q, shuning uchun postning musiqasi o'ynaydi.
+- Lenta posti (LOL707): kutubxona musiqasi 🔊 bilan o'ynaydi, poster pozitsiya > 0 gacha, aylana cheksiz emas, qotgan pleer qayta ochiladi.
+- Asosiy reklama kartasi va Ko'rgazma reklamasi: poster ilk kadr yurguncha turadi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../home/widgets/showcase_ad_card.dart        |  11 +-
+ .../lib/features/showcase/ad_fullscreen.dart  | 376 ++++++++++++++++
+ .../features/showcase/ad_video_loader.dart    | 151 ++++++-
+ .../features/showcase/showcase_screen.dart    | 410 +++++++++++++-----
+ .../lib/features/social/feed_card.dart        |   2 +
+ .../lib/features/social/inline_video.dart     | 184 +++++++-
+ .../lib/features/social/media_frame.dart      |   9 +
+ .../lib/features/social/post_screens.dart     |   2 +
+ mobile_nova/lib/l10n/arb/app_en.arb           |   3 +
+ mobile_nova/lib/l10n/arb/app_ru.arb           |   3 +
+ mobile_nova/lib/l10n/arb/app_uz.arb           |   3 +
+ .../lib/l10n/gen/app_localizations.dart       |  18 +
+ .../lib/l10n/gen/app_localizations_en.dart    |   9 +
+ .../lib/l10n/gen/app_localizations_ru.dart    |   9 +
+ .../lib/l10n/gen/app_localizations_uz.dart    |   9 +
+ .../test/showcase_minimal_ad_test.dart        | 389 +++++++++++++++++
+ mobile_nova/test/showcase_screen_test.dart    | 125 +++---
+ .../test/support/fake_video_platform.dart     |  19 +-
+ 18 files changed, 1555 insertions(+), 177 deletions(-)
+ create mode 100644 mobile_nova/lib/features/showcase/ad_fullscreen.dart
+ create mode 100644 mobile_nova/test/showcase_minimal_ad_test.dart
+
+diff --git a/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+index a1b1dc2..a54aedc 100644
+--- a/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
++++ b/mobile_nova/lib/features/home/widgets/showcase_ad_card.dart
+@@ -264,8 +264,6 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+                     fit: StackFit.expand,
+                     children: [
+                       const ColoredBox(color: Colors.black),
+-                      if (poster.isNotEmpty)
+-                        mediaImage(context, poster, fit: BoxFit.cover),
+                       if (c != null && c.value.isInitialized)
+                         FittedBox(
+                           fit: BoxFit.cover,
+@@ -279,6 +277,15 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
+                             ),
+                           ),
+                         ),
++                      // Poster pleer ilk kadrni chizguncha (pozitsiya > 0)
++                      // ko'rinadi: ilk kadr bo'sh gradient bo'lishi mumkin.
++                      if (poster.isNotEmpty)
++                        PosterUntilPlaying(
++                          key: const ValueKey('home-ad-poster'),
++                          controller: c,
++                          child: mediaImage(context, poster,
++                              fit: BoxFit.cover),
++                        ),
+                       AdVideoSpinner(
+                         key: const ValueKey('home-ad-loading'),
+                         loading: playing && _video.loading,
+diff --git a/mobile_nova/lib/features/showcase/ad_fullscreen.dart b/mobile_nova/lib/features/showcase/ad_fullscreen.dart
+new file mode 100644
+index 0000000..7836869
+--- /dev/null
++++ b/mobile_nova/lib/features/showcase/ad_fullscreen.dart
+@@ -0,0 +1,376 @@
++import 'dart:async';
++
++import 'package:flutter/foundation.dart' show defaultTargetPlatform;
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:video_player/video_player.dart';
++
++import '../../core/media/audio_session.dart';
++import '../../data/models/models.dart' show MusicTrack;
++import '../../design/theme/typography.dart';
++import '../../design/tokens/shapes.dart';
++import '../../design/widgets/id_plate.dart';
++import '../../l10n/gen/app_localizations.dart';
++import '../profile/music_player.dart';
++import '../social/fullscreen_video.dart' show immersiveVideoFit;
++import '../social/media_frame.dart' show mediaImage;
++import 'ad_video_loader.dart';
++
++/// REKLAMA VIDEOSI — BUTUN EKRAN, OVOZ BILAN (egasi, 2026-10-10:
++/// "to'liqroq chiqishi kerak, bosganda ekranga reklamani ustiga ovozli
++/// bo'lib").
++///
++/// Ko'rgazmadagi video reklama sahifasida mediani bosish shu marshrutni
++/// ochadi: qora fon, video ekranni to'ldiradi (tik 9:16 — `cover`,
++/// yotiq — butun), ustida FAQAT kichik "×" (chap tepada), 🔊/🔇 (o'ng
++/// tepada) va pastda BITTA tugma. Reklama roliklarida audio yo'q, shuning
++/// uchun postning kutubxona MUSIQASI o'ynaydi (sahifadagi joyidan davom
++/// etadi); musiqa bo'lmasa — videoning o'z ovozi.
++///
++/// Sahifa ochilganda o'zining video/musiqa pleerlarini pauzaga qo'yadi
++/// (`_withSheet`), bu yerda esa o'z pleerlari quriladi: bitta kontrollerni
++/// ikki joyda chizish iOS'da ishonchsiz. Yopilganda sahifa avvalgidek
++/// davom etadi.
++///
++/// Natija: `true` — pastdagi tugma bosildi (sahifa yopilgach amalni
++/// bajaradi), aks holda `null`.
++Future<bool?> openAdFullscreenPlayer(
++  BuildContext context, {
++  required String videoUrl,
++  String poster = '',
++  MusicTrack? music,
++  Duration? musicAt,
++  String? ctaLabel,
++  IconData? ctaIcon,
++}) {
++  return Navigator.of(context, rootNavigator: true).push<bool>(
++    PageRouteBuilder<bool>(
++      opaque: true,
++      transitionDuration: const Duration(milliseconds: 200),
++      reverseTransitionDuration: const Duration(milliseconds: 160),
++      pageBuilder: (_, __, ___) => AdFullscreenPlayer(
++        videoUrl: videoUrl,
++        poster: poster,
++        music: music,
++        musicAt: musicAt,
++        ctaLabel: ctaLabel,
++        ctaIcon: ctaIcon,
++      ),
++      transitionsBuilder: (_, a, __, child) =>
++          FadeTransition(opacity: a, child: child),
++    ),
++  );
++}
++
++class AdFullscreenPlayer extends ConsumerStatefulWidget {
++  const AdFullscreenPlayer({
++    super.key,
++    required this.videoUrl,
++    this.poster = '',
++    this.music,
++    this.musicAt,
++    this.ctaLabel,
++    this.ctaIcon,
++  });
++
++  final String videoUrl;
++  final String poster;
++  final MusicTrack? music;
++
++  /// Sahifadagi musiqa pozitsiyasi — shu joydan davom etadi.
++  final Duration? musicAt;
++  /// Pastdagi YAGONA tugma (yo'q bo'lsa — chizilmaydi).
++  final String? ctaLabel;
++  final IconData? ctaIcon;
++
++  @override
++  ConsumerState<AdFullscreenPlayer> createState() => _AdFullscreenPlayerState();
++}
++
++class _AdFullscreenPlayerState extends ConsumerState<AdFullscreenPlayer> {
++  VideoPlayerController? _v;
++  VideoPlayerController? _m;
++  bool _muted = false;
++  bool _gone = false;
++  late final AudioOwner _owner;
++
++  bool get _hasMusic => (widget.music?.playUrl ?? '').isNotEmpty;
++
++  @override
++  void initState() {
++    super.initState();
++    _owner = ref.read(audioOwnerProvider);
++    _start();
++  }
++
++  Future<void> _start() async {
++    // Boshqa manba (sahifa musiqasi) to'xtaydi; egalik shu sahifada.
++    _owner.take(this, _pauseAll);
++    unawaited(_startVideo());
++    if (_hasMusic) unawaited(_startMusic());
++  }
++
++  Future<void> _startVideo() async {
++    final c = VideoPlayerController.networkUrl(
++      Uri.parse(widget.videoUrl),
++      // Musiqa bor: video fokusni olmaydi (Android'da musiqani to'xtatmasin).
++      videoPlayerOptions: VideoPlayerOptions(
++        mixWithOthers:
++            _hasMusic && defaultTargetPlatform == TargetPlatform.android,
++      ),
++    );
++    _v = c;
++    try {
++      await c.initialize().timeout(const Duration(seconds: 20));
++      if (_gone || _v != c) return;
++      await c.setLooping(true);
++      // Musiqa bor — video ovozsiz; yo'q — o'z ovozi (audio izi bo'lsa).
++      await c.setVolume(_hasMusic || _muted ? 0 : 1);
++      if (_gone || _v != c) return;
++      if (!_hasMusic) await claimPlayback();
++      await c.play();
++    } catch (_) {
++      // Ochilmadi — poster qoladi (sahifa o'zi yopiladi).
++    }
++    if (mounted) setState(() {});
++  }
++
++  Future<void> _startMusic() async {
++    final track = widget.music!;
++    final m = VideoPlayerController.networkUrl(
++      Uri.parse(track.playUrl),
++      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
++    );
++    _m = m;
++    try {
++      await m.initialize().timeout(const Duration(seconds: 20));
++      if (_gone || _m != m) return;
++      await m.setLooping(true);
++      final at = widget.musicAt ?? track.playFrom;
++      if (at > Duration.zero) await m.seekTo(at);
++      await m.setVolume(_muted ? 0 : 1);
++      if (_gone || _m != m) return;
++      await claimPlayback();
++      if (_gone || _m != m) return;
++      await m.play();
++    } catch (_) {
++      // Musiqa ochilmadi — video jim o'ynayveradi.
++    }
++    if (mounted) setState(() {});
++  }
++
++  /// Boshqa manba ovozni oldi.
++  void _pauseAll() {
++    _m?.pause();
++    _v?.pause();
++  }
++
++  void _toggleMute() {
++    setState(() => _muted = !_muted);
++    final vol = _muted ? 0.0 : 1.0;
++    if (_hasMusic) {
++      _m?.setVolume(vol);
++    } else {
++      _v?.setVolume(vol);
++    }
++  }
++
++  @override
++  void dispose() {
++    _gone = true;
++    final v = _v;
++    final m = _m;
++    _v = null;
++    _m = null;
++    for (final c in [m, v]) {
++      c?.setVolume(0);
++      c?.pause().catchError((_) {});
++      c?.dispose();
++    }
++    _owner.release(this);
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final l = L.of(context);
++    final c = _v;
++    final ready = c != null && c.value.isInitialized;
++    final size = MediaQuery.sizeOf(context);
++    return AnnotatedRegion<SystemUiOverlayStyle>(
++      value: SystemUiOverlayStyle.light,
++      child: Scaffold(
++        key: const ValueKey('ad-fullscreen'),
++        backgroundColor: Colors.black,
++        body: Stack(
++          fit: StackFit.expand,
++          children: [
++            if (ready)
++              Center(
++                child: FittedBox(
++                  fit: immersiveVideoFit(c.value.size, size),
++                  clipBehavior: Clip.hardEdge,
++                  child: SizedBox(
++                    width: c.value.size.width,
++                    height: c.value.size.height,
++                    child: VideoPlayer(
++                      c,
++                      key: const ValueKey('ad-fullscreen-player'),
++                    ),
++                  ),
++                ),
++              ),
++            // Poster ilk kadr chizilguncha (pozitsiya > 0).
++            if (widget.poster.isNotEmpty)
++              PosterUntilPlaying(
++                key: const ValueKey('ad-fullscreen-poster'),
++                controller: ready ? c : null,
++                child: Center(
++                  child: mediaImage(context, widget.poster,
++                      fit: immersiveVideoFit(const Size(9, 16), size)),
++                ),
++              ),
++            AdVideoSpinner(
++              key: const ValueKey('ad-fullscreen-loading'),
++              loading: c == null || !c.value.isInitialized,
++              controller: ready ? c : null,
++            ),
++            SafeArea(
++              child: Stack(
++                children: [
++                  Positioned(
++                    left: 6,
++                    top: 6,
++                    child: _RoundButton(
++                      key: const ValueKey('ad-fullscreen-close'),
++                      icon: Icons.close_rounded,
++                      tooltip: l.actionClose,
++                      onTap: () => Navigator.of(context).maybePop(),
++                    ),
++                  ),
++                  Positioned(
++                    right: 6,
++                    top: 6,
++                    child: _RoundButton(
++                      key: const ValueKey('ad-fullscreen-mute'),
++                      icon: _muted
++                          ? Icons.volume_off_rounded
++                          : Icons.volume_up_rounded,
++                      tooltip: _muted ? l.showcaseAdUnmute : l.showcaseAdMute,
++                      onTap: _toggleMute,
++                    ),
++                  ),
++                  if (widget.ctaLabel != null)
++                    Positioned(
++                      left: 24,
++                      right: 24,
++                      bottom: 20,
++                      child: Center(
++                        child: _Cta(
++                          key: const ValueKey('ad-fullscreen-cta'),
++                          icon: widget.ctaIcon ?? Icons.open_in_new_rounded,
++                          label: widget.ctaLabel!,
++                          onTap: () => Navigator.of(context).pop(true),
++                        ),
++                      ),
++                    ),
++                ],
++              ),
++            ),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
++class _RoundButton extends StatelessWidget {
++  const _RoundButton({
++    super.key,
++    required this.icon,
++    required this.tooltip,
++    required this.onTap,
++  });
++
++  final IconData icon;
++  final String tooltip;
++  final VoidCallback onTap;
++
++  @override
++  Widget build(BuildContext context) => Semantics(
++    button: true,
++    label: tooltip,
++    excludeSemantics: true,
++    child: GestureDetector(
++      behavior: HitTestBehavior.opaque,
++      onTap: onTap,
++      child: SizedBox(
++        width: 48,
++        height: 48,
++        child: Center(
++          child: Container(
++            width: 34,
++            height: 34,
++            decoration: const BoxDecoration(
++              color: Color(0x99000000),
++              shape: BoxShape.circle,
++            ),
++            child: Icon(icon, size: 20, color: Colors.white),
++          ),
++        ),
++      ),
++    ),
++  );
++}
++
++class _Cta extends StatelessWidget {
++  const _Cta({
++    super.key,
++    required this.icon,
++    required this.label,
++    required this.onTap,
++  });
++
++  final IconData icon;
++  final String label;
++  final VoidCallback onTap;
++
++  @override
++  Widget build(BuildContext context) => Semantics(
++    button: true,
++    label: label,
++    excludeSemantics: true,
++    child: GestureDetector(
++      behavior: HitTestBehavior.opaque,
++      onTap: onTap,
++      child: ConstrainedBox(
++        constraints: const BoxConstraints(minHeight: 48),
++        child: Container(
++          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
++          decoration: BoxDecoration(color: IdPlate.gold, borderRadius: R.pill),
++          child: Row(
++            mainAxisSize: MainAxisSize.min,
++            children: [
++              Icon(icon, size: 18, color: Colors.black),
++              const SizedBox(width: 8),
++              Flexible(
++                child: Text(
++                  label,
++                  maxLines: 1,
++                  overflow: TextOverflow.ellipsis,
++                  style: const TextStyle(
++                    fontFamily: AppType.sans,
++                    fontSize: 14,
++                    fontWeight: FontWeight.w800,
++                    color: Colors.black,
++                  ),
++                ),
++              ),
++            ],
++          ),
++        ),
++      ),
++    ),
++  );
++}
+diff --git a/mobile_nova/lib/features/showcase/ad_video_loader.dart b/mobile_nova/lib/features/showcase/ad_video_loader.dart
+index fa6e360..c7895a3 100644
+--- a/mobile_nova/lib/features/showcase/ad_video_loader.dart
++++ b/mobile_nova/lib/features/showcase/ad_video_loader.dart
+@@ -61,6 +61,11 @@ class AdVideoLoader {
+   int _attempts = 0;
+   int _autoRetries = 0;
+   int _blockedTicks = 0;
++
++  /// Qo'riqchi: oxirgi ko'rilgan pozitsiya va u o'zgarmagan ketma-ket
++  /// tekshiruvlar soni (qotib qolgan pleerni topish uchun).
++  Duration _lastPos = Duration.zero;
++  int _stall = 0;
+   Timer? _wait;
+   Timer? _retry;
+   Timer? _guard;
+@@ -136,6 +141,8 @@ class AdVideoLoader {
+     final c = _c;
+     _c = null;
+     _ready = false;
++    _lastPos = Duration.zero;
++    _stall = 0;
+     if (c != null) {
+       c.pause().catchError((_) {});
+       c.dispose();
+@@ -218,12 +225,32 @@ class AdVideoLoader {
+     final v = c.value;
+     if (v.hasError) {
+       _fail();
+-    } else if (!v.isPlaying) {
+-      _start();
++      return;
++    }
++    // QOTIB QOLGAN PLEER (iPhone: pushti birinchi kadr + cheksiz aylana).
++    // `initialize()` o'tgan, `isPlaying`/`isBuffering` nima bo'lsa ham,
++    // lekin pozitsiya [kAdVideoStallTicks] tekshiruv davomida (~8 s)
++    // joyidan jilmadi — bunday pleerga `play()` ni qayta-qayta urish
++    // foyda bermaydi (AVPlayer buferda osilib qoldi). Yo'q qilinadi va
++    // yangisi ochiladi (cheklangan: [kAdVideoAutoRetries]).
++    if (v.position != _lastPos) {
++      _lastPos = v.position;
++      _stall = 0;
++    } else if (++_stall >= kAdVideoStallTicks) {
++      _fail();
++      return;
+     }
++    if (!v.isPlaying) _start();
+   }
+ }
+ 
++/// Pozitsiya shuncha tekshiruv ketma-ket o'zgarmasa pleer qotgan hisoblanadi.
++const kAdVideoStallTicks = 4;
++
++/// Aylana shundan uzoq aylanmaydi (pleer tayyor, lekin yurmayapti) —
++/// "cheksiz aylana" bo'lmasin, poster qoladi.
++const kAdSpinnerGiveUp = Duration(seconds: 8);
++
+ /// Yiqilgandan keyin shuncha kutib qayta ochiladi.
+ const kAdVideoRetryDelay = Duration(seconds: 3);
+ 
+@@ -256,18 +283,130 @@ class AdVideoSpinner extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final c = controller;
+-    if (loading) return const _Ring();
++    if (loading) return const VideoLoadingRing();
+     if (c == null) return const SizedBox.shrink();
+     return ValueListenableBuilder<VideoPlayerValue>(
+       valueListenable: c,
+       builder: (_, v, __) =>
+-          waiting(v) ? const _Ring() : const SizedBox.shrink(),
++          waiting(v) ? const _GiveUpRing() : const SizedBox.shrink(),
+     );
+   }
+ }
+ 
+-class _Ring extends StatelessWidget {
+-  const _Ring();
++/// Tayyor pleer kutilayotgan paytda aylana [kAdSpinnerGiveUp] dan keyin
++/// o'chadi (kutish davri tugasa — yangi davr, yangi hisob).
++class _GiveUpRing extends StatefulWidget {
++  const _GiveUpRing();
++
++  @override
++  State<_GiveUpRing> createState() => _GiveUpRingState();
++}
++
++class _GiveUpRingState extends State<_GiveUpRing> {
++  bool _gone = false;
++  Timer? _t;
++
++  @override
++  void initState() {
++    super.initState();
++    _t = Timer(kAdSpinnerGiveUp, () {
++      if (mounted) setState(() => _gone = true);
++    });
++  }
++
++  @override
++  void dispose() {
++    _t?.cancel();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) =>
++      _gone ? const SizedBox.shrink() : const VideoLoadingRing();
++}
++
++/// POSTER PLEER ILK KADRNI CHIZGUNCHA KO'RINADI (egasi, iPhone: LOL707
++/// ning birinchi kadri bo'sh pushti gradient — "buzuq" ko'rinardi).
++///
++/// Pozitsiya 0 dan oshgach poster YUMSHOQ yo'qoladi va qaytib kelmaydi
++/// (video aylanganda pozitsiya yana 0 ga tushadi — poster qayta
++/// chiqmasin). Pleer almashsa (yangi kontroller) — hisob boshidan.
++class PosterUntilPlaying extends StatefulWidget {
++  const PosterUntilPlaying({
++    super.key,
++    required this.controller,
++    required this.child,
++  });
++
++  final VideoPlayerController? controller;
++  final Widget child;
++
++  @override
++  State<PosterUntilPlaying> createState() => _PosterUntilPlayingState();
++}
++
++class _PosterUntilPlayingState extends State<PosterUntilPlaying> {
++  VideoPlayerController? _bound;
++  bool _started = false;
++
++  @override
++  void initState() {
++    super.initState();
++    _bind();
++  }
++
++  @override
++  void didUpdateWidget(covariant PosterUntilPlaying old) {
++    super.didUpdateWidget(old);
++    if (!identical(old.controller, widget.controller)) _bind();
++  }
++
++  void _bind() {
++    _unbind();
++    _started = false;
++    final c = widget.controller;
++    _bound = c;
++    if (c == null) return;
++    c.addListener(_tick);
++    _started = c.value.position > Duration.zero;
++  }
++
++  void _unbind() {
++    try {
++      _bound?.removeListener(_tick);
++    } catch (_) {
++      // Kontroller allaqachon yopilgan.
++    }
++    _bound = null;
++  }
++
++  void _tick() {
++    if (_started || !mounted) return;
++    if (_bound!.value.position > Duration.zero) {
++      setState(() => _started = true);
++    }
++  }
++
++  @override
++  void dispose() {
++    _unbind();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) => IgnorePointer(
++    child: AnimatedOpacity(
++      key: const ValueKey('poster-until-playing'),
++      opacity: _started ? 0 : 1,
++      duration: const Duration(milliseconds: 220),
++      child: widget.child,
++    ),
++  );
++}
++
++/// Poster ustidagi aylana.
++class VideoLoadingRing extends StatelessWidget {
++  const VideoLoadingRing({super.key});
+ 
+   @override
+   Widget build(BuildContext context) => IgnorePointer(
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index 7b24803..b9b2294 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -42,7 +42,6 @@ import '../social/fullscreen_video.dart' show immersiveVideoFit;
+ import '../social/reels_screen.dart'
+     show
+         ReelAction,
+-        ReelCaption,
+         ReelsBackGuard,
+         ReelsChrome,
+         ReelFollowPill,
+@@ -53,6 +52,7 @@ import '../social/reels_screen.dart'
+         reelsHiddenProvider,
+         savedReelsProvider,
+         showReelComments;
++import 'ad_fullscreen.dart';
+ import 'ad_video_loader.dart';
+ import 'showcase_common.dart';
+ import 'showcase_instagram.dart';
+@@ -517,7 +517,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
+   bool _videoOpen = false;
+ 
+-  bool _captionOpen = false;
+   int? _comments;
+   int? _views;
+   late final ViewSession _viewSession = ViewSession(_sendView);
+@@ -845,6 +844,194 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   void _openProduct(PostCatalogItem item) =>
+       context.push(Routes.catalogProduct(item.companyId, item.id));
+ 
++  /// BIRINCHI DARAJALI TUGMA (sahifada bitta): tovar > YouTube >
++  /// Instagram > havola. Hammasi [_links] da (ma'lumot varag'ida).
++  _Link? _primaryLink(L l) {
++    final all = _links(l);
++    return all.isEmpty ? null : all.first;
++  }
++
++  List<_Link> _links(L l) {
++    final p = _p;
++    final item = p.catalogItem;
++    final link = showcaseLinkKind(p.linkUrl);
++    final videoId = youtubeVideoId(p.linkUrl);
++    final igEmbed = instagramEmbedUri(p.linkUrl);
++    return [
++      if (item != null)
++        _Link(
++          'product',
++          Icons.shopping_bag_outlined,
++          l.showcaseViewProduct,
++          () => _openProduct(item),
++        ),
++      if (videoId != null)
++        _Link(
++          'video',
++          Icons.play_circle_outline_rounded,
++          l.showcaseWatchVideo,
++          () => _openVideo(videoId),
++        )
++      else if (igEmbed != null)
++        _Link(
++          'instagram',
++          Icons.camera_alt_outlined,
++          l.showcaseWatchInstagram,
++          () => _openInstagram(igEmbed),
++        )
++      else if (link != null)
++        _Link(
++          'link',
++          Icons.open_in_new_rounded,
++          showcaseLinkLabel(l, link),
++          () => openLink(p.linkUrl),
++        ),
++    ];
++  }
++
++  /// Sahifada ko'rinmaydigan hamma narsa (izoh, musiqa, aloqa, narx,
++  /// qo'shimcha havolalar) — ma'lumot varag'ida.
++  bool _hasInfo(L l) =>
++      _p.text.isNotEmpty ||
++      _p.music != null ||
++      _p.priceUzs != null ||
++      postContactActions(_p).isNotEmpty ||
++      _links(l).length > 1;
++
++  /// REKLAMA VIDEOSI BUTUN EKRANDA (ovozli). Sahifa musiqasi/videosi
++  /// pauzada ([_withSheet]), yopilgach avvalgidek davom etadi. Pastdagi
++  /// tugma bosilsa — sahifa yopilgach o'sha amal bajariladi.
++  Future<void> _openAdFullscreen() async {
++    final l = L.of(context);
++    final cta = _primaryLink(l);
++    final at = (_musicReady && _music != null) ? _music!.value.position : null;
++    var act = false;
++    await _withSheet(() async {
++      act =
++          await openAdFullscreenPlayer(
++            context,
++            videoUrl: _p.videoUrl,
++            poster: _p.posterUrl,
++            music: _hasMusic ? _p.music : null,
++            musicAt: at,
++            ctaLabel: cta?.label,
++            ctaIcon: cta?.icon,
++          ) ??
++          false;
++    });
++    if (act && mounted) cta?.onTap();
++  }
++
++  /// MA'LUMOT VARAG'I — sarlavha/muallif qatori bosilsa: to'liq izoh,
++  /// musiqa («Shu musiqani ishlatish»), aloqa tugmalari, hamma havolalar.
++  void _showInfo() {
++    final l = L.of(context);
++    final p = _p;
++    final links = _links(l);
++    showModalBottomSheet<void>(
++      context: context,
++      useRootNavigator: true,
++      isScrollControlled: true,
++      showDragHandle: true,
++      backgroundColor: context.tokens.surfaceSolid,
++      builder: (sheet) {
++        final t = sheet.tokens;
++        return SafeArea(
++          top: false,
++          child: ConstrainedBox(
++            constraints: BoxConstraints(
++              maxHeight: MediaQuery.sizeOf(sheet).height * .7,
++            ),
++            child: SingleChildScrollView(
++              key: const ValueKey('showcase-info-sheet'),
++              padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
++              child: Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                mainAxisSize: MainAxisSize.min,
++                children: [
++                  if (p.title.isNotEmpty)
++                    Text(
++                      p.title,
++                      style: TextStyle(
++                        fontFamily: AppType.sans,
++                        fontSize: 18,
++                        fontWeight: FontWeight.w800,
++                        height: 1.25,
++                        color: t.text1,
++                      ),
++                    ),
++                  if (p.priceUzs != null) ...[
++                    const SizedBox(height: 4),
++                    Text(
++                      formatUzs(l, p.priceUzs!),
++                      key: const ValueKey('showcase-price'),
++                      style: AppType.monoStyle(
++                        color: t.text1,
++                        size: 15,
++                        weight: FontWeight.w700,
++                      ),
++                    ),
++                  ],
++                  if (p.text.isNotEmpty) ...[
++                    const SizedBox(height: Gap.md),
++                    Text(
++                      p.text,
++                      key: const ValueKey('showcase-info-caption'),
++                      style: TextStyle(
++                        fontFamily: AppType.sans,
++                        fontSize: 14.5,
++                        height: 1.4,
++                        color: t.text1,
++                      ),
++                    ),
++                  ],
++                  if (p.music != null) ...[
++                    const SizedBox(height: Gap.md),
++                    MusicChip(
++                      key: const ValueKey('showcase-info-music'),
++                      track: p.music!,
++                      onTap: () {
++                        Navigator.of(sheet).pop();
++                        _openMusic(p.music!);
++                      },
++                    ),
++                  ],
++                  if (postContactActions(p).isNotEmpty) ...[
++                    const SizedBox(height: Gap.md),
++                    PostContactBar(
++                      key: const ValueKey('showcase-info-contact'),
++                      post: p,
++                    ),
++                  ],
++                  if (links.isNotEmpty) ...[
++                    const SizedBox(height: Gap.md),
++                    Wrap(
++                      spacing: Gap.sm,
++                      runSpacing: 6,
++                      children: [
++                        for (final k in links)
++                          _CtaButton(
++                            key: ValueKey('showcase-info-${k.id}'),
++                            icon: k.icon,
++                            label: k.label,
++                            primary: true,
++                            onTap: () {
++                              Navigator.of(sheet).pop();
++                              k.onTap();
++                            },
++                          ),
++                      ],
++                    ),
++                  ],
++                ],
++              ),
++            ),
++          ),
++        );
++      },
++    );
++  }
++
+   void _showMore() {
+     final l = L.of(context);
+     final p = _p;
+@@ -955,10 +1142,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+     final clean = widget.visible && ref.watch(reelsCleanProvider);
+     final navH = MediaQuery.paddingOf(context).bottom;
+     final topH = MediaQuery.paddingOf(context).top;
+-    final link = showcaseLinkKind(p.linkUrl);
+-    final videoId = youtubeVideoId(p.linkUrl);
+-    final igEmbed = instagramEmbedUri(p.linkUrl);
+-    final item = p.catalogItem;
++    final cta = _primaryLink(l);
++    final hasInfo = _hasInfo(l);
+ 
+     return Stack(
+       fit: StackFit.expand,
+@@ -967,7 +1152,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+         if (_isVideo)
+           GestureDetector(
+             behavior: HitTestBehavior.opaque,
+-            onTap: _toggleClean,
++            // REKLAMA VIDEOSI: bosish — butun ekran, ovozli (egasi,
++            // 2026-10-10). Boshqa sahifalarda bosish — toza rejim.
++            onTap: _openAdFullscreen,
+             child: _AdVideo(
+               key: const ValueKey('showcase-ad-video'),
+               poster: p.posterUrl,
+@@ -1149,97 +1336,96 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                     text: l.feedSponsored,
+                   ),
+                 ],
+-                if (p.title.isNotEmpty) ...[
++                // MINIMAL: sarlavha (2 qator) + bitta tugma. Izoh, musiqa,
++                // aloqa, narx va qo'shimcha havolalar — sarlavha/«Batafsil»
++                // bosilganda ma'lumot varag'ida (egasi: "ekranda yozuv
++                // ko'p, bosib ko'rsa bo'ladi").
++                if (p.title.isNotEmpty || hasInfo) ...[
+                   const SizedBox(height: Gap.sm),
+-                  Text(
+-                    p.title,
+-                    key: const ValueKey('showcase-title'),
+-                    maxLines: 2,
+-                    overflow: TextOverflow.ellipsis,
+-                    style: const TextStyle(
+-                      fontFamily: AppType.sans,
+-                      fontSize: 17,
+-                      fontWeight: FontWeight.w800,
+-                      height: 1.25,
+-                      color: Colors.white,
+-                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+-                    ),
+-                  ),
+-                ],
+-                if (p.priceUzs != null) ...[
+-                  const SizedBox(height: 4),
+-                  Text(
+-                    formatUzs(l, p.priceUzs!),
+-                    key: const ValueKey('showcase-price'),
+-                    style: AppType.monoStyle(
+-                      color: IdPlate.goldLight,
+-                      size: 15,
+-                      weight: FontWeight.w700,
++                  GestureDetector(
++                    key: const ValueKey('showcase-info-open'),
++                    behavior: HitTestBehavior.opaque,
++                    onTap: hasInfo ? _showInfo : null,
++                    child: Row(
++                      crossAxisAlignment: CrossAxisAlignment.center,
++                      children: [
++                        if (p.title.isNotEmpty)
++                          Flexible(
++                            child: Text(
++                              p.title,
++                              key: const ValueKey('showcase-title'),
++                              maxLines: 2,
++                              overflow: TextOverflow.ellipsis,
++                              style: const TextStyle(
++                                fontFamily: AppType.sans,
++                                fontSize: 17,
++                                fontWeight: FontWeight.w800,
++                                height: 1.25,
++                                color: Colors.white,
++                                shadows: [
++                                  Shadow(color: Colors.black54, blurRadius: 8),
++                                ],
++                              ),
++                            ),
++                          ),
++                        if (hasInfo) ...[
++                          const SizedBox(width: Gap.sm),
++                          Semantics(
++                            button: true,
++                            label: l.showcaseDetails,
++                            excludeSemantics: true,
++                            child: Container(
++                              key: const ValueKey('showcase-info-button'),
++                              padding: const EdgeInsets.symmetric(
++                                horizontal: 8,
++                                vertical: 4,
++                              ),
++                              decoration: BoxDecoration(
++                                color: Colors.black.withValues(alpha: .38),
++                                borderRadius: R.pill,
++                                border: Border.all(
++                                  color: Colors.white.withValues(alpha: .5),
++                                  width: .8,
++                                ),
++                              ),
++                              child: Row(
++                                mainAxisSize: MainAxisSize.min,
++                                children: [
++                                  const Icon(
++                                    Icons.info_outline_rounded,
++                                    size: 14,
++                                    color: Colors.white,
++                                  ),
++                                  const SizedBox(width: 4),
++                                  Text(
++                                    l.showcaseDetails,
++                                    style: const TextStyle(
++                                      fontFamily: AppType.sans,
++                                      fontSize: 11.5,
++                                      fontWeight: FontWeight.w700,
++                                      color: Colors.white,
++                                    ),
++                                  ),
++                                ],
++                              ),
++                            ),
++                          ),
++                        ],
++                      ],
+                     ),
+                   ),
+                 ],
+-                if (p.text.isNotEmpty) ...[
+-                  const SizedBox(height: Gap.sm),
+-                  ReelCaption(
+-                    text: p.text,
+-                    open: _captionOpen,
+-                    onToggle: () =>
+-                        setState(() => _captionOpen = !_captionOpen),
+-                  ),
+-                ],
+-                if (p.music != null) ...[
+-                  const SizedBox(height: Gap.sm),
+-                  MusicChip(
+-                    key: const ValueKey('showcase-music'),
+-                    track: p.music!,
+-                    onDark: true,
+-                    onTap: () => _openMusic(p.music!),
+-                  ),
+-                ],
+-                if (postContactActions(p).isNotEmpty) ...[
+-                  const SizedBox(height: Gap.sm),
+-                  PostContactBar(
+-                    key: const ValueKey('showcase-contact'),
+-                    post: p,
+-                    onDark: true,
+-                  ),
+-                ],
+-                if (item != null || link != null) ...[
++                if (cta != null) ...[
+                   const SizedBox(height: Gap.sm),
+-                  Wrap(
+-                    spacing: Gap.sm,
+-                    runSpacing: 6,
+-                    children: [
+-                      if (item != null)
+-                        _CtaButton(
+-                          key: const ValueKey('showcase-product'),
+-                          icon: Icons.shopping_bag_outlined,
+-                          label: l.showcaseViewProduct,
+-                          primary: true,
+-                          onTap: () => _openProduct(item),
+-                        ),
+-                      if (videoId != null)
+-                        _CtaButton(
+-                          key: const ValueKey('showcase-video'),
+-                          icon: Icons.play_circle_outline_rounded,
+-                          label: l.showcaseWatchVideo,
+-                          onTap: () => _openVideo(videoId),
+-                        )
+-                      else if (igEmbed != null)
+-                        _CtaButton(
+-                          key: const ValueKey('showcase-instagram'),
+-                          icon: Icons.camera_alt_outlined,
+-                          label: l.showcaseWatchInstagram,
+-                          onTap: () => _openInstagram(igEmbed),
+-                        )
+-                      else if (link != null)
+-                        _CtaButton(
+-                          key: const ValueKey('showcase-link'),
+-                          icon: Icons.open_in_new_rounded,
+-                          label: showcaseLinkLabel(l, link),
+-                          onTap: () => openLink(p.linkUrl),
+-                        ),
+-                    ],
++                  Align(
++                    alignment: Alignment.centerLeft,
++                    child: _CtaButton(
++                      key: ValueKey('showcase-${cta.id}'),
++                      icon: cta.icon,
++                      label: cta.label,
++                      primary: true,
++                      onTap: cta.onTap,
++                    ),
+                   ),
+                 ],
+               ],
+@@ -1251,6 +1437,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+   }
+ }
+ 
++/// Bitta havola/amal tugmasi (sahifadagi asosiy va varaqdagi hammasi).
++class _Link {
++  const _Link(this.id, this.icon, this.label, this.onTap);
++  final String id;
++  final IconData icon;
++  final String label;
++  final VoidCallback onTap;
++}
++
+ /// Video reklama qatlami: poster (xira fon + butun), video tayyor
+ /// bo'lgach ustida — Reels kabi ekranni to'ldiradi.
+ class _AdVideo extends StatelessWidget {
+@@ -1279,16 +1474,6 @@ class _AdVideo extends StatelessWidget {
+     return Stack(
+       fit: StackFit.expand,
+       children: [
+-        if (poster.isNotEmpty) ...[
+-          ImageFiltered(
+-            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+-            child: Opacity(
+-              opacity: .55,
+-              child: mediaImage(context, poster, fit: BoxFit.fill),
+-            ),
+-          ),
+-          mediaImage(context, poster, fit: BoxFit.contain),
+-        ],
+         if (c != null && c.value.isInitialized)
+           FittedBox(
+             fit: immersiveVideoFit(c.value.size, MediaQuery.sizeOf(context)),
+@@ -1307,6 +1492,25 @@ class _AdVideo extends StatelessWidget {
+               color: Colors.white54,
+             ),
+           ),
++        // Poster pleer ilk kadrni chizguncha (pozitsiya > 0) ustida turadi.
++        if (poster.isNotEmpty)
++          PosterUntilPlaying(
++            key: const ValueKey('showcase-ad-poster'),
++            controller: c,
++            child: Stack(
++              fit: StackFit.expand,
++              children: [
++                ImageFiltered(
++                  imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
++                  child: Opacity(
++                    opacity: .55,
++                    child: mediaImage(context, poster, fit: BoxFit.fill),
++                  ),
++                ),
++                mediaImage(context, poster, fit: BoxFit.contain),
++              ],
++            ),
++          ),
+         AdVideoSpinner(
+           key: const ValueKey('showcase-ad-loading'),
+           loading: loading,
+diff --git a/mobile_nova/lib/features/social/feed_card.dart b/mobile_nova/lib/features/social/feed_card.dart
+index 8a76e06..63848a5 100644
+--- a/mobile_nova/lib/features/social/feed_card.dart
++++ b/mobile_nova/lib/features/social/feed_card.dart
+@@ -292,6 +292,8 @@ class FeedCard extends ConsumerWidget {
+                 activeVideo: activeVideo,
+                 // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
+                 showMuteVideo: true,
++                videoPoster: post.posterUrl,
++                videoMusic: post.music,
+               ),
+             ),
+           ],
+diff --git a/mobile_nova/lib/features/social/inline_video.dart b/mobile_nova/lib/features/social/inline_video.dart
+index 5d1ec2d..fa81166 100644
+--- a/mobile_nova/lib/features/social/inline_video.dart
++++ b/mobile_nova/lib/features/social/inline_video.dart
+@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:video_player/video_player.dart';
+ 
++import '../../data/models/models.dart' show MusicTrack;
+ import '../../design/tokens/nfc_tokens.dart';
+ import '../profile/music_player.dart';
++import '../showcase/ad_video_loader.dart'
++    show PosterUntilPlaying, VideoLoadingRing, kAdSpinnerGiveUp;
++import 'media_frame.dart' show mediaImage;
+ import 'fullscreen_video.dart';
+ import 'media_sound.dart';
+ 
+@@ -75,8 +79,21 @@ class InlineVideo extends ConsumerStatefulWidget {
+     this.onFullscreen,
+     this.showMute = false,
+     this.paused = false,
++    this.poster = '',
++    this.music,
+   });
+ 
++  /// POSTER: video ilk kadrni chizguncha (pozitsiya > 0) va ochilguncha
++  /// ko'rinadi. Ilk kadr bo'sh gradient bo'lishi mumkin (LOL707) —
++  /// "buzuq" ko'rinmasin. Bo'sh — avvalgidek.
++  final String poster;
++
++  /// POSTDAGI KUTUBXONA MUSIQASI. Video ovozsiz bo'lishi mumkin (reklama
++  /// roliklarida audio yo'q); musiqa bo'lsa video HAR DOIM ovozsiz,
++  /// 🔊 yoqiq bo'lsa video o'ynaganda musiqa o'ynaydi (Reels/Ko'rgazma
++  /// kabi). 🔇 bosilsa musiqa ham to'xtaydi.
++  final MusicTrack? music;
++
+   /// TASHQARIDAN PAUZA (istorya: barmoq bosib turilganda yoki izoh/
+   /// shikoyat varag'i ochiq turganda).
+   ///
+@@ -160,7 +177,18 @@ class InlineVideo extends ConsumerStatefulWidget {
+ 
+ class _InlineVideoState extends ConsumerState<InlineVideo>
+     with WidgetsBindingObserver {
+-  double get _volume => ref.read(mediaMutedProvider) ? 0 : 1;
++  bool get _hasMusic => (widget.music?.playUrl ?? '').isNotEmpty;
++
++  /// Musiqa bor — videoning o'zi doim ovozsiz (musiqa uning o'rnini oladi).
++  double get _volume => (_hasMusic || ref.read(mediaMutedProvider)) ? 0 : 1;
++
++  // ── MUSIQA (alohida audio pleer) ───────────────────────────────────
++  VideoPlayerController? _mc;
++  bool _mReady = false;
++  bool _wasPlaying = false;
++
++  /// O'ynashga niyat bor (ochilmoqda): aylana shunda ko'rinadi.
++  bool _intent = false;
+ 
+   VideoPlayerController? _c;
+   bool _ready = false;
+@@ -279,6 +307,9 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     _c = null;
+     _ready = false;
+     _opening = false;
++    _intent = false;
++    c?.removeListener(_onTick);
++    _disposeMusic();
+     c?.setVolume(0);
+     c?.pause();
+     c?.dispose();
+@@ -302,6 +333,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (widget.active == false) return;
+     // Ochilish paytida ustiga boshqa ekran chiqdi / tab yashirildi.
+     if (widget.active != null && _shown == false) return;
++    _intent = true;
+     await c.setVolume(_volume);
+     await c.play();
+     if (mounted) setState(() {});
+@@ -334,11 +366,14 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     _opening = true;
+     final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+     _c = c;
++    c.addListener(_onTick);
+     // `_release()` ochilish davomida chaqirilsa, bu kontroller
+     // endi "eski" — u allaqachon yopilgan.
+     bool stale() => !identical(_c, c);
+     try {
+-      await c.initialize();
++      // MUDDAT: ilgari `initialize()` osilib qolsa (iPhone, sekin tarmoq)
++      // quti abadiy bo'sh qolardi — endi xato hisoblanadi.
++      await c.initialize().timeout(kAdSpinnerGiveUp * 3);
+       if (stale()) return;
+       if (_gone || !mounted) {
+         await c.dispose();
+@@ -352,6 +387,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+       // Ochilish boshidagi pauza holati — tugaguncha o'zgarishi mumkin.
+       final held = widget.paused;
+       if (widget.autoPlay && !held) {
++        _intent = true;
+         _owner?.take(this, _pauseForOther);
+         // Umumiy 🔇 holati BIRINCHI kadrdanoq: ilgari bu yo'lda ovoz
+         // har doim yoqiq boshlanardi va faqat tugma bosilgandagina
+@@ -384,6 +420,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+       if (stale()) return;
+       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — ilova
+       // qulamaydi, o'rnida fon qoladi.
++      _intent = false;
+       if (mounted) setState(() => _failed = true);
+       widget.onFailed?.call();
+     }
+@@ -394,6 +431,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+   /// OVOZ AVVAL o'chiriladi: `pause()` platformaga xabar yuboradi
+   /// va u bajarilguncha ovoz eshitilib turardi.
+   void _pauseForOther() {
++    _mc?.pause();
+     _c?.setVolume(0);
+     _c?.pause();
+     if (mounted) setState(() {});
+@@ -416,6 +454,71 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (mounted) setState(() {});
+   }
+ 
++  /// Video o'ynash holati o'zgardi — musiqa unga ergashadi (pauza, davom,
++  /// to'liq ekranda bosib turish, boshqa manba ovozni olishi).
++  void _onTick() {
++    final p = _c?.value.isPlaying ?? false;
++    if (p == _wasPlaying) return;
++    _wasPlaying = p;
++    _syncMusic();
++  }
++
++  /// Musiqa: video o'ynayapti va 🔇 emas — o'ynaydi; aks holda pauza.
++  /// Pleer faqat kerak bo'lganda quriladi (musiqa yuklanishi tarmoqni
++  /// ko'rilmagan video uchun sarflamasin). Ochilmasa — video jim.
++  Future<void> _syncMusic() async {
++    final m = widget.music;
++    if (!_hasMusic || _gone) return;
++    bool want() =>
++        !_gone &&
++        mounted &&
++        (_c?.value.isPlaying ?? false) &&
++        !ref.read(mediaMutedProvider);
++    if (!want()) {
++      _mc?.pause();
++      return;
++    }
++    var mc = _mc;
++    if (mc == null) {
++      mc = VideoPlayerController.networkUrl(
++        Uri.parse(m!.playUrl),
++        // BITTA OVOZ: boshqa ilova (Spotify/YouTube) to'xtaydi.
++        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
++      );
++      _mc = mc;
++      try {
++        await mc.initialize().timeout(kAdSpinnerGiveUp * 3);
++        if (_mc != mc) return;
++        await mc.setLooping(true);
++        if (m.playFrom > Duration.zero) await mc.seekTo(m.playFrom);
++        _mReady = true;
++      } catch (_) {
++        // Yiqilgan pleer QOLDIRILMAYDI — keyingi urinish yangisini ochadi.
++        if (_mc == mc) {
++          _mc = null;
++          _mReady = false;
++          mc.dispose();
++        }
++        return;
++      }
++    }
++    if (!_mReady || _mc != mc || !want()) return;
++    await mc.setVolume(1);
++    if (_mc != mc || !want()) return;
++    await mc.play();
++  }
++
++  void _disposeMusic() {
++    final mc = _mc;
++    _mc = null;
++    _mReady = false;
++    _wasPlaying = false;
++    if (mc != null) {
++      mc.pause().catchError((_) {});
++      mc.dispose();
++    }
++  }
++
+   /// To'liq ekranga o'tish — hali ochilmagan bo'lsa avval ochiladi.
+   Future<void> _openFullscreen() async {
+     if (_handoff != null || _failed) return;
+@@ -444,9 +547,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     // Dangasa rejim: birinchi bosishda kontroller endi quriladi.
+     if (widget.lazy && _c == null && !_failed) {
+       _owner?.take(this, _pauseForOther);
++      _intent = true;
++      if (mounted) setState(() {});
+       await _open();
+       final opened = _c;
+       if (opened != null && !_gone && mounted) {
++        _intent = true;
+         await opened.setVolume(_volume);
+         await opened.play();
+         if (mounted) setState(() {});
+@@ -471,6 +577,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     WidgetsBinding.instance.removeObserver(this);
+     final c = _c;
+     _c = null;
++    c?.removeListener(_onTick);
++    _disposeMusic();
+     // To'liq ekran ochiq — kontrollerni o'sha sahifa yopadi (u hali
+     // ko'rsatib turibdi).
+     final h = _handoff;
+@@ -495,7 +603,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
+     ref.listen<bool>(mediaMutedProvider, (_, muted) {
+       final c = _c;
+-      if (c != null && _ready) c.setVolume(muted ? 0 : 1);
++      if (c != null && _ready) c.setVolume(_volume);
++      _syncMusic();
+     });
+     final body = _buildBody(context);
+     if (!widget.showMute || _c == null || !_ready || _failed) return body;
+@@ -525,17 +634,36 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+       return GestureDetector(
+         onTap: widget.fullscreenOnTap ? _openFullscreen : _toggle,
+         behavior: HitTestBehavior.opaque,
+-        child: ColoredBox(
+-          color: t.surface2,
+-          child: Center(
+-            child: Icon(Icons.play_circle_fill_rounded,
+-                size: 54, color: t.text1.withValues(alpha: .85)),
+-          ),
++        child: Stack(
++          fit: StackFit.expand,
++          children: [
++            ColoredBox(color: t.surface2),
++            if (widget.poster.isNotEmpty)
++              mediaImage(context, widget.poster, fit: widget.fit),
++            Center(
++              child: Icon(Icons.play_circle_fill_rounded,
++                  size: 54,
++                  color: widget.poster.isNotEmpty
++                      ? Colors.white
++                      : t.text1.withValues(alpha: .85)),
++            ),
++          ],
+         ),
+       );
+     }
+     if (!_ready || c == null) {
+-      return ColoredBox(color: t.surface2);
++      // Poster bor — kulrang quti o'rniga u; niyat bor (bosildi/dominant)
++      // bo'lsa ochilish davomida aylana.
++      if (widget.poster.isEmpty && !_intent) return ColoredBox(color: t.surface2);
++      return Stack(
++        fit: StackFit.expand,
++        children: [
++          ColoredBox(color: t.surface2),
++          if (widget.poster.isNotEmpty)
++            mediaImage(context, widget.poster, fit: widget.fit),
++          if (_intent) const VideoLoadingRing(),
++        ],
++      );
+     }
+     // BIRINCHI KADR YUMSHOQ OCHILADI.
+     //
+@@ -546,7 +674,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     // 220 ms — ko'z sezadigan, lekin kutishga aylanmaydigan
+     // eng qisqa oraliq. Ovoz va o'ynash mantig'iga tegilmadi:
+     // bu FAQAT chizish.
+-    final video = TweenAnimationBuilder<double>(
++    final plain = TweenAnimationBuilder<double>(
+       tween: Tween(begin: 0, end: 1),
+       duration: const Duration(milliseconds: 220),
+       curve: Curves.easeOut,
+@@ -560,6 +688,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+         ),
+       ),
+     );
++    // POSTER ilk kadr chizilguncha (pozitsiya > 0) video ustida turadi;
++    // pleer o'ynayapti-yu yurmasa (bufer) — aylana.
++    final video = (widget.poster.isEmpty && !_intent)
++        ? plain
++        : Stack(
++            fit: StackFit.expand,
++            children: [
++              plain,
++              if (widget.poster.isNotEmpty)
++                PosterUntilPlaying(
++                  key: const ValueKey('video-poster'),
++                  controller: c,
++                  child: mediaImage(context, widget.poster, fit: widget.fit),
++                ),
++              if (_intent) _BufferRing(controller: c),
++            ],
++          );
+     if (widget.fullscreenOnTap) {
+       return GestureDetector(
+         key: const ValueKey('video-open-fullscreen'),
+@@ -594,3 +739,20 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     );
+   }
+ }
++
++/// Pleer o'ynayapti, lekin pozitsiya hali 0 va bufer kutilmoqda — aylana.
++/// Video yura boshlasa (pozitsiya > 0) yo'qoladi.
++class _BufferRing extends StatelessWidget {
++  const _BufferRing({required this.controller});
++  final VideoPlayerController controller;
++
++  @override
++  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
++        valueListenable: controller,
++        builder: (_, v, __) => v.isPlaying &&
++                v.isBuffering &&
++                v.position <= Duration.zero
++            ? const VideoLoadingRing()
++            : const SizedBox.shrink(),
++      );
++}
+diff --git a/mobile_nova/lib/features/social/media_frame.dart b/mobile_nova/lib/features/social/media_frame.dart
+index 4218679..ea3b3a5 100644
+--- a/mobile_nova/lib/features/social/media_frame.dart
++++ b/mobile_nova/lib/features/social/media_frame.dart
+@@ -1,6 +1,7 @@
+ import 'package:cached_network_image/cached_network_image.dart';
+ import 'package:flutter/material.dart';
+ 
++import '../../data/models/models.dart' show MusicTrack;
+ import '../../design/tokens/nfc_tokens.dart';
+ import 'inline_video.dart';
+ import '../../core/media/image_cache.dart';
+@@ -219,8 +220,14 @@ class AdaptiveMedia extends StatefulWidget {
+     this.activeVideo,
+     this.onVideoFullscreen,
+     this.showMuteVideo = false,
++    this.videoPoster = '',
++    this.videoMusic,
+   });
+ 
++  /// Video posteri va postdagi kutubxona musiqasi — `InlineVideo` ga.
++  final String videoPoster;
++  final MusicTrack? videoMusic;
++
+   /// Videoda 🔇/🔊 tugma (lenta, post).
+   final bool showMuteVideo;
+ 
+@@ -337,6 +344,8 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
+             active: widget.activeVideo,
+             onFullscreen: widget.onVideoFullscreen,
+             showMute: widget.showMuteVideo,
++            poster: widget.videoPoster,
++            music: widget.videoMusic,
+             // Quti videoning o'z nisbatiga kelganda `cover` hech
+             // narsa kesmaydi; chegaraga urilgan holatda esa
+             // kesish eng kichik bo'ladi.
+diff --git a/mobile_nova/lib/features/social/post_screens.dart b/mobile_nova/lib/features/social/post_screens.dart
+index 40f8c51..5977724 100644
+--- a/mobile_nova/lib/features/social/post_screens.dart
++++ b/mobile_nova/lib/features/social/post_screens.dart
+@@ -388,6 +388,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
+                         loopingVideo: true,
+                         tapToToggleVideo: true,
+                         showMuteVideo: true,
++                        videoPoster: p.posterUrl,
++                        videoMusic: p.music,
+                         // Bosish — belgilarsiz to'liq ekran (Instagram).
+                         fullscreenVideo: true,
+                         onVideoFullscreen: _onFullscreen,
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index 0ddab80..c8a2736 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -1240,6 +1240,9 @@
+   "showcaseOpenYoutube": "Open on YouTube",
+   "showcaseOpenInstagram": "Open on Instagram",
+   "showcaseWatchVideo": "Watch video",
++  "showcaseDetails": "Details",
++  "showcaseAdMute": "Mute",
++  "showcaseAdUnmute": "Unmute",
+   "showcaseVideoUnavailable": "This video can’t be played in the app. Open it on YouTube.",
+   "showcaseWatchInstagram": "View on Instagram",
+   "showcaseInstagramUnavailable": "This post couldn’t be opened in the app. Open it on Instagram.",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index ba9a3a2..90dd283 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -1240,6 +1240,9 @@
+   "showcaseOpenYoutube": "Открыть в YouTube",
+   "showcaseOpenInstagram": "Открыть в Instagram",
+   "showcaseWatchVideo": "Смотреть видео",
++  "showcaseDetails": "Подробнее",
++  "showcaseAdMute": "Выключить звук",
++  "showcaseAdUnmute": "Включить звук",
+   "showcaseVideoUnavailable": "Это видео нельзя посмотреть в приложении. Откройте его в YouTube.",
+   "showcaseWatchInstagram": "Смотреть в Instagram",
+   "showcaseInstagramUnavailable": "Не удалось открыть публикацию в приложении. Откройте её в Instagram.",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index c94ec01..7aa3ee2 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -1398,6 +1398,9 @@
+   "showcaseOpenYoutube": "YouTube’da ochish",
+   "showcaseOpenInstagram": "Instagram’da ochish",
+   "showcaseWatchVideo": "Videoni ko‘rish",
++  "showcaseDetails": "Batafsil",
++  "showcaseAdMute": "Ovozni o‘chirish",
++  "showcaseAdUnmute": "Ovozni yoqish",
+   "showcaseVideoUnavailable": "Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.",
+   "showcaseWatchInstagram": "Instagram’da ko‘rish",
+   "showcaseInstagramUnavailable": "Bu postni ilova ichida ochib bo‘lmadi. Uni Instagram’da oching.",
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index 0a456f6..ce75721 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -6495,6 +6495,24 @@ abstract class L {
+   /// **'Videoni ko‘rish'**
+   String get showcaseWatchVideo;
+ 
++  /// No description provided for @showcaseDetails.
++  ///
++  /// In uz, this message translates to:
++  /// **'Batafsil'**
++  String get showcaseDetails;
++
++  /// No description provided for @showcaseAdMute.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ovozni o‘chirish'**
++  String get showcaseAdMute;
++
++  /// No description provided for @showcaseAdUnmute.
++  ///
++  /// In uz, this message translates to:
++  /// **'Ovozni yoqish'**
++  String get showcaseAdUnmute;
++
+   /// No description provided for @showcaseVideoUnavailable.
+   ///
+   /// In uz, this message translates to:
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 3827a6f..80f617a 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -3590,6 +3590,15 @@ class LEn extends L {
+   @override
+   String get showcaseWatchVideo => 'Watch video';
+ 
++  @override
++  String get showcaseDetails => 'Details';
++
++  @override
++  String get showcaseAdMute => 'Mute';
++
++  @override
++  String get showcaseAdUnmute => 'Unmute';
++
+   @override
+   String get showcaseVideoUnavailable =>
+       'This video can’t be played in the app. Open it on YouTube.';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 14432ae..5fea564 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -3612,6 +3612,15 @@ class LRu extends L {
+   @override
+   String get showcaseWatchVideo => 'Смотреть видео';
+ 
++  @override
++  String get showcaseDetails => 'Подробнее';
++
++  @override
++  String get showcaseAdMute => 'Выключить звук';
++
++  @override
++  String get showcaseAdUnmute => 'Включить звук';
++
+   @override
+   String get showcaseVideoUnavailable =>
+       'Это видео нельзя посмотреть в приложении. Откройте его в YouTube.';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index d710fd3..c07f34d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -3570,6 +3570,15 @@ class LUz extends L {
+   @override
+   String get showcaseWatchVideo => 'Videoni ko‘rish';
+ 
++  @override
++  String get showcaseDetails => 'Batafsil';
++
++  @override
++  String get showcaseAdMute => 'Ovozni o‘chirish';
++
++  @override
++  String get showcaseAdUnmute => 'Ovozni yoqish';
++
+   @override
+   String get showcaseVideoUnavailable =>
+       'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.';
+diff --git a/mobile_nova/test/showcase_minimal_ad_test.dart b/mobile_nova/test/showcase_minimal_ad_test.dart
+new file mode 100644
+index 0000000..d4f2f58
+--- /dev/null
++++ b/mobile_nova/test/showcase_minimal_ad_test.dart
+@@ -0,0 +1,389 @@
++import 'dart:io';
++
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/app/app.dart';
++import 'package:nfcstore_nova/core/utils/result.dart';
++import 'package:nfcstore_nova/data/models/models.dart';
++import 'package:nfcstore_nova/data/repositories/social_repository.dart';
++import 'package:nfcstore_nova/design/theme/app_theme.dart';
++import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
++import 'package:nfcstore_nova/features/showcase/ad_video_loader.dart';
++import 'package:nfcstore_nova/features/social/inline_video.dart';
++import 'package:nfcstore_nova/features/social/media_sound.dart';
++import 'package:nfcstore_nova/routing/router.dart';
++import 'package:nfcstore_nova/routing/routes.dart';
++import 'package:video_player/video_player.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// KO'RGAZMA: MINIMAL BELGILAR + REKLAMA BUTUN EKRANDA + LENTA VIDEOSI
++/// (egasi, 2026-10-10, iPhone):
++///
++/// * "ekranda yozuv ko'p" — sahifada faqat muallif, sarlavha va BITTA
++///   tugma; izoh, musiqa, aloqa, narx, qo'shimcha havolalar — varaqda;
++/// * "reklama to'liqroq chiqishi kerak, bosganda ovozli" — video reklamani
++///   bosish butun ekranli pleer (musiqa o'ynaydi, × bilan yopiladi);
++/// * Asosiydagi LOL707 posti: pushti kadr + cheksiz aylana, 🔊 ovoz
++///   bermaydi (video ovozsiz, musiqani esa hech kim o'ynatmasdi).
++
++Map<String, dynamic> _music(int id) => {
++      'id': id,
++      'title': 'Yurak',
++      'artist': 'NeomSongs',
++      'audioUrl': '/uploads/music_$id.mp3',
++      'clipUrl': '',
++      'start': 0,
++    };
++
++final _rich = Post.fromJson({
++  'id': 50,
++  'code': 'C7',
++  'authorName': 'Ali Market',
++  'authorKind': 'company',
++  'showcase': true,
++  'title': 'Qizil ko‘ylak',
++  'priceUzs': 125000,
++  'text': 'Yangi kolleksiya keldi',
++  'linkUrl': 'https://youtu.be/dQw4w9WgXcQ',
++  'catalogItem': {
++    'id': 'b9fa1d77-794a-4b7a-b972-aecb1dce7c02',
++    'companyId': 'C7',
++    'name': 'Ko‘ylak',
++  },
++  'contact': {'phone': '+998901234567', 'telegram': 'https://t.me/ali'},
++  'mediaUrls': ['/uploads/p50.jpg'],
++  'imageUrl': '/uploads/p50.jpg',
++  'music': _music(61),
++});
++
++final _lol = Post.fromJson({
++  'id': 55,
++  'code': 'NFCSTOREUZ',
++  'authorKind': 'company',
++  'showcase': true,
++  'ad': true,
++  'featured': true,
++  'title': 'LOL707 — chiroyli NFC ID',
++  'text': 'Reklama matni — varaqda',
++  'imageUrl': '/promo/nfcstore-lol707.jpg',
++  'videoUrl': '/uploads/promo_lol707_720.mp4',
++  'mediaUrls': ['/uploads/promo_lol707_720.mp4'],
++  'mediaItems': [
++    {'url': '/uploads/promo_lol707_720.mp4', 'type': 'video'},
++  ],
++  'linkUrl': 'https://www.instagram.com/reel/Ddy4e1cjVY9/',
++  'music': _music(29),
++});
++
++class _Repo extends FakeSocialRepository {
++  _Repo(this.items);
++  final List<Post> items;
++
++  @override
++  Future<Result<ReelsPage>> showcasePage(
++          {String? cursor, int limit = 10}) async =>
++      Ok(ReelsPage(items: items));
++
++  @override
++  Future<Result<ReelsPage>> showcaseAds({int limit = 4}) async =>
++      const Ok(ReelsPage());
++}
++
++Future<void> _frames(WidgetTester tester, [int n = 30]) async {
++  for (var i = 0; i < n; i++) {
++    await tester.pump(const Duration(milliseconds: 50));
++    if (i % 5 == 0) {
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 5)));
++    }
++  }
++}
++
++String _name(FakeVideoPlatform v, int id) => v.urls[id]!.split('/').last;
++
++Set<String> _playing(FakeVideoPlatform v) =>
++    {for (final id in v.playing) _name(v, id)};
++
++int _player(FakeVideoPlatform v, String file) =>
++    v.urls.entries.lastWhere((e) => e.value.endsWith(file)).key;
++
++Future<({ProviderContainer c, FakeVideoPlatform v})> _app(
++  WidgetTester tester,
++  List<Post> items, {
++  void Function(FakeVideoPlatform v)? setup,
++}) async {
++  tester.view.physicalSize = const Size(1170, 2532);
++  tester.view.devicePixelRatio = 3;
++  addTearDown(tester.view.reset);
++  final v = FakeVideoPlatform();
++  setup?.call(v);
++  VideoPlayerPlatform.instance = v;
++  final base = await testOverrides();
++  final c = ProviderContainer(overrides: [
++    ...base,
++    socialRepositoryProvider.overrideWithValue(_Repo(items)),
++  ]);
++  addTearDown(c.dispose);
++  await tester.pumpWidget(
++    UncontrolledProviderScope(container: c, child: const NovaApp()),
++  );
++  await _frames(tester, 40);
++  c.read(routerProvider).go(Routes.showcase);
++  await _frames(tester, 40);
++  return (c: c, v: v);
++}
++
++Future<void> _end(WidgetTester tester) async {
++  await tester.pumpWidget(const SizedBox());
++  await tester.pump(const Duration(minutes: 1));
++}
++
++Finder _k(String key) => find.byKey(ValueKey(key));
++
++double _posterOpacity(WidgetTester tester, String key) =>
++    tester.widget<AnimatedOpacity>(find.descendant(
++        of: _k(key), matching: find.byKey(const ValueKey('poster-until-playing')))).opacity;
++
++void main() {
++  setUpAll(() {
++    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
++        .setMockMethodCallHandler(
++            const MethodChannel('plugins.flutter.io/path_provider'),
++            (_) async => Directory.systemTemp.createTempSync('nova').path);
++  });
++
++  testWidgets(
++      'Rasm sahifasi MINIMAL: izoh, musiqa, aloqa, narx, qo‘shimcha havola '
++      'ko‘rinmaydi; «Batafsil» varag‘ida hammasi bor', (tester) async {
++    await _app(tester, [_rich]);
++    // Sahifada: sarlavha, «Batafsil» va BITTA tugma (tovar).
++    expect(_k('showcase-title'), findsOneWidget);
++    expect(_k('showcase-info-button'), findsOneWidget);
++    expect(_k('showcase-product'), findsOneWidget);
++    // Yo'q: izoh, "ko'proq", musiqa, aloqa, narx, ikkilamchi havola.
++    expect(find.text('Yangi kolleksiya keldi'), findsNothing);
++    expect(find.text('ko‘proq'), findsNothing);
++    expect(_k('showcase-music'), findsNothing);
++    expect(find.byKey(const ValueKey('music-chip')), findsNothing);
++    expect(_k('showcase-contact'), findsNothing);
++    expect(_k('showcase-price'), findsNothing);
++    expect(_k('showcase-video'), findsNothing);
++    expect(_k('showcase-instagram'), findsNothing);
++    expect(_k('showcase-link'), findsNothing);
++
++    // Sarlavha/«Batafsil» bosiladi -> varaq.
++    await tester.tap(_k('showcase-info-button'));
++    await _frames(tester, 12);
++    expect(_k('showcase-info-sheet'), findsOneWidget);
++    expect(find.text('Yangi kolleksiya keldi'), findsOneWidget);
++    expect(_k('showcase-price'), findsOneWidget);
++    expect(_k('showcase-info-music'), findsOneWidget);
++    expect(_k('showcase-info-contact'), findsOneWidget);
++    expect(_k('showcase-info-product'), findsOneWidget);
++    expect(_k('showcase-info-video'), findsOneWidget,
++        reason: 'hamma havolalar varaqda');
++    await _end(tester);
++  });
++
++  testWidgets(
++      'Reklama sahifasi: «Reklama» belgisi + sarlavha + bitta tugma; izoh '
++      'varaqda. Bosish -> butun ekran, MUSIQA o‘ynaydi, × yopadi',
++      (tester) async {
++    final r = await _app(tester, [_lol]);
++    expect(_k('showcase-sponsored'), findsOneWidget);
++    expect(_k('showcase-title'), findsOneWidget);
++    expect(_k('showcase-instagram'), findsOneWidget);
++    expect(find.text('Reklama matni — varaqda'), findsNothing);
++    expect(_k('showcase-contact'), findsNothing);
++    expect(_playing(r.v), {'promo_lol707_720.mp4', 'music_29.mp3'});
++    final pageVideo = _player(r.v, 'promo_lol707_720.mp4');
++
++    // Reklamani bosish -> butun ekranli pleer.
++    await tester.tap(_k('showcase-ad-video'));
++    await _frames(tester, 40);
++    expect(_k('ad-fullscreen'), findsOneWidget);
++    expect(_k('ad-fullscreen-close'), findsOneWidget);
++    expect(_k('ad-fullscreen-mute'), findsOneWidget);
++    expect(_k('ad-fullscreen-cta'), findsOneWidget);
++    // Sahifaning o'z pleeri pauzada; butun ekranda yangi video + musiqa.
++    expect(r.v.playing.contains(pageVideo), isFalse);
++    expect(_playing(r.v), {'promo_lol707_720.mp4', 'music_29.mp3'});
++    final fsVideo = _player(r.v, 'promo_lol707_720.mp4');
++    expect(fsVideo, isNot(pageVideo));
++    final fsMusic = _player(r.v, 'music_29.mp3');
++    expect(r.v.playing.contains(fsMusic), isTrue);
++    expect(r.v.volumeOf[fsVideo], 0.0, reason: 'video audiosiz — musiqa');
++    expect(r.v.volumeOf[fsMusic], 1.0, reason: 'ovozli');
++
++    // Poster ilk kadr yurgunча turadi, pozitsiya > 0 bo'lgach yo'qoladi.
++    expect(_posterOpacity(tester, 'ad-fullscreen-poster'), 0.0);
++
++    // 🔇 — musiqa ovozi o'chadi, qayta bosilsa yoqiladi.
++    await tester.tap(_k('ad-fullscreen-mute'));
++    await _frames(tester, 6);
++    expect(r.v.volumeOf[fsMusic], 0.0);
++    await tester.tap(_k('ad-fullscreen-mute'));
++    await _frames(tester, 6);
++    expect(r.v.volumeOf[fsMusic], 1.0);
++
++    // × — sahifaga qaytadi, avvalgidek davom etadi.
++    await tester.tap(_k('ad-fullscreen-close'));
++    await _frames(tester, 40);
++    expect(_k('ad-fullscreen'), findsNothing);
++    expect(r.v.alive.contains(fsVideo), isFalse, reason: 'pleer yopildi');
++    expect(r.v.alive.contains(fsMusic), isFalse);
++    expect(_playing(r.v), {'promo_lol707_720.mp4', 'music_29.mp3'},
++        reason: 'sahifaning videosi va musiqasi qaytadan');
++    await _end(tester);
++  });
++
++  testWidgets(
++      'Rasm sahifasida bosish — toza rejim (butun ekran FAQAT reklama '
++      'videosida)', (tester) async {
++    await _app(tester, [_rich]);
++    await tester.tapAt(const Offset(195, 300));
++    await _frames(tester, 20);
++    expect(_k('ad-fullscreen'), findsNothing);
++    await _end(tester);
++  });
++
++  group('Lenta videosi (InlineVideo)', () {
++    Future<({FakeVideoPlatform v, ProviderContainer c})> pumpInline(
++      WidgetTester tester, {
++      void Function(FakeVideoPlatform v)? setup,
++      String url = 'https://nfcstore.uz/uploads/promo_lol707_720.mp4',
++    }) async {
++      final v = FakeVideoPlatform();
++      setup?.call(v);
++      VideoPlayerPlatform.instance = v;
++      final base = await testOverrides();
++      final c = ProviderContainer(overrides: base);
++      addTearDown(c.dispose);
++      await tester.pumpWidget(UncontrolledProviderScope(
++        container: c,
++        child: MaterialApp(
++          theme: buildTheme(NfcTokens.ivory),
++          home: Scaffold(
++            body: Center(
++              child: SizedBox(
++                width: 300,
++                height: 400,
++                child: InlineVideo(
++                  url: url,
++                  poster: 'assets/none.png',
++                  showMute: true,
++                  music: MusicTrack.fromJson(_music(31)),
++                ),
++              ),
++            ),
++          ),
++        ),
++      ));
++      await _frames(tester, 30);
++      return (v: v, c: c);
++    }
++
++    testWidgets(
++        'Ovozsiz video + kutubxona musiqasi: musiqa o‘ynaydi, 🔇 uni '
++        'to‘xtatadi, 🔊 qaytaradi; video doim ovozsiz; aylana yo‘q',
++        (tester) async {
++      final r = await pumpInline(tester);
++      expect(_playing(r.v), {'promo_lol707_720.mp4', 'music_31.mp3'});
++      final video = _player(r.v, 'promo_lol707_720.mp4');
++      final music = _player(r.v, 'music_31.mp3');
++      expect(r.v.volumeOf[video], 0.0, reason: 'audio izi yo‘q — musiqa');
++      expect(r.v.volumeOf[music], 1.0);
++      expect(find.byType(CircularProgressIndicator), findsNothing,
++          reason: 'video o‘ynayapti — aylana yo‘q');
++      expect(_posterOpacity(tester, 'video-poster'), 0.0);
++
++      await tester.tap(_k('video-mute'));
++      await _frames(tester, 10);
++      expect(_playing(r.v), {'promo_lol707_720.mp4'},
++          reason: '🔇 — musiqa to‘xtaydi');
++      expect(r.c.read(mediaMutedProvider), isTrue);
++
++      await tester.tap(_k('video-mute'));
++      await _frames(tester, 20);
++      expect(_playing(r.v), {'promo_lol707_720.mp4', 'music_31.mp3'},
++          reason: '🔊 — musiqa qaytadi');
++      expect(r.v.volumeOf[video], 0.0);
++
++      await tester.pumpWidget(const SizedBox());
++      await _frames(tester, 6);
++      expect(r.v.alive, isEmpty, reason: 'ikkala pleer yopildi');
++    });
++
++    testWidgets(
++        'Poster pozitsiya 0 dan oshguncha ko‘rinadi; qotgan pleerda poster '
++        'qoladi, aylana esa 8 s dan keyin o‘chadi', (tester) async {
++      final r = await pumpInline(tester,
++          setup: (v) => v.frozen.add('promo_lol707_720.mp4'));
++      expect(_posterOpacity(tester, 'video-poster'), 1.0,
++          reason: 'pozitsiya yurmadi — poster turadi');
++      await tester.pumpWidget(const SizedBox());
++      await _frames(tester, 6);
++      expect(r.v.alive, isEmpty);
++    });
++  });
++
++  group('AdVideoLoader / AdVideoSpinner', () {
++    testWidgets(
++        'Qotib qolgan pleer (pozitsiya ~8 s jilmadi) yo‘q qilinadi va '
++        'yangisi ochiladi; normal pleer qayta ochilmaydi', (tester) async {
++      final v = FakeVideoPlatform()..frozen.add('frozen.mp4');
++      VideoPlayerPlatform.instance = v;
++      final loaders = <AdVideoLoader>[];
++      Future<AdVideoLoader> make(String file) async {
++        final l = AdVideoLoader(
++          url: () => 'https://nfcstore.uz/uploads/$file',
++          onChanged: () {},
++        );
++        l.play();
++        loaders.add(l);
++        return l;
++      }
++
++      await make('frozen.mp4');
++      await make('fine.mp4');
++      await _frames(tester, 20);
++      int opened(String f) => v.urls.values.where((u) => u.endsWith(f)).length;
++      expect(opened('frozen.mp4'), 1);
++      for (var i = 0; i < 5; i++) {
++        await tester.pump(const Duration(seconds: 2));
++        await tester.runAsync(
++            () => Future<void>.delayed(const Duration(milliseconds: 5)));
++      }
++      await _frames(tester, 80);
++      expect(opened('frozen.mp4'), greaterThanOrEqualTo(2),
++          reason: 'qotgan pleer almashtirildi');
++      expect(opened('fine.mp4'), 1, reason: 'yurayotgan pleerga tegilmaydi');
++      for (final l in loaders) {
++        l.dispose();
++      }
++      await _frames(tester, 10);
++    });
++
++    testWidgets('Tayyor, lekin yurmayotgan pleerda aylana CHEKSIZ emas',
++        (tester) async {
++      final v = FakeVideoPlatform();
++      VideoPlayerPlatform.instance = v;
++      final c = VideoPlayerController.networkUrl(
++          Uri.parse('https://nfcstore.uz/uploads/x.mp4'));
++      await tester.runAsync(() => c.initialize());
++      addTearDown(c.dispose);
++      await tester.pumpWidget(MaterialApp(
++        home: AdVideoSpinner(loading: false, controller: c),
++      ));
++      expect(find.byType(CircularProgressIndicator), findsOneWidget);
++      await tester.pump(kAdSpinnerGiveUp + const Duration(seconds: 1));
++      expect(find.byType(CircularProgressIndicator), findsNothing);
++      await tester.pumpWidget(const SizedBox());
++    });
++  });
++}
+diff --git a/mobile_nova/test/showcase_screen_test.dart b/mobile_nova/test/showcase_screen_test.dart
+index 314ace8..57c26db 100644
+--- a/mobile_nova/test/showcase_screen_test.dart
++++ b/mobile_nova/test/showcase_screen_test.dart
+@@ -74,6 +74,7 @@ Post _post({
+   MusicTrack? music,
+   String link = 'https://youtu.be/abc',
+   String text = 'Yangi kolleksiya',
++  bool catalog = true,
+ }) =>
+     Post.fromJson({
+       'id': id,
+@@ -87,6 +88,7 @@ Post _post({
+       'linkUrl': link,
+       'featured': featured,
+       'imageSeconds': 5,
++      if (catalog)
+       'catalogItem': {
+         'id': 'b9fa1d77-794a-4b7a-b972-aecb1dce7c02',
+         'companyId': 'C7',
+@@ -172,6 +174,24 @@ Future<void> _doubleTap(WidgetTester tester, Finder f) =>
+ bool _shown(WidgetTester tester, Finder f) =>
+     !tester.widget<ReelsChrome>(f).hidden;
+ 
++/// Havola tugmasi: sahifada FAQAT bitta asosiysi; qolganlari «Batafsil»
++/// varag'ida (`showcase-info-<id>`). Sahifada bo'lsa — o'sha bosiladi.
++Future<void> _tapLink(WidgetTester tester, String id) async {
++  final page = find.byKey(ValueKey('showcase-$id'));
++  if (page.evaluate().isNotEmpty) {
++    await tester.tap(page);
++    return;
++  }
++  await _openInfo(tester);
++  await tester.tap(find.byKey(ValueKey('showcase-info-$id')));
++}
++
++/// «Batafsil» varag'ini ochadi.
++Future<void> _openInfo(WidgetTester tester) async {
++  await tester.tap(find.byKey(const ValueKey('showcase-info-button')));
++  await settle(tester, frames: 8);
++}
++
+ Finder _chrome(String key) => find.byKey(ValueKey(key));
+ 
+ /// Ko'rgazma sahifasidagi hamma belgilar (tepa panel, amallar ustuni,
+@@ -251,11 +271,18 @@ void main() {
+ 
+     expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
+     expect(find.text('Qizil ko‘ylak'), findsOneWidget);
+-    expect(find.text('125 000 so‘m'), findsOneWidget);
+-    expect(find.text('Yangi kolleksiya'), findsOneWidget);
+     expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
+     expect(find.text(l.showcaseViewProduct), findsOneWidget);
++    // MINIMAL: narx, izoh, qo'shimcha havola sahifada YO'Q — varaqda.
++    expect(find.text('125 000 so‘m'), findsNothing);
++    expect(find.text('Yangi kolleksiya'), findsNothing);
++    expect(find.text(l.showcaseOpenYoutube), findsNothing);
++    await _openInfo(tester);
++    expect(find.text('125 000 so‘m'), findsOneWidget);
++    expect(find.text('Yangi kolleksiya'), findsOneWidget);
+     expect(find.text(l.showcaseOpenYoutube), findsOneWidget);
++    await tester.tapAt(const Offset(20, 40)); // varaqdan tashqari
++    await settle(tester, frames: 8);
+     expect(find.byKey(const ValueKey('showcase-carousel')), findsOneWidget);
+     expect(find.byType(CarouselDots), findsOneWidget);
+     expect(_dot(tester), 0);
+@@ -265,7 +292,7 @@ void main() {
+     }
+ 
+     // Havola — faqat TASHQARIDA ochiladi.
+-    await tester.tap(find.byKey(const ValueKey('showcase-link')));
++    await _tapLink(tester, 'link');
+     await settle(tester, frames: 3);
+     expect(opened.single.toString(), 'https://youtu.be/abc');
+ 
+@@ -280,7 +307,7 @@ void main() {
+       (tester) async {
+     await _pump(tester, pages: [
+       ReelsPage(items: [
+-        _post(link: 'https://www.instagram.com/p/x'),
++        _post(link: 'https://www.instagram.com/p/x', catalog: false),
+       ]),
+     ]);
+     expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
+@@ -288,7 +315,7 @@ void main() {
+ 
+   testWidgets('yaroqsiz havola — tugma chizilmaydi', (tester) async {
+     await _pump(tester, pages: [
+-      ReelsPage(items: [_post(link: 'http://evil.com')]),
++      ReelsPage(items: [_post(link: 'http://evil.com', catalog: false)]),
+     ]);
+     expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
+   });
+@@ -463,10 +490,15 @@ void main() {
+       await drain(tester);
+       expect(v.playing, hasLength(1));
+ 
+-      // Izoh ochiladi ("… ko‘proq") — musiqa davom etadi.
+-      await tester.tap(find.byKey(const ValueKey('reel-caption')));
++      // «Batafsil» varag'i (to'liq izoh) ochiladi — musiqa davom etadi.
++      await tester.tap(find.byKey(const ValueKey('showcase-info-button')));
++      await drain(tester);
++      await settle(tester, frames: 8);
++      expect(find.byKey(const ValueKey('showcase-info-sheet')), findsOneWidget);
++      expect(v.playing, hasLength(1), reason: 'varaq ochilganda');
++      await tester.tapAt(const Offset(20, 40)); // varaqdan tashqari
++      await settle(tester, frames: 8);
+       await drain(tester);
+-      expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
+ 
+       // Rasm butun ekranda (ikki bosish) — musiqa davom etadi. Ochiq
+       // izoh pastki yarmini egallaydi, shuning uchun rasmning yuqori
+@@ -724,35 +756,22 @@ void main() {
+       expect(g.colors.last.a, lessThanOrEqualTo(.6));
+       expect((g.begin as Alignment).y, greaterThan(0),
+           reason: 'faqat pastki qismda');
+-      expect(find.byKey(const ValueKey('showcase-contact')), findsOneWidget);
+-
+-      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
+-      await settle(tester, frames: 6);
+-      await drain(tester);
+-      expect(r.c.read(reelsCleanProvider), isTrue);
+-      expectOverlays(tester, shown: false);
+-      expect(
+-          find.ancestor(
+-              of: find.byKey(const ValueKey('showcase-sponsored')),
+-              matching: _chrome('showcase-info')),
+-          findsOneWidget,
+-          reason: '"Reklama" ham yashirin blokda');
+-      expect(
+-          find.ancestor(
+-              of: find.byKey(const ValueKey('showcase-contact')),
+-              matching: _chrome('showcase-info')),
+-          findsOneWidget);
+-      expect(v.playing, {id}, reason: 'video to‘xtamaydi');
+-      expect(v.created, hasLength(1));
++      // MINIMAL: aloqa tugmalari sahifada yo'q — varaqda.
++      expect(find.byKey(const ValueKey('showcase-contact')), findsNothing);
++      expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
+ 
++      // Reklama videosini bosish toza rejim EMAS — butun ekranli pleer
++      // (musiqa yo'q: video o'z ovozi bilan).
+       await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
+       await settle(tester, frames: 6);
+       await drain(tester);
+       expect(r.c.read(reelsCleanProvider), isFalse);
++      expect(find.byKey(const ValueKey('ad-fullscreen')), findsOneWidget);
++      await tester.tap(find.byKey(const ValueKey('ad-fullscreen-close')));
++      await settle(tester, frames: 8);
++      await drain(tester);
++      expect(find.byKey(const ValueKey('ad-fullscreen')), findsNothing);
+       expectOverlays(tester, shown: true);
+-      expect(_shown(tester, _chrome('showcase-header')), isFalse);
+-      expect(v.playing, {id});
+-      expect(v.created, hasLength(1));
+       await tester.pumpWidget(const SizedBox());
+       await tester.pump(const Duration(minutes: 1));
+     });
+@@ -981,7 +1000,7 @@ void main() {
+       expect(LRu().showcaseWatchVideo, 'Смотреть видео');
+       expect(LEn().showcaseWatchVideo, 'Watch video');
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: ytUrl)]),
++        ReelsPage(items: [_post(link: ytUrl, catalog: false)]),
+       ]);
+       expect(find.byKey(const ValueKey('showcase-video')), findsOneWidget);
+       expect(find.text(l.showcaseWatchVideo), findsOneWidget);
+@@ -998,12 +1017,12 @@ void main() {
+       };
+       addTearDown(() => openLinkOverride = null);
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore')]),
++        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore', catalog: false)]),
+       ]);
+       expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
+       expect(find.byKey(const ValueKey('showcase-instagram')), findsNothing);
+       expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
+-      await tester.tap(find.byKey(const ValueKey('showcase-link')));
++      await _tapLink(tester, 'link');
+       await settle(tester, frames: 3);
+       expect(opened.single.toString(), 'https://www.instagram.com/nfcstore');
+     });
+@@ -1015,12 +1034,12 @@ void main() {
+       VideoPlayerPlatform.instance = v;
+       final yt = fakePlayer();
+       final r = await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: ytUrl, music: track)]),
++        ReelsPage(items: [_post(link: ytUrl, music: track, catalog: false)]),
+       ]);
+       await drain(tester);
+       expect(v.playing, hasLength(1));
+ 
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       await drain(tester);
+       expect(yt.ids, ['dQw4w9WgXcQ']);
+@@ -1067,13 +1086,13 @@ void main() {
+       VideoPlayerPlatform.instance = v;
+       fakePlayer();
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: ytUrl, music: track)]),
++        ReelsPage(items: [_post(link: ytUrl, music: track, catalog: false)]),
+       ]);
+       await drain(tester);
+       await tester.tap(find.byKey(const ValueKey('showcase-mute')));
+       await drain(tester);
+       expect(v.playing, isEmpty);
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
+       await settle(tester, frames: 10);
+@@ -1089,13 +1108,13 @@ void main() {
+       final yt = fakePlayer();
+       await _pump(tester, pages: [
+         ReelsPage(items: [
+-          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track),
++          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track, catalog: false),
+         ]),
+       ]);
+       await drain(tester);
+       expect(v.playing, hasLength(1));
+ 
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       await drain(tester);
+       expect(yt.ids, ['dQw4w9WgXcQ']);
+@@ -1124,7 +1143,7 @@ void main() {
+       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+ 
+       // Kichik surish — yopilmaydi, joyiga qaytadi.
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 40));
+       await settle(tester, frames: 6);
+@@ -1148,9 +1167,9 @@ void main() {
+       addTearDown(() => openLinkOverride = null);
+       final yt = fakePlayer();
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: ytUrl)]),
++        ReelsPage(items: [_post(link: ytUrl, catalog: false)]),
+       ]);
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       expect(find.byKey(const ValueKey('showcase-video-fallback')), findsNothing);
+ 
+@@ -1170,9 +1189,9 @@ void main() {
+         (tester) async {
+       final yt = fakePlayer();
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ')]),
++        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', catalog: false)]),
+       ]);
+-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
++      await _tapLink(tester, 'video');
+       await settle(tester, frames: 10);
+       final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
+       expect(player, findsOneWidget);
+@@ -1204,7 +1223,7 @@ void main() {
+       await tester.pumpWidget(ProviderScope(
+         child: wrapScreen(Scaffold(
+           body: ShowcaseExtras(
+-            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ'),
++            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ', catalog: false),
+             keyPrefix: 'feed-showcase',
+           ),
+         )),
+@@ -1482,7 +1501,7 @@ void main() {
+       expect(LRu().showcaseWatchInstagram, 'Смотреть в Instagram');
+       expect(LEn().showcaseWatchInstagram, 'View on Instagram');
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: reelUrl)]),
++        ReelsPage(items: [_post(link: reelUrl, catalog: false)]),
+       ]);
+       expect(find.byKey(const ValueKey('showcase-instagram')), findsOneWidget);
+       expect(find.text(l.showcaseWatchInstagram), findsOneWidget);
+@@ -1502,12 +1521,12 @@ void main() {
+       };
+       addTearDown(() => openLinkOverride = null);
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: reelUrl, music: track)]),
++        ReelsPage(items: [_post(link: reelUrl, music: track, catalog: false)]),
+       ]);
+       await drain(tester);
+       expect(v.playing, hasLength(1));
+ 
+-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await _tapLink(tester, 'instagram');
+       await settle(tester, frames: 10);
+       await drain(tester);
+       expect(ig.embeds.single.toString(),
+@@ -1542,7 +1561,7 @@ void main() {
+       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
+ 
+       // Pastga surish (pastki havola qatorida) ham yopadi.
+-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await _tapLink(tester, 'instagram');
+       await settle(tester, frames: 10);
+       await drain(tester);
+       expect(v.playing, isEmpty);
+@@ -1560,9 +1579,9 @@ void main() {
+         (tester) async {
+       final ig = fakeEmbed();
+       await _pump(tester, pages: [
+-        ReelsPage(items: [_post(link: reelUrl)]),
++        ReelsPage(items: [_post(link: reelUrl, catalog: false)]),
+       ]);
+-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await _tapLink(tester, 'instagram');
+       await settle(tester, frames: 10);
+       ig.state()('error:load');
+       await settle(tester, frames: 3);
+@@ -1573,7 +1592,7 @@ void main() {
+       await settle(tester, frames: 10);
+ 
+       // Javobsizlik ham — zaxira yo'l.
+-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
++      await _tapLink(tester, 'instagram');
+       await settle(tester, frames: 10);
+       await tester.pump(kShowcaseInstagramTimeout);
+       await settle(tester, frames: 3);
+diff --git a/mobile_nova/test/support/fake_video_platform.dart b/mobile_nova/test/support/fake_video_platform.dart
+index 4ec4be3..044929b 100644
+--- a/mobile_nova/test/support/fake_video_platform.dart
++++ b/mobile_nova/test/support/fake_video_platform.dart
+@@ -123,9 +123,24 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
+       positions[playerId] = position;
+   @override
+   Future<void> setPlaybackSpeed(int playerId, double speed) async {}
++  /// Shu bo'lakli URL o'ynasa ham pozitsiyasi JOYIDAN JILMAYDI (iPhone:
++  /// AVPlayer buferda qotib qoldi — pushti birinchi kadr).
++  final frozen = <String>{};
++  final _progress = <int, Duration>{};
++
++  /// O'ynayotgan pleerning pozitsiyasi har so'rovda 100 ms ilgarilaydi
++  /// (haqiqiy pleerdagidek); `seekTo` qiymati boshlanish nuqtasi.
+   @override
+-  Future<Duration> getPosition(int playerId) async =>
+-      positions[playerId] ?? Duration.zero;
++  Future<Duration> getPosition(int playerId) async {
++    final base = positions[playerId] ?? Duration.zero;
++    final url = urls[playerId] ?? '';
++    if (playing.contains(playerId) && !frozen.any(url.contains)) {
++      _progress[playerId] =
++          (_progress[playerId] ?? Duration.zero) +
++              const Duration(milliseconds: 100);
++    }
++    return base + (_progress[playerId] ?? Duration.zero);
++  }
+   @override
+   Future<void> setMixWithOthers(bool mixWithOthers) async =>
+       mixCalls.add(mixWithOthers);
+-- 
+2.43.0
+

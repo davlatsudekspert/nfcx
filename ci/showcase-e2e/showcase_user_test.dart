@@ -11,7 +11,8 @@
 //
 // XAVFSIZLIK: hech qanday yozuvchi amal yo'q — like, saqlash, obuna,
 // izoh, xarid, post BOSILMAYDI. Faqat: til tanlash, kirish, tab, surish,
-// 🔇, media ustiga bosish, "Videoni ko'rish"/"Instagram" va "×".
+// 🔇, media ustiga bosish, «Batafsil» varag'i, varaqdagi "Videoni
+// ko'rish"/"Instagram" havolalari, reklamani butun ekranda ochish va "×".
 //
 // Har qadam natijasi `E2E_STEP:{json}` qatori bo'lib chiqadi; ekran
 // surati uchun `E2E_SHOT:<nom>` — host (adb screencap / simctl) suratga
@@ -25,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:video_player/video_player.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -38,6 +40,7 @@ import 'package:nfcstore_nova/design/widgets/buttons.dart';
 import 'package:nfcstore_nova/features/auth/login_screen.dart';
 import 'package:nfcstore_nova/features/home/widgets/showcase_ad_card.dart';
 import 'package:nfcstore_nova/features/profile/music_player.dart';
+import 'package:nfcstore_nova/features/showcase/ad_fullscreen.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_common.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_instagram.dart';
 import 'package:nfcstore_nova/features/showcase/showcase_screen.dart';
@@ -419,6 +422,48 @@ class _Run {
       of: find.byKey(const ValueKey('showcase-mute')),
       matching: find.byIcon(icon)));
 
+  /// «Batafsil» varag'i orqali havola: sahifadagi «Batafsil» tugmasi
+  /// bosiladi -> `showcase-info-sheet` ochiladi -> ichidagi
+  /// `showcase-info-<linkId>` ('video' | 'instagram') bosiladi (varaq
+  /// yopilib, havola ochiladi). Ma'lumot varag'i umuman yo'q sahifada
+  /// (izoh/musiqa/aloqa/narx yo'q va havola bitta) — sahifadagi yagona
+  /// asosiy tugma `showcase-<linkId>` bosiladi (qaydi `values` da).
+  /// `false` — havola topilmadi (FAIL sababi `r.problems` ga yozildi).
+  Future<bool> tapLinkViaInfoSheet(StepResult r, String linkId,
+      {String? sheetShot}) async {
+    final sheet = find.byKey(const ValueKey('showcase-info-sheet'));
+    final opener = inVisible(find.byKey(const ValueKey('showcase-info-button')));
+    final row = inVisible(find.byKey(const ValueKey('showcase-info-open')));
+    final primary = inVisible(find.byKey(ValueKey('showcase-$linkId')));
+    if (!has(opener) && !has(row)) {
+      // «Batafsil» yo'q: ma'lumot varag'i bo'sh bo'lgan sahifa.
+      r.values['infoSheet'] = 'yo\'q (varaqda ma\'lumot yo\'q) — asosiy tugma';
+      r.check(has(primary), 'ne «Batafsil», ne asosiy "$linkId" tugmasi bor');
+      if (!has(primary)) return false;
+      r.values['tap'] = await tapReal(primary);
+      return true;
+    }
+    r.values['infoButton'] = has(opener);
+    r.values['tapInfo'] = await tapReal(has(opener) ? opener : row);
+    final opened = await waitFor(() => has(sheet),
+        timeout: const Duration(seconds: 6));
+    r.check(opened, '«Batafsil» bosildi, ma\'lumot varag\'i ochilmadi');
+    if (!opened) return false;
+    await wait(const Duration(milliseconds: 600));
+    final link = find.byKey(ValueKey('showcase-info-$linkId'));
+    r.check(has(link), 'ma\'lumot varag\'ida "$linkId" havolasi yo\'q');
+    if (!has(link)) return false;
+    if (sheetShot != null) {
+      r.values['infoSheetShot'] = await screenshot(sheetShot);
+    }
+    try {
+      await t.ensureVisible(link.first);
+      await wait(const Duration(milliseconds: 300));
+    } catch (_) {}
+    r.values['tap'] = await tapReal(link);
+    return true;
+  }
+
   Future<String> js(Finder webFinder, String code) async {
     final w = t.widget<WebViewWidget>(webFinder.first);
     try {
@@ -772,9 +817,26 @@ class _Run {
 
     // g. TOZA REJIM ──────────────────────────────────────────────────
     await step('g', 'Media ustiga bosish: toza rejim va qaytish', (r) async {
+      // Video reklamani bosish endi TOZA REJIM emas, butun ekranli reklama
+      // (k qadami). Toza rejim — rasmli (karusel) sahifada; musiqalisi afzal.
+      if (visiblePage?.post.isShowcaseVideoAd ?? false) {
+        var to = nearest((p) =>
+            !p.isShowcaseVideoAd && (p.music?.playUrl ?? '').isNotEmpty);
+        if (to < 0) to = nearest((p) => !p.isShowcaseVideoAd);
+        r.check(to >= 0, 'lentada rasmli (karusel) sahifa yo\'q');
+        if (to < 0) return;
+        r.check(await goTo(to), 'rasmli sahifaga surib bo\'lmadi');
+        r.values['note'] = 'video reklama bosilsa butun ekran ochiladi — '
+            'toza rejim rasmli sahifada tekshirildi';
+        final mp = visiblePage?.post.music?.playUrl ?? '';
+        if (mp.isNotEmpty) {
+          await waitPlaying(mp, timeout: const Duration(seconds: 12));
+        }
+      }
       final page = visiblePage;
       r.check(page != null, 'sahifa yo\'q');
       if (page == null) return;
+      r.values['page'] = describe(page.post);
       final media = page.post.isShowcaseVideoAd
           ? inVisible(find.byKey(const ValueKey('showcase-ad-video')))
           : inVisible(find.byKey(const ValueKey('showcase-carousel')));
@@ -865,10 +927,11 @@ class _Run {
         r.values['musicBefore'] = await waitPlaying(mu,
             timeout: const Duration(seconds: 12));
       }
-      final btn = inVisible(find.byKey(const ValueKey('showcase-video')));
-      r.check(has(btn), '"Videoni ko\'rish" tugmasi yo\'q');
-      if (!has(btn)) return;
-      r.values['tap'] = await tapReal(btn);
+      // Havola «Batafsil» varag'ida: avval varaq ochiladi, so'ng undagi
+      // "Videoni ko'rish" bosiladi.
+      final tapped = await tapLinkViaInfoSheet(r, 'video',
+          sheetShot: '07c_info_sheet');
+      if (!tapped) return;
       final opened = await waitFor(() => has(find.byType(ShowcaseVideoPage)),
           timeout: const Duration(seconds: 6));
       r.check(opened, 'ShowcaseVideoPage ochilmadi');
@@ -1011,10 +1074,9 @@ class _Run {
       r.check(await goTo(target), 'Instagram sahifasiga surib bo\'lmadi');
       final page = visiblePage!.post;
       r.values['page'] = describe(page);
-      final btn = inVisible(find.byKey(const ValueKey('showcase-instagram')));
-      r.check(has(btn), '"Instagram\'da ko\'rish" tugmasi yo\'q');
-      if (!has(btn)) return;
-      r.values['tap'] = await tapReal(btn);
+      // Havola «Batafsil» varag'ida: avval varaq, so'ng "Instagram".
+      final tapped = await tapLinkViaInfoSheet(r, 'instagram');
+      if (!tapped) return;
       final opened = await waitFor(() => has(find.byType(ShowcaseInstagramPage)),
           timeout: const Duration(seconds: 6));
       r.check(opened, 'ShowcaseInstagramPage ochilmadi');
@@ -1147,6 +1209,211 @@ class _Run {
           shortUri(u): spy.all.where((p) => p.uri == u).length,
       };
     }, shot: '13_ad_after_return');
+
+    // k. REKLAMA BUTUN EKRANDA (ovozli) ──────────────────────────────
+    // Egasi (2026-10-10): "reklamani bosganda ekranga ovozli bo'lib
+    // chiqsin". Ko'rgazmadagi video reklama (BOY777/LOL707) sahifasida
+    // media bosiladi -> `AdFullscreenPlayer` (qora fon, video butun ekran,
+    // × / 🔊 / yagona tugma). Roliklarda audio yo'q — postning MUSIQASI
+    // yangi pleerda ovoz bilan o'ynaydi; video pleeri o'ynab, pozitsiyasi
+    // oldinga ketishi shart. × bosilsa Ko'rgazmaga qaytadi.
+    await step('k', 'Reklamani bosish: butun ekran, ovozli, yopish', (r) async {
+      var target = nearest((p) => p.isShowcaseVideoAd && p.title.contains('BOY777'));
+      if (target < 0) {
+        r.values['note'] = 'BOY777 lentada yo\'q — boshqa video reklama';
+        target = nearest((p) => p.isShowcaseVideoAd);
+      }
+      r.check(target >= 0, 'lentada video reklama yo\'q');
+      if (target < 0) return;
+      r.check(await goTo(target), 'reklama sahifasiga surib bo\'lmadi');
+      final page = visiblePage?.post;
+      r.check(page != null && page.isShowcaseVideoAd, 'video reklama sahifasi joriy emas');
+      if (page == null || !page.isShowcaseVideoAd) return;
+      r.values['page'] = describe(page);
+      final mu0 = mu(page);
+      // Sahifaning o'zi avval o'ynab turadi (poster emas).
+      r.values['pageVideo'] = await waitPlaying(page.videoUrl,
+          timeout: const Duration(seconds: 20),
+          minAdvance: const Duration(milliseconds: 500));
+      final seq0 = spy.all.fold<int>(0, (m, x) => x.seq > m ? x.seq : m);
+      PlayerRec? fresh(String uri) {
+        final norm = Uri.tryParse(uri)?.toString() ?? uri;
+        PlayerRec? best;
+        for (final x in spy.all) {
+          if (x.seq <= seq0 || x.disposed) continue;
+          if (x.uri != uri && x.uri != norm) continue;
+          if (best == null || x.seq > best.seq) best = x;
+        }
+        return best;
+      }
+
+      // Media ustiga bosish (bu yerda toza rejim EMAS, butun ekran).
+      final media = inVisible(find.byKey(const ValueKey('showcase-ad-video')));
+      r.check(has(media), 'reklama media maydoni topilmadi');
+      if (!has(media)) return;
+      final center = t.getCenter(media.first);
+      await t.tapAt(Offset(center.dx, screen.height * .42));
+      final fs = find.byKey(const ValueKey('ad-fullscreen'));
+      final opened = await waitFor(() => has(fs) && has(find.byType(AdFullscreenPlayer)),
+          timeout: const Duration(seconds: 6));
+      r.check(opened, 'reklamani bosganda butun ekranli pleer (ad-fullscreen) ochilmadi');
+      if (!opened) return;
+      r.values['cleanMode'] = c.read(reelsCleanProvider);
+      r.check(!c.read(reelsCleanProvider), 'butun ekran o\'rniga toza rejim yoqildi');
+      await wait(const Duration(milliseconds: 500));
+      final route = ModalRoute.of(t.element(find.byType(AdFullscreenPlayer)));
+      r.values['route'] = route.runtimeType.toString();
+      r.check(route is PageRoute && route.opaque && route is! PopupRoute,
+          'butun ekranli sahifa emas (${route.runtimeType})');
+      final rect = t.getRect(fs);
+      r.values['pageRect'] =
+          '${rect.width.toStringAsFixed(0)}x${rect.height.toStringAsFixed(0)} / '
+          '${screen.width.toStringAsFixed(0)}x${screen.height.toStringAsFixed(0)}';
+      r.check(rect.height >= screen.height - 1 && rect.width >= screen.width - 1,
+          'reklama sahifasi butun ekranni egallamagan');
+      r.check(has(find.byKey(const ValueKey('ad-fullscreen-close'))), '"×" tugmasi yo\'q');
+      r.check(has(find.byKey(const ValueKey('ad-fullscreen-mute'))), '🔊/🔇 tugmasi yo\'q');
+      r.values['cta'] = has(find.byKey(const ValueKey('ad-fullscreen-cta')));
+
+      // Video pleeri HAQIQATAN o'ynaydi: isPlaying va pozitsiya oldinga.
+      final playerKey = find.byKey(const ValueKey('ad-fullscreen-player'));
+      VideoPlayerController? ctl() =>
+          has(playerKey) ? t.widget<VideoPlayer>(playerKey.first).controller : null;
+      final sw = Stopwatch()..start();
+      var playing = false;
+      while (sw.elapsed < const Duration(seconds: 15)) {
+        final v = ctl()?.value;
+        if (v != null && v.isInitialized && v.isPlaying && v.position > Duration.zero) {
+          playing = true;
+          break;
+        }
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      final loadingRing = find.descendant(
+          of: find.byKey(const ValueKey('ad-fullscreen-loading')),
+          matching: find.byType(CircularProgressIndicator));
+      final posterOpacity = find.descendant(
+          of: find.byKey(const ValueKey('ad-fullscreen-poster')),
+          matching: find.byKey(const ValueKey('poster-until-playing')));
+      final c0 = ctl();
+      final p0 = c0?.value.position;
+      await wait(const Duration(seconds: 3));
+      final p1 = ctl()?.value.position;
+      final delta = (p0 == null || p1 == null) ? Duration.zero : p1 - p0;
+      final moving = playing &&
+          p0 != null &&
+          p1 != null &&
+          (delta >= const Duration(milliseconds: 500) ||
+              (p1 < p0 && p1 > Duration.zero));
+      r.values['fsVideo'] = {
+        'player': c0 == null ? null : 1,
+        'waitedMs': sw.elapsedMilliseconds,
+        'isPlaying': c0?.value.isPlaying,
+        'pos0Ms': p0?.inMilliseconds,
+        'pos1Ms': p1?.inMilliseconds,
+        'deltaMs': delta.inMilliseconds,
+        'windowMs': 3000,
+        'volume': c0?.value.volume,
+        'moving': moving,
+      };
+      r.check(c0 != null, 'ad-fullscreen-player (VideoPlayer) chizilmagan');
+      r.check(playing, 'butun ekranli reklama videosi 15 s ichida o\'ynamadi '
+          '(isPlaying va pozitsiya > 0 bo\'lmadi)');
+      r.check(moving, 'butun ekranli reklama pozitsiyasi oldinga ketmayapti');
+      r.values['spinnerAfterPlay'] = has(loadingRing);
+      r.check(!has(loadingRing), 'video o\'ynayapti, lekin yuklanish aylanasi turibdi');
+      if (has(posterOpacity)) {
+        final op = t.widget<AnimatedOpacity>(posterOpacity.first).opacity;
+        r.values['posterOpacity'] = op;
+        r.check(op == 0, 'video o\'ynayapti, lekin poster yopilmagan');
+      }
+      r.values['audioOwner'] = ownerType;
+      r.check(ownerType == '_AdFullscreenPlayerState',
+          'audio egasi butun ekranli pleer emas ($ownerType)');
+
+      // OVOZ: reklamada audio yo'q — musiqa yangi pleerda, ovozli (1.0).
+      if (mu0.isNotEmpty) {
+        PlayerRec? rec;
+        Map<String, Object?> m = {'player': null};
+        final sw2 = Stopwatch()..start();
+        while (sw2.elapsed < const Duration(seconds: 15)) {
+          rec = fresh(mu0);
+          if (rec != null && rec.playCalled) {
+            m = await playerState(rec);
+            if (m['moving'] == true) break;
+          } else {
+            await wait(const Duration(milliseconds: 500));
+          }
+        }
+        if (rec != null && m['moving'] != true) m = await playerState(rec);
+        r.values['fsMusic'] = m;
+        r.check(rec != null, 'butun ekranda musiqa pleeri yaratilmadi');
+        r.check(m['moving'] == true, 'butun ekranda musiqa o\'ynamayapti');
+        r.check(((m['volume'] as num?) ?? 0) > 0,
+            'butun ekranda musiqa ovozsiz (volume=${m['volume']}) — ovozli bo\'lishi kerak');
+        final vv = c0?.value.volume;
+        r.values['fsVideoVolume'] = vv;
+        r.check(vv == 0.0, 'musiqa bor, lekin video ham ovozli (volume=$vv)');
+        // Sahifaning eski musiqasi pauzada (ikki marta eshitilmasin).
+        PlayerRec? old;
+        for (final x in spy.alive) {
+          if (x.seq <= seq0 && (x.uri == mu0 || x.uri == Uri.tryParse(mu0).toString())) {
+            if (old == null || x.seq > old.seq) old = x;
+          }
+        }
+        if (old != null) {
+          final os = await playerState(old, window: const Duration(seconds: 2));
+          r.values['pageMusicWhileOpen'] = os;
+          r.check(os['still'] == true || os['playCalled'] == false,
+              'butun ekran ochiq, sahifa musiqasi ham o\'ynayapti');
+        }
+        // 🔊 -> 🔇 -> 🔊: tugma musiqa ovozini haqiqatan boshqaradi.
+        final muteBtn = find.byKey(const ValueKey('ad-fullscreen-mute'));
+        await t.tap(muteBtn);
+        await wait(const Duration(milliseconds: 800));
+        r.values['musicAfterMute'] = rec?.volume;
+        r.check(rec?.volume == 0.0, '🔇 bosilganda musiqa ovozi 0 bo\'lmadi');
+        await t.tap(muteBtn);
+        await wait(const Duration(milliseconds: 800));
+        r.values['musicAfterUnmute'] = rec?.volume;
+        r.check((rec?.volume ?? 0) > 0, '🔊 bosilganda musiqa ovozi qaytmadi');
+      } else {
+        // Musiqa yo'q: videoning o'z ovozi (audio izi bo'lsa).
+        r.values['note2'] = 'musiqa yo\'q — videoning o\'z ovozi';
+        r.check((c0?.value.volume ?? 0) > 0, 'musiqa yo\'q, video ham ovozsiz');
+      }
+      r.values['fsShot'] = await screenshot('14_ad_fullscreen');
+
+      // × — Ko'rgazmaga qaytadi, sahifa avvalgidek davom etadi.
+      final closeBtn = find.byKey(const ValueKey('ad-fullscreen-close'));
+      r.values['tapClose'] = await tapReal(closeBtn);
+      final closed = await waitFor(() => !has(find.byType(AdFullscreenPlayer)),
+          timeout: const Duration(seconds: 6));
+      r.check(closed, '× butun ekranli reklamani yopmadi');
+      if (!closed) return;
+      final back = await waitFor(
+          () => visiblePage != null && likeKey(visiblePage!.post) == likeKey(page),
+          timeout: const Duration(seconds: 6));
+      r.check(back, 'yopilgach o\'sha reklama sahifasiga (Ko\'rgazma) qaytilmadi');
+      r.check(has(find.byKey(const ValueKey('showcase-pager'))), 'Ko\'rgazma pageri ko\'rinmayapti');
+      final gone = await waitFor(
+          () => spy.all.where((x) => x.seq > seq0 && !x.disposed).isEmpty,
+          timeout: const Duration(seconds: 4));
+      r.values['fsPlayersDisposed'] = gone;
+      r.check(gone, 'yopilgach butun ekran pleerlari dispose bo\'lmadi');
+      if (back) {
+        final v = await waitPlaying(page.videoUrl,
+            timeout: const Duration(seconds: 20),
+            minAdvance: const Duration(milliseconds: 500));
+        r.values['videoAfterClose'] = v;
+        r.check(v['moving'] == true, 'yopilgandan keyin sahifa videosi davom etmadi');
+        if (mu0.isNotEmpty) {
+          final m = await waitPlaying(mu0, timeout: const Duration(seconds: 12));
+          r.values['musicAfterClose'] = m;
+          r.check(m['moving'] == true, 'yopilgandan keyin sahifa musiqasi davom etmadi');
+        }
+      }
+    }, shot: '15_after_ad_fullscreen');
 
     _finish();
   }
