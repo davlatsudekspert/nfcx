@@ -1,0 +1,45 @@
+From 69a370671e2b94b3a13b58ab8ba7408c58134e5b Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 06:56:34 +0000
+Subject: [PATCH 86/86] =?UTF-8?q?Nova:=20iap=5Fboost=5Ftest=20=E2=80=94=20?=
+ =?UTF-8?q?qat'iy=20sana=20o'rniga=20nisbiy=20(2026-10-09=20o'tgach=20test?=
+ =?UTF-8?q?lar=20yiqilardi)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/test/iap_boost_test.dart | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/mobile_nova/test/iap_boost_test.dart b/mobile_nova/test/iap_boost_test.dart
+index cd535aa..bca0674 100644
+--- a/mobile_nova/test/iap_boost_test.dart
++++ b/mobile_nova/test/iap_boost_test.dart
+@@ -49,7 +49,11 @@ const _me = '48210377';
+ final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
+ final _log = <String>[];
+ 
+-final _ends = DateTime.utc(2026, 10, 9, 14, 30);
++// Doim kelajakda: qat'iy sana (2026-10-09) o'tib ketgach testlar yiqildi.
++final _ends = () {
++  final t = DateTime.now().toUtc().add(const Duration(days: 3, minutes: 5));
++  return DateTime.utc(t.year, t.month, t.day, t.hour, t.minute);
++}();
+ 
+ class _Store implements IapStore {
+   final _ctrl = StreamController<List<IapPurchase>>.broadcast();
+@@ -104,7 +108,7 @@ class _Iap extends FakeIapRepository {
+   Result<BoostResult> verified = Ok(BoostResult(
+       status: BoostStatus.active,
+       slotId: 42,
+-      startsAt: DateTime.utc(2026, 10, 6, 14, 30),
++      startsAt: _ends.subtract(const Duration(days: 3)),
+       endsAt: _ends));
+   Result<BoostResult> redeemed =
+       Ok(BoostResult(status: BoostStatus.active, slotId: 50, endsAt: _ends));
+-- 
+2.43.0
+
