@@ -849,6 +849,7 @@ class _Run {
       // yutilgan bo'lsa bir marta qayta bosadi.
       Future<void> tapMedia() async {
         await waitFor(() {
+          if (media.evaluate().isEmpty) return true;
           final cf = find.descendant(
               of: media.first, matching: find.byType(PageView));
           if (cf.evaluate().isEmpty) return true;
