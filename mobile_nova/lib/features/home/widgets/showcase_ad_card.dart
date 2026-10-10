@@ -264,8 +264,6 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
                     fit: StackFit.expand,
                     children: [
                       const ColoredBox(color: Colors.black),
-                      if (poster.isNotEmpty)
-                        mediaImage(context, poster, fit: BoxFit.cover),
                       if (c != null && c.value.isInitialized)
                         FittedBox(
                           fit: BoxFit.cover,
@@ -278,6 +276,15 @@ class _HomeShowcaseAdCardState extends ConsumerState<HomeShowcaseAdCard>
                               key: const ValueKey('home-ad-player'),
                             ),
                           ),
+                        ),
+                      // Poster pleer ilk kadrni chizguncha (pozitsiya > 0)
+                      // ko'rinadi: ilk kadr bo'sh gradient bo'lishi mumkin.
+                      if (poster.isNotEmpty)
+                        PosterUntilPlaying(
+                          key: const ValueKey('home-ad-poster'),
+                          controller: c,
+                          child: mediaImage(context, poster,
+                              fit: BoxFit.cover),
                         ),
                       AdVideoSpinner(
                         key: const ValueKey('home-ad-loading'),

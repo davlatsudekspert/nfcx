@@ -3613,6 +3613,15 @@ class LRu extends L {
   String get showcaseWatchVideo => 'Смотреть видео';
 
   @override
+  String get showcaseDetails => 'Подробнее';
+
+  @override
+  String get showcaseAdMute => 'Выключить звук';
+
+  @override
+  String get showcaseAdUnmute => 'Включить звук';
+
+  @override
   String get showcaseVideoUnavailable =>
       'Это видео нельзя посмотреть в приложении. Откройте его в YouTube.';
 

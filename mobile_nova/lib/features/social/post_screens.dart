@@ -388,6 +388,8 @@ class _PostScreenState extends ConsumerState<PostScreen> {
                         loopingVideo: true,
                         tapToToggleVideo: true,
                         showMuteVideo: true,
+                        videoPoster: p.posterUrl,
+                        videoMusic: p.music,
                         // Bosish — belgilarsiz to'liq ekran (Instagram).
                         fullscreenVideo: true,
                         onVideoFullscreen: _onFullscreen,

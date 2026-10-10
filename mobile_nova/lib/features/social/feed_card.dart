@@ -292,6 +292,8 @@ class FeedCard extends ConsumerWidget {
                 activeVideo: activeVideo,
                 // Burchakda 🔇/🔊 (egasi, 2026-10-05) — Reels bilan umumiy.
                 showMuteVideo: true,
+                videoPoster: post.posterUrl,
+                videoMusic: post.music,
               ),
             ),
           ],

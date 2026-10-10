@@ -6495,6 +6495,24 @@ abstract class L {
   /// **'Videoni ko‘rish'**
   String get showcaseWatchVideo;
 
+  /// No description provided for @showcaseDetails.
+  ///
+  /// In uz, this message translates to:
+  /// **'Batafsil'**
+  String get showcaseDetails;
+
+  /// No description provided for @showcaseAdMute.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ovozni o‘chirish'**
+  String get showcaseAdMute;
+
+  /// No description provided for @showcaseAdUnmute.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ovozni yoqish'**
+  String get showcaseAdUnmute;
+
   /// No description provided for @showcaseVideoUnavailable.
   ///
   /// In uz, this message translates to:

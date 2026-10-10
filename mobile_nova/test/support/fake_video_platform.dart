@@ -123,9 +123,24 @@ class FakeVideoPlatform extends VideoPlayerPlatform {
       positions[playerId] = position;
   @override
   Future<void> setPlaybackSpeed(int playerId, double speed) async {}
+  /// Shu bo'lakli URL o'ynasa ham pozitsiyasi JOYIDAN JILMAYDI (iPhone:
+  /// AVPlayer buferda qotib qoldi — pushti birinchi kadr).
+  final frozen = <String>{};
+  final _progress = <int, Duration>{};
+
+  /// O'ynayotgan pleerning pozitsiyasi har so'rovda 100 ms ilgarilaydi
+  /// (haqiqiy pleerdagidek); `seekTo` qiymati boshlanish nuqtasi.
   @override
-  Future<Duration> getPosition(int playerId) async =>
-      positions[playerId] ?? Duration.zero;
+  Future<Duration> getPosition(int playerId) async {
+    final base = positions[playerId] ?? Duration.zero;
+    final url = urls[playerId] ?? '';
+    if (playing.contains(playerId) && !frozen.any(url.contains)) {
+      _progress[playerId] =
+          (_progress[playerId] ?? Duration.zero) +
+              const Duration(milliseconds: 100);
+    }
+    return base + (_progress[playerId] ?? Duration.zero);
+  }
   @override
   Future<void> setMixWithOthers(bool mixWithOthers) async =>
       mixCalls.add(mixWithOthers);

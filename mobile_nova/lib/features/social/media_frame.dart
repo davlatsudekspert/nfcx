@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../data/models/models.dart' show MusicTrack;
 import '../../design/tokens/nfc_tokens.dart';
 import 'inline_video.dart';
 import '../../core/media/image_cache.dart';
@@ -219,7 +220,13 @@ class AdaptiveMedia extends StatefulWidget {
     this.activeVideo,
     this.onVideoFullscreen,
     this.showMuteVideo = false,
+    this.videoPoster = '',
+    this.videoMusic,
   });
+
+  /// Video posteri va postdagi kutubxona musiqasi — `InlineVideo` ga.
+  final String videoPoster;
+  final MusicTrack? videoMusic;
 
   /// Videoda 🔇/🔊 tugma (lenta, post).
   final bool showMuteVideo;
@@ -337,6 +344,8 @@ class _AdaptiveMediaState extends State<AdaptiveMedia> {
             active: widget.activeVideo,
             onFullscreen: widget.onVideoFullscreen,
             showMute: widget.showMuteVideo,
+            poster: widget.videoPoster,
+            music: widget.videoMusic,
             // Quti videoning o'z nisbatiga kelganda `cover` hech
             // narsa kesmaydi; chegaraga urilgan holatda esa
             // kesish eng kichik bo'ladi.

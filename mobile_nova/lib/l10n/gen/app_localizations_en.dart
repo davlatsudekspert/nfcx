@@ -3591,6 +3591,15 @@ class LEn extends L {
   String get showcaseWatchVideo => 'Watch video';
 
   @override
+  String get showcaseDetails => 'Details';
+
+  @override
+  String get showcaseAdMute => 'Mute';
+
+  @override
+  String get showcaseAdUnmute => 'Unmute';
+
+  @override
   String get showcaseVideoUnavailable =>
       'This video can’t be played in the app. Open it on YouTube.';
 

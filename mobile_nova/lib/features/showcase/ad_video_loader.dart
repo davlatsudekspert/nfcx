@@ -61,6 +61,11 @@ class AdVideoLoader {
   int _attempts = 0;
   int _autoRetries = 0;
   int _blockedTicks = 0;
+
+  /// Qo'riqchi: oxirgi ko'rilgan pozitsiya va u o'zgarmagan ketma-ket
+  /// tekshiruvlar soni (qotib qolgan pleerni topish uchun).
+  Duration _lastPos = Duration.zero;
+  int _stall = 0;
   Timer? _wait;
   Timer? _retry;
   Timer? _guard;
@@ -136,6 +141,8 @@ class AdVideoLoader {
     final c = _c;
     _c = null;
     _ready = false;
+    _lastPos = Duration.zero;
+    _stall = 0;
     if (c != null) {
       c.pause().catchError((_) {});
       c.dispose();
@@ -218,11 +225,31 @@ class AdVideoLoader {
     final v = c.value;
     if (v.hasError) {
       _fail();
-    } else if (!v.isPlaying) {
-      _start();
+      return;
     }
+    // QOTIB QOLGAN PLEER (iPhone: pushti birinchi kadr + cheksiz aylana).
+    // `initialize()` o'tgan, `isPlaying`/`isBuffering` nima bo'lsa ham,
+    // lekin pozitsiya [kAdVideoStallTicks] tekshiruv davomida (~8 s)
+    // joyidan jilmadi — bunday pleerga `play()` ni qayta-qayta urish
+    // foyda bermaydi (AVPlayer buferda osilib qoldi). Yo'q qilinadi va
+    // yangisi ochiladi (cheklangan: [kAdVideoAutoRetries]).
+    if (v.position != _lastPos) {
+      _lastPos = v.position;
+      _stall = 0;
+    } else if (++_stall >= kAdVideoStallTicks) {
+      _fail();
+      return;
+    }
+    if (!v.isPlaying) _start();
   }
 }
+
+/// Pozitsiya shuncha tekshiruv ketma-ket o'zgarmasa pleer qotgan hisoblanadi.
+const kAdVideoStallTicks = 4;
+
+/// Aylana shundan uzoq aylanmaydi (pleer tayyor, lekin yurmayapti) —
+/// "cheksiz aylana" bo'lmasin, poster qoladi.
+const kAdSpinnerGiveUp = Duration(seconds: 8);
 
 /// Yiqilgandan keyin shuncha kutib qayta ochiladi.
 const kAdVideoRetryDelay = Duration(seconds: 3);
@@ -256,18 +283,130 @@ class AdVideoSpinner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = controller;
-    if (loading) return const _Ring();
+    if (loading) return const VideoLoadingRing();
     if (c == null) return const SizedBox.shrink();
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: c,
       builder: (_, v, __) =>
-          waiting(v) ? const _Ring() : const SizedBox.shrink(),
+          waiting(v) ? const _GiveUpRing() : const SizedBox.shrink(),
     );
   }
 }
 
-class _Ring extends StatelessWidget {
-  const _Ring();
+/// Tayyor pleer kutilayotgan paytda aylana [kAdSpinnerGiveUp] dan keyin
+/// o'chadi (kutish davri tugasa — yangi davr, yangi hisob).
+class _GiveUpRing extends StatefulWidget {
+  const _GiveUpRing();
+
+  @override
+  State<_GiveUpRing> createState() => _GiveUpRingState();
+}
+
+class _GiveUpRingState extends State<_GiveUpRing> {
+  bool _gone = false;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer(kAdSpinnerGiveUp, () {
+      if (mounted) setState(() => _gone = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      _gone ? const SizedBox.shrink() : const VideoLoadingRing();
+}
+
+/// POSTER PLEER ILK KADRNI CHIZGUNCHA KO'RINADI (egasi, iPhone: LOL707
+/// ning birinchi kadri bo'sh pushti gradient — "buzuq" ko'rinardi).
+///
+/// Pozitsiya 0 dan oshgach poster YUMSHOQ yo'qoladi va qaytib kelmaydi
+/// (video aylanganda pozitsiya yana 0 ga tushadi — poster qayta
+/// chiqmasin). Pleer almashsa (yangi kontroller) — hisob boshidan.
+class PosterUntilPlaying extends StatefulWidget {
+  const PosterUntilPlaying({
+    super.key,
+    required this.controller,
+    required this.child,
+  });
+
+  final VideoPlayerController? controller;
+  final Widget child;
+
+  @override
+  State<PosterUntilPlaying> createState() => _PosterUntilPlayingState();
+}
+
+class _PosterUntilPlayingState extends State<PosterUntilPlaying> {
+  VideoPlayerController? _bound;
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bind();
+  }
+
+  @override
+  void didUpdateWidget(covariant PosterUntilPlaying old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.controller, widget.controller)) _bind();
+  }
+
+  void _bind() {
+    _unbind();
+    _started = false;
+    final c = widget.controller;
+    _bound = c;
+    if (c == null) return;
+    c.addListener(_tick);
+    _started = c.value.position > Duration.zero;
+  }
+
+  void _unbind() {
+    try {
+      _bound?.removeListener(_tick);
+    } catch (_) {
+      // Kontroller allaqachon yopilgan.
+    }
+    _bound = null;
+  }
+
+  void _tick() {
+    if (_started || !mounted) return;
+    if (_bound!.value.position > Duration.zero) {
+      setState(() => _started = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _unbind();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedOpacity(
+      key: const ValueKey('poster-until-playing'),
+      opacity: _started ? 0 : 1,
+      duration: const Duration(milliseconds: 220),
+      child: widget.child,
+    ),
+  );
+}
+
+/// Poster ustidagi aylana.
+class VideoLoadingRing extends StatelessWidget {
+  const VideoLoadingRing({super.key});
 
   @override
   Widget build(BuildContext context) => IgnorePointer(

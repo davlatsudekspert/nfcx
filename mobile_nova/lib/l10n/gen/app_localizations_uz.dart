@@ -3571,6 +3571,15 @@ class LUz extends L {
   String get showcaseWatchVideo => 'Videoni ko‘rish';
 
   @override
+  String get showcaseDetails => 'Batafsil';
+
+  @override
+  String get showcaseAdMute => 'Ovozni o‘chirish';
+
+  @override
+  String get showcaseAdUnmute => 'Ovozni yoqish';
+
+  @override
   String get showcaseVideoUnavailable =>
       'Bu videoni ilova ichida ko‘rib bo‘lmaydi. Uni YouTube’da oching.';
 

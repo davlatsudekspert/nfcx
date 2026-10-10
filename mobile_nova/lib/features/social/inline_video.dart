@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../data/models/models.dart' show MusicTrack;
 import '../../design/tokens/nfc_tokens.dart';
 import '../profile/music_player.dart';
+import '../showcase/ad_video_loader.dart'
+    show PosterUntilPlaying, VideoLoadingRing, kAdSpinnerGiveUp;
+import 'media_frame.dart' show mediaImage;
 import 'fullscreen_video.dart';
 import 'media_sound.dart';
 
@@ -75,7 +79,20 @@ class InlineVideo extends ConsumerStatefulWidget {
     this.onFullscreen,
     this.showMute = false,
     this.paused = false,
+    this.poster = '',
+    this.music,
   });
+
+  /// POSTER: video ilk kadrni chizguncha (pozitsiya > 0) va ochilguncha
+  /// ko'rinadi. Ilk kadr bo'sh gradient bo'lishi mumkin (LOL707) —
+  /// "buzuq" ko'rinmasin. Bo'sh — avvalgidek.
+  final String poster;
+
+  /// POSTDAGI KUTUBXONA MUSIQASI. Video ovozsiz bo'lishi mumkin (reklama
+  /// roliklarida audio yo'q); musiqa bo'lsa video HAR DOIM ovozsiz,
+  /// 🔊 yoqiq bo'lsa video o'ynaganda musiqa o'ynaydi (Reels/Ko'rgazma
+  /// kabi). 🔇 bosilsa musiqa ham to'xtaydi.
+  final MusicTrack? music;
 
   /// TASHQARIDAN PAUZA (istorya: barmoq bosib turilganda yoki izoh/
   /// shikoyat varag'i ochiq turganda).
@@ -160,7 +177,18 @@ class InlineVideo extends ConsumerStatefulWidget {
 
 class _InlineVideoState extends ConsumerState<InlineVideo>
     with WidgetsBindingObserver {
-  double get _volume => ref.read(mediaMutedProvider) ? 0 : 1;
+  bool get _hasMusic => (widget.music?.playUrl ?? '').isNotEmpty;
+
+  /// Musiqa bor — videoning o'zi doim ovozsiz (musiqa uning o'rnini oladi).
+  double get _volume => (_hasMusic || ref.read(mediaMutedProvider)) ? 0 : 1;
+
+  // ── MUSIQA (alohida audio pleer) ───────────────────────────────────
+  VideoPlayerController? _mc;
+  bool _mReady = false;
+  bool _wasPlaying = false;
+
+  /// O'ynashga niyat bor (ochilmoqda): aylana shunda ko'rinadi.
+  bool _intent = false;
 
   VideoPlayerController? _c;
   bool _ready = false;
@@ -279,6 +307,9 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     _c = null;
     _ready = false;
     _opening = false;
+    _intent = false;
+    c?.removeListener(_onTick);
+    _disposeMusic();
     c?.setVolume(0);
     c?.pause();
     c?.dispose();
@@ -302,6 +333,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (widget.active == false) return;
     // Ochilish paytida ustiga boshqa ekran chiqdi / tab yashirildi.
     if (widget.active != null && _shown == false) return;
+    _intent = true;
     await c.setVolume(_volume);
     await c.play();
     if (mounted) setState(() {});
@@ -334,11 +366,14 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     _opening = true;
     final c = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _c = c;
+    c.addListener(_onTick);
     // `_release()` ochilish davomida chaqirilsa, bu kontroller
     // endi "eski" — u allaqachon yopilgan.
     bool stale() => !identical(_c, c);
     try {
-      await c.initialize();
+      // MUDDAT: ilgari `initialize()` osilib qolsa (iPhone, sekin tarmoq)
+      // quti abadiy bo'sh qolardi — endi xato hisoblanadi.
+      await c.initialize().timeout(kAdSpinnerGiveUp * 3);
       if (stale()) return;
       if (_gone || !mounted) {
         await c.dispose();
@@ -352,6 +387,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       // Ochilish boshidagi pauza holati — tugaguncha o'zgarishi mumkin.
       final held = widget.paused;
       if (widget.autoPlay && !held) {
+        _intent = true;
         _owner?.take(this, _pauseForOther);
         // Umumiy 🔇 holati BIRINCHI kadrdanoq: ilgari bu yo'lda ovoz
         // har doim yoqiq boshlanardi va faqat tugma bosilgandagina
@@ -384,6 +420,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       if (stale()) return;
       // Buzuq havola yoki qo'llab-quvvatlanmaydigan format — ilova
       // qulamaydi, o'rnida fon qoladi.
+      _intent = false;
       if (mounted) setState(() => _failed = true);
       widget.onFailed?.call();
     }
@@ -394,6 +431,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
   /// OVOZ AVVAL o'chiriladi: `pause()` platformaga xabar yuboradi
   /// va u bajarilguncha ovoz eshitilib turardi.
   void _pauseForOther() {
+    _mc?.pause();
     _c?.setVolume(0);
     _c?.pause();
     if (mounted) setState(() {});
@@ -414,6 +452,71 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       c.play();
     }
     if (mounted) setState(() {});
+  }
+
+  /// Video o'ynash holati o'zgardi — musiqa unga ergashadi (pauza, davom,
+  /// to'liq ekranda bosib turish, boshqa manba ovozni olishi).
+  void _onTick() {
+    final p = _c?.value.isPlaying ?? false;
+    if (p == _wasPlaying) return;
+    _wasPlaying = p;
+    _syncMusic();
+  }
+
+  /// Musiqa: video o'ynayapti va 🔇 emas — o'ynaydi; aks holda pauza.
+  /// Pleer faqat kerak bo'lganda quriladi (musiqa yuklanishi tarmoqni
+  /// ko'rilmagan video uchun sarflamasin). Ochilmasa — video jim.
+  Future<void> _syncMusic() async {
+    final m = widget.music;
+    if (!_hasMusic || _gone) return;
+    bool want() =>
+        !_gone &&
+        mounted &&
+        (_c?.value.isPlaying ?? false) &&
+        !ref.read(mediaMutedProvider);
+    if (!want()) {
+      _mc?.pause();
+      return;
+    }
+    var mc = _mc;
+    if (mc == null) {
+      mc = VideoPlayerController.networkUrl(
+        Uri.parse(m!.playUrl),
+        // BITTA OVOZ: boshqa ilova (Spotify/YouTube) to'xtaydi.
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+      );
+      _mc = mc;
+      try {
+        await mc.initialize().timeout(kAdSpinnerGiveUp * 3);
+        if (_mc != mc) return;
+        await mc.setLooping(true);
+        if (m.playFrom > Duration.zero) await mc.seekTo(m.playFrom);
+        _mReady = true;
+      } catch (_) {
+        // Yiqilgan pleer QOLDIRILMAYDI — keyingi urinish yangisini ochadi.
+        if (_mc == mc) {
+          _mc = null;
+          _mReady = false;
+          mc.dispose();
+        }
+        return;
+      }
+    }
+    if (!_mReady || _mc != mc || !want()) return;
+    await mc.setVolume(1);
+    if (_mc != mc || !want()) return;
+    await mc.play();
+  }
+
+  void _disposeMusic() {
+    final mc = _mc;
+    _mc = null;
+    _mReady = false;
+    _wasPlaying = false;
+    if (mc != null) {
+      mc.pause().catchError((_) {});
+      mc.dispose();
+    }
   }
 
   /// To'liq ekranga o'tish — hali ochilmagan bo'lsa avval ochiladi.
@@ -444,9 +547,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // Dangasa rejim: birinchi bosishda kontroller endi quriladi.
     if (widget.lazy && _c == null && !_failed) {
       _owner?.take(this, _pauseForOther);
+      _intent = true;
+      if (mounted) setState(() {});
       await _open();
       final opened = _c;
       if (opened != null && !_gone && mounted) {
+        _intent = true;
         await opened.setVolume(_volume);
         await opened.play();
         if (mounted) setState(() {});
@@ -471,6 +577,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     WidgetsBinding.instance.removeObserver(this);
     final c = _c;
     _c = null;
+    c?.removeListener(_onTick);
+    _disposeMusic();
     // To'liq ekran ochiq — kontrollerni o'sha sahifa yopadi (u hali
     // ko'rsatib turibdi).
     final h = _handoff;
@@ -495,7 +603,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
     ref.listen<bool>(mediaMutedProvider, (_, muted) {
       final c = _c;
-      if (c != null && _ready) c.setVolume(muted ? 0 : 1);
+      if (c != null && _ready) c.setVolume(_volume);
+      _syncMusic();
     });
     final body = _buildBody(context);
     if (!widget.showMute || _c == null || !_ready || _failed) return body;
@@ -525,17 +634,36 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       return GestureDetector(
         onTap: widget.fullscreenOnTap ? _openFullscreen : _toggle,
         behavior: HitTestBehavior.opaque,
-        child: ColoredBox(
-          color: t.surface2,
-          child: Center(
-            child: Icon(Icons.play_circle_fill_rounded,
-                size: 54, color: t.text1.withValues(alpha: .85)),
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: t.surface2),
+            if (widget.poster.isNotEmpty)
+              mediaImage(context, widget.poster, fit: widget.fit),
+            Center(
+              child: Icon(Icons.play_circle_fill_rounded,
+                  size: 54,
+                  color: widget.poster.isNotEmpty
+                      ? Colors.white
+                      : t.text1.withValues(alpha: .85)),
+            ),
+          ],
         ),
       );
     }
     if (!_ready || c == null) {
-      return ColoredBox(color: t.surface2);
+      // Poster bor — kulrang quti o'rniga u; niyat bor (bosildi/dominant)
+      // bo'lsa ochilish davomida aylana.
+      if (widget.poster.isEmpty && !_intent) return ColoredBox(color: t.surface2);
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: t.surface2),
+          if (widget.poster.isNotEmpty)
+            mediaImage(context, widget.poster, fit: widget.fit),
+          if (_intent) const VideoLoadingRing(),
+        ],
+      );
     }
     // BIRINCHI KADR YUMSHOQ OCHILADI.
     //
@@ -546,7 +674,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // 220 ms — ko'z sezadigan, lekin kutishga aylanmaydigan
     // eng qisqa oraliq. Ovoz va o'ynash mantig'iga tegilmadi:
     // bu FAQAT chizish.
-    final video = TweenAnimationBuilder<double>(
+    final plain = TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
@@ -560,6 +688,23 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         ),
       ),
     );
+    // POSTER ilk kadr chizilguncha (pozitsiya > 0) video ustida turadi;
+    // pleer o'ynayapti-yu yurmasa (bufer) — aylana.
+    final video = (widget.poster.isEmpty && !_intent)
+        ? plain
+        : Stack(
+            fit: StackFit.expand,
+            children: [
+              plain,
+              if (widget.poster.isNotEmpty)
+                PosterUntilPlaying(
+                  key: const ValueKey('video-poster'),
+                  controller: c,
+                  child: mediaImage(context, widget.poster, fit: widget.fit),
+                ),
+              if (_intent) _BufferRing(controller: c),
+            ],
+          );
     if (widget.fullscreenOnTap) {
       return GestureDetector(
         key: const ValueKey('video-open-fullscreen'),
@@ -593,4 +738,21 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
       ),
     );
   }
+}
+
+/// Pleer o'ynayapti, lekin pozitsiya hali 0 va bufer kutilmoqda — aylana.
+/// Video yura boshlasa (pozitsiya > 0) yo'qoladi.
+class _BufferRing extends StatelessWidget {
+  const _BufferRing({required this.controller});
+  final VideoPlayerController controller;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<VideoPlayerValue>(
+        valueListenable: controller,
+        builder: (_, v, __) => v.isPlaying &&
+                v.isBuffering &&
+                v.position <= Duration.zero
+            ? const VideoLoadingRing()
+            : const SizedBox.shrink(),
+      );
 }

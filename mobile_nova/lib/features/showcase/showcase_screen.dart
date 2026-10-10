@@ -42,7 +42,6 @@ import '../social/fullscreen_video.dart' show immersiveVideoFit;
 import '../social/reels_screen.dart'
     show
         ReelAction,
-        ReelCaption,
         ReelsBackGuard,
         ReelsChrome,
         ReelFollowPill,
@@ -53,6 +52,7 @@ import '../social/reels_screen.dart'
         reelsHiddenProvider,
         savedReelsProvider,
         showReelComments;
+import 'ad_fullscreen.dart';
 import 'ad_video_loader.dart';
 import 'showcase_common.dart';
 import 'showcase_instagram.dart';
@@ -517,7 +517,6 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   /// (ikki ovoz bir vaqtda yo'q), yopilgach davom etadi.
   bool _videoOpen = false;
 
-  bool _captionOpen = false;
   int? _comments;
   int? _views;
   late final ViewSession _viewSession = ViewSession(_sendView);
@@ -845,6 +844,194 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
   void _openProduct(PostCatalogItem item) =>
       context.push(Routes.catalogProduct(item.companyId, item.id));
 
+  /// BIRINCHI DARAJALI TUGMA (sahifada bitta): tovar > YouTube >
+  /// Instagram > havola. Hammasi [_links] da (ma'lumot varag'ida).
+  _Link? _primaryLink(L l) {
+    final all = _links(l);
+    return all.isEmpty ? null : all.first;
+  }
+
+  List<_Link> _links(L l) {
+    final p = _p;
+    final item = p.catalogItem;
+    final link = showcaseLinkKind(p.linkUrl);
+    final videoId = youtubeVideoId(p.linkUrl);
+    final igEmbed = instagramEmbedUri(p.linkUrl);
+    return [
+      if (item != null)
+        _Link(
+          'product',
+          Icons.shopping_bag_outlined,
+          l.showcaseViewProduct,
+          () => _openProduct(item),
+        ),
+      if (videoId != null)
+        _Link(
+          'video',
+          Icons.play_circle_outline_rounded,
+          l.showcaseWatchVideo,
+          () => _openVideo(videoId),
+        )
+      else if (igEmbed != null)
+        _Link(
+          'instagram',
+          Icons.camera_alt_outlined,
+          l.showcaseWatchInstagram,
+          () => _openInstagram(igEmbed),
+        )
+      else if (link != null)
+        _Link(
+          'link',
+          Icons.open_in_new_rounded,
+          showcaseLinkLabel(l, link),
+          () => openLink(p.linkUrl),
+        ),
+    ];
+  }
+
+  /// Sahifada ko'rinmaydigan hamma narsa (izoh, musiqa, aloqa, narx,
+  /// qo'shimcha havolalar) — ma'lumot varag'ida.
+  bool _hasInfo(L l) =>
+      _p.text.isNotEmpty ||
+      _p.music != null ||
+      _p.priceUzs != null ||
+      postContactActions(_p).isNotEmpty ||
+      _links(l).length > 1;
+
+  /// REKLAMA VIDEOSI BUTUN EKRANDA (ovozli). Sahifa musiqasi/videosi
+  /// pauzada ([_withSheet]), yopilgach avvalgidek davom etadi. Pastdagi
+  /// tugma bosilsa — sahifa yopilgach o'sha amal bajariladi.
+  Future<void> _openAdFullscreen() async {
+    final l = L.of(context);
+    final cta = _primaryLink(l);
+    final at = (_musicReady && _music != null) ? _music!.value.position : null;
+    var act = false;
+    await _withSheet(() async {
+      act =
+          await openAdFullscreenPlayer(
+            context,
+            videoUrl: _p.videoUrl,
+            poster: _p.posterUrl,
+            music: _hasMusic ? _p.music : null,
+            musicAt: at,
+            ctaLabel: cta?.label,
+            ctaIcon: cta?.icon,
+          ) ??
+          false;
+    });
+    if (act && mounted) cta?.onTap();
+  }
+
+  /// MA'LUMOT VARAG'I — sarlavha/muallif qatori bosilsa: to'liq izoh,
+  /// musiqa («Shu musiqani ishlatish»), aloqa tugmalari, hamma havolalar.
+  void _showInfo() {
+    final l = L.of(context);
+    final p = _p;
+    final links = _links(l);
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: context.tokens.surfaceSolid,
+      builder: (sheet) {
+        final t = sheet.tokens;
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheet).height * .7,
+            ),
+            child: SingleChildScrollView(
+              key: const ValueKey('showcase-info-sheet'),
+              padding: const EdgeInsets.fromLTRB(Gap.lg, 0, Gap.lg, Gap.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (p.title.isNotEmpty)
+                    Text(
+                      p.title,
+                      style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                        color: t.text1,
+                      ),
+                    ),
+                  if (p.priceUzs != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      formatUzs(l, p.priceUzs!),
+                      key: const ValueKey('showcase-price'),
+                      style: AppType.monoStyle(
+                        color: t.text1,
+                        size: 15,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  if (p.text.isNotEmpty) ...[
+                    const SizedBox(height: Gap.md),
+                    Text(
+                      p.text,
+                      key: const ValueKey('showcase-info-caption'),
+                      style: TextStyle(
+                        fontFamily: AppType.sans,
+                        fontSize: 14.5,
+                        height: 1.4,
+                        color: t.text1,
+                      ),
+                    ),
+                  ],
+                  if (p.music != null) ...[
+                    const SizedBox(height: Gap.md),
+                    MusicChip(
+                      key: const ValueKey('showcase-info-music'),
+                      track: p.music!,
+                      onTap: () {
+                        Navigator.of(sheet).pop();
+                        _openMusic(p.music!);
+                      },
+                    ),
+                  ],
+                  if (postContactActions(p).isNotEmpty) ...[
+                    const SizedBox(height: Gap.md),
+                    PostContactBar(
+                      key: const ValueKey('showcase-info-contact'),
+                      post: p,
+                    ),
+                  ],
+                  if (links.isNotEmpty) ...[
+                    const SizedBox(height: Gap.md),
+                    Wrap(
+                      spacing: Gap.sm,
+                      runSpacing: 6,
+                      children: [
+                        for (final k in links)
+                          _CtaButton(
+                            key: ValueKey('showcase-info-${k.id}'),
+                            icon: k.icon,
+                            label: k.label,
+                            primary: true,
+                            onTap: () {
+                              Navigator.of(sheet).pop();
+                              k.onTap();
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showMore() {
     final l = L.of(context);
     final p = _p;
@@ -955,10 +1142,8 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
     final clean = widget.visible && ref.watch(reelsCleanProvider);
     final navH = MediaQuery.paddingOf(context).bottom;
     final topH = MediaQuery.paddingOf(context).top;
-    final link = showcaseLinkKind(p.linkUrl);
-    final videoId = youtubeVideoId(p.linkUrl);
-    final igEmbed = instagramEmbedUri(p.linkUrl);
-    final item = p.catalogItem;
+    final cta = _primaryLink(l);
+    final hasInfo = _hasInfo(l);
 
     return Stack(
       fit: StackFit.expand,
@@ -967,7 +1152,9 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
         if (_isVideo)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _toggleClean,
+            // REKLAMA VIDEOSI: bosish — butun ekran, ovozli (egasi,
+            // 2026-10-10). Boshqa sahifalarda bosish — toza rejim.
+            onTap: _openAdFullscreen,
             child: _AdVideo(
               key: const ValueKey('showcase-ad-video'),
               poster: p.posterUrl,
@@ -1149,97 +1336,96 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                     text: l.feedSponsored,
                   ),
                 ],
-                if (p.title.isNotEmpty) ...[
+                // MINIMAL: sarlavha (2 qator) + bitta tugma. Izoh, musiqa,
+                // aloqa, narx va qo'shimcha havolalar — sarlavha/«Batafsil»
+                // bosilganda ma'lumot varag'ida (egasi: "ekranda yozuv
+                // ko'p, bosib ko'rsa bo'ladi").
+                if (p.title.isNotEmpty || hasInfo) ...[
                   const SizedBox(height: Gap.sm),
-                  Text(
-                    p.title,
-                    key: const ValueKey('showcase-title'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: AppType.sans,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      height: 1.25,
-                      color: Colors.white,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                  GestureDetector(
+                    key: const ValueKey('showcase-info-open'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: hasInfo ? _showInfo : null,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (p.title.isNotEmpty)
+                          Flexible(
+                            child: Text(
+                              p.title,
+                              key: const ValueKey('showcase-title'),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: AppType.sans,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                height: 1.25,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(color: Colors.black54, blurRadius: 8),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (hasInfo) ...[
+                          const SizedBox(width: Gap.sm),
+                          Semantics(
+                            button: true,
+                            label: l.showcaseDetails,
+                            excludeSemantics: true,
+                            child: Container(
+                              key: const ValueKey('showcase-info-button'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: .38),
+                                borderRadius: R.pill,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: .5),
+                                  width: .8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l.showcaseDetails,
+                                    style: const TextStyle(
+                                      fontFamily: AppType.sans,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
-                if (p.priceUzs != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    formatUzs(l, p.priceUzs!),
-                    key: const ValueKey('showcase-price'),
-                    style: AppType.monoStyle(
-                      color: IdPlate.goldLight,
-                      size: 15,
-                      weight: FontWeight.w700,
+                if (cta != null) ...[
+                  const SizedBox(height: Gap.sm),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _CtaButton(
+                      key: ValueKey('showcase-${cta.id}'),
+                      icon: cta.icon,
+                      label: cta.label,
+                      primary: true,
+                      onTap: cta.onTap,
                     ),
-                  ),
-                ],
-                if (p.text.isNotEmpty) ...[
-                  const SizedBox(height: Gap.sm),
-                  ReelCaption(
-                    text: p.text,
-                    open: _captionOpen,
-                    onToggle: () =>
-                        setState(() => _captionOpen = !_captionOpen),
-                  ),
-                ],
-                if (p.music != null) ...[
-                  const SizedBox(height: Gap.sm),
-                  MusicChip(
-                    key: const ValueKey('showcase-music'),
-                    track: p.music!,
-                    onDark: true,
-                    onTap: () => _openMusic(p.music!),
-                  ),
-                ],
-                if (postContactActions(p).isNotEmpty) ...[
-                  const SizedBox(height: Gap.sm),
-                  PostContactBar(
-                    key: const ValueKey('showcase-contact'),
-                    post: p,
-                    onDark: true,
-                  ),
-                ],
-                if (item != null || link != null) ...[
-                  const SizedBox(height: Gap.sm),
-                  Wrap(
-                    spacing: Gap.sm,
-                    runSpacing: 6,
-                    children: [
-                      if (item != null)
-                        _CtaButton(
-                          key: const ValueKey('showcase-product'),
-                          icon: Icons.shopping_bag_outlined,
-                          label: l.showcaseViewProduct,
-                          primary: true,
-                          onTap: () => _openProduct(item),
-                        ),
-                      if (videoId != null)
-                        _CtaButton(
-                          key: const ValueKey('showcase-video'),
-                          icon: Icons.play_circle_outline_rounded,
-                          label: l.showcaseWatchVideo,
-                          onTap: () => _openVideo(videoId),
-                        )
-                      else if (igEmbed != null)
-                        _CtaButton(
-                          key: const ValueKey('showcase-instagram'),
-                          icon: Icons.camera_alt_outlined,
-                          label: l.showcaseWatchInstagram,
-                          onTap: () => _openInstagram(igEmbed),
-                        )
-                      else if (link != null)
-                        _CtaButton(
-                          key: const ValueKey('showcase-link'),
-                          icon: Icons.open_in_new_rounded,
-                          label: showcaseLinkLabel(l, link),
-                          onTap: () => openLink(p.linkUrl),
-                        ),
-                    ],
                   ),
                 ],
               ],
@@ -1249,6 +1435,15 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       ],
     );
   }
+}
+
+/// Bitta havola/amal tugmasi (sahifadagi asosiy va varaqdagi hammasi).
+class _Link {
+  const _Link(this.id, this.icon, this.label, this.onTap);
+  final String id;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 }
 
 /// Video reklama qatlami: poster (xira fon + butun), video tayyor
@@ -1279,16 +1474,6 @@ class _AdVideo extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (poster.isNotEmpty) ...[
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-            child: Opacity(
-              opacity: .55,
-              child: mediaImage(context, poster, fit: BoxFit.fill),
-            ),
-          ),
-          mediaImage(context, poster, fit: BoxFit.contain),
-        ],
         if (c != null && c.value.isInitialized)
           FittedBox(
             fit: immersiveVideoFit(c.value.size, MediaQuery.sizeOf(context)),
@@ -1305,6 +1490,25 @@ class _AdVideo extends StatelessWidget {
               Icons.videocam_off_rounded,
               size: 40,
               color: Colors.white54,
+            ),
+          ),
+        // Poster pleer ilk kadrni chizguncha (pozitsiya > 0) ustida turadi.
+        if (poster.isNotEmpty)
+          PosterUntilPlaying(
+            key: const ValueKey('showcase-ad-poster'),
+            controller: c,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                  child: Opacity(
+                    opacity: .55,
+                    child: mediaImage(context, poster, fit: BoxFit.fill),
+                  ),
+                ),
+                mediaImage(context, poster, fit: BoxFit.contain),
+              ],
             ),
           ),
         AdVideoSpinner(

@@ -74,6 +74,7 @@ Post _post({
   MusicTrack? music,
   String link = 'https://youtu.be/abc',
   String text = 'Yangi kolleksiya',
+  bool catalog = true,
 }) =>
     Post.fromJson({
       'id': id,
@@ -87,6 +88,7 @@ Post _post({
       'linkUrl': link,
       'featured': featured,
       'imageSeconds': 5,
+      if (catalog)
       'catalogItem': {
         'id': 'b9fa1d77-794a-4b7a-b972-aecb1dce7c02',
         'companyId': 'C7',
@@ -172,6 +174,24 @@ Future<void> _doubleTap(WidgetTester tester, Finder f) =>
 bool _shown(WidgetTester tester, Finder f) =>
     !tester.widget<ReelsChrome>(f).hidden;
 
+/// Havola tugmasi: sahifada FAQAT bitta asosiysi; qolganlari «Batafsil»
+/// varag'ida (`showcase-info-<id>`). Sahifada bo'lsa — o'sha bosiladi.
+Future<void> _tapLink(WidgetTester tester, String id) async {
+  final page = find.byKey(ValueKey('showcase-$id'));
+  if (page.evaluate().isNotEmpty) {
+    await tester.tap(page);
+    return;
+  }
+  await _openInfo(tester);
+  await tester.tap(find.byKey(ValueKey('showcase-info-$id')));
+}
+
+/// «Batafsil» varag'ini ochadi.
+Future<void> _openInfo(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('showcase-info-button')));
+  await settle(tester, frames: 8);
+}
+
 Finder _chrome(String key) => find.byKey(ValueKey(key));
 
 /// Ko'rgazma sahifasidagi hamma belgilar (tepa panel, amallar ustuni,
@@ -251,11 +271,18 @@ void main() {
 
     expect(find.byKey(const ValueKey('showcase-pager')), findsOneWidget);
     expect(find.text('Qizil ko‘ylak'), findsOneWidget);
-    expect(find.text('125 000 so‘m'), findsOneWidget);
-    expect(find.text('Yangi kolleksiya'), findsOneWidget);
     expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
     expect(find.text(l.showcaseViewProduct), findsOneWidget);
+    // MINIMAL: narx, izoh, qo'shimcha havola sahifada YO'Q — varaqda.
+    expect(find.text('125 000 so‘m'), findsNothing);
+    expect(find.text('Yangi kolleksiya'), findsNothing);
+    expect(find.text(l.showcaseOpenYoutube), findsNothing);
+    await _openInfo(tester);
+    expect(find.text('125 000 so‘m'), findsOneWidget);
+    expect(find.text('Yangi kolleksiya'), findsOneWidget);
     expect(find.text(l.showcaseOpenYoutube), findsOneWidget);
+    await tester.tapAt(const Offset(20, 40)); // varaqdan tashqari
+    await settle(tester, frames: 8);
     expect(find.byKey(const ValueKey('showcase-carousel')), findsOneWidget);
     expect(find.byType(CarouselDots), findsOneWidget);
     expect(_dot(tester), 0);
@@ -265,7 +292,7 @@ void main() {
     }
 
     // Havola — faqat TASHQARIDA ochiladi.
-    await tester.tap(find.byKey(const ValueKey('showcase-link')));
+    await _tapLink(tester, 'link');
     await settle(tester, frames: 3);
     expect(opened.single.toString(), 'https://youtu.be/abc');
 
@@ -280,7 +307,7 @@ void main() {
       (tester) async {
     await _pump(tester, pages: [
       ReelsPage(items: [
-        _post(link: 'https://www.instagram.com/p/x'),
+        _post(link: 'https://www.instagram.com/p/x', catalog: false),
       ]),
     ]);
     expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
@@ -288,7 +315,7 @@ void main() {
 
   testWidgets('yaroqsiz havola — tugma chizilmaydi', (tester) async {
     await _pump(tester, pages: [
-      ReelsPage(items: [_post(link: 'http://evil.com')]),
+      ReelsPage(items: [_post(link: 'http://evil.com', catalog: false)]),
     ]);
     expect(find.byKey(const ValueKey('showcase-link')), findsNothing);
   });
@@ -463,10 +490,15 @@ void main() {
       await drain(tester);
       expect(v.playing, hasLength(1));
 
-      // Izoh ochiladi ("… ko‘proq") — musiqa davom etadi.
-      await tester.tap(find.byKey(const ValueKey('reel-caption')));
+      // «Batafsil» varag'i (to'liq izoh) ochiladi — musiqa davom etadi.
+      await tester.tap(find.byKey(const ValueKey('showcase-info-button')));
       await drain(tester);
-      expect(v.playing, hasLength(1), reason: 'izoh ochilganda');
+      await settle(tester, frames: 8);
+      expect(find.byKey(const ValueKey('showcase-info-sheet')), findsOneWidget);
+      expect(v.playing, hasLength(1), reason: 'varaq ochilganda');
+      await tester.tapAt(const Offset(20, 40)); // varaqdan tashqari
+      await settle(tester, frames: 8);
+      await drain(tester);
 
       // Rasm butun ekranda (ikki bosish) — musiqa davom etadi. Ochiq
       // izoh pastki yarmini egallaydi, shuning uchun rasmning yuqori
@@ -724,35 +756,22 @@ void main() {
       expect(g.colors.last.a, lessThanOrEqualTo(.6));
       expect((g.begin as Alignment).y, greaterThan(0),
           reason: 'faqat pastki qismda');
-      expect(find.byKey(const ValueKey('showcase-contact')), findsOneWidget);
+      // MINIMAL: aloqa tugmalari sahifada yo'q — varaqda.
+      expect(find.byKey(const ValueKey('showcase-contact')), findsNothing);
+      expect(find.byKey(const ValueKey('showcase-sponsored')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
-      await settle(tester, frames: 6);
-      await drain(tester);
-      expect(r.c.read(reelsCleanProvider), isTrue);
-      expectOverlays(tester, shown: false);
-      expect(
-          find.ancestor(
-              of: find.byKey(const ValueKey('showcase-sponsored')),
-              matching: _chrome('showcase-info')),
-          findsOneWidget,
-          reason: '"Reklama" ham yashirin blokda');
-      expect(
-          find.ancestor(
-              of: find.byKey(const ValueKey('showcase-contact')),
-              matching: _chrome('showcase-info')),
-          findsOneWidget);
-      expect(v.playing, {id}, reason: 'video to‘xtamaydi');
-      expect(v.created, hasLength(1));
-
+      // Reklama videosini bosish toza rejim EMAS — butun ekranli pleer
+      // (musiqa yo'q: video o'z ovozi bilan).
       await tester.tap(find.byKey(const ValueKey('showcase-ad-video')));
       await settle(tester, frames: 6);
       await drain(tester);
       expect(r.c.read(reelsCleanProvider), isFalse);
+      expect(find.byKey(const ValueKey('ad-fullscreen')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('ad-fullscreen-close')));
+      await settle(tester, frames: 8);
+      await drain(tester);
+      expect(find.byKey(const ValueKey('ad-fullscreen')), findsNothing);
       expectOverlays(tester, shown: true);
-      expect(_shown(tester, _chrome('showcase-header')), isFalse);
-      expect(v.playing, {id});
-      expect(v.created, hasLength(1));
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(minutes: 1));
     });
@@ -981,7 +1000,7 @@ void main() {
       expect(LRu().showcaseWatchVideo, 'Смотреть видео');
       expect(LEn().showcaseWatchVideo, 'Watch video');
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: ytUrl)]),
+        ReelsPage(items: [_post(link: ytUrl, catalog: false)]),
       ]);
       expect(find.byKey(const ValueKey('showcase-video')), findsOneWidget);
       expect(find.text(l.showcaseWatchVideo), findsOneWidget);
@@ -998,12 +1017,12 @@ void main() {
       };
       addTearDown(() => openLinkOverride = null);
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore')]),
+        ReelsPage(items: [_post(link: 'https://www.instagram.com/nfcstore', catalog: false)]),
       ]);
       expect(find.byKey(const ValueKey('showcase-video')), findsNothing);
       expect(find.byKey(const ValueKey('showcase-instagram')), findsNothing);
       expect(find.text(LUz().showcaseOpenInstagram), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('showcase-link')));
+      await _tapLink(tester, 'link');
       await settle(tester, frames: 3);
       expect(opened.single.toString(), 'https://www.instagram.com/nfcstore');
     });
@@ -1015,12 +1034,12 @@ void main() {
       VideoPlayerPlatform.instance = v;
       final yt = fakePlayer();
       final r = await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: ytUrl, music: track)]),
+        ReelsPage(items: [_post(link: ytUrl, music: track, catalog: false)]),
       ]);
       await drain(tester);
       expect(v.playing, hasLength(1));
 
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       await drain(tester);
       expect(yt.ids, ['dQw4w9WgXcQ']);
@@ -1067,13 +1086,13 @@ void main() {
       VideoPlayerPlatform.instance = v;
       fakePlayer();
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: ytUrl, music: track)]),
+        ReelsPage(items: [_post(link: ytUrl, music: track, catalog: false)]),
       ]);
       await drain(tester);
       await tester.tap(find.byKey(const ValueKey('showcase-mute')));
       await drain(tester);
       expect(v.playing, isEmpty);
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       await tester.tap(find.byKey(const ValueKey('showcase-video-close')));
       await settle(tester, frames: 10);
@@ -1089,13 +1108,13 @@ void main() {
       final yt = fakePlayer();
       await _pump(tester, pages: [
         ReelsPage(items: [
-          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track),
+          _post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', music: track, catalog: false),
         ]),
       ]);
       await drain(tester);
       expect(v.playing, hasLength(1));
 
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       await drain(tester);
       expect(yt.ids, ['dQw4w9WgXcQ']);
@@ -1124,7 +1143,7 @@ void main() {
       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
 
       // Kichik surish — yopilmaydi, joyiga qaytadi.
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       await tester.dragFrom(Offset(60, close.center.dy), const Offset(0, 40));
       await settle(tester, frames: 6);
@@ -1148,9 +1167,9 @@ void main() {
       addTearDown(() => openLinkOverride = null);
       final yt = fakePlayer();
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: ytUrl)]),
+        ReelsPage(items: [_post(link: ytUrl, catalog: false)]),
       ]);
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       expect(find.byKey(const ValueKey('showcase-video-fallback')), findsNothing);
 
@@ -1170,9 +1189,9 @@ void main() {
         (tester) async {
       final yt = fakePlayer();
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ')]),
+        ReelsPage(items: [_post(link: 'https://youtube.com/shorts/dQw4w9WgXcQ', catalog: false)]),
       ]);
-      await tester.tap(find.byKey(const ValueKey('showcase-video')));
+      await _tapLink(tester, 'video');
       await settle(tester, frames: 10);
       final player = find.byKey(const ValueKey('fake-yt-dQw4w9WgXcQ'));
       expect(player, findsOneWidget);
@@ -1204,7 +1223,7 @@ void main() {
       await tester.pumpWidget(ProviderScope(
         child: wrapScreen(Scaffold(
           body: ShowcaseExtras(
-            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ'),
+            post: _post(link: 'https://youtu.be/dQw4w9WgXcQ', catalog: false),
             keyPrefix: 'feed-showcase',
           ),
         )),
@@ -1482,7 +1501,7 @@ void main() {
       expect(LRu().showcaseWatchInstagram, 'Смотреть в Instagram');
       expect(LEn().showcaseWatchInstagram, 'View on Instagram');
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: reelUrl)]),
+        ReelsPage(items: [_post(link: reelUrl, catalog: false)]),
       ]);
       expect(find.byKey(const ValueKey('showcase-instagram')), findsOneWidget);
       expect(find.text(l.showcaseWatchInstagram), findsOneWidget);
@@ -1502,12 +1521,12 @@ void main() {
       };
       addTearDown(() => openLinkOverride = null);
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: reelUrl, music: track)]),
+        ReelsPage(items: [_post(link: reelUrl, music: track, catalog: false)]),
       ]);
       await drain(tester);
       expect(v.playing, hasLength(1));
 
-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await _tapLink(tester, 'instagram');
       await settle(tester, frames: 10);
       await drain(tester);
       expect(ig.embeds.single.toString(),
@@ -1542,7 +1561,7 @@ void main() {
       expect(v.playing, hasLength(1), reason: 'yopildi — musiqa davom etadi');
 
       // Pastga surish (pastki havola qatorida) ham yopadi.
-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await _tapLink(tester, 'instagram');
       await settle(tester, frames: 10);
       await drain(tester);
       expect(v.playing, isEmpty);
@@ -1560,9 +1579,9 @@ void main() {
         (tester) async {
       final ig = fakeEmbed();
       await _pump(tester, pages: [
-        ReelsPage(items: [_post(link: reelUrl)]),
+        ReelsPage(items: [_post(link: reelUrl, catalog: false)]),
       ]);
-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await _tapLink(tester, 'instagram');
       await settle(tester, frames: 10);
       ig.state()('error:load');
       await settle(tester, frames: 3);
@@ -1573,7 +1592,7 @@ void main() {
       await settle(tester, frames: 10);
 
       // Javobsizlik ham — zaxira yo'l.
-      await tester.tap(find.byKey(const ValueKey('showcase-instagram')));
+      await _tapLink(tester, 'instagram');
       await settle(tester, frames: 10);
       await tester.pump(kShowcaseInstagramTimeout);
       await settle(tester, frames: 3);
