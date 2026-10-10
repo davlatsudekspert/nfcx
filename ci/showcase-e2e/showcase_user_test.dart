@@ -1105,6 +1105,15 @@ class _Run {
       r.values['page_state'] = loaded ?? last;
       r.check(loaded != null && loaded != 'fallback',
           'Instagram embed yuklanmadi (${loaded ?? last})');
+      // Instagram CI IP'ni kirish devoriga yo'naltiradi: ilova endi
+      // Safari'ga chiqib ketmaydi — zaxira panel ilova ichida ko'rinadi.
+      // Faqat embed yuklanishi muammo bo'lsa — muhit (ENV).
+      if (loaded == 'fallback' &&
+          r.problems.every((x) => x.startsWith('Instagram embed'))) {
+        r.status = 'ENV';
+        r.problems.add('Instagram CI muhitida embedni bermadi — ilova '
+            'ichida zaxira panel ko\'rsatildi (tashqariga chiqmadi)');
+      }
       if (mu(page).isNotEmpty) {
         final m = await playerState(spy.latest(mu(page), alive: false),
             window: const Duration(seconds: 2));

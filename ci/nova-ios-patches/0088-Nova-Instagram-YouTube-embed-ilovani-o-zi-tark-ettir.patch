@@ -1,0 +1,170 @@
+From 19ebd74668999022bd6f7791093d293240de565e Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 14:04:54 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20Instagram/YouTube=20embed=20ilovani=20o?=
+ =?UTF-8?q?'zi=20tark=20ettirmaydi=20=E2=80=94=20tashqi=20havola=20faqat?=
+ =?UTF-8?q?=20odam=20bosganda?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Instagram sahifasi o'zi yo'naltirsa (kirish devori), ilova Safari'ga
+chiqib ketardi (iOS E2E shu yerda qotdi). Endi faqat embed ichida
+bosilgandan keyin 3 s ichidagi navigatsiya tashqarida ochiladi;
+aks holda Instagram'da zaxira panel, YouTube'da hech narsa.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../showcase/showcase_fullscreen.dart         | 25 ++++++++++++++
+ .../features/showcase/showcase_instagram.dart | 14 ++++++--
+ .../lib/features/showcase/showcase_video.dart |  9 +++--
+ mobile_nova/test/embed_tap_clock_test.dart    | 34 +++++++++++++++++++
+ 4 files changed, 76 insertions(+), 6 deletions(-)
+ create mode 100644 mobile_nova/test/embed_tap_clock_test.dart
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_fullscreen.dart b/mobile_nova/lib/features/showcase/showcase_fullscreen.dart
+index 2536f7f..1eb95a8 100644
+--- a/mobile_nova/lib/features/showcase/showcase_fullscreen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_fullscreen.dart
+@@ -156,3 +156,28 @@ class _ShowcaseFullscreenState extends State<ShowcaseFullscreen> {
+     );
+   }
+ }
++
++/// Embed (YouTube/Instagram) ichidagi havola faqat odam O'ZI bosganda
++/// tashqarida ochiladi. Sahifaning o'zi yo'naltirsa (masalan Instagram
++/// kirish sahifasiga) ilova Safari/brauzerga "otilib" chiqmaydi —
++/// zaxira panel ko'rsatiladi.
++class EmbedTapClock {
++  /// Bosishdan keyin shu vaqt ichidagi navigatsiya — odamniki.
++  static const window = Duration(seconds: 3);
++
++  DateTime? _at;
++
++  void touched() => _at = DateTime.now();
++
++  bool get recent {
++    final at = _at;
++    return at != null && DateTime.now().difference(at) <= window;
++  }
++
++  /// [child] ga tegilganini yozadi (bosishni o'zi ushlamaydi).
++  Widget wrap(Widget child) => Listener(
++    behavior: HitTestBehavior.translucent,
++    onPointerDown: (_) => touched(),
++    child: child,
++  );
++}
+diff --git a/mobile_nova/lib/features/showcase/showcase_instagram.dart b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+index 05e2f9a..2abc55c 100644
+--- a/mobile_nova/lib/features/showcase/showcase_instagram.dart
++++ b/mobile_nova/lib/features/showcase/showcase_instagram.dart
+@@ -268,6 +268,7 @@ class _InstagramEmbed extends StatefulWidget {
+ 
+ class _InstagramEmbedState extends State<_InstagramEmbed> {
+   late final WebViewController _web;
++  final _taps = EmbedTapClock();
+ 
+   @override
+   void initState() {
+@@ -310,8 +311,14 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
+               instagramEmbedStaysInside(widget.embed, r.url)) {
+             return NavigationDecision.navigate;
+           }
+-          // "View on Instagram" va boshqa havolalar — tashqarida.
+-          openLink(r.url);
++          // "View on Instagram" va boshqa havolalar — tashqarida, lekin
++          // faqat odam bosganda. Sahifaning o'z yo'naltirishi (kirish
++          // devori va h.k.) ilovani tark ettirmaydi — zaxira panel.
++          if (_taps.recent) {
++            openLink(r.url);
++          } else {
++            widget.onState('error:redirect');
++          }
+           return NavigationDecision.prevent;
+         },
+       ))
+@@ -327,5 +334,6 @@ class _InstagramEmbedState extends State<_InstagramEmbed> {
+   }
+ 
+   @override
+-  Widget build(BuildContext context) => WebViewWidget(controller: _web);
++  Widget build(BuildContext context) =>
++      _taps.wrap(WebViewWidget(controller: _web));
+ }
+diff --git a/mobile_nova/lib/features/showcase/showcase_video.dart b/mobile_nova/lib/features/showcase/showcase_video.dart
+index d885749..63a360b 100644
+--- a/mobile_nova/lib/features/showcase/showcase_video.dart
++++ b/mobile_nova/lib/features/showcase/showcase_video.dart
+@@ -390,6 +390,7 @@ function onYouTubeIframeAPIReady(){
+ }
+ 
+ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
++  final _taps = EmbedTapClock();
+   late final WebViewController _web;
+ 
+   @override
+@@ -427,8 +428,9 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
+             return NavigationDecision.navigate;
+           }
+           // Pleerdagi "YouTube'da ko'rish", kanal va boshqa havolalar —
+-          // ilovaning o'zida emas, tashqarida.
+-          openLink(r.url);
++          // ilovaning o'zida emas, tashqarida; faqat odam bosganda
++          // (sahifaning o'z yo'naltirishi ilovani tark ettirmaydi).
++          if (_taps.recent) openLink(r.url);
+           return NavigationDecision.prevent;
+         },
+       ))
+@@ -451,5 +453,6 @@ class _ShowcaseYoutubePlayerState extends State<ShowcaseYoutubePlayer> {
+   }
+ 
+   @override
+-  Widget build(BuildContext context) => WebViewWidget(controller: _web);
++  Widget build(BuildContext context) =>
++      _taps.wrap(WebViewWidget(controller: _web));
+ }
+diff --git a/mobile_nova/test/embed_tap_clock_test.dart b/mobile_nova/test/embed_tap_clock_test.dart
+new file mode 100644
+index 0000000..dcca08a
+--- /dev/null
++++ b/mobile_nova/test/embed_tap_clock_test.dart
+@@ -0,0 +1,34 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/features/showcase/showcase_fullscreen.dart';
++
++void main() {
++  test('bosilmagan embed yo\'naltirishi odamniki emas', () {
++    final c = EmbedTapClock();
++    expect(c.recent, isFalse);
++    c.touched();
++    expect(c.recent, isTrue);
++  });
++
++  testWidgets('wrap tegilganini yozadi, bosishni ushlamaydi', (t) async {
++    final c = EmbedTapClock();
++    var tapped = 0;
++    await t.pumpWidget(
++      MaterialApp(
++        home: c.wrap(
++          GestureDetector(
++            onTap: () => tapped++,
++            child: const ColoredBox(
++              color: Colors.black,
++              child: SizedBox.expand(),
++            ),
++          ),
++        ),
++      ),
++    );
++    expect(c.recent, isFalse);
++    await t.tap(find.byType(GestureDetector));
++    expect(c.recent, isTrue);
++    expect(tapped, 1);
++  });
++}
+-- 
+2.43.0
+
