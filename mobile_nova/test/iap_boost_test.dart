@@ -49,7 +49,11 @@ const _me = '48210377';
 final _ios = TargetPlatformVariant.only(TargetPlatform.iOS);
 final _log = <String>[];
 
-final _ends = DateTime.utc(2026, 10, 9, 14, 30);
+// Doim kelajakda: qat'iy sana (2026-10-09) o'tib ketgach testlar yiqildi.
+final _ends = () {
+  final t = DateTime.now().toUtc().add(const Duration(days: 3, minutes: 5));
+  return DateTime.utc(t.year, t.month, t.day, t.hour, t.minute);
+}();
 
 class _Store implements IapStore {
   final _ctrl = StreamController<List<IapPurchase>>.broadcast();
@@ -104,7 +108,7 @@ class _Iap extends FakeIapRepository {
   Result<BoostResult> verified = Ok(BoostResult(
       status: BoostStatus.active,
       slotId: 42,
-      startsAt: DateTime.utc(2026, 10, 6, 14, 30),
+      startsAt: _ends.subtract(const Duration(days: 3)),
       endsAt: _ends));
   Result<BoostResult> redeemed =
       Ok(BoostResult(status: BoostStatus.active, slotId: 50, endsAt: _ends));
