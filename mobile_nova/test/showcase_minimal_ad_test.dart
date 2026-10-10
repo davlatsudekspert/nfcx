@@ -158,8 +158,8 @@ void main() {
   });
 
   testWidgets(
-      'Rasm sahifasi MINIMAL: izoh, musiqa, aloqa, narx, qo‘shimcha havola '
-      'ko‘rinmaydi; «Batafsil» varag‘ida hammasi bor', (tester) async {
+      'Rasm sahifasi MINIMAL: izoh, musiqa, narx, qo‘shimcha havola '
+      'ko‘rinmaydi (biznes aloqasi sahifada); «Batafsil» varag‘ida qolgani', (tester) async {
     await _app(tester, [_rich]);
     // Sahifada: sarlavha, «Batafsil» va BITTA tugma (tovar).
     expect(_k('showcase-title'), findsOneWidget);
@@ -170,7 +170,8 @@ void main() {
     expect(find.text('ko‘proq'), findsNothing);
     expect(_k('showcase-music'), findsNothing);
     expect(find.byKey(const ValueKey('music-chip')), findsNothing);
-    expect(_k('showcase-contact'), findsNothing);
+    // Biznes aloqasi (Qo'ng'iroq/Telegram) sahifada qoladi (egasi).
+    expect(_k('showcase-contact'), findsOneWidget);
     expect(_k('showcase-price'), findsNothing);
     expect(_k('showcase-video'), findsNothing);
     expect(_k('showcase-instagram'), findsNothing);
@@ -183,7 +184,8 @@ void main() {
     expect(find.text('Yangi kolleksiya keldi'), findsOneWidget);
     expect(_k('showcase-price'), findsOneWidget);
     expect(_k('showcase-info-music'), findsOneWidget);
-    expect(_k('showcase-info-contact'), findsOneWidget);
+    expect(_k('showcase-info-contact'), findsNothing,
+        reason: 'aloqa sahifada — varaqda takrorlanmaydi');
     expect(_k('showcase-info-product'), findsOneWidget);
     expect(_k('showcase-info-video'), findsOneWidget,
         reason: 'hamma havolalar varaqda');

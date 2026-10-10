@@ -895,7 +895,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
       _p.text.isNotEmpty ||
       _p.music != null ||
       _p.priceUzs != null ||
-      postContactActions(_p).isNotEmpty ||
+      (_p.isAd && postContactActions(_p).isNotEmpty) ||
       _links(l).length > 1;
 
   /// REKLAMA VIDEOSI BUTUN EKRANDA (ovozli). Sahifa musiqasi/videosi
@@ -996,7 +996,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                       },
                     ),
                   ],
-                  if (postContactActions(p).isNotEmpty) ...[
+                  if (p.isAd && postContactActions(p).isNotEmpty) ...[
                     const SizedBox(height: Gap.md),
                     PostContactBar(
                       key: const ValueKey('showcase-info-contact'),
@@ -1413,6 +1413,19 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
                         ],
                       ],
                     ),
+                  ),
+                ],
+                // BIZNES ALOQASI (Qo'ng'iroq / Telegram / Xarita) sahifada
+                // qoladi — egasi: "biznes profil qo'ygan bo'lsa turishi
+                // kerak"; varaqqa faqat uzun izoh ketadi. Reels bilan bir
+                // xil qora shisha kapsulalar. Reklamada sahifa toza
+                // (belgi + sarlavha + bitta tugma) — aloqa varaqda.
+                if (!p.isAd && postContactActions(p).isNotEmpty) ...[
+                  const SizedBox(height: Gap.sm),
+                  PostContactBar(
+                    key: const ValueKey('showcase-contact'),
+                    post: p,
+                    onDark: true,
                   ),
                 ],
                 if (cta != null) ...[
