@@ -98,7 +98,7 @@ export function ensureSchema(env) {
   }
   return p;
 }
-export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); moved = new WeakMap(); movedRetry = new WeakMap(); }
+export function __resetShowcaseAdsCaches() { schema = new WeakMap(); seeded = new WeakMap(); moved = new WeakMap(); movedRetry = new WeakMap(); moved720 = new WeakMap(); movedRetry720 = new WeakMap(); }
 
 /// Lenta uchun: yoqilgan joylar, slot tartibida. Jadval yo'q / xato — [].
 /// → [{ slot, key: 'kind:id', kind, id, createdAt }]
@@ -417,5 +417,78 @@ export async function moveShowcasePromoVideos(env, { now = new Date(), origin = 
   await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, ?)`)
     .bind(PROMO_VIDEO_MIGRATION, now.toISOString(), out.map((m) => `${m.to}:${m.posts}`).join(',')).run();
   moved.set(k, true);
+  return { applied: true, moved: out };
+}
+
+// ═══ PROMO VIDEOLAR 720p (bir marta, 2026-10) ═══
+//
+// Asl promo mp4 (1080x1920, ~9 MB, 3.5 Mbit/s) sekin mobil tarmoqda juda og'ir.
+// Yengil nusxa (720x1280, H.264 Main 3.1, ovozsiz, ~2 MB) Worker assets'da
+// (`/promo/nfcstore-*-720.mp4`). v2 dan KEYIN, alohida migratsiya: assets'dan
+// YANGI kalitga (`uploads/promo_*_720.mp4`) ko'chiriladi va NFCSTOREUZ'ning
+// video_url'i aynan v2 manzilga (`/uploads/promo_*.mp4`) teng postlari yangi
+// manzilga o'tkaziladi. Eski kalitlar o'chirilmaydi va ustiga yozilmaydi
+// (ular chekkada immutable keshlangan). Admin video_url'ni o'zgartirgan post
+// tegilmaydi. Assets/ombor ishlamasa belgi qo'yilmaydi: 10 daqiqadan keyin qayta.
+export const PROMO_720_MIGRATION = 'showcase_ads_v3_720p';
+export const PROMO_720_MIN_BYTES = 100 * 1024;
+export const promo720AssetUrl = (videoUrl) => String(videoUrl).replace(/\.mp4$/, '-720.mp4');
+export const promo720Name = (videoUrl) => promoUploadName(videoUrl).replace(/\.mp4$/, '_720.mp4');
+let moved720 = new WeakMap();
+let movedRetry720 = new WeakMap();
+
+/// → { applied: false, reason? } | { applied: true, moved: [{ from, to, posts }] }
+export async function moveShowcasePromoVideos720(env, { now = new Date(), origin = 'https://nfcstore.uz' } = {}) {
+  if (!env?.DB || !env.UPLOADS || !env.ASSETS) return { applied: false, reason: 'no_bindings' };
+  const k = keyOf(env);
+  if (moved720.get(k)) return { applied: false, reason: 'cached' };
+  if ((movedRetry720.get(k) || 0) > now.getTime()) return { applied: false, reason: 'retry_later' };
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS "app_migrations" (
+    name TEXT PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL, detail TEXT
+  )`).run();
+  const seen = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(PROMO_720_MIGRATION).first();
+  if (seen) { moved720.set(k, true); return { applied: false }; }
+  // v2 (/uploads ga ko'chirish) avval bajarilishi shart.
+  const v2 = await env.DB.prepare(`SELECT 1 AS x FROM app_migrations WHERE name = ?`)
+    .bind(PROMO_VIDEO_MIGRATION).first();
+  if (!v2) return { applied: false, reason: 'no_v2' };
+
+  const later = (reason) => { movedRetry720.set(k, now.getTime() + PROMO_RETRY_MS); return { applied: false, reason }; };
+  // 1-bosqich: ikkala fayl ham omborda bo'lsin (birortasi buzuq bo'lsa postlarga tegilmaydi).
+  for (const a of PROMO_ADS) {
+    const name = promo720Name(a.videoUrl);
+    const key = `uploads/${name}`;
+    let exists = null;
+    try { exists = await env.UPLOADS.head(key); } catch { exists = null; }
+    if (!exists) {
+      const assetUrl = promo720AssetUrl(a.videoUrl);
+      let res;
+      try { res = await env.ASSETS.fetch(new Request(origin + assetUrl)); } catch { return later('asset_fetch'); }
+      const ct = String(res.headers.get('content-type') || '');
+      if (!res.ok || !/^video\/mp4/i.test(ct)) return later(`asset_${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length <= PROMO_720_MIN_BYTES) return later('asset_small');
+      try {
+        await env.UPLOADS.put(key, bytes, {
+          httpMetadata: { contentType: 'video/mp4', cacheControl: 'public, max-age=31536000, immutable' },
+          customMetadata: { uploadedAt: now.toISOString(), actor: `seed:${PROMO_720_MIGRATION}` },
+        });
+      } catch { return later('upload_put'); }
+    }
+  }
+  // 2-bosqich: faqat v2 manzilga teng postlar yangi manzilga o'tadi.
+  const out = [];
+  for (const a of PROMO_ADS) {
+    const name = promo720Name(a.videoUrl);
+    const from = `/uploads/${promoUploadName(a.videoUrl)}`;
+    const to = `/uploads/${name}`;
+    const r = await env.DB.prepare(`UPDATE company_posts SET video_url = ? WHERE company_id = ? AND video_url = ?`)
+      .bind(to, ADS_COMPANY, from).run();
+    out.push({ from, to, posts: Number(r?.meta?.changes || 0) });
+  }
+  await env.DB.prepare(`INSERT OR IGNORE INTO app_migrations (name, applied_at, detail) VALUES (?, ?, ?)`)
+    .bind(PROMO_720_MIGRATION, now.toISOString(), out.map((m) => `${m.to}:${m.posts}`).join(',')).run();
+  moved720.set(k, true);
   return { applied: true, moved: out };
 }
