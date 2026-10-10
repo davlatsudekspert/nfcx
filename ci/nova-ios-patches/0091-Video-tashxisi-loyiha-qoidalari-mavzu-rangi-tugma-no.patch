@@ -1,0 +1,63 @@
+From 14e63b0e8e5687ab136aabc23fe6201e8f16f3b5 Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 19:10:58 +0000
+Subject: [PATCH] Video tashxisi: loyiha qoidalari (mavzu rangi, tugma nomi,
+ ildiz navigator, copyToClipboard)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/media/video_diag.dart | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/mobile_nova/lib/core/media/video_diag.dart b/mobile_nova/lib/core/media/video_diag.dart
+index 35f20e9..6fd652a 100644
+--- a/mobile_nova/lib/core/media/video_diag.dart
++++ b/mobile_nova/lib/core/media/video_diag.dart
+@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
+ import 'package:flutter/services.dart';
+ import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+ 
++import '../utils/external_link.dart' show copyToClipboard;
++
+ /// Bitta pleer haqidagi yozuv.
+ class DiagRecord {
+   DiagRecord({
+@@ -428,7 +430,8 @@ Future<void> showVideoDiag(BuildContext context) {
+     context: context,
+     isScrollControlled: true,
+     useSafeArea: true,
+-    backgroundColor: const Color(0xFF101114),
++    useRootNavigator: true,
++    backgroundColor: Colors.black,
+     builder: (_) => const VideoDiagSheet(),
+   );
+ }
+@@ -490,13 +493,14 @@ class _VideoDiagSheetState extends State<VideoDiagSheet> {
+                 TextButton.icon(
+                   key: const ValueKey('video-diag-copy'),
+                   onPressed: () async {
+-                    await Clipboard.setData(ClipboardData(text: _text()));
++                    await copyToClipboard(_text());
+                     if (mounted) setState(() => _copied = true);
+                   },
+                   icon: const Icon(Icons.copy_rounded, size: 16),
+                   label: Text(_copied ? 'Nusxalandi' : 'Nusxa olish'),
+                 ),
+                 IconButton(
++                  tooltip: 'Yopish',
+                   onPressed: () => Navigator.of(context).maybePop(),
+                   icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                 ),
+@@ -511,7 +515,7 @@ class _VideoDiagSheetState extends State<VideoDiagSheet> {
+                 text,
+                 key: const ValueKey('video-diag-text'),
+                 style: const TextStyle(
+-                  color: Color(0xFFE6E6E6),
++                  color: Colors.white70,
+                   fontFamily: 'Courier',
+                   fontFamilyFallback: ['monospace', 'Menlo'],
+                   fontSize: 10.5,
+-- 
+2.43.0
+
