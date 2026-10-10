@@ -843,8 +843,27 @@ class _Run {
       r.check(has(media), 'media maydoni topilmadi');
       if (!has(media)) return;
       final center = t.getCenter(media.first);
-      await t.tapAt(Offset(center.dx, screen.height * .42));
-      await wait(const Duration(milliseconds: 1200));
+      // Karusel o'zi suriladi (420 ms): shu payt bosish PageView'da
+      // "to'xtatish" bo'lib yutiladi (har qanday PageView kabi). Odam
+      // ham bunda yana bosadi — sinov ham karusel to'xtashini kutadi va
+      // yutilgan bo'lsa bir marta qayta bosadi.
+      Future<void> tapMedia() async {
+        await waitFor(() {
+          final cf = find.descendant(
+              of: media.first, matching: find.byType(PageView));
+          if (cf.evaluate().isEmpty) return true;
+          final ctl = t.widget<PageView>(cf.first).controller;
+          final pg = (ctl != null && ctl.hasClients) ? ctl.page : null;
+          return pg == null || (pg - pg.roundToDouble()).abs() < .01;
+        }, timeout: const Duration(seconds: 3));
+        await t.tapAt(Offset(center.dx, screen.height * .42));
+        await wait(const Duration(milliseconds: 1200));
+      }
+      await tapMedia();
+      if (!c.read(reelsCleanProvider)) {
+        r.values['retap'] = 'karusel surilayotganda bosish yutildi — qayta';
+        await tapMedia();
+      }
       final clean = c.read(reelsCleanProvider);
       r.values['clean'] = clean;
       r.values['railHidden'] = chromeHidden('showcase-rail');
@@ -857,8 +876,8 @@ class _Run {
       r.check(topbarHidden(), 'tepa panel (sarlavha, +, 🔇) ko\'rinib turibdi');
       r.check(!has(find.byType(NovaBottomNav)), 'pastki menyu ko\'rinib turibdi');
       r.values['cleanShot'] = await screenshot('07_clean');
-      await t.tapAt(Offset(center.dx, screen.height * .42));
-      await wait(const Duration(milliseconds: 1200));
+      await tapMedia();
+      if (c.read(reelsCleanProvider)) await tapMedia();
       r.check(!c.read(reelsCleanProvider), 'qayta bosilganda belgilar qaytmadi');
       r.check(!chromeHidden('showcase-rail'), 'amallar ustuni qaytmadi');
       r.check(has(find.byType(NovaBottomNav)), 'pastki menyu qaytmadi');

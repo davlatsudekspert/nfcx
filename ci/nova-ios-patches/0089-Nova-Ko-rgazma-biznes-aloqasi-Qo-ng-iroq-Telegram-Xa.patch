@@ -1,0 +1,101 @@
+From 3ab25c3169ae56b7852d09b43bd17f11122c88df Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sat, 10 Oct 2026 14:53:34 +0000
+Subject: [PATCH] =?UTF-8?q?Nova:=20Ko'rgazma=20=E2=80=94=20biznes=20aloqas?=
+ =?UTF-8?q?i=20(Qo'ng'iroq/Telegram/Xarita)=20sahifada=20qoladi,=20faqat?=
+ =?UTF-8?q?=20izoh=20varaqda?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Egasi: biznes profil qo'ygan bo'lsa aloqa turishi kerak, faqat
+tavsifni olib tashlash kifoya edi. Reklama sahifasi toza qoladi —
+u yerda aloqa «Batafsil» varag'ida.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/showcase/showcase_screen.dart  | 17 +++++++++++++++--
+ mobile_nova/test/showcase_minimal_ad_test.dart  | 10 ++++++----
+ 2 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/mobile_nova/lib/features/showcase/showcase_screen.dart b/mobile_nova/lib/features/showcase/showcase_screen.dart
+index b9b2294..e35e8a3 100644
+--- a/mobile_nova/lib/features/showcase/showcase_screen.dart
++++ b/mobile_nova/lib/features/showcase/showcase_screen.dart
+@@ -895,7 +895,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+       _p.text.isNotEmpty ||
+       _p.music != null ||
+       _p.priceUzs != null ||
+-      postContactActions(_p).isNotEmpty ||
++      (_p.isAd && postContactActions(_p).isNotEmpty) ||
+       _links(l).length > 1;
+ 
+   /// REKLAMA VIDEOSI BUTUN EKRANDA (ovozli). Sahifa musiqasi/videosi
+@@ -996,7 +996,7 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                       },
+                     ),
+                   ],
+-                  if (postContactActions(p).isNotEmpty) ...[
++                  if (p.isAd && postContactActions(p).isNotEmpty) ...[
+                     const SizedBox(height: Gap.md),
+                     PostContactBar(
+                       key: const ValueKey('showcase-info-contact'),
+@@ -1415,6 +1415,19 @@ class _ShowcasePageState extends ConsumerState<ShowcasePage>
+                     ),
+                   ),
+                 ],
++                // BIZNES ALOQASI (Qo'ng'iroq / Telegram / Xarita) sahifada
++                // qoladi — egasi: "biznes profil qo'ygan bo'lsa turishi
++                // kerak"; varaqqa faqat uzun izoh ketadi. Reels bilan bir
++                // xil qora shisha kapsulalar. Reklamada sahifa toza
++                // (belgi + sarlavha + bitta tugma) — aloqa varaqda.
++                if (!p.isAd && postContactActions(p).isNotEmpty) ...[
++                  const SizedBox(height: Gap.sm),
++                  PostContactBar(
++                    key: const ValueKey('showcase-contact'),
++                    post: p,
++                    onDark: true,
++                  ),
++                ],
+                 if (cta != null) ...[
+                   const SizedBox(height: Gap.sm),
+                   Align(
+diff --git a/mobile_nova/test/showcase_minimal_ad_test.dart b/mobile_nova/test/showcase_minimal_ad_test.dart
+index d4f2f58..e0e6d0c 100644
+--- a/mobile_nova/test/showcase_minimal_ad_test.dart
++++ b/mobile_nova/test/showcase_minimal_ad_test.dart
+@@ -158,8 +158,8 @@ void main() {
+   });
+ 
+   testWidgets(
+-      'Rasm sahifasi MINIMAL: izoh, musiqa, aloqa, narx, qo‘shimcha havola '
+-      'ko‘rinmaydi; «Batafsil» varag‘ida hammasi bor', (tester) async {
++      'Rasm sahifasi MINIMAL: izoh, musiqa, narx, qo‘shimcha havola '
++      'ko‘rinmaydi (biznes aloqasi sahifada); «Batafsil» varag‘ida qolgani', (tester) async {
+     await _app(tester, [_rich]);
+     // Sahifada: sarlavha, «Batafsil» va BITTA tugma (tovar).
+     expect(_k('showcase-title'), findsOneWidget);
+@@ -170,7 +170,8 @@ void main() {
+     expect(find.text('ko‘proq'), findsNothing);
+     expect(_k('showcase-music'), findsNothing);
+     expect(find.byKey(const ValueKey('music-chip')), findsNothing);
+-    expect(_k('showcase-contact'), findsNothing);
++    // Biznes aloqasi (Qo'ng'iroq/Telegram) sahifada qoladi (egasi).
++    expect(_k('showcase-contact'), findsOneWidget);
+     expect(_k('showcase-price'), findsNothing);
+     expect(_k('showcase-video'), findsNothing);
+     expect(_k('showcase-instagram'), findsNothing);
+@@ -183,7 +184,8 @@ void main() {
+     expect(find.text('Yangi kolleksiya keldi'), findsOneWidget);
+     expect(_k('showcase-price'), findsOneWidget);
+     expect(_k('showcase-info-music'), findsOneWidget);
+-    expect(_k('showcase-info-contact'), findsOneWidget);
++    expect(_k('showcase-info-contact'), findsNothing,
++        reason: 'aloqa sahifada — varaqda takrorlanmaydi');
+     expect(_k('showcase-info-product'), findsOneWidget);
+     expect(_k('showcase-info-video'), findsOneWidget,
+         reason: 'hamma havolalar varaqda');
+-- 
+2.43.0
+
