@@ -1,0 +1,228 @@
+From ba2d2115077bc76988494ccb4ec0c9eb6cb2b88d Mon Sep 17 00:00:00 2001
+From: NFCSTORE CI <ci@nfcstore.uz>
+Date: Sun, 11 Oct 2026 11:49:06 +0000
+Subject: [PATCH] To'liq ekranda bitta ovoz: musiqali postda video jim,
+ qaytganda lenta ovozi tiklanadi
+
+Reklama roliklarida (v4) videoning o'zida musiqa izi bor. To'liq ekran
+videoni har doim setVolume(1) qilardi va karta musiqasi bilan birga
+eshitilardi; lentaga qaytganda ham video ovozli qolardi.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ .../lib/features/social/fullscreen_video.dart |  12 +-
+ .../lib/features/social/inline_video.dart     |  18 ++-
+ .../test/fullscreen_single_sound_test.dart    | 112 ++++++++++++++++++
+ 3 files changed, 137 insertions(+), 5 deletions(-)
+ create mode 100644 mobile_nova/test/fullscreen_single_sound_test.dart
+
+diff --git a/mobile_nova/lib/features/social/fullscreen_video.dart b/mobile_nova/lib/features/social/fullscreen_video.dart
+index 46e377c..eec647b 100644
+--- a/mobile_nova/lib/features/social/fullscreen_video.dart
++++ b/mobile_nova/lib/features/social/fullscreen_video.dart
+@@ -23,10 +23,18 @@ BoxFit immersiveVideoFit(Size video, Size box) {
+ /// bo'lib ketsa (ro'yxat qayta qurildi), kontroller egasiz qoladi —
+ /// [orphaned] belgilanadi va uni to'liq ekran sahifasi yopadi.
+ class VideoHandoff {
+-  VideoHandoff(this.controller);
++  VideoHandoff(this.controller, {this.volume = 1});
+ 
+   final VideoPlayerController controller;
+ 
++  /// To'liq ekrandagi video ovozi.
++  ///
++  /// Postda alohida musiqa bo'lsa `0`: musiqani lenta kartasining
++  /// o'z pleeri chaladi. Ilgari bu yerda har doim `1` edi — videoning
++  /// o'z audio izi (reklama roliklarida musiqa bor) musiqa bilan
++  /// BIRGA eshitilardi: ikki xil ovoz (iPhone, build 335).
++  final double volume;
++
+   /// Lenta kartasi yo'q bo'ldi — kontrollerni sahifa yopadi.
+   bool orphaned = false;
+ }
+@@ -80,7 +88,7 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
+   void initState() {
+     super.initState();
+     _c.addListener(_tick);
+-    _c.setVolume(1);
++    _c.setVolume(widget.handoff.volume);
+     _c.play();
+   }
+ 
+diff --git a/mobile_nova/lib/features/social/inline_video.dart b/mobile_nova/lib/features/social/inline_video.dart
+index fa81166..2f0c915 100644
+--- a/mobile_nova/lib/features/social/inline_video.dart
++++ b/mobile_nova/lib/features/social/inline_video.dart
+@@ -1,3 +1,5 @@
++import 'dart:async';
++
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:video_player/video_player.dart';
+@@ -473,7 +475,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+         !_gone &&
+         mounted &&
+         (_c?.value.isPlaying ?? false) &&
+-        !ref.read(mediaMutedProvider);
++        (_handoff != null || !ref.read(mediaMutedProvider));
+     if (!want()) {
+       _mc?.pause();
+       return;
+@@ -526,8 +528,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     if (_c == null) await _open();
+     final c = _c;
+     if (c == null || !_ready || _gone || !mounted) return;
+-    final h = VideoHandoff(c);
++    // BITTA OVOZ: musiqa bor — video jim, musiqani shu karta chaladi.
++    final h = VideoHandoff(c, volume: _hasMusic ? 0 : 1);
+     _handoff = h;
++    // To'liq ekran — odam ovoz bilan ko'rmoqchi: musiqa 🔇 bo'lsa ham
++    // chalinadi (musiqasiz videoning o'z ovozi ham shunday).
++    unawaited(_syncMusic());
+     // Ochilgan va yopilgan xabari AYNI qabul qiluvchiga boradi; sahifa
+     // xato bilan tugasa yoki karta yo'qolsa ham `false` albatta keladi.
+     final notify = widget.onFullscreen;
+@@ -540,6 +546,11 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     // Karta sahifa ochiq turganda yo'q bo'ldi — kontrollerni sahifa yopdi.
+     if (h.orphaned) return;
+     _handoff = null;
++    // Lentaga qaytdi: lenta ovozi (🔇 / musiqa bo'lsa jim) qayta
++    // qo'llanadi. Ilgari to'liq ekrandagi `1` qolib ketardi va lentada
++    // ham video ovozi musiqa bilan birga chalinardi.
++    if (!_gone && identical(_c, c)) await c.setVolume(_volume);
++    unawaited(_syncMusic());
+     if (mounted) setState(() {});
+   }
+ 
+@@ -603,7 +614,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
+     // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
+     ref.listen<bool>(mediaMutedProvider, (_, muted) {
+       final c = _c;
+-      if (c != null && _ready) c.setVolume(_volume);
++      // To'liq ekranda ovozni o'sha sahifa belgilaydi.
++      if (c != null && _ready && _handoff == null) c.setVolume(_volume);
+       _syncMusic();
+     });
+     final body = _buildBody(context);
+diff --git a/mobile_nova/test/fullscreen_single_sound_test.dart b/mobile_nova/test/fullscreen_single_sound_test.dart
+new file mode 100644
+index 0000000..4b2a743
+--- /dev/null
++++ b/mobile_nova/test/fullscreen_single_sound_test.dart
+@@ -0,0 +1,112 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:nfcstore_nova/data/models/models.dart' show MusicTrack;
++import 'package:nfcstore_nova/features/social/inline_video.dart';
++import 'package:video_player_platform_interface/video_player_platform_interface.dart';
++
++import 'helpers.dart';
++import 'support/fake_video_platform.dart';
++
++/// TO'LIQ EKRANDA BITTA OVOZ (egasi, build 335: "ichiga kirsang ham
++/// musiqa, tashqaridagi ham — ikki xil ovoz").
++///
++/// Reklama roliklarida (v4) videoning o'zida musiqa izi bor, postda
++/// esa alohida musiqa ham bor. Lentada video jim, musiqa chalinadi.
++/// To'liq ekran ilgari videoni `setVolume(1)` qilardi — ikkalasi birga
++/// eshitilardi, lentaga qaytganda ham video ovozli qolardi.
++void main() {
++  Future<void> flush(WidgetTester tester) async {
++    for (var i = 0; i < 6; i++) {
++      await tester.pump(const Duration(milliseconds: 50));
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 20)));
++    }
++    await tester.pump();
++  }
++
++  Future<FakeVideoPlatform> pumpCard(WidgetTester tester,
++      {MusicTrack? music}) async {
++    final v = FakeVideoPlatform();
++    VideoPlayerPlatform.instance = v;
++    final overrides = await testOverrides();
++    await tester.pumpWidget(ProviderScope(
++      overrides: overrides,
++      child: wrapScreen(Scaffold(
++        body: SizedBox(
++          width: 300,
++          height: 300,
++          child: InlineVideo(
++            url: 'https://nfcstore.uz/uploads/promo_boy777_v4.mp4',
++            active: true,
++            looping: true,
++            fullscreenOnTap: true,
++            music: music,
++          ),
++        ),
++      )),
++    ));
++    await tester.pump();
++    await flush(tester);
++    // Sahifa o'tish animatsiyasi tugasin (u paytda bosish o'tmaydi).
++    await tester.pump(const Duration(seconds: 1));
++    await flush(tester);
++    return v;
++  }
++
++  /// Soxta platformaning kadri bosishni qabul qilmaydi (haqiqiy
++  /// `Texture` qabul qiladi) — kartaning o'z `onTap` i chaqiriladi.
++  Future<void> openFullscreen(WidgetTester tester) async {
++    tester
++        .widget<GestureDetector>(
++            find.byKey(const ValueKey('video-open-fullscreen')))
++        .onTap!();
++    await flush(tester);
++  }
++
++  int idOf(FakeVideoPlatform v, String part) =>
++      v.urls.entries.firstWhere((e) => e.value.contains(part)).key;
++
++  /// Hozir eshitilayotgan manbalar: o'ynayapti va ovozi > 0.
++  Set<String> audible(FakeVideoPlatform v) => {
++        for (final id in v.playing)
++          if ((v.volumeOf[id] ?? 1) > 0) v.urls[id]!,
++      };
++
++  const track = MusicTrack(
++      id: 28, title: 'Silk Road Fire', clipUrl: 'https://nfcstore.uz/m/28.mp3');
++
++  testWidgets('musiqali post: lentada, to‘liq ekranda va qaytganda — '
++      'faqat musiqa eshitiladi', (tester) async {
++    final v = await pumpCard(tester, music: track);
++    final video = idOf(v, 'promo_boy777');
++    expect(audible(v), {'https://nfcstore.uz/m/28.mp3'},
++        reason: 'lentada video jim, musiqa chalinadi');
++
++    await openFullscreen(tester);
++    expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget);
++    expect(v.playing, contains(video));
++    expect(v.volumeOf[video], 0, reason: 'video o‘z izini chalmaydi');
++    expect(audible(v), {'https://nfcstore.uz/m/28.mp3'},
++        reason: 'to‘liq ekranda ham BITTA ovoz');
++
++    await tester.binding.handlePopRoute();
++    await flush(tester);
++    expect(find.byKey(const ValueKey('video-fullscreen')), findsNothing);
++    expect(v.volumeOf[video], 0, reason: 'lentaga qaytgach ham video jim');
++    expect(audible(v).length, lessThanOrEqualTo(1));
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('musiqasiz video: to‘liq ekranda o‘z ovozi bilan', (tester) async {
++    final v = await pumpCard(tester);
++    final video = idOf(v, 'promo_boy777');
++    await openFullscreen(tester);
++    expect(find.byKey(const ValueKey('video-fullscreen')), findsOneWidget);
++    expect(v.volumeOf[video], 1);
++    expect(v.created.length, 1, reason: 'alohida musiqa pleeri yo‘q');
++    await tester.binding.handlePopRoute();
++    await flush(tester);
++    expect(tester.takeException(), isNull);
++  });
++}
+-- 
+2.43.0
+
