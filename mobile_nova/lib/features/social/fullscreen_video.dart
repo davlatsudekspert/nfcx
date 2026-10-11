@@ -23,9 +23,17 @@ BoxFit immersiveVideoFit(Size video, Size box) {
 /// bo'lib ketsa (ro'yxat qayta qurildi), kontroller egasiz qoladi —
 /// [orphaned] belgilanadi va uni to'liq ekran sahifasi yopadi.
 class VideoHandoff {
-  VideoHandoff(this.controller);
+  VideoHandoff(this.controller, {this.volume = 1});
 
   final VideoPlayerController controller;
+
+  /// To'liq ekrandagi video ovozi.
+  ///
+  /// Postda alohida musiqa bo'lsa `0`: musiqani lenta kartasining
+  /// o'z pleeri chaladi. Ilgari bu yerda har doim `1` edi — videoning
+  /// o'z audio izi (reklama roliklarida musiqa bor) musiqa bilan
+  /// BIRGA eshitilardi: ikki xil ovoz (iPhone, build 335).
+  final double volume;
 
   /// Lenta kartasi yo'q bo'ldi — kontrollerni sahifa yopadi.
   bool orphaned = false;
@@ -80,7 +88,7 @@ class _FullscreenVideoState extends State<FullscreenVideo> {
   void initState() {
     super.initState();
     _c.addListener(_tick);
-    _c.setVolume(1);
+    _c.setVolume(widget.handoff.volume);
     _c.play();
   }
 

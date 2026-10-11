@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -473,7 +475,7 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
         !_gone &&
         mounted &&
         (_c?.value.isPlaying ?? false) &&
-        !ref.read(mediaMutedProvider);
+        (_handoff != null || !ref.read(mediaMutedProvider));
     if (!want()) {
       _mc?.pause();
       return;
@@ -526,8 +528,12 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     if (_c == null) await _open();
     final c = _c;
     if (c == null || !_ready || _gone || !mounted) return;
-    final h = VideoHandoff(c);
+    // BITTA OVOZ: musiqa bor — video jim, musiqani shu karta chaladi.
+    final h = VideoHandoff(c, volume: _hasMusic ? 0 : 1);
     _handoff = h;
+    // To'liq ekran — odam ovoz bilan ko'rmoqchi: musiqa 🔇 bo'lsa ham
+    // chalinadi (musiqasiz videoning o'z ovozi ham shunday).
+    unawaited(_syncMusic());
     // Ochilgan va yopilgan xabari AYNI qabul qiluvchiga boradi; sahifa
     // xato bilan tugasa yoki karta yo'qolsa ham `false` albatta keladi.
     final notify = widget.onFullscreen;
@@ -540,6 +546,11 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // Karta sahifa ochiq turganda yo'q bo'ldi — kontrollerni sahifa yopdi.
     if (h.orphaned) return;
     _handoff = null;
+    // Lentaga qaytdi: lenta ovozi (🔇 / musiqa bo'lsa jim) qayta
+    // qo'llanadi. Ilgari to'liq ekrandagi `1` qolib ketardi va lentada
+    // ham video ovozi musiqa bilan birga chalinardi.
+    if (!_gone && identical(_c, c)) await c.setVolume(_volume);
+    unawaited(_syncMusic());
     if (mounted) setState(() {});
   }
 
@@ -603,7 +614,8 @@ class _InlineVideoState extends ConsumerState<InlineVideo>
     // Ovoz tugmasi bosilsa — o'ynayotgan video darhol bo'ysunadi.
     ref.listen<bool>(mediaMutedProvider, (_, muted) {
       final c = _c;
-      if (c != null && _ready) c.setVolume(_volume);
+      // To'liq ekranda ovozni o'sha sahifa belgilaydi.
+      if (c != null && _ready && _handoff == null) c.setVolume(_volume);
       _syncMusic();
     });
     final body = _buildBody(context);
