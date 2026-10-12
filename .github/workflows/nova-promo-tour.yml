@@ -1,0 +1,94 @@
+# REKLAMA ROLIGI: ILOVANI ISHLATIB EKRANNI YOZISH (iPhone simulyatori).
+# Egasi (2026-10-12): "ilovani ekranda to'liq ishlatib rolik qil, rasm emas".
+# Haqiqiy ilova + haqiqiy server + sinov hisobi; faqat ko'rish (hech narsa
+# yozilmaydi). Yozuv KIRISHDAN KEYIN boshlanadi. Artefaktda faqat video va
+# vaqt belgilari — ilova build'i yuklanmaydi.
+name: NFCSTORE reklama — ilova sayohati (ekran yozuvi)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/wizardly-einstein-8cx2p4]
+    paths:
+      - .github/workflows/nova-promo-tour.yml
+      - ci/promo-tour/**
+
+concurrency:
+  group: nova-promo-tour
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_nova
+        shell: bash
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      NOVA_TEST_LOGIN: ${{ secrets.NFC_LOGIN_EMAIL || secrets.NOVA_TEST_LOGIN }}
+      NOVA_TEST_PASSWORD: ${{ secrets.NFC_LOGIN_PASSWORD || secrets.NOVA_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/vibrant-einstein-p5lo1i
+      - uses: actions/checkout@v4
+        with:
+          path: self
+      - name: iOS patch'lari (TestFlight bilan bir xil manba)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name "NFCSTORE CI"
+          git config user.email "ci@nfcstore.uz"
+          git am --3way self/ci/nova-ios-patches/*.patch
+          git log --oneline -3
+          echo "**Manba:** vibrant-einstein + $(ls self/ci/nova-ios-patches/*.patch | wc -l | tr -d ' ') patch → \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.5
+          channel: stable
+          cache: true
+      - name: Paketlar va test fayli
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          mkdir -p integration_test/showcase_support
+          cp ../self/ci/promo-tour/promo_tour_test.dart integration_test/
+          cp ../self/ci/showcase-e2e/support/*.dart integration_test/showcase_support/
+      - name: iPhone simulyatori
+        id: sim
+        run: |
+          set -e
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          pref=['iPhone 16','iPhone 16 Pro','iPhone 17','iPhone 15 Pro','iPhone 16 Pro Max']
+          allv=[x for k,v in d.items() if 'iOS' in k for x in v]
+          for p in pref:
+            for x in allv:
+              if x['name']==p: print(x['udid']); raise SystemExit
+          print([x for x in allv if 'iPhone' in x['name']][0]['udid'])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl list devices | grep "$UDID"
+          echo "**Simulyator:** $(xcrun simctl list devices | grep "$UDID" | sed 's/^ *//')" >> "$GITHUB_STEP_SUMMARY"
+      - name: Ilovani ishlatib ekranni yozish
+        timeout-minutes: 40
+        run: bash ../self/ci/promo-tour/record.sh ${{ steps.sim.outputs.udid }}
+      - name: Artefakt (faqat video va belgilar — login yozuvga tushmaydi)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promo-tour-ios
+          path: |
+            mobile_nova/promo-tour/tour.mov
+            mobile_nova/promo-tour/marks.txt
+            mobile_nova/promo-tour/recorder.log
+          if-no-files-found: warn
+          retention-days: 7
