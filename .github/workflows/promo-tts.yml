@@ -1,0 +1,34 @@
+name: promo-tts (vaqtinchalik — reklama ovozi)
+on:
+  push:
+    branches: [claude/promo-tts]
+    paths: [lines.json]
+permissions:
+  contents: write
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install edge-tts==7.2.8
+      - name: Ovoz (uz-UZ-MadinaNeural)
+        run: |
+          mkdir -p out
+          python3 - <<'PY'
+          import asyncio, json, edge_tts
+          lines = json.load(open('lines.json', encoding='utf-8'))
+          async def one(k, t):
+              await edge_tts.Communicate(t, 'uz-UZ-MadinaNeural', rate='-4%').save(f'out/{k}.mp3')
+          async def main():
+              for k, t in lines.items():
+                  await one(k, t)
+          asyncio.run(main())
+          PY
+          ls -la out
+      - name: Natijani branchga qaytarish
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add out
+          git commit -m "promo-tts: ovoz fayllari"
+          git push
