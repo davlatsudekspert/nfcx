@@ -831,5 +831,51 @@ def iap():
         sys.exit(1)
 
 
+# ── faqat review izohi (Notes) — boshqa hech narsaga tegmaydi ───────────
+def version_any(aid):
+    """Versiyani HOLATIDAN QAT'I NAZAR topadi (WAITING_FOR_REVIEW ham)."""
+    want = os.environ.get('APP_VERSION', '').strip() or '1.1.1'
+    c, j = call('GET', f'/v1/apps/{aid}/appStoreVersions', params={'filter[platform]': 'IOS', 'limit': 10})
+    for v in j.get('data', []):
+        if v['attributes'].get('versionString') == want:
+            note(f"versiya {want}: holat {v['attributes'].get('appStoreState')}")
+            return v
+    print(f'::error::versiya {want} topilmadi'); sys.exit(1)
+
+
+def notes_show():
+    aid = app_id(); v = version_any(aid)
+    c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail")
+    rd = j.get('data') if isinstance(j.get('data'), dict) else None
+    if not rd:
+        note('review ma\'lumotlari yo\'q'); flush('ASC izoh'); return
+    a = rd['attributes']
+    # Demo akkaunt login/paroli CHOP ETILMAYDI. Faqat izoh matni.
+    note(f"izoh uzunligi: {len(a.get('notes') or '')} belgi; demoAccountRequired={a.get('demoAccountRequired')}")
+    for line in (a.get('notes') or '').split('\n'):
+        note('| ' + line)
+    flush('ASC izoh (hozirgi)')
+
+
+def notes_set():
+    text = open(os.path.join(os.path.dirname(__file__), 'review_notes.txt'), encoding='utf-8').read().strip()
+    if len(text) > 4000:
+        print('::error::izoh 4000 belgidan uzun'); sys.exit(1)
+    aid = app_id(); v = version_any(aid)
+    c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail")
+    rd = j.get('data') if isinstance(j.get('data'), dict) else None
+    if not rd:
+        print('::error::review ma\'lumotlari yo\'q — avval App Store Connect\'da yarating'); sys.exit(1)
+    # FAQAT `notes`: kontakt va demo akkaunt maydonlari yuborilmaydi.
+    c, j = call('PATCH', f"/v1/appStoreReviewDetails/{rd['id']}",
+                {'data': {'type': 'appStoreReviewDetails', 'id': rd['id'], 'attributes': {'notes': text}}})
+    note(f"izoh yozildi ({len(text)} belgi) -> {c} {j.get('_error', '')} {str(j.get('_body', ''))[:200]}")
+    c, j = call('GET', f"/v1/appStoreReviewDetails/{rd['id']}")
+    saved = (j.get('data') or {}).get('attributes', {}).get('notes') or ''
+    note(f"tekshiruv: saqlangan matn yuborilganga {'TENG' if saved.strip() == text else 'TENG EMAS'} ({len(saved)} belgi)")
+    flush('ASC izoh (yozildi)')
+
+
 if __name__ == '__main__':
-    {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit, 'release': release, 'iap': iap}[sys.argv[1]]()
+    {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit, 'release': release, 'iap': iap,
+     'notes-show': notes_show, 'notes-set': notes_set}[sys.argv[1]]()
