@@ -862,23 +862,41 @@ def notes_show():
 
 
 def notes_set():
-    text = open(os.path.join(os.path.dirname(__file__), 'review_notes.txt'), encoding='utf-8').read().strip()
-    if len(text) > 4000:
-        print('::error::izoh 4000 belgidan uzun'); sys.exit(1)
+    """Mavjud izohni O'QIYDI, faqat ikkita aniq o'zgartirish kiritadi:
+    1) 3-bo'limdagi "IAP yo'q" jumlasini aniqlashtiradi, 2) oxiriga 8-bo'lim qo'shadi.
+    Boshqa hamma matn (kontakt, demo akkaunt, 7-bo'lim va h.k.) o'zgarmaydi."""
+    OLD3 = "There are no in-app purchases and nothing can be bought in the iOS app: no prices, purchase buttons or links to buy."
+    NEW3 = ("Nothing can be bought in the iOS app in this version: no prices, purchase buttons or links to buy "
+            "(Apple In-App Purchase code exists but is switched off, see 8).")
+    ADD8 = ("\n\n8) FEATURES (Guideline 2.5.19): there are no hidden or undocumented features. Apple In-App Purchase "
+            "(StoreKit 2) code for Premium and Boost exists but is switched OFF by a server-side flag in this version; "
+            "no purchase button or price is shown and the app has no external payment links. "
+            "User-generated content safeguards (1.2): Report on every post, story and comment; block users; "
+            "automatic upload screening; content rules accepted before posting; moderator review; in-app account "
+            "deletion; contact https://nfcstore.uz/aloqa.")
     aid = app_id(); v = version_any(aid)
     c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail")
     rd = j.get('data') if isinstance(j.get('data'), dict) else None
     if not rd:
-        print('::error::review ma\'lumotlari yo\'q — avval App Store Connect\'da yarating'); sys.exit(1)
+        print('::error::review ma\'lumotlari yo\'q'); sys.exit(1)
+    cur = rd['attributes'].get('notes') or ''
+    if '8) FEATURES' in cur:
+        note('8-bo\'lim allaqachon bor — o\'zgartirilmadi'); flush('ASC izoh'); return
+    if OLD3 not in cur:
+        print('::error::3-bo\'limdagi kutilgan jumla topilmadi — hech narsa yozilmadi'); sys.exit(1)
+    text = cur.replace(OLD3, NEW3, 1).rstrip() + ADD8
+    note(f'eski {len(cur)} -> yangi {len(text)} belgi (chegara 4000)')
+    if len(text) > 4000:
+        print('::error::yangi izoh 4000 belgidan uzun — hech narsa yozilmadi'); sys.exit(1)
     # FAQAT `notes`: kontakt va demo akkaunt maydonlari yuborilmaydi.
     c, j = call('PATCH', f"/v1/appStoreReviewDetails/{rd['id']}",
                 {'data': {'type': 'appStoreReviewDetails', 'id': rd['id'], 'attributes': {'notes': text}}})
-    note(f"izoh yozildi ({len(text)} belgi) -> {c} {j.get('_error', '')} {str(j.get('_body', ''))[:200]}")
+    note(f"izoh yozildi -> {c} {j.get('_error', '')} {str(j.get('_body', ''))[:300]}")
     c, j = call('GET', f"/v1/appStoreReviewDetails/{rd['id']}")
     saved = (j.get('data') or {}).get('attributes', {}).get('notes') or ''
-    note(f"tekshiruv: saqlangan matn yuborilganga {'TENG' if saved.strip() == text else 'TENG EMAS'} ({len(saved)} belgi)")
+    note(f"tekshiruv: saqlangan matn yuborilganga {'TENG' if saved.strip() == text.strip() else 'TENG EMAS'} ({len(saved)} belgi)")
+    note('8-bo\'lim: ' + saved[saved.find('8) FEATURES'):].replace('\n', ' ') if '8) FEATURES' in saved else '8-bo\'lim saqlanmadi')
     flush('ASC izoh (yozildi)')
-
 
 if __name__ == '__main__':
     {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit, 'release': release, 'iap': iap,
