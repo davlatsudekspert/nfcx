@@ -845,6 +845,10 @@ def version_any(aid):
 
 def notes_show():
     aid = app_id(); v = version_any(aid)
+    c, jb = call('GET', f"/v1/appStoreVersions/{v['id']}/build")
+    bd = jb.get('data') if isinstance(jb.get('data'), dict) else None
+    bnum = bd['attributes'].get('version') if bd else 'YOQ'
+    note(f"biriktirilgan build: {bnum}")
     c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail")
     rd = j.get('data') if isinstance(j.get('data'), dict) else None
     if not rd:
