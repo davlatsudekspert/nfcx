@@ -898,6 +898,39 @@ def notes_set():
     note('8-bo\'lim: ' + saved[saved.find('8) FEATURES'):].replace('\n', ' ') if '8) FEATURES' in saved else '8-bo\'lim saqlanmadi')
     flush('ASC izoh (yozildi)')
 
+def notes_showcase():
+    """Build 337: izohdagi Reels so'zlarini Showcase/Video bilan almashtiradi va releaseType=MANUAL qiladi.
+    Faqat `notes` va releaseType yuboriladi; boshqa maydonlar o'zgarmaydi."""
+    EDITS = [
+        ("(feed, Reels, stories, comments, follows)", "(feed, Showcase, stories, comments, follows)"),
+        ("Feed and Reels show posts (Reels top tabs: \"Reels\" and \"Friends\" = accounts you follow).",
+         "Feed shows posts; the Showcase tab shows community posts and videos, plus posts labelled \"Reklama\" (sponsored by businesses)."),
+        ("Posting, Reels, stories", "Posting, videos, stories"),
+        ("on any post, Reel, comment", "on any post, video, comment"),
+        ("music library for Reels", "music library for videos"),
+    ]
+    aid = app_id(); v = version_any(aid)
+    c, j = call('GET', f"/v1/appStoreVersions/{v['id']}/appStoreReviewDetail")
+    rd = j.get('data') if isinstance(j.get('data'), dict) else None
+    if not rd:
+        print('::error::review ma\'lumotlari yo\'q'); sys.exit(1)
+    text = rd['attributes'].get('notes') or ''
+    for old, newt in EDITS:
+        if old in text:
+            text = text.replace(old, newt, 1)
+        else:
+            note(f'topilmadi (o\'tkazildi): {old[:50]}')
+    note(f'yangi izoh {len(text)} belgi; "Reels" qolgan: {text.count("Reels")}')
+    if len(text) > 4000:
+        print('::error::4000 belgidan uzun'); sys.exit(1)
+    c, j = call('PATCH', f"/v1/appStoreReviewDetails/{rd['id']}",
+                {'data': {'type': 'appStoreReviewDetails', 'id': rd['id'], 'attributes': {'notes': text}}})
+    note(f"izoh -> {c} {j.get('_error', '')}")
+    c, j = call('PATCH', f"/v1/appStoreVersions/{v['id']}",
+                {'data': {'type': 'appStoreVersions', 'id': v['id'], 'attributes': {'releaseType': 'MANUAL'}}})
+    note(f"releaseType=MANUAL -> {c} {j.get('_error', '')}")
+    flush('ASC izoh (Showcase)')
+
 if __name__ == '__main__':
     {'fill': fill, 'shots': shots, 'attach': attach, 'submit': submit, 'release': release, 'iap': iap,
-     'notes-show': notes_show, 'notes-set': notes_set}[sys.argv[1]]()
+     'notes-show': notes_show, 'notes-set': notes_set, 'notes-showcase': notes_showcase}[sys.argv[1]]()
