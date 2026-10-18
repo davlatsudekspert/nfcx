@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -414,9 +415,18 @@ DiagVideoPlatform? get activeVideoDiag {
   return p is DiagVideoPlatform ? p : null;
 }
 
+/// Diagnostika FAQAT sinov (debug) qurilishida mavjud.
+///
+/// Relizda u yo'q: App Store qoidasi 2.5.19 yashirin / hujjatlanmagan
+/// imo-ishoralarni (masalan, aylanani uzun bosganda ochiladigan oyna)
+/// taqiqlaydi. Reliz buildida `installVideoDiag()` hech narsa qilmaydi va
+/// uzun bosish hech nima ochmaydi.
+const bool kVideoDiagAvailable = kDebugMode;
+
 /// `main()` da, `runApp` dan oldin. Takror chaqirish zararsiz; hech qachon
 /// xato tashlamaydi (diagnostika ilovani yiqitmasligi shart).
 void installVideoDiag() {
+  if (!kVideoDiagAvailable) return;
   try {
     final current = VideoPlayerPlatform.instance;
     if (current is DiagVideoPlatform) return;
@@ -542,7 +552,7 @@ class VideoDiagLongPress extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.translucent,
-    onLongPress: () => showVideoDiag(context),
+    onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null,
     child: SizedBox(
       width: size,
       height: size,

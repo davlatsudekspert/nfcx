@@ -9,7 +9,7 @@ import 'core/storage/secure_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Video diagnostikasi (uzun bosish bilan ochiladi); ilovaga ta'sir qilmaydi.
+  // Video diagnostikasi: FAQAT sinov (debug) qurilishida; relizda hech narsa qilmaydi.
   installVideoDiag();
 
   // Saqlangan mavzu va til BIRINCHI kadrdan oldin o'qiladi: aks holda

@@ -212,7 +212,7 @@ class _AdFullscreenPlayerState extends ConsumerState<AdFullscreenPlayer> {
               child: GestureDetector(
                 key: const ValueKey('ad-fullscreen-diag'),
                 behavior: HitTestBehavior.opaque,
-                onLongPress: () => showVideoDiag(context),
+                onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null,
               ),
             ),
             if (ready)

@@ -1278,7 +1278,7 @@ abstract class L {
   /// No description provided for @analyticsContentViews.
   ///
   /// In uz, this message translates to:
-  /// **'Post va Reels ko‘rishlari'**
+  /// **'Post va video ko‘rishlari'**
   String get analyticsContentViews;
 
   /// No description provided for @analyticsProfileViews.
@@ -1362,13 +1362,13 @@ abstract class L {
   /// No description provided for @analyticsNoPosts.
   ///
   /// In uz, this message translates to:
-  /// **'Hali post yoki Reels yo‘q'**
+  /// **'Hali post yoki video yo‘q'**
   String get analyticsNoPosts;
 
   /// No description provided for @analyticsReel.
   ///
   /// In uz, this message translates to:
-  /// **'Reels'**
+  /// **'Video'**
   String get analyticsReel;
 
   /// No description provided for @analyticsPost.
@@ -3462,7 +3462,7 @@ abstract class L {
   /// No description provided for @featuredIntro.
   ///
   /// In uz, this message translates to:
-  /// **'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
+  /// **'Postingiz tanlangan muddat davomida asosiy lentada «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
   String get featuredIntro;
 
   /// No description provided for @featuredPick.
@@ -3906,7 +3906,7 @@ abstract class L {
   /// No description provided for @bizFeatContent.
   ///
   /// In uz, this message translates to:
-  /// **'Post · Istoriya · Reels'**
+  /// **'Post · Istoriya · Video'**
   String get bizFeatContent;
 
   /// No description provided for @bizFeatContentHint.
@@ -4392,7 +4392,7 @@ abstract class L {
   /// No description provided for @rulesCardProcess.
   ///
   /// In uz, this message translates to:
-  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+  /// **'Har bir post, video, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
   String get rulesCardProcess;
 
   /// No description provided for @storyCaption.
@@ -5280,7 +5280,7 @@ abstract class L {
   /// No description provided for @reelPhotoHint.
   ///
   /// In uz, this message translates to:
-  /// **'Rasm Reels’da 10 soniya ko‘rinadi'**
+  /// **'Rasm 10 soniya ko‘rinadi'**
   String get reelPhotoHint;
 
   /// No description provided for @errPhoneShort.

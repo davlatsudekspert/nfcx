@@ -621,7 +621,7 @@ class LUz extends L {
   }
 
   @override
-  String get analyticsContentViews => 'Post va Reels ko‘rishlari';
+  String get analyticsContentViews => 'Post va video ko‘rishlari';
 
   @override
   String get analyticsProfileViews => 'Profil ko‘rishlari';
@@ -688,10 +688,10 @@ class LUz extends L {
   }
 
   @override
-  String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
+  String get analyticsNoPosts => 'Hali post yoki video yo‘q';
 
   @override
-  String get analyticsReel => 'Reels';
+  String get analyticsReel => 'Video';
 
   @override
   String get analyticsPost => 'Post';
@@ -1807,7 +1807,7 @@ class LUz extends L {
 
   @override
   String get featuredIntro =>
-      'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
+      'Postingiz tanlangan muddat davomida asosiy lentada «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
 
   @override
   String get featuredPick => 'Muddatni tanlang';
@@ -2048,7 +2048,7 @@ class LUz extends L {
       'Karta yoki stikerga tegilsa sahifangiz darhol ochiladi';
 
   @override
-  String get bizFeatContent => 'Post · Istoriya · Reels';
+  String get bizFeatContent => 'Post · Istoriya · Video';
 
   @override
   String get bizFeatContentHint =>
@@ -2306,7 +2306,7 @@ class LUz extends L {
 
   @override
   String get rulesCardProcess =>
-      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+      'Har bir post, video, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
 
   @override
   String get storyCaption => 'Istoriyaga qisqa matn';
@@ -2790,7 +2790,7 @@ class LUz extends L {
   String get reelPickMedia => 'Rasm yoki video tanlash';
 
   @override
-  String get reelPhotoHint => 'Rasm Reels’da 10 soniya ko‘rinadi';
+  String get reelPhotoHint => 'Rasm 10 soniya ko‘rinadi';
 
   @override
   String get errPhoneShort => 'Raqam to‘liq emas — hamma raqamlarini kiriting';

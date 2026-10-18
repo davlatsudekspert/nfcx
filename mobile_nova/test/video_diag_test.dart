@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -245,5 +246,20 @@ void main() {
     // Aylana to'xtovsiz aylanadi — pumpAndSettle ishlamaydi.
     await tester.pump(const Duration(seconds: 1));
     expect(find.byKey(const ValueKey('video-diag-text')), findsOneWidget);
+  });
+
+  group('reliz qoidasi (App Store 2.5.19)', () {
+    test('diagnostika faqat debug rejimida mavjud', () {
+      // Relizda yashirin imo-ishora bo'lmasligi shart: o'rnatish ham,
+      // uzun bosish ham `kVideoDiagAvailable` (= kDebugMode) ortida.
+      final src = File('lib/core/media/video_diag.dart').readAsStringSync();
+      expect(src, contains('const bool kVideoDiagAvailable = kDebugMode;'));
+      expect(src, contains('if (!kVideoDiagAvailable) return;'));
+      expect(src,
+          contains('onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null'));
+      final ad = File('lib/features/showcase/ad_fullscreen.dart').readAsStringSync();
+      expect(ad, contains('kVideoDiagAvailable ? () => showVideoDiag(context) : null'));
+      expect(ad, isNot(contains('onLongPress: () => showVideoDiag(context)')));
+    });
   });
 }

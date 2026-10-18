@@ -621,7 +621,7 @@ class LEn extends L {
   }
 
   @override
-  String get analyticsContentViews => 'Post and Reels views';
+  String get analyticsContentViews => 'Post and video views';
 
   @override
   String get analyticsProfileViews => 'Profile views';
@@ -691,10 +691,10 @@ class LEn extends L {
   }
 
   @override
-  String get analyticsNoPosts => 'No posts or Reels yet';
+  String get analyticsNoPosts => 'No posts or videos yet';
 
   @override
-  String get analyticsReel => 'Reels';
+  String get analyticsReel => 'Video';
 
   @override
   String get analyticsPost => 'Post';
@@ -1806,7 +1806,7 @@ class LEn extends L {
 
   @override
   String get featuredIntro =>
-      'For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.';
+      'For the chosen period your post is shown between posts in the main feed with a “Sponsored” label.';
 
   @override
   String get featuredPick => 'Choose a period';
@@ -2042,7 +2042,7 @@ class LEn extends L {
       'A tap on a card or sticker opens your page instantly';
 
   @override
-  String get bizFeatContent => 'Posts · Stories · Reels';
+  String get bizFeatContent => 'Posts · Stories · Videos';
 
   @override
   String get bizFeatContentHint =>
@@ -2306,7 +2306,7 @@ class LEn extends L {
 
   @override
   String get rulesCardProcess =>
-      'Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+      'Every post, video, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
 
   @override
   String get storyCaption => 'Short text on your story';
@@ -2787,7 +2787,7 @@ class LEn extends L {
   String get reelPickMedia => 'Choose a photo or video';
 
   @override
-  String get reelPhotoHint => 'The photo shows in Reels for 10 seconds';
+  String get reelPhotoHint => 'The photo is shown for 10 seconds';
 
   @override
   String get errPhoneShort => 'The number is incomplete — enter all digits';

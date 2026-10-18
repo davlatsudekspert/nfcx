@@ -617,7 +617,7 @@ class LRu extends L {
   }
 
   @override
-  String get analyticsContentViews => 'Просмотры постов и Reels';
+  String get analyticsContentViews => 'Просмотры постов и видео';
 
   @override
   String get analyticsProfileViews => 'Просмотры профиля';
@@ -693,10 +693,10 @@ class LRu extends L {
   }
 
   @override
-  String get analyticsNoPosts => 'Пока нет постов и Reels';
+  String get analyticsNoPosts => 'Пока нет постов и видео';
 
   @override
-  String get analyticsReel => 'Reels';
+  String get analyticsReel => 'Видео';
 
   @override
   String get analyticsPost => 'Пост';
@@ -1806,7 +1806,7 @@ class LRu extends L {
 
   @override
   String get featuredIntro =>
-      'В течение выбранного срока ваш пост показывается между постами главной ленты (видео — ещё и в Reels) с пометкой «Реклама».';
+      'В течение выбранного срока ваш пост показывается между постами главной ленты с пометкой «Реклама».';
 
   @override
   String get featuredPick => 'Выберите срок';
@@ -2041,7 +2041,7 @@ class LRu extends L {
       'Касание карты или стикера сразу открывает страницу';
 
   @override
-  String get bizFeatContent => 'Посты · Истории · Reels';
+  String get bizFeatContent => 'Посты · Истории · Видео';
 
   @override
   String get bizFeatContentHint =>
@@ -2307,7 +2307,7 @@ class LRu extends L {
 
   @override
   String get rulesCardProcess =>
-      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+      'В каждом посте, видео, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
 
   @override
   String get storyCaption => 'Короткий текст на истории';
@@ -2791,7 +2791,7 @@ class LRu extends L {
   String get reelPickMedia => 'Выбрать фото или видео';
 
   @override
-  String get reelPhotoHint => 'Фото показывается в Reels 10 секунд';
+  String get reelPhotoHint => 'Фото показывается 10 секунд';
 
   @override
   String get errPhoneShort => 'Номер неполный — введите все цифры';
