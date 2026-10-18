@@ -1,0 +1,551 @@
+From 217a75c4fc596ec93ca68ba7a0f919389b6abb81 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 18 Oct 2026 02:56:38 +0000
+Subject: [PATCH] Relizda yashirin diagnostika yo'q, Reels so'zlari Video bilan
+ almashtirildi (App Store 2.5.19)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01X3fizJ3F3nvfvUZqdZamcq
+---
+ mobile_nova/lib/core/media/video_diag.dart       | 12 +++++++++++-
+ .../lib/features/showcase/ad_fullscreen.dart     |  2 +-
+ mobile_nova/lib/l10n/arb/app_en.arb              | 14 +++++++-------
+ mobile_nova/lib/l10n/arb/app_ru.arb              | 14 +++++++-------
+ mobile_nova/lib/l10n/arb/app_uz.arb              | 14 +++++++-------
+ mobile_nova/lib/l10n/gen/app_localizations.dart  | 14 +++++++-------
+ .../lib/l10n/gen/app_localizations_en.dart       | 14 +++++++-------
+ .../lib/l10n/gen/app_localizations_ru.dart       | 14 +++++++-------
+ .../lib/l10n/gen/app_localizations_uz.dart       | 14 +++++++-------
+ mobile_nova/lib/main.dart                        |  2 +-
+ mobile_nova/test/video_diag_test.dart            | 16 ++++++++++++++++
+ 11 files changed, 78 insertions(+), 52 deletions(-)
+
+diff --git a/mobile_nova/lib/core/media/video_diag.dart b/mobile_nova/lib/core/media/video_diag.dart
+index 6fd652a..592cf2d 100644
+--- a/mobile_nova/lib/core/media/video_diag.dart
++++ b/mobile_nova/lib/core/media/video_diag.dart
+@@ -12,6 +12,7 @@
+ import 'dart:async';
+ import 'dart:io' show Platform;
+ 
++import 'package:flutter/foundation.dart' show kDebugMode;
+ import 'package:flutter/material.dart';
+ import 'package:flutter/services.dart';
+ import 'package:video_player_platform_interface/video_player_platform_interface.dart';
+@@ -414,9 +415,18 @@ DiagVideoPlatform? get activeVideoDiag {
+   return p is DiagVideoPlatform ? p : null;
+ }
+ 
++/// Diagnostika FAQAT sinov (debug) qurilishida mavjud.
++///
++/// Relizda u yo'q: App Store qoidasi 2.5.19 yashirin / hujjatlanmagan
++/// imo-ishoralarni (masalan, aylanani uzun bosganda ochiladigan oyna)
++/// taqiqlaydi. Reliz buildida `installVideoDiag()` hech narsa qilmaydi va
++/// uzun bosish hech nima ochmaydi.
++const bool kVideoDiagAvailable = kDebugMode;
++
+ /// `main()` da, `runApp` dan oldin. Takror chaqirish zararsiz; hech qachon
+ /// xato tashlamaydi (diagnostika ilovani yiqitmasligi shart).
+ void installVideoDiag() {
++  if (!kVideoDiagAvailable) return;
+   try {
+     final current = VideoPlayerPlatform.instance;
+     if (current is DiagVideoPlatform) return;
+@@ -542,7 +552,7 @@ class VideoDiagLongPress extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) => GestureDetector(
+     behavior: HitTestBehavior.translucent,
+-    onLongPress: () => showVideoDiag(context),
++    onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null,
+     child: SizedBox(
+       width: size,
+       height: size,
+diff --git a/mobile_nova/lib/features/showcase/ad_fullscreen.dart b/mobile_nova/lib/features/showcase/ad_fullscreen.dart
+index a233817..a2dd749 100644
+--- a/mobile_nova/lib/features/showcase/ad_fullscreen.dart
++++ b/mobile_nova/lib/features/showcase/ad_fullscreen.dart
+@@ -212,7 +212,7 @@ class _AdFullscreenPlayerState extends ConsumerState<AdFullscreenPlayer> {
+               child: GestureDetector(
+                 key: const ValueKey('ad-fullscreen-diag'),
+                 behavior: HitTestBehavior.opaque,
+-                onLongPress: () => showVideoDiag(context),
++                onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null,
+               ),
+             ),
+             if (ready)
+diff --git a/mobile_nova/lib/l10n/arb/app_en.arb b/mobile_nova/lib/l10n/arb/app_en.arb
+index c8a2736..79a3001 100644
+--- a/mobile_nova/lib/l10n/arb/app_en.arb
++++ b/mobile_nova/lib/l10n/arb/app_en.arb
+@@ -227,7 +227,7 @@
+   "nfcNoCard": "No card linked",
+   "settingsAnalytics": "Analytics",
+   "analyticsPeriod": "Last {days} days",
+-  "analyticsContentViews": "Post and Reels views",
++  "analyticsContentViews": "Post and video views",
+   "analyticsProfileViews": "Profile views",
+   "analyticsClicks": "Button taps",
+   "analyticsLikes": "Likes",
+@@ -244,8 +244,8 @@
+   "@storyTimeDays": {"placeholders": {"n": {"type": "int"}}},
+   "reelAdCta": "View profile",
+   "analyticsSeeAll": "See all ({count})",
+-  "analyticsNoPosts": "No posts or Reels yet",
+-  "analyticsReel": "Reels",
++  "analyticsNoPosts": "No posts or videos yet",
++  "analyticsReel": "Video",
+   "analyticsPost": "Post",
+   "viewsCount": "{count} views",
+   "nfcDeleteConfirm": "Delete this NFC ID? This cannot be undone.",
+@@ -694,7 +694,7 @@
+   "homeFeedEmpty": "No posts yet. Posts from people you follow will appear here.",
+   "homeFeedMore": "See all",
+   "featuredTitle": "Boost in feed",
+-  "featuredIntro": "For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.",
++  "featuredIntro": "For the chosen period your post is shown between posts in the main feed with a “Sponsored” label.",
+   "featuredPick": "Choose a period",
+   "featuredDays": "{days} days",
+   "@featuredDays": {
+@@ -783,7 +783,7 @@
+   "bizFeatCatalogHint": "Products and services with prices, direct orders",
+   "bizFeatNfc": "Opens with NFC",
+   "bizFeatNfcHint": "A tap on a card or sticker opens your page instantly",
+-  "bizFeatContent": "Posts · Stories · Reels",
++  "bizFeatContent": "Posts · Stories · Videos",
+   "bizFeatContentHint": "Content as your company — shown in followers’ feeds",
+   "bizFeatAnalytics": "Analytics",
+   "bizFeatAnalyticsHint": "Views and clicks — day by day",
+@@ -864,7 +864,7 @@
+   "rulesBanIllegal": "Illegal",
+   "rulesBanSpam": "Spam & scams",
+   "rulesBanInsult": "Insults",
+-  "rulesCardProcess": "Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
++  "rulesCardProcess": "Every post, video, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.",
+   "storyCaption": "Short text on your story",
+   "noNfcExplain": "This phone can’t read or write NFC cards. You can still share your profile — the QR code opens with any phone camera.",
+   "noNfcShareLink": "Share link",
+@@ -1012,7 +1012,7 @@
+   "musicChange": "Change",
+   "musicLicensed": "Only licensed music from the NFCSTORE library",
+   "reelPickMedia": "Choose a photo or video",
+-  "reelPhotoHint": "The photo shows in Reels for 10 seconds",
++  "reelPhotoHint": "The photo is shown for 10 seconds",
+   "errPhoneShort": "The number is incomplete — enter all digits",
+   "errEmailTypo": "Looks like a typo. Did you mean {email}?",
+   "errEmailDomain": "This email domain doesn’t exist — check and try again",
+diff --git a/mobile_nova/lib/l10n/arb/app_ru.arb b/mobile_nova/lib/l10n/arb/app_ru.arb
+index 90dd283..800ecf2 100644
+--- a/mobile_nova/lib/l10n/arb/app_ru.arb
++++ b/mobile_nova/lib/l10n/arb/app_ru.arb
+@@ -227,7 +227,7 @@
+   "nfcNoCard": "Карта не привязана",
+   "settingsAnalytics": "Аналитика",
+   "analyticsPeriod": "Последние {days} дн.",
+-  "analyticsContentViews": "Просмотры постов и Reels",
++  "analyticsContentViews": "Просмотры постов и видео",
+   "analyticsProfileViews": "Просмотры профиля",
+   "analyticsClicks": "Нажатия кнопок",
+   "analyticsLikes": "Лайки",
+@@ -244,8 +244,8 @@
+   "@storyTimeDays": {"placeholders": {"n": {"type": "int"}}},
+   "reelAdCta": "Открыть профиль",
+   "analyticsSeeAll": "Смотреть все ({count})",
+-  "analyticsNoPosts": "Пока нет постов и Reels",
+-  "analyticsReel": "Reels",
++  "analyticsNoPosts": "Пока нет постов и видео",
++  "analyticsReel": "Видео",
+   "analyticsPost": "Пост",
+   "viewsCount": "Просмотры: {count}",
+   "nfcDeleteConfirm": "Удалить этот NFC ID? Действие необратимо.",
+@@ -694,7 +694,7 @@
+   "homeFeedEmpty": "Пока нет постов. Здесь появятся публикации тех, на кого вы подписаны.",
+   "homeFeedMore": "Смотреть все",
+   "featuredTitle": "Поднять в ленте",
+-  "featuredIntro": "В течение выбранного срока ваш пост показывается между постами главной ленты (видео — ещё и в Reels) с пометкой «Реклама».",
++  "featuredIntro": "В течение выбранного срока ваш пост показывается между постами главной ленты с пометкой «Реклама».",
+   "featuredPick": "Выберите срок",
+   "featuredDays": "{days} дн.",
+   "@featuredDays": {
+@@ -783,7 +783,7 @@
+   "bizFeatCatalogHint": "Товары и услуги с ценами, заказ напрямую",
+   "bizFeatNfc": "Открытие по NFC",
+   "bizFeatNfcHint": "Касание карты или стикера сразу открывает страницу",
+-  "bizFeatContent": "Посты · Истории · Reels",
++  "bizFeatContent": "Посты · Истории · Видео",
+   "bizFeatContentHint": "Контент от имени компании — в ленте подписчиков",
+   "bizFeatAnalytics": "Аналитика",
+   "bizFeatAnalyticsHint": "Просмотры и клики — по дням",
+@@ -864,7 +864,7 @@
+   "rulesBanIllegal": "Незаконное",
+   "rulesBanSpam": "Спам и обман",
+   "rulesBanInsult": "Оскорбления",
+-  "rulesCardProcess": "В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
++  "rulesCardProcess": "В каждом посте, видео, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.",
+   "storyCaption": "Короткий текст на истории",
+   "noNfcExplain": "Этот телефон не может читать и записывать NFC-карты. Но делиться профилем всё равно можно — QR-код откроется камерой любого телефона.",
+   "noNfcShareLink": "Поделиться ссылкой",
+@@ -1012,7 +1012,7 @@
+   "musicChange": "Заменить",
+   "musicLicensed": "Только разрешённая музыка из библиотеки NFCSTORE",
+   "reelPickMedia": "Выбрать фото или видео",
+-  "reelPhotoHint": "Фото показывается в Reels 10 секунд",
++  "reelPhotoHint": "Фото показывается 10 секунд",
+   "errPhoneShort": "Номер неполный — введите все цифры",
+   "errEmailTypo": "Похоже, в адресе ошибка. Вы имели в виду {email}?",
+   "errEmailDomain": "Такой почтовый адрес не найден — проверьте и введите снова",
+diff --git a/mobile_nova/lib/l10n/arb/app_uz.arb b/mobile_nova/lib/l10n/arb/app_uz.arb
+index 7aa3ee2..40fb510 100644
+--- a/mobile_nova/lib/l10n/arb/app_uz.arb
++++ b/mobile_nova/lib/l10n/arb/app_uz.arb
+@@ -228,7 +228,7 @@
+   "nfcNoCard": "Karta ulanmagan",
+   "settingsAnalytics": "Analitika",
+   "analyticsPeriod": "Oxirgi {days} kun",
+-  "analyticsContentViews": "Post va Reels ko‘rishlari",
++  "analyticsContentViews": "Post va video ko‘rishlari",
+   "analyticsProfileViews": "Profil ko‘rishlari",
+   "analyticsClicks": "Tugma bosishlar",
+   "analyticsLikes": "Layklar",
+@@ -246,8 +246,8 @@
+   "reelAdCta": "Profilni ochish",
+   "analyticsSeeAll": "Hammasini ko‘rish ({count})",
+   "@analyticsSeeAll": {"placeholders": {"count": {"type": "int"}}},
+-  "analyticsNoPosts": "Hali post yoki Reels yo‘q",
+-  "analyticsReel": "Reels",
++  "analyticsNoPosts": "Hali post yoki video yo‘q",
++  "analyticsReel": "Video",
+   "analyticsPost": "Post",
+   "viewsCount": "{count} ko‘rish",
+   "@analyticsPeriod": {"placeholders": {"days": {"type": "int"}}},
+@@ -734,7 +734,7 @@
+   "homeFeedEmpty": "Hozircha post yo‘q. Obuna bo‘lgan odamlaringiz post qo‘yganda shu yerda ko‘rinadi.",
+   "homeFeedMore": "Hammasini ko‘rish",
+   "featuredTitle": "Lentada ko‘tarish",
+-  "featuredIntro": "Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.",
++  "featuredIntro": "Postingiz tanlangan muddat davomida asosiy lentada «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.",
+   "featuredPick": "Muddatni tanlang",
+   "featuredDays": "{days} kun",
+   "@featuredDays": {
+@@ -835,7 +835,7 @@
+   "bizFeatCatalogHint": "Mahsulot va xizmatlar narxi bilan, buyurtma to‘g‘ridan-to‘g‘ri",
+   "bizFeatNfc": "NFC bilan ochilish",
+   "bizFeatNfcHint": "Karta yoki stikerga tegilsa sahifangiz darhol ochiladi",
+-  "bizFeatContent": "Post · Istoriya · Reels",
++  "bizFeatContent": "Post · Istoriya · Video",
+   "bizFeatContentHint": "Kompaniya nomidan kontent — obunachilar lentasiga chiqadi",
+   "bizFeatAnalytics": "Analitika",
+   "bizFeatAnalyticsHint": "Ko‘rishlar va bosishlar — kunma-kun",
+@@ -923,7 +923,7 @@
+   "rulesBanIllegal": "Noqonuniy",
+   "rulesBanSpam": "Spam va aldov",
+   "rulesBanInsult": "Haqorat",
+-  "rulesCardProcess": "Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
++  "rulesCardProcess": "Har bir post, video, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.",
+   "storyCaption": "Istoriyaga qisqa matn",
+   "noNfcExplain": "Bu telefon NFC kartani o‘qiy olmaydi va unga yoza olmaydi. Lekin profilingizni baribir ulashasiz — QR kod har qanday telefon kamerasida ochiladi.",
+   "noNfcShareLink": "Havolani ulashish",
+@@ -1138,7 +1138,7 @@
+   "musicChange": "Almashtirish",
+   "musicLicensed": "Faqat NFCSTORE kutubxonasidagi ruxsatli musiqa",
+   "reelPickMedia": "Rasm yoki video tanlash",
+-  "reelPhotoHint": "Rasm Reels’da 10 soniya ko‘rinadi",
++  "reelPhotoHint": "Rasm 10 soniya ko‘rinadi",
+   "errPhoneShort": "Raqam to‘liq emas — hamma raqamlarini kiriting",
+   "errEmailTypo": "Manzilda xato bor shekilli. {email} demoqchimisiz?",
+   "@errEmailTypo": {
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations.dart b/mobile_nova/lib/l10n/gen/app_localizations.dart
+index ce75721..bdc99a6 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations.dart
+@@ -1278,7 +1278,7 @@ abstract class L {
+   /// No description provided for @analyticsContentViews.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Post va Reels ko‘rishlari'**
++  /// **'Post va video ko‘rishlari'**
+   String get analyticsContentViews;
+ 
+   /// No description provided for @analyticsProfileViews.
+@@ -1362,13 +1362,13 @@ abstract class L {
+   /// No description provided for @analyticsNoPosts.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Hali post yoki Reels yo‘q'**
++  /// **'Hali post yoki video yo‘q'**
+   String get analyticsNoPosts;
+ 
+   /// No description provided for @analyticsReel.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Reels'**
++  /// **'Video'**
+   String get analyticsReel;
+ 
+   /// No description provided for @analyticsPost.
+@@ -3462,7 +3462,7 @@ abstract class L {
+   /// No description provided for @featuredIntro.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
++  /// **'Postingiz tanlangan muddat davomida asosiy lentada «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.'**
+   String get featuredIntro;
+ 
+   /// No description provided for @featuredPick.
+@@ -3906,7 +3906,7 @@ abstract class L {
+   /// No description provided for @bizFeatContent.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Post · Istoriya · Reels'**
++  /// **'Post · Istoriya · Video'**
+   String get bizFeatContent;
+ 
+   /// No description provided for @bizFeatContentHint.
+@@ -4392,7 +4392,7 @@ abstract class L {
+   /// No description provided for @rulesCardProcess.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
++  /// **'Har bir post, video, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.'**
+   String get rulesCardProcess;
+ 
+   /// No description provided for @storyCaption.
+@@ -5280,7 +5280,7 @@ abstract class L {
+   /// No description provided for @reelPhotoHint.
+   ///
+   /// In uz, this message translates to:
+-  /// **'Rasm Reels’da 10 soniya ko‘rinadi'**
++  /// **'Rasm 10 soniya ko‘rinadi'**
+   String get reelPhotoHint;
+ 
+   /// No description provided for @errPhoneShort.
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_en.dart b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+index 80f617a..24ba33d 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_en.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_en.dart
+@@ -621,7 +621,7 @@ class LEn extends L {
+   }
+ 
+   @override
+-  String get analyticsContentViews => 'Post and Reels views';
++  String get analyticsContentViews => 'Post and video views';
+ 
+   @override
+   String get analyticsProfileViews => 'Profile views';
+@@ -691,10 +691,10 @@ class LEn extends L {
+   }
+ 
+   @override
+-  String get analyticsNoPosts => 'No posts or Reels yet';
++  String get analyticsNoPosts => 'No posts or videos yet';
+ 
+   @override
+-  String get analyticsReel => 'Reels';
++  String get analyticsReel => 'Video';
+ 
+   @override
+   String get analyticsPost => 'Post';
+@@ -1806,7 +1806,7 @@ class LEn extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'For the chosen period your post is shown between posts in the main feed (videos also in Reels) with a “Sponsored” label.';
++      'For the chosen period your post is shown between posts in the main feed with a “Sponsored” label.';
+ 
+   @override
+   String get featuredPick => 'Choose a period';
+@@ -2042,7 +2042,7 @@ class LEn extends L {
+       'A tap on a card or sticker opens your page instantly';
+ 
+   @override
+-  String get bizFeatContent => 'Posts · Stories · Reels';
++  String get bizFeatContent => 'Posts · Stories · Videos';
+ 
+   @override
+   String get bizFeatContentHint =>
+@@ -2306,7 +2306,7 @@ class LEn extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'Every post, reel, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
++      'Every post, video, story and comment has “Report”. A moderator reviews reports: violating content is removed, and repeat offenders are blocked.';
+ 
+   @override
+   String get storyCaption => 'Short text on your story';
+@@ -2787,7 +2787,7 @@ class LEn extends L {
+   String get reelPickMedia => 'Choose a photo or video';
+ 
+   @override
+-  String get reelPhotoHint => 'The photo shows in Reels for 10 seconds';
++  String get reelPhotoHint => 'The photo is shown for 10 seconds';
+ 
+   @override
+   String get errPhoneShort => 'The number is incomplete — enter all digits';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+index 5fea564..db56739 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_ru.dart
+@@ -617,7 +617,7 @@ class LRu extends L {
+   }
+ 
+   @override
+-  String get analyticsContentViews => 'Просмотры постов и Reels';
++  String get analyticsContentViews => 'Просмотры постов и видео';
+ 
+   @override
+   String get analyticsProfileViews => 'Просмотры профиля';
+@@ -693,10 +693,10 @@ class LRu extends L {
+   }
+ 
+   @override
+-  String get analyticsNoPosts => 'Пока нет постов и Reels';
++  String get analyticsNoPosts => 'Пока нет постов и видео';
+ 
+   @override
+-  String get analyticsReel => 'Reels';
++  String get analyticsReel => 'Видео';
+ 
+   @override
+   String get analyticsPost => 'Пост';
+@@ -1806,7 +1806,7 @@ class LRu extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'В течение выбранного срока ваш пост показывается между постами главной ленты (видео — ещё и в Reels) с пометкой «Реклама».';
++      'В течение выбранного срока ваш пост показывается между постами главной ленты с пометкой «Реклама».';
+ 
+   @override
+   String get featuredPick => 'Выберите срок';
+@@ -2041,7 +2041,7 @@ class LRu extends L {
+       'Касание карты или стикера сразу открывает страницу';
+ 
+   @override
+-  String get bizFeatContent => 'Посты · Истории · Reels';
++  String get bizFeatContent => 'Посты · Истории · Видео';
+ 
+   @override
+   String get bizFeatContentHint =>
+@@ -2307,7 +2307,7 @@ class LRu extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'В каждом посте, reels, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
++      'В каждом посте, видео, истории и комментарии есть «Пожаловаться». Жалобы проверяет модератор: нарушающий контент удаляется, при повторении аккаунт блокируется.';
+ 
+   @override
+   String get storyCaption => 'Короткий текст на истории';
+@@ -2791,7 +2791,7 @@ class LRu extends L {
+   String get reelPickMedia => 'Выбрать фото или видео';
+ 
+   @override
+-  String get reelPhotoHint => 'Фото показывается в Reels 10 секунд';
++  String get reelPhotoHint => 'Фото показывается 10 секунд';
+ 
+   @override
+   String get errPhoneShort => 'Номер неполный — введите все цифры';
+diff --git a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+index c07f34d..ec84a4f 100644
+--- a/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
++++ b/mobile_nova/lib/l10n/gen/app_localizations_uz.dart
+@@ -621,7 +621,7 @@ class LUz extends L {
+   }
+ 
+   @override
+-  String get analyticsContentViews => 'Post va Reels ko‘rishlari';
++  String get analyticsContentViews => 'Post va video ko‘rishlari';
+ 
+   @override
+   String get analyticsProfileViews => 'Profil ko‘rishlari';
+@@ -688,10 +688,10 @@ class LUz extends L {
+   }
+ 
+   @override
+-  String get analyticsNoPosts => 'Hali post yoki Reels yo‘q';
++  String get analyticsNoPosts => 'Hali post yoki video yo‘q';
+ 
+   @override
+-  String get analyticsReel => 'Reels';
++  String get analyticsReel => 'Video';
+ 
+   @override
+   String get analyticsPost => 'Post';
+@@ -1807,7 +1807,7 @@ class LUz extends L {
+ 
+   @override
+   String get featuredIntro =>
+-      'Postingiz tanlangan muddat davomida asosiy lentada (video bo‘lsa Reels’da ham) «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
++      'Postingiz tanlangan muddat davomida asosiy lentada «Reklama» belgisi bilan postlar orasida ko‘rsatiladi.';
+ 
+   @override
+   String get featuredPick => 'Muddatni tanlang';
+@@ -2048,7 +2048,7 @@ class LUz extends L {
+       'Karta yoki stikerga tegilsa sahifangiz darhol ochiladi';
+ 
+   @override
+-  String get bizFeatContent => 'Post · Istoriya · Reels';
++  String get bizFeatContent => 'Post · Istoriya · Video';
+ 
+   @override
+   String get bizFeatContentHint =>
+@@ -2306,7 +2306,7 @@ class LUz extends L {
+ 
+   @override
+   String get rulesCardProcess =>
+-      'Har bir post, reel, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
++      'Har bir post, video, istoriya va izohda “Shikoyat qilish” bor. Shikoyatlarni moderator ko‘rib chiqadi: qoidabuzar kontent o‘chiriladi, takrorlansa hisob bloklanadi.';
+ 
+   @override
+   String get storyCaption => 'Istoriyaga qisqa matn';
+@@ -2790,7 +2790,7 @@ class LUz extends L {
+   String get reelPickMedia => 'Rasm yoki video tanlash';
+ 
+   @override
+-  String get reelPhotoHint => 'Rasm Reels’da 10 soniya ko‘rinadi';
++  String get reelPhotoHint => 'Rasm 10 soniya ko‘rinadi';
+ 
+   @override
+   String get errPhoneShort => 'Raqam to‘liq emas — hamma raqamlarini kiriting';
+diff --git a/mobile_nova/lib/main.dart b/mobile_nova/lib/main.dart
+index 1fedd32..d73a681 100644
+--- a/mobile_nova/lib/main.dart
++++ b/mobile_nova/lib/main.dart
+@@ -9,7 +9,7 @@ import 'core/storage/secure_store.dart';
+ 
+ Future<void> main() async {
+   WidgetsFlutterBinding.ensureInitialized();
+-  // Video diagnostikasi (uzun bosish bilan ochiladi); ilovaga ta'sir qilmaydi.
++  // Video diagnostikasi: FAQAT sinov (debug) qurilishida; relizda hech narsa qilmaydi.
+   installVideoDiag();
+ 
+   // Saqlangan mavzu va til BIRINCHI kadrdan oldin o'qiladi: aks holda
+diff --git a/mobile_nova/test/video_diag_test.dart b/mobile_nova/test/video_diag_test.dart
+index 7cc4d39..2ae21b9 100644
+--- a/mobile_nova/test/video_diag_test.dart
++++ b/mobile_nova/test/video_diag_test.dart
+@@ -1,3 +1,4 @@
++import 'dart:io';
+ import 'dart:async';
+ 
+ import 'package:flutter/material.dart';
+@@ -246,4 +247,19 @@ void main() {
+     await tester.pump(const Duration(seconds: 1));
+     expect(find.byKey(const ValueKey('video-diag-text')), findsOneWidget);
+   });
++
++  group('reliz qoidasi (App Store 2.5.19)', () {
++    test('diagnostika faqat debug rejimida mavjud', () {
++      // Relizda yashirin imo-ishora bo'lmasligi shart: o'rnatish ham,
++      // uzun bosish ham `kVideoDiagAvailable` (= kDebugMode) ortida.
++      final src = File('lib/core/media/video_diag.dart').readAsStringSync();
++      expect(src, contains('const bool kVideoDiagAvailable = kDebugMode;'));
++      expect(src, contains('if (!kVideoDiagAvailable) return;'));
++      expect(src,
++          contains('onLongPress: kVideoDiagAvailable ? () => showVideoDiag(context) : null'));
++      final ad = File('lib/features/showcase/ad_fullscreen.dart').readAsStringSync();
++      expect(ad, contains('kVideoDiagAvailable ? () => showVideoDiag(context) : null'));
++      expect(ad, isNot(contains('onLongPress: () => showVideoDiag(context)')));
++    });
++  });
+ }
+-- 
+2.43.0
+
