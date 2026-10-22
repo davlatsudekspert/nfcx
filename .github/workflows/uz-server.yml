@@ -29,7 +29,7 @@ on:
   # da ishlamadi). Oxirgi auditdan 3.5 soat o'tmagan bo'lsa `--should-run`
   # darhol tugatadi (uz-audit.mjs), ya'ni audit baribir ~4 soatda bir.
   schedule:
-    - cron: '23 * * * *'
+    - cron: '0 4 * * *'
 
 permissions:
   contents: read
