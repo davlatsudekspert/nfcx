@@ -116,6 +116,7 @@ jobs:
           retention-days: 30
 
   ios:
+    if: github.event_name == 'workflow_dispatch'
     needs: tests
     runs-on: macos-15
     timeout-minutes: 75
