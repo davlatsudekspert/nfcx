@@ -12766,14 +12766,13 @@ export default {
   async scheduled(controller, env, ctx) {
     if (uzMaintenance(env)) return;
     env = withUzStores(env);
-    // 21:00 Toshkent: aggregate usage report; do not repeat maintenance.
-    if (controller.cron === '0 16 * * *') {
-      ctx.waitUntil(apiUsageDigest.runUsageDigest(env, H).catch(() => {
-        console.error('usage_digest_failed');
-      }));
-      return;
-    }
+    // Share one daily cron slot: 21:00 Toshkent, report then maintenance.
     ctx.waitUntil((async () => {
+      try {
+        await apiUsageDigest.runUsageDigest(env, H);
+      } catch {
+        console.error('usage_digest_failed');
+      }
       try {
         await runScheduledPurge(env, H);
       } catch (e) {
