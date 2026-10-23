@@ -6,6 +6,41 @@ const REAL = `u.deleted_at IS NULL AND COALESCE(u.is_test,0) = 0 AND COALESCE(u.
 const realIds = `SELECT u.id FROM users u WHERE ${REAL}`;
 const n = (v) => v == null ? 'ma’lumot yo‘q' : String(Number(v));
 
+const STORE_APPS = {
+  'uz.nfcstore.nova':'NFCSTORE', 'uz.labguide.app':'LabGuide',
+  'uz.forensicexpert.forensic_expert':'FORENSIC EXPERT', 'uz.dentalexpert.app':'Dental Expert',
+  'uz.nurseguide.app':'NurseGuide', 'uz.bugunbor.app':'BugunBor',
+  'com.mysteryroom.forgotteninstitute':'Mystery Room', 'uz.hasharchilar.app':'Hasharchilar',
+};
+const reportDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : 'sana yo‘q';
+const storeStatus = (v) => ({missing_key:'API kaliti yo‘q', invalid_key:'API kaliti yaroqsiz', http_401:'API kaliti qabul qilinmadi', http_403:'hisobotni o‘qish ruxsati yetishmaydi', no_report:'hisobot hali yo‘q', fetch_or_format_error:'hisobotni olishda xato'})[v] || 'ma’lumot olinmadi';
+export function formatStoreStats(snapshot, now) {
+  if (!snapshot || snapshot.version !== 1) return ['⬇️ Do‘kon statistikasi: birinchi sinxronlash kutilmoqda.'];
+  const age = Date.parse(now) - Date.parse(snapshot.fetchedAt);
+  const lines = ['⬇️ <b>Google Play / App Store — rasmiy hisobotlar</b>'];
+  if (!Number.isFinite(age) || age > 48*3600_000) lines.push('⚠️ Sinxronlash eskirgan; quyida oxirgi saqlangan ma’lumot.');
+  for (const [packageName,name] of Object.entries(STORE_APPS)) {
+    const g = snapshot.google?.[packageName];
+    const a = snapshot.apple?.[packageName];
+    lines.push(`<b>${name}</b>`);
+    lines.push(g?.status === 'ok'
+      ? `Android (${reportDate(g.date)}): kunlik o‘rnatgan ${n(g.newUsers)}, jami ${n(g.totalUsers)}.`
+      : `Android: ${storeStatus(g?.status)}.`);
+    lines.push(a?.status === 'ok'
+      ? `iOS (${reportDate(a.date)}): yangi yuklash ${n(a.newDownloads)}, qayta yuklash ${n(a.redownloads)}, yangilash ${n(a.updates)}.`
+      : `iOS: ${storeStatus(a?.status)}.`);
+    if (packageName === 'uz.nfcstore.nova' && g?.status === 'ok') {
+      lines.push(`Android: kunlik o‘chirish ${n(g.uninstalls)}, faol qurilmalar ${n(g.activeDevices)}.`);
+      for (const span of [7,30]) {
+        const p = g.periods?.[String(span)];
+        if (p) lines.push(`Android, oxirgi ${span} kunning hisobot mavjud ${n(p.coveredDays)} kunida: ${n(p.newUsers)} o‘rnatish.`);
+      }
+    }
+  }
+  lines.push('Do‘kon sanalari faollikning oxirgi 24 soatiga teng emas; do‘kon hisobotlari kechikishi mumkin. TestFlight o‘rnatishlari App Store yuklashlariga kirmaydi.');
+  return lines;
+}
+
 export async function collectUsageDigest(env, now = Date.now()) {
   const from = sec(now - DAY), until = sec(now);
   const range = (c) => `${SEC(c)} >= ? AND ${SEC(c)} < ?`;
@@ -29,7 +64,14 @@ export async function collectUsageDigest(env, now = Date.now()) {
     count('posts', `SELECT COUNT(*) AS n FROM posts p WHERE p.user_id IN (${realIds}) AND ${range('p.created_at')}`),
     count('content_comments', `SELECT COUNT(*) AS n FROM content_comments c WHERE c.user_id IN (${realIds}) AND c.deleted_at IS NULL AND ${range('c.created_at')}`),
   ]);
-  return { now: new Date(now).toISOString(), from: new Date(now-DAY).toISOString(), total: Number(total.n), signups, active, firstApp, android, ios, profiles, contactSaves, phoneClicks, telegramClicks, websiteClicks, posts, comments };
+  let stores = null;
+  if (tables.has('admin_settings')) {
+    try {
+      const row = await env.DB.prepare(`SELECT value FROM admin_settings WHERE key='store_downloads_snapshot_v1'`).first();
+      stores = row ? JSON.parse(row.value) : null;
+    } catch { /* Missing snapshot is shown explicitly, never as zero. */ }
+  }
+  return { now: new Date(now).toISOString(), from: new Date(now-DAY).toISOString(), total: Number(total.n), signups, active, firstApp, android, ios, profiles, contactSaves, phoneClicks, telegramClicks, websiteClicks, posts, comments, stores };
 }
 
 export function formatUsageDigest(d) {
@@ -53,7 +95,7 @@ export function formatUsageDigest(d) {
     `📝 Yaratilgan shaxsiy postlar (hozir mavjud): ${n(d.posts)}`,
     `💬 Yangi izohlar (hozir mavjud): ${n(d.comments)}`,
     '',
-    '⬇️ Play Market / App Store yuklab olishlari: ulanmagan.',
+    ...formatStoreStats(d.stores,d.now),
     'Ilovaga kirish yuklab olish soni emas. Mehmon kirishlari sanalmaydi. Sinov, ichki va o‘chirilgan hisoblar chiqarilgan. Profil tugmalari va postlar — shaxsiy profillar bo‘yicha. Izohlar — sayt va ilovada birga.',
   ].join('\n');
 }
