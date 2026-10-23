@@ -1,5 +1,6 @@
 """Read official store reports; persist aggregate counts only, never credentials."""
 import csv
+import base64
 import datetime as dt
 import gzip
 import io
@@ -22,6 +23,15 @@ APPS = {
 }
 BUCKET = 'pubsite_prod_5851765534137174252'
 VENDOR = '94930384'
+
+def normalize_apple_key(value):
+    value = value.replace('\\n','\n').strip()
+    if '-----BEGIN PRIVATE KEY-----' in value: return value+'\n'
+    body = ''.join(value.split())
+    decoded = base64.b64decode(body,validate=True)
+    if b'-----BEGIN PRIVATE KEY-----' in decoded: return decoded.decode().strip()+'\n'
+    # The existing CI also accepts the base64 body of a PKCS#8 PEM.
+    return '-----BEGIN PRIVATE KEY-----\n'+'\n'.join(body[i:i+64] for i in range(0,len(body),64))+'\n-----END PRIVATE KEY-----\n'
 
 def decode_csv(raw, delimiter=','):
     if raw.startswith(b'\x1f\x8b'):
@@ -127,7 +137,7 @@ def apple_reports(today):
         import jwt
         import requests
         now = int(time.time())
-        token = jwt.encode({'iss':issuer,'iat':now,'exp':now+900,'aud':'appstoreconnect-v1'},key,algorithm='ES256',headers={'kid':kid,'typ':'JWT'})
+        token = jwt.encode({'iss':issuer,'iat':now,'exp':now+900,'aud':'appstoreconnect-v1'},normalize_apple_key(key),algorithm='ES256',headers={'kid':kid,'typ':'JWT'})
     except Exception: return {p:{'status':'invalid_key'} for p in APPS}
     days = {p:[] for p in APPS}
     status = 'no_report'
