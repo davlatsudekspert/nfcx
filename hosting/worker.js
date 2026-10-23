@@ -34,6 +34,7 @@ import * as apiReferrals from './api/referrals.js';
 // Admin "Apple / iOS" bo'limi — Apple IAP holati, obunalar, tranzaksiyalar (faqat o'qish).
 import * as apiAdminApple from './api/admin-apple.js';
 import * as apiAppUsage from './api/app-usage.js';
+import * as apiUsageDigest from './api/usage-digest.js';
 import * as apiAppAdmin from './api/app-admin.js';
 import * as apiAccountPurge from './api/account-purge.js';
 // Admin boshqaruv markazi (overview, premium obunachilar, foydalanuvchi kartochkasi) — faqat o'qiydi.
@@ -12647,7 +12648,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
+const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiUsageDigest, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12765,6 +12766,13 @@ export default {
   async scheduled(controller, env, ctx) {
     if (uzMaintenance(env)) return;
     env = withUzStores(env);
+    // 21:00 Toshkent: aggregate usage report; do not repeat maintenance.
+    if (controller.cron === '0 16 * * *') {
+      ctx.waitUntil(apiUsageDigest.runUsageDigest(env, H).catch(() => {
+        console.error('usage_digest_failed');
+      }));
+      return;
+    }
     ctx.waitUntil((async () => {
       try {
         await runScheduledPurge(env, H);

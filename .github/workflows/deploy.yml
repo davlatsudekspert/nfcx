@@ -639,6 +639,9 @@ jobs:
       - name: E2E markeri
         run: node scripts/test-e2e-marker.mjs
 
+      - name: Telegram usage digest counts and delivery
+        run: node scripts/test-usage-digest.mjs
+
       - name: Build (vite build + prepare-sites-build)
         run: npm run build
 
