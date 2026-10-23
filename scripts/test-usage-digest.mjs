@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
-import { collectUsageDigest, formatUsageDigest, runUsageDigest, handle } from '../hosting/api/usage-digest.js';
+import { collectUsageDigest, formatUsageDigest, formatStoreStats, runUsageDigest, handle } from '../hosting/api/usage-digest.js';
 
 const db = new DatabaseSync(':memory:');
 db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY,created_at TEXT,deleted_at TEXT,is_test INTEGER,is_internal INTEGER);
@@ -39,7 +39,12 @@ assert.equal(d.active,2);assert.equal(d.firstApp,1);assert.equal(d.android,1);as
 assert.equal(d.profiles,1);assert.equal(d.contactSaves,1);assert.equal(d.posts,1);assert.equal(d.comments,1);
 const text=formatUsageDigest(d);
 assert.ok(text.includes('2026-10-23 21:00'));
-assert.ok(text.includes('yuklab olishlari: ulanmagan'));
+assert.ok(text.includes('birinchi sinxronlash kutilmoqda'));
+const stores = {version:1,fetchedAt:'2026-10-23T14:00:00Z',google:{'uz.nfcstore.nova':{status:'ok',date:'2026-10-20',newUsers:3,totalUsers:24,uninstalls:1,activeDevices:20}},apple:{'uz.nfcstore.nova':{status:'http_403'}}};
+const storeText = formatStoreStats(stores,'2026-10-23T16:00:00Z').join('\n');
+assert.ok(storeText.includes('Android (2026-10-20)'));assert.ok(storeText.includes('ruxsati yetishmaydi'));
+assert.ok(formatStoreStats(stores,'2026-10-26T16:00:00Z').join('\n').includes('Sinxronlash eskirgan'));
+assert.ok((text+'\n'+storeText).length < 4096,'Telegram message limit');
 assert.ok(!text.includes('test-bot-token'));
 let calls=0;
 const H={sendTelegramMessage:async()=>{calls++;return true;}};
