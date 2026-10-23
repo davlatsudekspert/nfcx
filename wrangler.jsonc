@@ -215,7 +215,7 @@
   // KUNLIK CRON: har kuni 21:30 UTC (Toshkent 02:30) — o'chirish so'ralganiga
   // 30 kun bo'lgan hisoblar (`scheduled` handler, hosting/worker.js).
   // Bu fayl cron'ning YAGONA manbai: Dashboard'dagi boshqa cron deploy'da o'chadi.
-  "triggers": { "crons": ["30 21 * * *", "0 16 * * *"] },
+  "triggers": { "crons": ["0 16 * * *"] },
   "vars": {
     "APP_DOWNLOAD_URL": "https://github.com/davlatsudekspert/nfcstore-downloads/releases/download/v1.1.0-build279/NFCSTORE-Play.apk",
     // HISOBNI BUTUNLAY O'CHIRISH (hosting/api/account-purge.js,
