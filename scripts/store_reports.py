@@ -25,7 +25,7 @@ BUCKET = 'pubsite_prod_5851765534137174252'
 VENDOR = '94930384'
 
 def normalize_apple_key(value):
-    value = value.strip().replace('\\n','\n')
+    value = value.replace('\\n','\n').strip()
     if '-----BEGIN PRIVATE KEY-----' in value: return value+'\n'
     body = ''.join(value.split())
     decoded = base64.b64decode(body,validate=True)
