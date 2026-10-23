@@ -1,9 +1,16 @@
 import datetime as dt
 import gzip
+import base64
 import unittest
-from store_reports import parse_google, parse_apple
+from store_reports import parse_google, parse_apple, normalize_apple_key
 
 class ReportsTest(unittest.TestCase):
+    def test_existing_apple_key_formats(self):
+        pem='-----BEGIN PRIVATE KEY-----\nQUJD\n-----END PRIVATE KEY-----\n'
+        self.assertEqual(normalize_apple_key(pem),pem)
+        self.assertEqual(normalize_apple_key(base64.b64encode(pem.encode()).decode()),pem)
+        self.assertEqual(normalize_apple_key(pem.replace('\n','\\n')),pem)
+        self.assertEqual(normalize_apple_key('QUJD'),pem)
     def test_google_utf16_and_dates(self):
         csv='Date,Package Name,Daily User Installs,Daily Device Installs,Daily User Uninstalls,Installs on active devices,Total User Installs\r\n2026-10-21,uz.nfcstore.nova,4,5,1,20,30\r\n2026-10-22,uz.nfcstore.nova,7,8,2,25,37\r\n2026-10-23,uz.nfcstore.nova,99,99,0,99,99\r\n2026-10-22,uz.bugunbor.app,100,100,0,100,100\r\n'
         d=parse_google(csv.encode('utf-16'),'uz.nfcstore.nova',dt.date(2026,10,23))
