@@ -77,6 +77,7 @@ def google_reports(today):
         from google.oauth2 import service_account
         from google.auth.transport.requests import AuthorizedSession
         creds = service_account.Credentials.from_service_account_info(json.loads(raw_key), scopes=['https://www.googleapis.com/auth/devstorage.read_only'])
+        print('Google reporting account: '+creds.service_account_email)
         session = AuthorizedSession(creds)
     except Exception: return {p:{'status':'invalid_key'} for p in APPS}
     months = {today.strftime('%Y%m'),(today-dt.timedelta(days=32)).strftime('%Y%m')}
