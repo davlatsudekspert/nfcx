@@ -1,0 +1,46 @@
+name: Store download statistics
+
+on:
+  workflow_dispatch:
+    inputs:
+      write_snapshot:
+        description: Save aggregate store statistics to the reporting database
+        type: boolean
+        default: true
+  schedule:
+    - cron: '15 15 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-download-statistics
+  cancel-in-progress: false
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parser tests
+        run: python -m unittest discover -s scripts -p test_store_reports.py
+      - name: Dependencies
+        run: |
+          pip install --quiet 'google-auth>=2,<3' 'PyJWT[crypto]>=2,<3' 'requests>=2,<3'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sshpass >/dev/null
+      - name: Read official store reports and save aggregate snapshot
+        env:
+          PLAY_SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          APPLE_KEY_ID: ${{ secrets.NOVA_APPSTORE_KEY_ID || secrets.LABGUIDE_APPSTORE_KEY_ID }}
+          APPLE_ISSUER_ID: ${{ secrets.NOVA_APPSTORE_ISSUER_ID || secrets.LABGUIDE_APPSTORE_ISSUER_ID }}
+          APPLE_PRIVATE_KEY: ${{ secrets.NOVA_APPSTORE_PRIVATE_KEY || secrets.LABGUIDE_APPSTORE_PRIVATE_KEY }}
+          UZ_VPS_HOST: ${{ secrets.UZ_VPS_HOST }}
+          SSHPASS: ${{ secrets.UZ_VPS_PASSWORD }}
+          WRITE_SNAPSHOT: ${{ github.event_name == 'schedule' || inputs.write_snapshot }}
+          WRITE_OUTPUT: 'false'
+        run: python scripts/store_reports.py
