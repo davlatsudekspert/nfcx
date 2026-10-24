@@ -15,6 +15,8 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart'
 
 import 'package:go_router/go_router.dart';
 import 'package:nfcstore_nova/routing/routes.dart';
+import 'package:nfcstore_nova/features/auth/profile_setup_screen.dart';
+import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'helpers.dart';
 
 /// "APPLE BILAN" / "GOOGLE BILAN" KIRISH.
@@ -112,6 +114,7 @@ void main() {
   Future<_Auth> pumpRouted(
     WidgetTester tester, {
     required SocialAuth social,
+    bool realSetup = false,
   }) async {
     final auth = _Auth()..socialConfigValue = _bothOn;
     final base = await testOverrides(signedIn: false);
@@ -119,10 +122,14 @@ void main() {
       GoRoute(path: Routes.login, builder: (_, __) => const LoginScreen()),
       GoRoute(
           path: Routes.profileSetup,
-          builder: (_, __) => const Text('SETUP')),
+          builder: (_, __) =>
+              realSetup ? const ProfileSetupScreen() : const Text('SETUP')),
       GoRoute(
           path: Routes.home,
           builder: (_, __) => const Text('HOME')),
+      GoRoute(
+          path: Routes.businessIntro,
+          builder: (_, __) => const Text('BUSINESS INTRO')),
     ]);
     await tester.pumpWidget(
       ProviderScope(
@@ -275,6 +282,52 @@ void main() {
 
       expect(find.text('HOME'), findsOneWidget);
       expect(find.text('SETUP'), findsNothing);
+    });
+  });
+
+  group('Yangi hisob — "Shaxsiy yoki Biznes"', () {
+    // KIRISH ekranidan "Apple/Google bilan" kelgan odam ro'yxatning
+    // birinchi qadamini UMUMAN ko'rmaydi — hisob bir teginishda
+    // ochiladi. Demak tur savoli unga profil sozlash ekranida
+    // berilishi kerak, aks holda biznes tanlamoqchi bo'lgan odam
+    // to'g'ri uyga tushib ketardi.
+    Future<_Auth> newAccount(WidgetTester tester) async {
+      final auth = await pumpRouted(
+        tester,
+        realSetup: true,
+        social: _stub((p) async =>
+            SocialCredential(provider: p, idToken: 'tok', nonce: 'xom')),
+      );
+      auth.reply = Ok((user: testUser, isNew: true));
+      await tester.tap(find.text('Google bilan davom etish'));
+      await settle(tester);
+      return auth;
+    }
+
+    testWidgets('savol profil sozlash ekranida beriladi', (tester) async {
+      await newAccount(tester);
+      expect(find.byType(ProfileSetupScreen), findsOneWidget);
+      expect(find.text('Profilingiz kim uchun?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('signup-type-business')), findsOneWidget);
+    });
+
+    testWidgets('biznes tanlansa — oxirida Business intro', (tester) async {
+      await newAccount(tester);
+      await tester.tap(find.byKey(const ValueKey('signup-type-business')));
+      await settle(tester);
+      await tester.tap(find.text(L.of(tester.element(find.byType(ProfileSetupScreen))).setupSkip));
+      await settle(tester, frames: 10);
+      expect(find.text('BUSINESS INTRO'), findsOneWidget);
+    });
+
+    testWidgets('shaxsiy tanlansa — to‘g‘ri uyga', (tester) async {
+      await newAccount(tester);
+      await tester.tap(find.byKey(const ValueKey('signup-type-personal')));
+      await settle(tester);
+      await tester.tap(find.text(L.of(tester.element(find.byType(ProfileSetupScreen))).setupSkip));
+      await settle(tester, frames: 10);
+      expect(find.text('HOME'), findsOneWidget);
+      expect(find.text('BUSINESS INTRO'), findsNothing);
     });
   });
 

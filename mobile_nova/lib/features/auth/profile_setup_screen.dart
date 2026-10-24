@@ -33,6 +33,14 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
+  /// Bu ekranga "Shaxsiy yoki Biznes" savolini QO'SHISH kerakmi.
+  ///
+  /// Bir marta, ekran ochilganda hisoblanadi. Oddiy ro'yxatdan
+  /// o'tishda tanlov birinchi qadamda qilingan — savol chiqmaydi.
+  /// "Apple/Google bilan" kirgan odam esa u qadamni ko'rmagan.
+  late final bool _askType =
+      ref.read(signupAccountTypeProvider) == null;
+
   final _name = TextEditingController();
   final _bio = TextEditingController();
   final _picker = ImagePicker();
@@ -277,6 +285,39 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             maxLength: 160,
             enabled: !_busy,
           ),
+          // "SHAXSIY YOKI BIZNES" — FAQAT HALI SO'RALMAGAN BO'LSA.
+          //
+          // Oddiy ro'yxatdan o'tishda bu savol birinchi qadamda
+          // beriladi va bu yerda qayta chiqmaydi. Lekin KIRISH
+          // ekranidan "Apple/Google bilan" kelgan odam u qadamni
+          // umuman ko'rmaydi — hisob bir teginishda ochiladi.
+          //
+          // Savolsiz qoldirilsa, biznes tanlamoqchi bo'lgan odam
+          // to'g'ri uyga tushib ketardi va kompaniya ochish yo'lini
+          // o'zi qidirishiga to'g'ri kelardi. Biznes profil esa
+          // aynan pul to'laydigan segment.
+          if (_askType) ...[
+            const SizedBox(height: Gap.xxl),
+            Text(
+              l.socialAccountType,
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: t.text1,
+              ),
+            ),
+            const SizedBox(height: Gap.lg),
+            SignupTypePicker(
+              // Tanlangani KO'RINIB tursin. `_askType` bir marta
+              // hisoblanadi: tanlovdan keyin savol yo'qolib ketsa,
+              // odam nimani bosganini ko'rmay qolardi.
+              value: ref.watch(signupAccountTypeProvider),
+              onChanged: (v) => ref
+                  .read(signupAccountTypeProvider.notifier)
+                  .state = v,
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: Gap.lg),
             Text(
