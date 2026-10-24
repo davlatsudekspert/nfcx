@@ -312,5 +312,100 @@ console.log('\n── 14. Ilova uchun sozlama ──');
   env.GOOGLE_SIGNIN_CLIENT_IDS = savedG;
 }
 
+console.log('\n── 15. Apple tokenini BEKOR QILISH (App Store 5.1.1(v)) ──');
+{
+  // Apple'ning talabi: "Sign in with Apple" ishlatgan ilova hisob
+  // o'chirilganda tokenni REST API orqali bekor qilishi SHART. Buni
+  // qilmagan ilova App Review'dan o'tmaydi.
+  //
+  // Bu yerda Apple'ning `/auth/token` va `/auth/revoke` yo'llari
+  // ushlab olinadi: so'rov HAQIQATAN ketganini va mijoz siri
+  // (ES256 JWT) TO'G'RI imzolanganini tekshiramiz.
+
+  // `.p8` o'rniga haqiqiy P-256 kalit.
+  const ec = await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const pkcs8 = await crypto.subtle.exportKey('pkcs8', ec.privateKey);
+  env.APPLE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\n'
+    + Buffer.from(pkcs8).toString('base64').replace(/(.{64})/g, '$1\n')
+    + '\n-----END PRIVATE KEY-----';
+  env.APPLE_TEAM_ID = '5Z9CT2W378';
+  env.APPLE_KEY_ID = 'ABCD123456';
+
+  const seen = { token: [], revoke: [] };
+  const appleFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const u = String(input?.url || input);
+    if (u.endsWith('/auth/token') || u.endsWith('/auth/revoke')) {
+      const form = Object.fromEntries(new URLSearchParams(String(init?.body || '')));
+      (u.endsWith('/auth/token') ? seen.token : seen.revoke).push(form);
+      return new Response(
+        u.endsWith('/auth/token') ? JSON.stringify({ refresh_token: 'rt-xyz' }) : '{}',
+        { headers: { 'content-type': 'application/json' } });
+    }
+    return appleFetch(input, init);
+  };
+
+  // ── kirish: authorizationCode berilsa, refresh_token saqlanadi ──
+  const r = await social({
+    provider: 'apple',
+    idToken: await sign(appleClaims({ sub: 'rv-1', email: 'rv1@example.com' })),
+    authorizationCode: 'auth-code-abc',
+  });
+  check('kirish o\'tdi', r.status, 201);
+  const uid = r.body.user.id;
+
+  check('Apple /auth/token chaqirildi', seen.token.length, 1);
+  check('to\'g\'ri kod va grant', [seen.token[0]?.code, seen.token[0]?.grant_type],
+    ['auth-code-abc', 'authorization_code']);
+  check('client_id — tokendagi aud', seen.token[0]?.client_id, APPLE_AUD);
+
+  // MIJOZ SIRI — haqiqiy ES256 imzo. Noto'g'ri imzolangan sirni
+  // Apple rad etardi va buni faqat jonli serverda bilib olardik.
+  {
+    const [h, p2, sg] = String(seen.token[0]?.client_secret || '').split('.');
+    const head = JSON.parse(Buffer.from(h, 'base64url').toString());
+    const payload = JSON.parse(Buffer.from(p2, 'base64url').toString());
+    check('ES256 va kid', [head.alg, head.kid], ['ES256', 'ABCD123456']);
+    check('iss/aud/sub', [payload.iss, payload.aud, payload.sub],
+      ['5Z9CT2W378', 'https://appleid.apple.com', APPLE_AUD]);
+    const ok = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: 'SHA-256' }, ec.publicKey,
+      Buffer.from(sg, 'base64url'),
+      new TextEncoder().encode(`${h}.${p2}`));
+    checkTrue('imzo HAQIQIY kalit bilan tekshirildi', ok);
+  }
+
+  const row = sqlite.prepare(
+    `SELECT refresh_token, client_id FROM user_identities WHERE provider='apple' AND subject='rv-1'`).get();
+  check('refresh_token va client_id saqlandi', [row?.refresh_token, row?.client_id], ['rt-xyz', APPLE_AUD]);
+
+  // ── hisob o'chirilganda bekor qilinadi ──
+  const { purgeDeletedUser, ensurePurgeSchema } =
+    await import('../hosting/api/account-purge.js');
+  // Purge ustunlari (`deleted_at`, `deletion_source`, ...) shu yerda
+  // yaratiladi — jonli bazada ularni `ensurePurgeSchema` qo'shadi.
+  await ensurePurgeSchema(env);
+  sqlite.prepare(`UPDATE users SET deleted_at = ?, deletion_source = 'self' WHERE id = ?`)
+    .run(new Date(Date.now() - 40 * 86400000).toISOString().replace('T', ' ').replace('Z', '+00'), uid);
+  // `purgeDeletedUser` H dan faqat `sha256Hex` ni ishlatadi.
+  const sha256Hex = async (v) => [...new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)))]
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
+  const res = await purgeDeletedUser(env, { sha256Hex }, uid, { mode: 'on' });
+  check('purge bajarildi', res.status, 'purged');
+  check('Apple /auth/revoke chaqirildi', seen.revoke.length, 1);
+  check('to\'g\'ri token va hint', [seen.revoke[0]?.token, seen.revoke[0]?.token_type_hint],
+    ['rt-xyz', 'refresh_token']);
+  check('bekor qilindi deb yozildi', res.appleRevoke?.revoked, 1);
+  check('kirish qatori ham o\'chdi',
+    sqlite.prepare(`SELECT COUNT(*) c FROM user_identities WHERE user_id = ?`).get(uid).c, 0);
+
+  globalThis.fetch = appleFetch;
+  delete env.APPLE_PRIVATE_KEY;
+  delete env.APPLE_TEAM_ID;
+  delete env.APPLE_KEY_ID;
+}
+
 globalThis.fetch = realFetch;
 done();

@@ -270,6 +270,16 @@ AYNAN bitta yo'l: bepul ID, promokod, sinov). TASDIQLANMAGAN email hech qachon
 hisob manzili bo'lmaydi — o'rniga `sha256(provider:sub)` dan ichki manzil
 (aks holda begona hisobga ulanib olish mumkin edi).
 
+APPLE TOKENINI BEKOR QILISH (App Store ko'rsatmasi 5.1.1(v)): kirishda ixtiyoriy
+`authorizationCode` kelsa, u `appleid.apple.com/auth/token` da `refresh_token` ga
+almashtiriladi va `user_identities.refresh_token` + `client_id` ga yoziladi (Apple
+uni faqat BIR MARTA beradi). Hisob purge qilinganda `revokeAppleTokens()`
+`/auth/revoke` ga yuboradi — `purgeStmts` dan OLDIN, chunki batch qatorni
+o'chiradi. Mijoz siri — har safar yangidan yasaladigan ES256 JWT
+(`APPLE_PRIVATE_KEY` `.p8`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`). Almashtirish ham,
+bekor qilish ham O'XSHAMASA oqim to'xtamaydi: kirish ham, purge ham davom etadi,
+sabab logga yoziladi.
+
 Parol: `users.password_hash` ga kirib bo'lmaydigan belgi yoziladi
 (`verifyPassword` `:` topmasa `false` qaytaradi), ya'ni ijtimoiy hisobga parol
 bilan kirilmaydi; odam keyinchalik "parolni unutdim" orqali o'ziga parol qo'ya oladi.

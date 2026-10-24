@@ -110,7 +110,23 @@ export function ensureSchema(env) {
     // Hisob o'chirilganda uning kirishlarini topish uchun.
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_user_identities_user
       ON user_identities (user_id)`),
-  ]).catch((e) => { delete ready[key]; throw e; }));
+  ]).then(() => addAppleColumns(env)).catch((e) => { delete ready[key]; throw e; }));
+}
+
+/// Apple tokenini BEKOR QILISH uchun kerakli ikkita ustun.
+///
+/// Alohida `ALTER`, chunki jadval allaqachon yaratilgan bazalarda ham
+/// paydo bo'lishi kerak. Ustun bor bo'lsa xato jim o'tkaziladi —
+/// `api/iap-apple.js` dagi `addPriceColumns` bilan bir xil naqsh.
+async function addAppleColumns(env) {
+  // Apple'dan olingan `refresh_token`. Hisob o'chirilganda u
+  // `/auth/revoke` ga yuboriladi — Apple'ning talabi (App Store
+  // ko'rsatmasi 5.1.1(v)): "Sign in with Apple ishlatgan ilova
+  // hisob o'chirilganda tokenni REST API orqali bekor qilishi shart".
+  await env.DB.prepare(`ALTER TABLE user_identities ADD COLUMN refresh_token TEXT`).run().catch(() => {});
+  // Qaysi mijoz ID bilan kirilgan: iOS'da bundle ID, Android/saytda
+  // Services ID. Bekor qilishda AYNAN o'sha ID kerak.
+  await env.DB.prepare(`ALTER TABLE user_identities ADD COLUMN client_id TEXT`).run().catch(() => {});
 }
 
 // ═══ JWKS ═══
@@ -214,7 +230,10 @@ async function verifyIdToken(provider, idToken, env) {
   );
   if (!ok) throw new TokenError('bad_signature');
 
-  return { sub, claims };
+  // Qaysi mijoz ID bilan kelgani — Apple tokenini keyin BEKOR
+  // QILISH uchun kerak (`revokeAppleTokens`).
+  const usedAud = auds.map(String).find((a) => allowed.includes(a)) || '';
+  return { sub, claims, usedAud };
 }
 
 // NONCE — tokenni o'g'irlab qayta ishlatishga qarshi.
@@ -300,7 +319,7 @@ async function socialLogin(request, env, H) {
     return H.json({ error: 'verification_unavailable' }, 503);
   }
 
-  const { sub, claims } = verified;
+  const { sub, claims, usedAud } = verified;
   if (!(await nonceOk(claims, body?.nonce, H))) {
     console.error('auth-social nonce mos kelmadi:', provider);
     return H.json({ error: 'token_invalid' }, 401);
@@ -310,6 +329,22 @@ async function socialLogin(request, env, H) {
 
   const email = H.cleanStr(claims?.email, 120).toLowerCase();
   const emailVerified = isVerified(claims?.email_verified) && !!email;
+
+  // APPLE: `authorizationCode` → `refresh_token`.
+  //
+  // Faqat shu yerda olish mumkin — Apple uni keyin bermaydi. Token
+  // hisob o'chirilganda `/auth/revoke` ga yuboriladi (App Store
+  // ko'rsatmasi 5.1.1(v)).
+  //
+  // O'XSHAMASA KIRISH TO'XTAMAYDI: `appleRefreshToken` `null`
+  // qaytaradi va sabab logga yoziladi. Odamni hisobiga kiritmaslik
+  // — tokenni keyin bekor qila olmaslikdan ancha yomonroq.
+  let refreshToken = null;
+  if (provider === 'apple') {
+    const code = H.cleanStr(body?.authorizationCode, 512);
+    if (code) refreshToken = await appleRefreshToken(env, code, usedAud);
+  }
+  const link = { refreshToken, clientId: usedAud || null };
 
   // ── 1. Bu kirish allaqachon ulanganmi? ──
   const known = await env.DB.prepare(
@@ -345,7 +380,7 @@ async function socialLogin(request, env, H) {
     if (existing) {
       const blocked = blockedResponse(existing, H);
       if (blocked) return blocked;
-      await linkIdentity(env, H, provider, sub, Number(existing.id), email);
+      await linkIdentity(env, H, provider, sub, Number(existing.id), email, link);
       return respondWithSession(env, request, H, existing, false);
     }
   }
@@ -384,11 +419,11 @@ async function socialLogin(request, env, H) {
     if (!racer) return H.json({ error: 'account_create_failed' }, 500);
     const blocked = blockedResponse(racer, H);
     if (blocked) return blocked;
-    await linkIdentity(env, H, provider, sub, Number(racer.id), email);
+    await linkIdentity(env, H, provider, sub, Number(racer.id), email, link);
     return respondWithSession(env, request, H, racer, false);
   }
 
-  await linkIdentity(env, H, provider, sub, Number(created.id), email);
+  await linkIdentity(env, H, provider, sub, Number(created.id), email, link);
 
   // Apple ismni FAQAT BIR MARTA, eng birinchi ruxsatda beradi. Shuning
   // uchun u aynan shu yerda — hisob ochilayotgan paytda — kartaga
@@ -424,12 +459,30 @@ function blockedResponse(user, H) {
   return null;
 }
 
-function linkIdentity(env, H, provider, subject, userId, email) {
-  return env.DB.prepare(
-    `INSERT INTO user_identities (provider, subject, user_id, email, created_at)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (provider, subject) DO UPDATE SET email = excluded.email`,
-  ).bind(provider, subject, userId, email || null, H.nowTs()).run();
+async function linkIdentity(env, H, provider, subject, userId, email, extra = {}) {
+  const { refreshToken = null, clientId = null } = extra;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO user_identities (provider, subject, user_id, email, created_at, refresh_token, client_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (provider, subject) DO UPDATE SET
+         email = excluded.email,
+         -- Yangi refresh_token kelmasa, ESKISI saqlanadi: Apple uni
+         -- faqat BIRINCHI marta beradi. Ustiga NULL yozib yuborsak,
+         -- hisob o'chirilganda bekor qiladigan narsa qolmasdi.
+         refresh_token = COALESCE(excluded.refresh_token, user_identities.refresh_token),
+         client_id = COALESCE(excluded.client_id, user_identities.client_id)`,
+    ).bind(provider, subject, userId, email || null, H.nowTs(), refreshToken, clientId).run();
+  } catch (e) {
+    // Eski bazada ustunlar hali yo'q bo'lishi mumkin — kirish
+    // to'xtamasin, asosiy ustunlar bilan qayta uriniladi.
+    console.error('user_identities ustunsiz qayta urinish:', String(e?.message || e).slice(0, 120));
+    await env.DB.prepare(
+      `INSERT INTO user_identities (provider, subject, user_id, email, created_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (provider, subject) DO UPDATE SET email = excluded.email`,
+    ).bind(provider, subject, userId, email || null, H.nowTs()).run();
+  }
 }
 
 // Sessiya YANGIDAN yozilmaydi: `/api/auth/login` nima qilsa, shu
@@ -443,6 +496,147 @@ async function respondWithSession(env, request, H, user, isNew) {
     isNew,
     ...(wantsToken ? { token: s.token } : {}),
   }, isNew ? 201 : 200, s.cookie);
+}
+
+// ═══ APPLE REST API: MIJOZ SIRI, ALMASHTIRISH, BEKOR QILISH ═══
+//
+// Apple'ning talabi (App Store ko'rsatmasi 5.1.1(v)): "Sign in with
+// Apple" ishlatgan ilova hisob o'chirilganda foydalanuvchi tokenini
+// REST API orqali BEKOR QILISHI shart. Buni qilmagan ilova App
+// Review'dan o'tmaydi.
+//
+// Bekor qilish uchun `refresh_token` kerak, uni esa faqat kirish
+// paytida, `authorizationCode` ni almashtirib olish mumkin — keyin
+// hech qachon. Shuning uchun almashtirish AYNAN kirishda bo'ladi.
+//
+// MIJOZ SIRI — JWT, har safar yangidan. Apple parol bermaydi: siri
+// `.p8` kaliti bilan ES256 imzolangan qisqa muddatli token.
+
+const APPLE_AUD = 'https://appleid.apple.com';
+
+/// `.p8` faylning ichidagi PEM dan imzolash kalitini yasaydi.
+async function applePrivateKey(env) {
+  const pem = String(env.APPLE_PRIVATE_KEY || '').trim();
+  if (!pem) return null;
+  const body = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  if (!body) return null;
+  return crypto.subtle.importKey(
+    'pkcs8', b64ToBytes(body),
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false, ['sign'],
+  );
+}
+
+const b64u = (bytes) => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/// Apple uchun mijoz siri (ES256 JWT). `clientId` — AYNAN kirishda
+/// ishlatilgan ID: iOS'da bundle, Android/saytda Services ID.
+async function appleClientSecret(env, clientId) {
+  const key = await applePrivateKey(env);
+  const team = String(env.APPLE_TEAM_ID || '').trim();
+  const kid = String(env.APPLE_KEY_ID || '').trim();
+  if (!key || !team || !kid || !clientId) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const head = enc({ alg: 'ES256', kid, typ: 'JWT' });
+  // 10 daqiqa — bitta so'rovga yetadi. Apple 6 oygacha ruxsat beradi,
+  // lekin uzoq yashaydigan sirni saqlab turishning hojati yo'q:
+  // u har safar yangidan yasaladi.
+  const body = enc({ iss: team, iat: now, exp: now + 600, aud: APPLE_AUD, sub: clientId });
+  const sig = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' }, key,
+    new TextEncoder().encode(`${head}.${body}`),
+  );
+  return `${head}.${body}.${b64u(new Uint8Array(sig))}`;
+}
+
+async function appleForm(url, params) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* Apple xato matni JSON bo'lmasligi mumkin */ }
+  return { ok: res.ok, status: res.status, json, text };
+}
+
+/// `authorizationCode` → `refresh_token`.
+///
+/// Xato bo'lsa `null`: KIRISH TO'XTAMAYDI. Odam hisobiga kira
+/// olmay qolishi — tokenni keyin bekor qila olmaslikdan ko'ra
+/// ancha yomonroq. Sabab logga yoziladi.
+async function appleRefreshToken(env, code, clientId) {
+  const secret = await appleClientSecret(env, clientId);
+  if (!secret) return null;
+  try {
+    const r = await appleForm(`${APPLE_AUD}/auth/token`, {
+      client_id: clientId,
+      client_secret: secret,
+      code,
+      grant_type: 'authorization_code',
+    });
+    if (!r.ok || !r.json?.refresh_token) {
+      console.error('apple token almashtirilmadi:', r.status, String(r.json?.error || r.text).slice(0, 120));
+      return null;
+    }
+    return String(r.json.refresh_token);
+  } catch (e) {
+    console.error('apple token almashtirish xatosi:', String(e?.message || e).slice(0, 120));
+    return null;
+  }
+}
+
+/// HISOB O'CHIRILGANDA — Apple tokenini bekor qiladi.
+///
+/// `api/account-purge.js` ni purge BATCHIDAN OLDIN chaqiradi: keyin
+/// `user_identities` qatori o'chib ketadi va `refresh_token` yo'qoladi.
+///
+/// Qaytaradi: {revoked, skipped, failed} — faqat jurnal uchun.
+/// HECH QACHON istisno tashlamaydi: Apple javob bermagani odamning
+/// hisobi o'chmay qolishiga sabab bo'lmasligi kerak.
+export async function revokeAppleTokens(env, userId) {
+  const out = { revoked: 0, skipped: 0, failed: 0 };
+  let rows;
+  try {
+    rows = await env.DB.prepare(
+      `SELECT subject, refresh_token, client_id FROM user_identities
+        WHERE user_id = ? AND provider = 'apple'`,
+    ).bind(userId).all();
+  } catch {
+    // Jadval yoki ustun yo'q (eski baza) — qiladigan ish yo'q.
+    return out;
+  }
+  for (const row of rows?.results || []) {
+    const token = String(row.refresh_token || '');
+    const clientId = String(row.client_id || '');
+    if (!token || !clientId) { out.skipped++; continue; }
+    const secret = await appleClientSecret(env, clientId);
+    if (!secret) { out.skipped++; continue; }
+    try {
+      const r = await appleForm(`${APPLE_AUD}/auth/revoke`, {
+        client_id: clientId,
+        client_secret: secret,
+        token,
+        token_type_hint: 'refresh_token',
+      });
+      if (r.ok) out.revoked++;
+      else {
+        out.failed++;
+        console.error('apple revoke:', r.status, String(r.json?.error || r.text).slice(0, 120));
+      }
+    } catch (e) {
+      out.failed++;
+      console.error('apple revoke xatosi:', String(e?.message || e).slice(0, 120));
+    }
+  }
+  return out;
 }
 
 // ═══ ILOVA UCHUN SOZLAMA ═══
