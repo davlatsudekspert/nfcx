@@ -119,6 +119,7 @@ class SocialCredential {
     required this.idToken,
     this.nonce,
     this.name,
+    this.authorizationCode,
   });
 
   final SocialProvider provider;
@@ -128,6 +129,16 @@ class SocialCredential {
   /// `nonce` bilan solishtiradi — ya'ni tokenni ushlab qolgan odam
   /// uni qayta ishlata olmaydi.
   final String? nonce;
+
+  /// APPLE: bir martalik kod. Server uni `refresh_token` ga
+  /// almashtiradi va hisob o'chirilganda Apple'dan tokenni BEKOR
+  /// QILISH uchun ishlatadi — bu App Store'ning talabi (5.1.1(v)),
+  /// usiz ilova App Review'dan o'tmaydi.
+  ///
+  /// Kodni faqat SERVER ishlata oladi: almashtirish uchun `.p8`
+  /// kaliti bilan imzolangan mijoz siri kerak, u esa ilovada yo'q
+  /// va bo'lmasligi ham kerak.
+  final String? authorizationCode;
 
   /// Apple ismni FAQAT BIR MARTA, eng birinchi ruxsatda beradi.
   /// Keyingi kirishlarda u umuman kelmaydi — shuning uchun server
@@ -214,6 +225,7 @@ class SocialAuth {
         idToken: token,
         nonce: raw,
         name: _joinName(cred.givenName, cred.familyName),
+        authorizationCode: cred.authorizationCode,
       );
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) throw const SocialCancelled();

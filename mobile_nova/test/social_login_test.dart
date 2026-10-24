@@ -231,7 +231,8 @@ void main() {
       expect(find.text('token_invalid'), findsOneWidget);
     });
 
-    testWidgets('token va xom nonce AYNAN serverga uzatiladi', (tester) async {
+    testWidgets('token, xom nonce va Apple kodi AYNAN serverga uzatiladi',
+        (tester) async {
       final auth = await pumpRouted(
         tester,
         social: _stub((p) async => SocialCredential(
@@ -239,6 +240,7 @@ void main() {
               idToken: 'id-token-123',
               nonce: 'xom-nonce',
               name: 'Olma Egasi',
+              authorizationCode: 'auth-code-abc',
             )),
       );
       await tester.tap(find.text('Google bilan davom etish'));
@@ -251,6 +253,9 @@ void main() {
       expect(auth.got!.nonce, 'xom-nonce');
       expect(auth.got!.name, 'Olma Egasi');
       expect(auth.got!.provider.wire, 'google');
+      // Apple kodi — hisob o'chirilganda tokenni bekor qilish uchun
+      // (App Store 5.1.1(v)). Uni faqat server ishlata oladi.
+      expect(auth.got!.authorizationCode, 'auth-code-abc');
     });
 
     testWidgets('YANGI hisob — profil sozlashga', (tester) async {

@@ -63,6 +63,10 @@ class AuthRepository {
       'provider': cred.provider.wire,
       'idToken': cred.idToken,
       if (cred.nonce != null) 'nonce': cred.nonce,
+      // Apple: hisob o'chirilganda tokenni bekor qilish uchun
+      // (App Store 5.1.1(v)). Serverda `.p8` bilan almashtiriladi.
+      if (cred.authorizationCode != null)
+        'authorizationCode': cred.authorizationCode,
       if (cred.name != null && cred.name!.isNotEmpty) 'name': cred.name,
     });
     return switch (res) {
