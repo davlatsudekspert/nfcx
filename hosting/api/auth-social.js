@@ -445,7 +445,48 @@ async function respondWithSession(env, request, H, user, isNew) {
   }, isNew ? 201 : 200, s.cookie);
 }
 
+// ═══ ILOVA UCHUN SOZLAMA ═══
+//
+// Mijoz ID'lari ILOVAGA QOTIRILMAYDI. Ular sir emas, lekin ALMASHISHI
+// mumkin (client qayta yaratiladi, iOS uchun yangisi qo'shiladi) —
+// qotirilsa, har almashganda App Store va Play orqali yangi versiya
+// chiqarishga to'g'ri kelardi va eski versiyalardagi odamlar kira
+// olmay qolardi. `GET /api/iap/apple/config` ham aynan shu sababdan bor.
+//
+// `serverClientId` — Google'ning eng chalkash joyi: Android ilova
+// AYNAN Web client ID bilan ishlaydi, o'zining Android client ID si
+// bilan emas (Android client faqat ilova imzosini tanitadi).
+// Standart qiymat — ro'yxatdagi BIRINCHI ID; aniqroq qilish kerak
+// bo'lsa `GOOGLE_SIGNIN_SERVER_CLIENT_ID` alohida qo'yiladi.
+function socialConfig(env, H) {
+  const list = (v) => String(v ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  const google = list(env.GOOGLE_SIGNIN_CLIENT_IDS);
+  const apple = list(env.APPLE_SIGNIN_CLIENT_IDS);
+
+  return H.json({
+    google: {
+      enabled: google.length > 0,
+      serverClientId: String(env.GOOGLE_SIGNIN_SERVER_CLIENT_ID || google[0] || ''),
+      // iOS'da `google_sign_in` ilovaning O'Z client ID sini ham
+      // so'raydi. U yaratilmaguncha bo'sh — ilova iOS'da Google
+      // tugmasini ko'rsatmaydi.
+      iosClientId: String(env.GOOGLE_SIGNIN_IOS_CLIENT_ID || ''),
+    },
+    apple: {
+      enabled: apple.length > 0,
+      // ANDROID va SAYT uchun: u yerda Apple bundle ID bilan emas,
+      // Services ID bilan ishlaydi. Bo'sh bo'lsa ilova Android'da
+      // Apple tugmasini ko'rsatmaydi (iOS'da u baribir kerak emas).
+      serviceId: String(env.APPLE_SIGNIN_SERVICE_ID || ''),
+      redirectUri: String(env.APPLE_SIGNIN_REDIRECT_URI || 'https://nfcstore.uz/api/auth/apple/callback'),
+    },
+  }, 200, { 'cache-control': 'public, max-age=300' });
+}
+
 export async function handle(request, env, url, H) {
+  if (url.pathname === '/api/auth/social/config' && request.method === 'GET') {
+    return socialConfig(env, H);
+  }
   if (url.pathname === '/api/auth/social' && request.method === 'POST') {
     return socialLogin(request, env, H);
   }

@@ -276,5 +276,41 @@ console.log('\n── 13. Apple domen tasdiqlash fayli ──');
   delete env.APPLE_DOMAIN_ASSOCIATION;
 }
 
+console.log('\n── 14. Ilova uchun sozlama ──');
+{
+  const r = await call('/api/auth/social/config');
+  check('200', r.status, 200);
+  // Google: standart `serverClientId` — ro'yxatdagi BIRINCHI ID
+  // (Android AYNAN Web client ID bilan ishlaydi).
+  check('google yoqiq, serverClientId birinchi ID',
+    [r.body?.google?.enabled, r.body?.google?.serverClientId], [true, GOOGLE_AUD]);
+  check('iosClientId hali bo\'sh', r.body?.google?.iosClientId, '');
+  check('apple yoqiq', r.body?.apple?.enabled, true);
+  // Services ID sozlanmagan — ilova Android'da Apple tugmasini
+  // ko'rsatmaydi (iOS'da u baribir kerak emas).
+  check('serviceId bo\'sh', r.body?.apple?.serviceId, '');
+  check('redirectUri standart', r.body?.apple?.redirectUri,
+    'https://nfcstore.uz/api/auth/apple/callback');
+
+  env.GOOGLE_SIGNIN_SERVER_CLIENT_ID = 'aniq-web-id.apps.googleusercontent.com';
+  env.GOOGLE_SIGNIN_IOS_CLIENT_ID = 'ios-id.apps.googleusercontent.com';
+  env.APPLE_SIGNIN_SERVICE_ID = 'uz.nfcstore.signin';
+  const r2 = await call('/api/auth/social/config');
+  check('aniq qiymatlar ustun', [
+    r2.body?.google?.serverClientId, r2.body?.google?.iosClientId, r2.body?.apple?.serviceId,
+  ], ['aniq-web-id.apps.googleusercontent.com', 'ios-id.apps.googleusercontent.com', 'uz.nfcstore.signin']);
+  delete env.GOOGLE_SIGNIN_SERVER_CLIENT_ID;
+  delete env.GOOGLE_SIGNIN_IOS_CLIENT_ID;
+  delete env.APPLE_SIGNIN_SERVICE_ID;
+
+  // Sozlanmagan provayder — `enabled:false`. Ilova tugmani umuman
+  // ko'rsatmaydi, ya'ni odam ishlamaydigan tugmani bosmaydi.
+  const savedG = env.GOOGLE_SIGNIN_CLIENT_IDS;
+  delete env.GOOGLE_SIGNIN_CLIENT_IDS;
+  const r3 = await call('/api/auth/social/config');
+  check('sozlanmagan → enabled:false', r3.body?.google?.enabled, false);
+  env.GOOGLE_SIGNIN_CLIENT_IDS = savedG;
+}
+
 globalThis.fetch = realFetch;
 done();

@@ -248,6 +248,15 @@ Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`
 503 `social_login_disabled` (mijoz ID'lari sozlanmagan) / `verification_unavailable`
 (JWKS olinmadi — VAQTINCHALIK, 401 emas).
 
+`GET /api/auth/social/config` → `{google:{enabled,serverClientId,iosClientId},
+apple:{enabled,serviceId,redirectUri}}`. Mijoz ID'lari ILOVAGA QOTIRILMAYDI: ular
+almashsa (client qayta yaratilsa, iOS uchun yangisi qo'shilsa) yangi versiya
+chiqarish kerak bo'lardi va eski versiyadagilar kira olmay qolardi.
+`serverClientId` standarti — `GOOGLE_SIGNIN_CLIENT_IDS` dagi BIRINCHI ID (Android
+AYNAN Web client ID bilan ishlaydi); aniqrog'i `GOOGLE_SIGNIN_SERVER_CLIENT_ID`.
+Qo'shimcha: `GOOGLE_SIGNIN_IOS_CLIENT_ID`, `APPLE_SIGNIN_SERVICE_ID`,
+`APPLE_SIGNIN_REDIRECT_URI`. Bo'sh bo'lsa ilova o'sha tugmani ko'rsatmaydi.
+
 Token FAQAT serverda tekshiriladi: RS256 imzo (provayder JWKS'i, `kid` bo'yicha,
 1 soat kesh + noma'lum `kid` da qayta olish), `iss`, `aud` (ruxsat etilgan mijoz
 ID'lari ro'yxati), `exp`/`iat` (±120 s), `alg` qat'iy `RS256`. Mijoz email yoki
