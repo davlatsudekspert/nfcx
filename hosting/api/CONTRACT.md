@@ -21,7 +21,7 @@ Har modul uchun test: `scripts/test-<modul>.mjs` (`scripts/lib/d1-harness.mjs` o
 
 ## Modullar
 
-`auth`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
+`auth`, `auth-social`, `account`, `engagement`, `catalog`, `media`, `admin-extra`,
 `admin-finance`, `telegram`, `assistant`, `moderation`, `comments`,
 `notifications`, `featured`, `catalog-feed`, `saves`, `content-archive`,
 `legal-requests`, `app-usage`, `app-admin`, `account-purge`, `admin-control`, `music`,
@@ -239,6 +239,62 @@ tegmaydi). Mobil ilovaning uchma-uch testi shunga ulanadi:
 `POST /api/admin/legal/hold {userId, hold, note}` (hold=true — `note` majburiy; olib tashlash faqat super_admin; `account_legal_holds`);
 `GET /api/admin/legal/export?userId=&format=json` → `{format, generatedAt, generatedBy, subject, items (≤5000), total, truncated}`.
 Har chaqiruv admin jurnalida (`legal_subject_view`, `legal_hold`, `legal_unhold`, `legal_export`).
+
+`auth-social` — "Apple bilan" va "Google bilan" kirish. BITTA endpoint:
+`POST /api/auth/social {provider:'apple'|'google', idToken, nonce?, name?}`
+→ 200 `{user:{id,email}, isNew:false, token?}` (tanish hisob) yoki
+201 `{..., isNew:true, token?}` (yangi hisob). Xatolar: 422 `bad_provider`/`bad_request`,
+401 `token_invalid`, 403 `account_deleted`/`account_suspended`, 429 `too_many_requests`,
+503 `social_login_disabled` (mijoz ID'lari sozlanmagan) / `verification_unavailable`
+(JWKS olinmadi — VAQTINCHALIK, 401 emas).
+
+`GET /api/auth/social/config` → `{google:{enabled,serverClientId,iosClientId},
+apple:{enabled,serviceId,redirectUri}}`. Mijoz ID'lari ILOVAGA QOTIRILMAYDI: ular
+almashsa (client qayta yaratilsa, iOS uchun yangisi qo'shilsa) yangi versiya
+chiqarish kerak bo'lardi va eski versiyadagilar kira olmay qolardi.
+`serverClientId` standarti — `GOOGLE_SIGNIN_CLIENT_IDS` dagi BIRINCHI ID (Android
+AYNAN Web client ID bilan ishlaydi); aniqrog'i `GOOGLE_SIGNIN_SERVER_CLIENT_ID`.
+Qo'shimcha: `GOOGLE_SIGNIN_IOS_CLIENT_ID`, `APPLE_SIGNIN_SERVICE_ID`,
+`APPLE_SIGNIN_REDIRECT_URI`. Bo'sh bo'lsa ilova o'sha tugmani ko'rsatmaydi.
+
+Token FAQAT serverda tekshiriladi: RS256 imzo (provayder JWKS'i, `kid` bo'yicha,
+1 soat kesh + noma'lum `kid` da qayta olish), `iss`, `aud` (ruxsat etilgan mijoz
+ID'lari ro'yxati), `exp`/`iat` (±120 s), `alg` qat'iy `RS256`. Mijoz email yoki
+foydalanuvchi ID yubormaydi — hisob faqat `sub` bo'yicha aniqlanadi
+(`user_identities (provider, subject) PRIMARY KEY`).
+
+Hisob topish tartibi: (1) tanish `sub` → kirish; (2) `sub` notanish, lekin
+`email_verified` va email mavjud hisobga to'g'ri keladi → ULANADI;
+(3) aks holda yangi hisob (`createAccountCore` — email+parol ro'yxati bilan
+AYNAN bitta yo'l: bepul ID, promokod, sinov). TASDIQLANMAGAN email hech qachon
+hisob manzili bo'lmaydi — o'rniga `sha256(provider:sub)` dan ichki manzil
+(aks holda begona hisobga ulanib olish mumkin edi).
+
+APPLE TOKENINI BEKOR QILISH (App Store ko'rsatmasi 5.1.1(v)): kirishda ixtiyoriy
+`authorizationCode` kelsa, u `appleid.apple.com/auth/token` da `refresh_token` ga
+almashtiriladi va `user_identities.refresh_token` + `client_id` ga yoziladi (Apple
+uni faqat BIR MARTA beradi). Hisob purge qilinganda `revokeAppleTokens()`
+`/auth/revoke` ga yuboradi — `purgeStmts` dan OLDIN, chunki batch qatorni
+o'chiradi. Mijoz siri — har safar yangidan yasaladigan ES256 JWT
+(`APPLE_PRIVATE_KEY` `.p8`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`). Almashtirish ham,
+bekor qilish ham O'XSHAMASA oqim to'xtamaydi: kirish ham, purge ham davom etadi,
+sabab logga yoziladi.
+
+Parol: `users.password_hash` ga kirib bo'lmaydigan belgi yoziladi
+(`verifyPassword` `:` topmasa `false` qaytaradi), ya'ni ijtimoiy hisobga parol
+bilan kirilmaydi; odam keyinchalik "parolni unutdim" orqali o'ziga parol qo'ya oladi.
+
+`GET /.well-known/apple-developer-domain-association.txt` (worker.js, modul emas) —
+Apple domen tasdig'i. Mazmun `APPLE_DOMAIN_ASSOCIATION` dan, `text/plain`, chetdagi
+bo'shliqlar olinadi. Sozlanmagan bo'lsa 404 (bo'sh fayl Apple'ni chalg'itadi).
+Faqat SAYT va ANDROID dagi Apple kirishi uchun kerak — iOS ilovasiga kerak emas.
+`assetlinks.json` bilan bir xil sabab: fayl env'da bo'lsa, uni Apple panelidan olib
+qo'yish va "Verify" bosish orasida deploy kutilmaydi.
+
+Sozlamalar: `APPLE_SIGNIN_CLIENT_IDS`, `GOOGLE_SIGNIN_CLIENT_IDS` — vergul bilan
+ajratilgan mijoz ID'lari (Apple: bundle ID va Services ID; Google: Web va iOS
+client ID — Android AYNAN Web ID ni ishlatadi). Bo'sh bo'lsa provayder O'CHIQ,
+"hamma tokenni qabul qil" EMAS. Jadval: `user_identities`.
 
 `iap-apple` — iOS Premium obunasi, Apple In-App Purchase (StoreKit 2). Bayroq
 `IAP_APPLE_ENABLED=1` (boshqa qiymat — o'chiq; standart o'chiq). Bundle
