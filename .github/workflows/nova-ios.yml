@@ -87,6 +87,13 @@ jobs:
             echo "::error::Runner.entitlements da NDEF bor — App Store ITMS-90778 bilan rad etadi"
             exit 1
           fi
+          # SIGN IN WITH APPLE — "Apple bilan davom etish" tugmasi.
+          # Kalitsiz tizim oynasi UMUMAN ochilmaydi va ilova sababni
+          # ko'rsatolmaydi (`AuthorizationErrorCode.unknown`). Telefonda
+          # emas, shu yerda bilinsin.
+          /usr/libexec/PlistBuddy -c "Print :com.apple.developer.applesignin" \
+            ios/Runner/Runner.entitlements >/dev/null \
+            || { echo "::error::Runner.entitlements da applesignin yo'q — Apple bilan kirish ishlamaydi"; exit 1; }
           # Bundle ID — Android bilan bir xil. App Store Connect'da
           # ilova yaratilgach uni o'zgartirib bo'lmaydi.
           N=$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = uz.nfcstore.nova;' \
