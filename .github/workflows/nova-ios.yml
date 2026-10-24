@@ -87,6 +87,14 @@ jobs:
             echo "::error::Runner.entitlements da NDEF bor — App Store ITMS-90778 bilan rad etadi"
             exit 1
           fi
+          # GOOGLE BILAN KIRISH — QAYTISH SXEMASI.
+          # Google oynasi tizim brauzerida ochiladi va AYNAN shu sxema
+          # orqali ilovaga qaytadi. Usiz odam hisobini tanlaydi-yu,
+          # ilovaga qaytmaydi — va sabab hech qayerda ko'rinmaydi.
+          # ID ning o'zi emas, SXEMA BORLIGI tekshiriladi: client
+          # almashsa bu qo'riqchi yolg'on qizil bermasin.
+          grep -q 'com.googleusercontent.apps.' ios/Runner/Info.plist \
+            || { echo "::error::Info.plist da Google qaytish sxemasi yo'q — iOS'da Google bilan kirish ishlamaydi"; exit 1; }
           # SIGN IN WITH APPLE — "Apple bilan davom etish" tugmasi.
           # Kalitsiz tizim oynasi UMUMAN ochilmaydi va ilova sababni
           # ko'rsatolmaydi (`AuthorizationErrorCode.unknown`). Telefonda

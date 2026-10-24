@@ -106,6 +106,29 @@
 				<string>nfcstore</string>
 			</array>
 		</dict>
+		<!-- GOOGLE BILAN KIRISH — QAYTISH SXEMASI.
+		     Google hisob tanlash oynasini tizim brauzerida ochadi va
+		     tugagach AYNAN shu sxema orqali ilovaga qaytadi. Usiz
+		     oyna ochiladi, odam hisobini tanlaydi — va hech qayerga
+		     qaytmaydi: ilova "bekor qilindi" deb o'ylaydi, sabab esa
+		     hech qayerda ko'rinmaydi.
+
+		     Qiymat — iOS client ID ning TESKARI yozilgani
+		     (`com.googleusercontent.apps.<id>`), Google Cloud
+		     Console → Clients → NFCSTORE iOS dan.
+
+		     BU YAGONA joyki, mijoz ID ilovaga yozilib qoladi:
+		     URL sxemasi ilova QURILAYOTGANDA ma'lum bo'lishi kerak,
+		     uni serverdan olib bo'lmaydi. Qolgan hamma joyda ID'lar
+		     `GET /api/auth/social/config` dan keladi. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.google.signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.726729921103-aifq9fmmv5r9peejl2a659jvij76eto5</string>
+			</array>
+		</dict>
 	</array>
 	<key>FlutterDeepLinkingEnabled</key>
 	<true/>
