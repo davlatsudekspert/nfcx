@@ -6698,6 +6698,36 @@ abstract class L {
   /// In uz, this message translates to:
   /// **'Bugun ko‘rsatilmasin'**
   String get homeAdHideToday;
+
+  /// Kirish ekranidagi ajratgich: ijtimoiy tugmalar bilan email oralig‘ida
+  ///
+  /// In uz, this message translates to:
+  /// **'yoki'**
+  String get socialOr;
+
+  /// Google bilan kirish tugmasi
+  ///
+  /// In uz, this message translates to:
+  /// **'Google bilan davom etish'**
+  String get socialGoogle;
+
+  /// Apple bilan kirish tugmasi
+  ///
+  /// In uz, this message translates to:
+  /// **'Apple bilan davom etish'**
+  String get socialApple;
+
+  /// Ijtimoiy kirish o‘xshamaganda ko‘rsatiladigan jumla
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirib bo‘lmadi. Qaytadan urinib ko‘ring.'**
+  String get socialFailed;
+
+  /// Ijtimoiy kirish bilan yangi hisob ochilganda: shaxsiy yoki biznes
+  ///
+  /// In uz, this message translates to:
+  /// **'Profilingiz kim uchun?'**
+  String get socialAccountType;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

@@ -63,6 +63,9 @@ dependencies:
   # 0.4.9+ Flutter 3.38 talab qiladi; CI va mahalliy — 3.35.
   in_app_purchase_storekit: 0.4.8+1
   in_app_purchase_platform_interface: ^1.4.0
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

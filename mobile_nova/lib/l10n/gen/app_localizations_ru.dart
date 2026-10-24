@@ -3726,4 +3726,19 @@ class LRu extends L {
 
   @override
   String get homeAdHideToday => 'Скрыть на сегодня';
+
+  @override
+  String get socialOr => 'или';
+
+  @override
+  String get socialGoogle => 'Продолжить с Google';
+
+  @override
+  String get socialApple => 'Продолжить с Apple';
+
+  @override
+  String get socialFailed => 'Не удалось войти. Попробуйте ещё раз.';
+
+  @override
+  String get socialAccountType => 'Для кого ваш профиль?';
 }

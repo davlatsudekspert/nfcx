@@ -19,6 +19,18 @@
 	     /.well-known/apple-app-site-association (hosting/worker.js).
 	     App ID'da Associated Domains yoqilgan, imzo profili ham uni
 	     o'z ichiga oladi (nova-ios-testflight.yml tekshiradi). -->
+	<!-- SIGN IN WITH APPLE — "Apple bilan davom etish" tugmasi.
+	     Bu kalitsiz tizim oynasi UMUMAN ochilmaydi (ilova
+	     `AuthorizationErrorCode.unknown` oladi va sabab ko'rinmaydi).
+
+	     `Default` — ilovaning o'z App ID si bilan ishlash. Apple
+	     Developer'da `uz.nfcstore.nova` App ID sida "Sign In with
+	     Apple" yoqilgan bo'lishi va imzo profili yangilangan bo'lishi
+	     shart, aks holda qurish imzolash bosqichida yiqiladi. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:nfcstore.uz</string>

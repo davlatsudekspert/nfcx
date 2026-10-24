@@ -3704,4 +3704,19 @@ class LEn extends L {
 
   @override
   String get homeAdHideToday => 'Hide for today';
+
+  @override
+  String get socialOr => 'or';
+
+  @override
+  String get socialGoogle => 'Continue with Google';
+
+  @override
+  String get socialApple => 'Continue with Apple';
+
+  @override
+  String get socialFailed => 'Could not sign in. Please try again.';
+
+  @override
+  String get socialAccountType => 'Who is your profile for?';
 }

@@ -1440,5 +1440,15 @@
   "homeAdOpen": "Ko‘rgazmada ochish",
   "@homeAdOpen": {"description": "Asosiydagi Ko‘rgazma reklama kartochkasi — bosilsa Ko‘rgazma tabida ochiladi (ekran o‘qigich uchun)."},
   "homeAdHideToday": "Bugun ko‘rsatilmasin",
-  "@homeAdHideToday": {"description": "Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi."}
+  "@homeAdHideToday": {"description": "Reklama kartochkasidagi “×” — karta shu kun oxirigacha yashiriladi."},
+  "socialOr": "yoki",
+  "@socialOr": {"description": "Kirish ekranidagi ajratgich: ijtimoiy tugmalar bilan email oralig‘ida"},
+  "socialGoogle": "Google bilan davom etish",
+  "@socialGoogle": {"description": "Google bilan kirish tugmasi"},
+  "socialApple": "Apple bilan davom etish",
+  "@socialApple": {"description": "Apple bilan kirish tugmasi"},
+  "socialFailed": "Kirib bo‘lmadi. Qaytadan urinib ko‘ring.",
+  "@socialFailed": {"description": "Ijtimoiy kirish o‘xshamaganda ko‘rsatiladigan jumla"},
+  "socialAccountType": "Profilingiz kim uchun?",
+  "@socialAccountType": {"description": "Ijtimoiy kirish bilan yangi hisob ochilganda: shaxsiy yoki biznes"}
 }

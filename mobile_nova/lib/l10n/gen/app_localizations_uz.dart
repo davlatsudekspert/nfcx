@@ -3683,4 +3683,19 @@ class LUz extends L {
 
   @override
   String get homeAdHideToday => 'Bugun ko‘rsatilmasin';
+
+  @override
+  String get socialOr => 'yoki';
+
+  @override
+  String get socialGoogle => 'Google bilan davom etish';
+
+  @override
+  String get socialApple => 'Apple bilan davom etish';
+
+  @override
+  String get socialFailed => 'Kirib bo‘lmadi. Qaytadan urinib ko‘ring.';
+
+  @override
+  String get socialAccountType => 'Profilingiz kim uchun?';
 }

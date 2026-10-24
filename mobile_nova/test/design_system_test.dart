@@ -79,6 +79,18 @@ void main() {
         // uning rangi mavzuga qarab o'zgarmaydi; orqa fon nuri esa
         // mavzudan (`t.glow`) keladi.
         'lib/features/entry/nfc_card_3d.dart',
+        // APPLE VA GOOGLE TUGMALARI — brend talabi, mavzu emas.
+        //
+        // `contact_buttons.dart` bilan bir xil sabab, lekin bu yerda
+        // u qat'iyroq: Apple va Google kirish tugmasining ko'rinishini
+        // O'ZLARI belgilaydi (belgi, matn, fon, hoshiya). Ularni
+        // mavzuga bo'ysundirib qo'ysak, oq tugma qora mavzuda qorayib
+        // ketardi — va ilova App Review'dan o'tmasdi.
+        //
+        // Mavzuga bog'liq qismlari (ajratgich chizig'i, xato matni,
+        // Apple tugmasining oq/qora varianti) hamon `context.tokens`
+        // dan olinadi.
+        'lib/features/auth/social_buttons.dart',
       };
 
       final offenders = <String>[];

@@ -1273,5 +1273,10 @@
   "pendingReview": "Ожидает проверки",
   "pendingPublished": "Пост станет виден всем после проверки",
   "homeAdOpen": "Открыть в витрине",
-  "homeAdHideToday": "Скрыть на сегодня"
+  "homeAdHideToday": "Скрыть на сегодня",
+  "socialOr": "или",
+  "socialGoogle": "Продолжить с Google",
+  "socialApple": "Продолжить с Apple",
+  "socialFailed": "Не удалось войти. Попробуйте ещё раз.",
+  "socialAccountType": "Для кого ваш профиль?"
 }

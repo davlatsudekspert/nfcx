@@ -15,6 +15,7 @@ import '../../design/widgets/surfaces.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'session.dart';
+import 'social_buttons.dart';
 
 /// Kirish ekrani.
 ///
@@ -38,6 +39,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
 
   bool _busy = false;
+
+  /// Apple/Google oynasi ochiq — forma tugmasi bosilmasin.
+  ///
+  /// `_busy` dan ALOHIDA: `_busy` tugmada aylanma ham ko'rsatadi, bu
+  /// yerda esa aylanma ijtimoiy tugmaning o'zida turadi va parol
+  /// tugmasida ikkinchi aylanma chiqishi chalg'itardi.
+  bool _socialBusy = false;
   bool _obscure = true;
   String? _emailErr, _phoneErr, _passwordErr;
   String? _formError;
@@ -223,7 +231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 NovaButton(
                   label: l.welcomeLogin,
                   busy: _busy,
-                  onPressed: _submit,
+                  onPressed: _socialBusy ? null : _submit,
                 ),
               ],
             ),
@@ -244,6 +252,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           // Backend kod bilan kirishni qo'shsa, bu blok va
           // `requestEmailCode`/`verifyEmailCode` qaytariladi —
           // FINAL_GAPS.md ga yozib qo'yildi.
+          // IJTIMOIY KIRISH — kartadan KEYIN, karta ICHIDA emas.
+          //
+          // Karta ichidagi narsalar bitta forma: maydonlar va uni
+          // yuboradigan tugma. Apple/Google esa formaga umuman
+          // tegmaydigan BOSHQA yo'l — shuning uchun u ajratgich
+          // ("yoki") bilan ajratib qo'yiladi.
+          //
+          // Provayder sozlanmagan bo'lsa bu yer BO'SH qoladi:
+          // ishlamaydigan tugma ko'rsatilmaydi.
+          SocialSignInButtons(
+            onBusy: (b) => setState(() => _socialBusy = b),
+          ),
           const SizedBox(height: Gap.section),
           // `Wrap`, `Row` EMAS. Tor ekranda (320 px) o'zbekcha
           // "Hisobingiz yo‘qmi?" + "Ro‘yxatdan o‘tish" bitta

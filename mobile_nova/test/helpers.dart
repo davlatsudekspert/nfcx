@@ -18,6 +18,7 @@ import 'package:nfcstore_nova/data/repositories/social_repository.dart';
 import 'package:nfcstore_nova/design/theme/app_theme.dart';
 import 'package:nfcstore_nova/design/tokens/nfc_tokens.dart';
 import 'package:nfcstore_nova/features/auth/session.dart';
+import 'package:nfcstore_nova/features/auth/social_auth.dart';
 import 'package:nfcstore_nova/l10n/gen/app_localizations.dart';
 import 'package:nfcstore_nova/routing/router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,6 +74,22 @@ class FakeAuthRepository extends AuthRepository {
 
   @override
   Future<void> logout() async {}
+
+  /// IJTIMOIY KIRISH SOZLAMASI — standart holatda O'CHIQ.
+  ///
+  /// Buni qo'shmasak, kirish/ro'yxat ekranini ko'rsatadigan HAR BIR
+  /// test haqiqiy tarmoqqa chiqib, `/api/auth/social/config` ni
+  /// so'rashga urinardi: testlar sekinlashardi va tarmoqqa bog'lanib
+  /// qolardi. O'chiq sozlama bilan tugmalar umuman chizilmaydi, ya'ni
+  /// mavjud testlar uchun HECH NARSA o'zgarmaydi.
+  ///
+  /// Tugmalarni ko'rsatish kerak bo'lsa (`social_login_test.dart`)
+  /// shu maydon almashtiriladi.
+  SocialAuthConfig socialConfigValue = const SocialAuthConfig();
+
+  @override
+  Future<Result<SocialAuthConfig>> socialConfig() async =>
+      Ok(socialConfigValue);
 }
 
 class FakeSocialRepository extends SocialRepository {

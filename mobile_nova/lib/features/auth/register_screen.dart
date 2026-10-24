@@ -20,6 +20,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../routing/routes.dart';
 import 'session.dart';
 import 'signup_intent.dart';
+import 'social_buttons.dart';
 import 'verify_screen.dart';
 
 /// Ro'yxatdan o'tish — Ism → Email → Telefon → Parol → Tasdiqlash.
@@ -62,6 +63,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// odam ongli tanlashi kerak, jimgina "shaxsiy" qo'yib yuborilmaydi.
   SignupAccountType? _type;
   bool _busy = false;
+
+  /// Apple/Google oynasi ochiq — "Keyingi" tugmasi bosilmasin.
+  bool _socialBusy = false;
 
   /// OMMAVIY OFERTAGA ROZILIK.
   ///
@@ -542,8 +546,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 NovaButton(
                   label: _step == _steps - 1 ? l.actionContinue : l.actionNext,
                   busy: _busy,
-                  onPressed: _next,
+                  onPressed: _socialBusy ? null : _next,
                 ),
+                // IJTIMOIY KIRISH — FAQAT BIRINCHI QADAMDA.
+                //
+                // Birinchi qadamda odam "Shaxsiy yoki Biznes" ni
+                // tanlaydi va shundan keyin ikki yo'l ochiq bo'ladi:
+                // formani to'ldirish yoki Apple/Google bilan bir
+                // teginishda o'tish. Tanlov `signupAccountTypeProvider`
+                // da saqlanadi, ya'ni ijtimoiy kirish ham odamni
+                // to'g'ri joyga olib boradi (`finishSignup`).
+                //
+                // Keyingi qadamlarda (ism, email, parol) bu tugmalar
+                // chalg'itardi: odam yarim to'ldirilgan formani
+                // tashlab ketayotganini bilmasdi.
+                if (_step == 0)
+                  SocialSignInButtons(
+                    onBusy: (b) => setState(() => _socialBusy = b),
+                  ),
               ],
             ),
           ),

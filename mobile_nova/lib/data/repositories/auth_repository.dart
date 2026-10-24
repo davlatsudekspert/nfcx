@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../core/errors/app_error.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/result.dart';
+import '../../features/auth/social_auth.dart';
 import '../models/models.dart';
 
 /// Kirish/ro'yxatdan o'tish oqimi.
@@ -43,6 +44,54 @@ class AuthRepository {
     return switch (res) {
       Err(:final error) => Err(error),
       Ok(:final value) => await _finishSession(value.body, value.session),
+    };
+  }
+
+  /// "Apple bilan" / "Google bilan" kirish.
+  ///
+  /// Ilova serverga FAQAT `idToken` yuboradi — email ham, foydalanuvchi
+  /// ID ham emas. Hisob kimniki ekanini server tokenning IMZOSINI
+  /// tekshirgandan keyin o'zi aytadi.
+  ///
+  /// [isNew] — hisob ayni shu chaqiruvda OCHILDIMI. Shunga qarab odam
+  /// profil sozlash oqimiga yuboriladi yoki to'g'ri uyiga kiradi.
+  /// Buni ilova O'ZI hisoblay olmaydi: "sub" ni faqat server biladi.
+  Future<Result<({User user, bool isNew})>> socialLogin(
+    SocialCredential cred,
+  ) async {
+    final res = await _api.postSession('/api/auth/social', {
+      'provider': cred.provider.wire,
+      'idToken': cred.idToken,
+      if (cred.nonce != null) 'nonce': cred.nonce,
+      if (cred.name != null && cred.name!.isNotEmpty) 'name': cred.name,
+    });
+    return switch (res) {
+      Err(:final error) => Err(error),
+      Ok(:final value) => await _finishSocial(value.body, value.session),
+    };
+  }
+
+  Future<Result<({User user, bool isNew})>> _finishSocial(
+    Map<String, dynamic> body,
+    String? session,
+  ) async {
+    final isNew = body['isNew'] == true;
+    final done = await _finishSession(body, session);
+    return switch (done) {
+      Err(:final error) => Err(error),
+      Ok(:final value) => Ok((user: value, isNew: isNew)),
+    };
+  }
+
+  /// Ijtimoiy kirish sozlamasi — mijoz ID'lari SERVERDAN.
+  ///
+  /// Ilovaga qotirilmaydi: ID almashsa (client qayta yaratilsa, iOS
+  /// uchun yangisi qo'shilsa) yangi versiya chiqarmasdan ishlayveradi.
+  Future<Result<SocialAuthConfig>> socialConfig() async {
+    final res = await _api.get<Map<String, dynamic>>('/api/auth/social/config');
+    return switch (res) {
+      Err(:final error) => Err(error),
+      Ok(:final value) => Ok(SocialAuthConfig.fromJson(value)),
     };
   }
 

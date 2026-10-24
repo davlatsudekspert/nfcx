@@ -1273,5 +1273,10 @@
   "pendingReview": "Pending review",
   "pendingPublished": "Your post will be visible to everyone after review",
   "homeAdOpen": "Open in Showcase",
-  "homeAdHideToday": "Hide for today"
+  "homeAdHideToday": "Hide for today",
+  "socialOr": "or",
+  "socialGoogle": "Continue with Google",
+  "socialApple": "Continue with Apple",
+  "socialFailed": "Could not sign in. Please try again.",
+  "socialAccountType": "Who is your profile for?"
 }
