@@ -265,6 +265,13 @@ Parol: `users.password_hash` ga kirib bo'lmaydigan belgi yoziladi
 (`verifyPassword` `:` topmasa `false` qaytaradi), ya'ni ijtimoiy hisobga parol
 bilan kirilmaydi; odam keyinchalik "parolni unutdim" orqali o'ziga parol qo'ya oladi.
 
+`GET /.well-known/apple-developer-domain-association.txt` (worker.js, modul emas) —
+Apple domen tasdig'i. Mazmun `APPLE_DOMAIN_ASSOCIATION` dan, `text/plain`, chetdagi
+bo'shliqlar olinadi. Sozlanmagan bo'lsa 404 (bo'sh fayl Apple'ni chalg'itadi).
+Faqat SAYT va ANDROID dagi Apple kirishi uchun kerak — iOS ilovasiga kerak emas.
+`assetlinks.json` bilan bir xil sabab: fayl env'da bo'lsa, uni Apple panelidan olib
+qo'yish va "Verify" bosish orasida deploy kutilmaydi.
+
 Sozlamalar: `APPLE_SIGNIN_CLIENT_IDS`, `GOOGLE_SIGNIN_CLIENT_IDS` — vergul bilan
 ajratilgan mijoz ID'lari (Apple: bundle ID va Services ID; Google: Web va iOS
 client ID — Android AYNAN Web ID ni ishlatadi). Bo'sh bo'lsa provayder O'CHIQ,

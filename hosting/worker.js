@@ -12926,6 +12926,37 @@ async function handleRequest(request, env, url, ctx) {
       });
     }
 
+    // ── APPLE BILAN KIRISH: DOMEN TASDIG'I ─────────────────────────────
+    // "Apple bilan kirish" SAYTDA va ANDROID'da ishlashi uchun Apple
+    // domenni tasdiqlashni talab qiladi: u AYNAN shu manzilga kelib,
+    // o'zi bergan faylni o'qiydi. (iOS ilovasiga bu kerak emas — u
+    // tizim oynasi orqali ishlaydi.)
+    //
+    // NIMA UCHUN ENV'DAN, repodagi fayldan emas: Apple panelida faylni
+    // yuklab olish bilan "Verify" tugmasini bosish orasida sayt uni
+    // ALLAQACHON berayotgan bo'lishi kerak. Fayl repoda bo'lsa,
+    // o'rtada PR va deploy turadi. Env orqali esa egasi matnni
+    // Cloudflare'ga qo'yadi va darhol Verify bosadi.
+    //
+    // Pastdagi `assetlinks.json` ham aynan shu sababdan env'dan.
+    //
+    // Sozlanmagan bo'lsa 404 — bo'sh fayl berish Apple'ni chalg'itadi
+    // va tasdiqlash "muvaffaqiyatsiz" bo'lib keshlanishi mumkin.
+    if (url.pathname === '/.well-known/apple-developer-domain-association.txt'
+      && ['GET', 'HEAD'].includes(request.method)) {
+      const body = String(env.APPLE_DOMAIN_ASSOCIATION || '').trim();
+      if (!body) return json({ error: 'not_found' }, 404);
+      return new Response(request.method === 'HEAD' ? null : body, {
+        status: 200,
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          // Qisqa kesh: tasdiqlashdan keyin fayl o'zgarmaydi, lekin
+          // noto'g'ri qiymat uzoq yashab qolmasin.
+          'cache-control': 'public, max-age=300',
+        },
+      });
+    }
+
     // ── ANDROID APP LINKS ──────────────────────────────────────────────
     // Jismoniy NFC kartani tegizganda Android brauzer o'rniga ilovani
     // ochishi uchun shu fayl SHU DOMENDA turishi shart.

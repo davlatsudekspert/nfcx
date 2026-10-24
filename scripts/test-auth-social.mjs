@@ -253,5 +253,28 @@ console.log('\n── 12. JWKS keshlanadi ──');
   check('kalitlar qayta so\'ralmadi', jwksHits, before);
 }
 
+console.log('\n── 13. Apple domen tasdiqlash fayli ──');
+{
+  // Sozlanmagan bo'lsa 404 — bo'sh fayl Apple'ni chalg'itadi.
+  const off = await call('/.well-known/apple-developer-domain-association.txt');
+  check('sozlanmagan → 404', off.status, 404);
+
+  env.APPLE_DOMAIN_ASSOCIATION = '  {"webcredentials":{"apps":["TEST.uz.nfcstore"]}}  ';
+  const on = await call('/.well-known/apple-developer-domain-association.txt');
+  check('200 va matn sifatida', [on.status, on.headers.get('content-type')],
+    [200, 'text/plain; charset=utf-8']);
+  // `call` JSON tanani o'zi ochib beradi — Apple faylining ichi ham
+  // JSON. Shuning uchun mazmun obyekt sifatida solishtiriladi.
+  check('mazmun o\'zgarmadi', on.body, { webcredentials: { apps: ['TEST.uz.nfcstore'] } });
+
+  // Chetdagi bo'shliqlar olinadi, ichkarisiga TEGILMAYDI: Apple faylni
+  // bayt-bayt solishtiradi. (JSON bo'lmagan qiymat — tana xom matn
+  // sifatida qaytadi, ya'ni baytlarni to'g'ridan-to'g'ri ko'ramiz.)
+  env.APPLE_DOMAIN_ASSOCIATION = '\n  abc  def\n ';
+  const raw = await call('/.well-known/apple-developer-domain-association.txt');
+  check('chet bo\'shliqlar olindi, ichki matn saqlandi', raw.body, 'abc  def');
+  delete env.APPLE_DOMAIN_ASSOCIATION;
+}
+
 globalThis.fetch = realFetch;
 done();
