@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         [
                           if ((active?.record?.city ?? '').isNotEmpty)
                             active!.record!.city,
-                          monthDay(DateTime.now()),
+                          monthDay(now()),
                         ].join(' · '),
                       ),
                       const SizedBox(height: 6),

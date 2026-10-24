@@ -109,6 +109,39 @@ void main() {
     expect(found, isEmpty, reason: 'Narx kodga yozilgan: $found');
   });
 
+  test('Chiziladigan vaqt haqiqiy soatdan olinmaydi', () {
+    // NIMA UCHUN: golden testlari ekranni bayt-bayt solishtiradi.
+    // Agar chiziladigan sana yoki "2 SOAT" to‘g‘ridan-to‘g‘ri
+    // `DateTime.now()` dan olinsa, etalon yaratilgan kundan keyin
+    // test HAR KUNI yiqiladi — aynan shunday bo‘lgan edi (`08 home`,
+    // `09 qobiq`, `27 story`, `38 yangi home`, `21 buyurtmalarim`).
+    //
+    // Shuning uchun chiziladigan vaqt FAQAT `l10n/dates.dart` dagi
+    // `now()` orqali olinadi; testda u qotiriladi
+    // (`test/audit/harness.dart` → `freezeAuditClock`).
+    //
+    // `DateTime.now()` ning o‘zi taqiqlanmaydi: kesh muddati,
+    // o‘lchov va shu kabi joylarda u to‘g‘ri (masalan
+    // `home.dart` dagi `_loadedAt`). Faqat FORMATLOVCHIGA
+    // berilishi taqiqlanadi.
+    final formatters = RegExp(
+      r'(monthDay|ago|remaining|shortDate|dateTime|clock)\(\s*DateTime\.now\(\)',
+    );
+    expect(hits(formatters), isEmpty,
+        reason: 'Formatlovchiga haqiqiy soat berilgan — `now()` ishlating.');
+
+    // `dates.dart` ning o‘zi ham faqat `now()` orqali ishlaydi.
+    // `codeOf` izohlarni tashlaydi: izohda `DateTime.now()` ATAYLAB
+    // uchraydi (nima uchun bunday qilinganini tushuntiradi).
+    final dates = codeOf(File('lib/l10n/dates.dart'));
+    final body = dates.replaceFirst(
+      'DateTime now() => (nowOverride ?? DateTime.now)();',
+      '',
+    );
+    expect(body.contains('DateTime.now'), isFalse,
+        reason: 'dates.dart ichida `now()` dan boshqa soat manbai bor.');
+  });
+
   test('Baza manzili bitta joyda', () {
     // Ilova va sayt BITTA manbadan o‘qiydi. Manzil bir nechta joyda
     // yozilsa, biri unutilib, ilova ikkiga bo‘linib ketardi.
