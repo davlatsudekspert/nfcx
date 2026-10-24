@@ -7,6 +7,24 @@ import 'strings.dart';
 /// yozilganda aniqroq chiqadi — o'zbek tilida "2 soat oldin"
 /// emas, lentada qisqa "2 SOAT" ishlatiladi.
 
+/// HOZIRGI VAQT — BITTA ESHIK.
+///
+/// Ekranlarda bugungi sana ("26 sentabr"), lentadagi "2 SOAT" va
+/// storydagi "18 soat qoldi" chiziladi. Golden testlari rasmni
+/// bayt-bayt solishtiradi, ya'ni `DateTime.now()` to'g'ridan-to'g'ri
+/// chaqirilsa ETALON YARATILGAN KUNDAN KEYIN TEST HAR KUNI YIQILADI.
+///
+/// Aynan shunday bo'lgan edi: `08 home`, `09 qobiq`, `27 story`,
+/// `38 yangi home` etalonlarida butun farq faqat SANA raqami edi
+/// (0.07%, ~2100 piksel). Etalonni qayta chizish bu muammoni
+/// yechmaydi — ertaga yana yiqilardi.
+///
+/// Testda `nowOverride` qo'yiladi va vaqt qotadi. Ilovada u hech
+/// qachon qo'yilmaydi: xulq bitta ham o'zgarmaydi.
+DateTime Function()? nowOverride;
+
+DateTime now() => (nowOverride ?? DateTime.now)();
+
 const _monthsUz = [
   'yanvar',
   'fevral',
@@ -45,7 +63,7 @@ String clock(DateTime d) => '${_two(d.hour)}:${_two(d.minute)}';
 /// shovqin bo'ladi, ma'no esa kontekstdan tushunarli.
 String ago(DateTime? d) {
   if (d == null) return '';
-  final diff = DateTime.now().difference(d);
+  final diff = now().difference(d);
   if (diff.inMinutes < 1) return tr('hozir');
   if (diff.inMinutes < 60) return '${diff.inMinutes} ${tr('daqiqa')}';
   if (diff.inHours < 24) return '${diff.inHours} ${tr('soat')}';
@@ -56,7 +74,7 @@ String ago(DateTime? d) {
 /// STORY QOLGAN VAQTI — "18 soat qoldi".
 String remaining(DateTime? expiresAt) {
   if (expiresAt == null) return '';
-  final diff = expiresAt.difference(DateTime.now());
+  final diff = expiresAt.difference(now());
   if (diff.isNegative) return tr('tugadi');
   if (diff.inHours < 1) return '${diff.inMinutes} ${tr('daqiqa qoldi')}';
   return '${diff.inHours} ${tr('soat qoldi')}';

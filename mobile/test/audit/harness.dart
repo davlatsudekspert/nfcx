@@ -11,10 +11,29 @@ import 'package:nfcstore/design/tokens.dart';
 import 'package:nfcstore/design/type.dart';
 import 'package:nfcstore/state/app_lock.dart';
 import 'package:nfcstore/state/app_prefs.dart';
+import 'package:nfcstore/l10n/dates.dart';
 import 'package:nfcstore/state/app_state.dart';
 import '../widget_test.dart' show FakeStore;
 import 'fixtures.dart';
 import '../settle.dart';
+
+/// ETALONLAR UCHUN VAQT QOTIRILADI.
+///
+/// Bosh sahifada bugungi sana, lentada "2 SOAT", storyda "18 soat
+/// qoldi" chiziladi. Etalon rasm bilan bayt-bayt solishtiriladi,
+/// ya'ni haqiqiy soat ishlatilsa test ERTASIGA yiqiladi — va
+/// aynan shunday bo'lgan edi (`08 home`, `09 qobiq`, `27 story`,
+/// `38 yangi home`).
+///
+/// Sana ATAYLAB "tekis" emas: 7-son bir xonali, oy nomi uzun
+/// ("sentabr") — ya'ni raqam va matn eng keng holatda chiziladi va
+/// joy yetmasligi etalonning o'zida ko'rinadi.
+final auditNow = DateTime(2026, 9, 7, 14, 22);
+
+/// Vaqtni qotiradi. `visual_audit_test.dart` ning `setUpAll` ida
+/// chaqiriladi; `freezeAuditClock()` dan keyin `nowOverride` tozalanmaydi,
+/// chunki test jarayoni shu bilan tugaydi.
+void freezeAuditClock() => nowOverride = () => auditNow;
 
 /// Dizayn kadri — handoffdagi 390×844.
 const auditSize = Size(390, 844);
