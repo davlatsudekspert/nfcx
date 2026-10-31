@@ -1,11 +1,10 @@
 import { useLanguage } from '../lib/i18n.jsx';
-import { APP_APK_URL, isIos } from '../lib/appDownload.js';
+import { APP_APK_URL, PLAY_STORE_URL, isIos } from '../lib/appDownload.js';
 
 // NFCSTORE ILOVASI — YUKLAB OLISH SAHIFASI (nfcstore.uz/ilova-yuklash).
 //
-// Ilova hali Google Play'da hammaga ochiq emas; shu vaqtgacha Android
-// foydalanuvchilar uni shu yerdan o'rnatadi. Fayl Play imzolagan APK —
-// keyin Play Market'dan yangilanadi (src/lib/appDownload.js).
+// Ilova Google Play'da mavjud: asosiy tugma — Play. APK esa Play ishlamaydigan
+// telefonlar uchun ikkinchi yo'l (fayl Play imzolagan, Play'dan yangilanadi).
 const FEATURES = [
   ['🪪', "Raqamli vizitkangiz doim telefoningizda"],
   ['📶', "NFC karta va stikerlarga profil yozish"],
@@ -14,7 +13,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  "«Yuklab olish» tugmasini bosing — fayl telefoningizga tushadi.",
+  "«Yoki APK fayl» tugmasini bosing — fayl telefoningizga tushadi.",
   "Faylni oching. Telefon so'rasa, brauzerga «noma'lum manbalardan o'rnatish»ga ruxsat bering.",
   "«O'rnatish» tugmasini bosing. Play Protect ogohlantirsa — «Baribir o'rnatish»ni tanlang.",
   "Ilovani oching va NFCSTORE hisobingiz bilan kiring.",
@@ -35,7 +34,7 @@ export default function AppDownloadPage() {
           <span className="bg-gradient-to-br from-base-content to-base-content/55 bg-clip-text text-transparent">{t('yuklab oling')}</span>
         </h1>
         <p className="mt-3 max-w-xl text-[15px] text-base-content/60">
-          {t("Ilova tez orada Google Play'da chiqadi. Hozircha uni shu yerdan o'rnating — keyin Play Market orqali yangilanadi.")}
+          {t("Ilova Google Play'da mavjud — bepul. Play Market orqali o'rnating va yangilab turing.")}
         </p>
 
         {ios ? (
@@ -45,13 +44,21 @@ export default function AppDownloadPage() {
         ) : (
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <a
-              href={APP_APK_URL}
+              href={PLAY_STORE_URL}
               rel="noreferrer"
+              data-testid="app-play-store"
               className="inline-flex items-center gap-2 rounded-full bg-base-content px-7 py-3.5 text-[15px] font-semibold text-base-100 no-underline transition hover:opacity-90"
             >
-              ⬇️ {t('Yuklab olish (Android)')}
+              ▶ {t("Google Play'dan yuklash")}
             </a>
-            <span className="text-xs text-base-content/50">{t('Beta versiya · ~65 MB')}</span>
+            <a
+              href={APP_APK_URL}
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm font-medium text-base-content/80 no-underline transition hover:bg-white/5"
+            >
+              ⬇️ {t('Yoki APK fayl (Android)')}
+            </a>
+            <span className="text-xs text-base-content/50">{t('APK ~65 MB')}</span>
           </div>
         )}
       </section>
@@ -67,7 +74,7 @@ export default function AppDownloadPage() {
 
       {!ios && (
         <section className="mt-12 max-w-2xl">
-          <h2 className="text-xl font-bold">{t("Qanday o'rnatiladi")}</h2>
+          <h2 className="text-xl font-bold">{t("APK faylni qanday o'rnatish")}</h2>
           <ol className="mt-4 space-y-3">
             {STEPS.map((s, i) => (
               <li key={s} className="flex gap-3 text-sm text-base-content/70">
@@ -77,7 +84,7 @@ export default function AppDownloadPage() {
             ))}
           </ol>
           <p className="mt-6 text-xs text-base-content/50">
-            {t("Fayl Google Play imzosi bilan — ilova Play Market'ga chiqqach, uni o'chirmasdan Play orqali yangilaysiz. Muammo bo'lsa: @nfcstore_admin")}
+            {t("Fayl Google Play imzosi bilan — uni o'chirmasdan Play orqali yangilay olasiz. Muammo bo'lsa: @nfcstore_admin")}
           </p>
         </section>
       )}

@@ -154,6 +154,13 @@ export const DICT_SITE = {
   "Hozircha ilova faqat Android uchun. iPhone versiyasi tez orada — shu vaqtgacha profilingiz saytda to'liq ishlaydi.": {
     ru: 'Пока приложение только для Android. Версия для iPhone скоро — а до тех пор ваш профиль полностью работает на сайте.',
     en: 'For now the app is Android only. The iPhone version is coming soon — until then your profile works fully on the website.' },
+  "Ilova Google Play'da mavjud — bepul. Play Market orqali o'rnating va yangilab turing.": {
+    ru: 'Приложение доступно в Google Play — бесплатно. Установите его через Play Маркет и обновляйте там же.',
+    en: 'The app is available on Google Play — free. Install it from the Play Store and keep it updated there.' },
+  "Google Play'dan yuklash": { ru: 'Скачать в Google Play', en: 'Get it on Google Play' },
+  'Yoki APK fayl (Android)': { ru: 'Или APK-файл (Android)', en: 'Or the APK file (Android)' },
+  'APK ~65 MB': { ru: 'APK ~65 МБ', en: 'APK ~65 MB' },
+  "APK faylni qanday o'rnatish": { ru: 'Как установить APK-файл', en: 'How to install the APK file' },
   'Yuklab olish (Android)': { ru: 'Скачать (Android)', en: 'Download (Android)' },
   'Beta versiya · ~65 MB': { ru: 'Бета-версия · ~65 МБ', en: 'Beta version · ~65 MB' },
   'Raqamli vizitkangiz doim telefoningizda': { ru: 'Цифровая визитка всегда в телефоне', en: 'Your digital business card always on your phone' },
@@ -161,8 +168,8 @@ export const DICT_SITE = {
   'Lenta, Reels va istoriyalar': { ru: 'Лента, Reels и истории', en: 'Feed, Reels and stories' },
   'Biznes sahifasi va katalog': { ru: 'Бизнес-страница и каталог', en: 'Business page and catalog' },
   "Qanday o'rnatiladi": { ru: 'Как установить', en: 'How to install' },
-  "«Yuklab olish» tugmasini bosing — fayl telefoningizga tushadi.": {
-    ru: 'Нажмите «Скачать» — файл загрузится на телефон.', en: 'Tap “Download” — the file is saved to your phone.' },
+  "«Yoki APK fayl» tugmasini bosing — fayl telefoningizga tushadi.": {
+    ru: 'Нажмите «Или APK-файл» — файл загрузится на телефон.', en: 'Tap “Or the APK file” — the file is saved to your phone.' },
   "Faylni oching. Telefon so'rasa, brauzerga «noma'lum manbalardan o'rnatish»ga ruxsat bering.": {
     ru: 'Откройте файл. Если телефон спросит, разрешите браузеру «установку из неизвестных источников».',
     en: 'Open the file. If your phone asks, allow the browser to “install unknown apps”.' },
@@ -171,9 +178,9 @@ export const DICT_SITE = {
     en: 'Tap “Install”. If Play Protect warns you, choose “Install anyway”.' },
   'Ilovani oching va NFCSTORE hisobingiz bilan kiring.': {
     ru: 'Откройте приложение и войдите в свой аккаунт NFCSTORE.', en: 'Open the app and sign in with your NFCSTORE account.' },
-  "Fayl Google Play imzosi bilan — ilova Play Market'ga chiqqach, uni o'chirmasdan Play orqali yangilaysiz. Muammo bo'lsa: @nfcstore_admin": {
-    ru: 'Файл подписан Google Play — когда приложение выйдет в Play Маркет, вы обновите его через Play без удаления. Если что-то не так: @nfcstore_admin',
-    en: 'The file carries the Google Play signature — once the app is in the Play Store you can update it there without reinstalling. Problems? @nfcstore_admin' },
+  "Fayl Google Play imzosi bilan — uni o'chirmasdan Play orqali yangilay olasiz. Muammo bo'lsa: @nfcstore_admin": {
+    ru: 'Файл подписан Google Play — вы сможете обновлять приложение через Play без удаления. Если что-то не так: @nfcstore_admin',
+    en: 'The file carries the Google Play signature — you can update the app through Play without reinstalling. Problems? @nfcstore_admin' },
   'NFCSTORE ilovasi': { ru: 'Приложение NFCSTORE', en: 'NFCSTORE app' },
   "O'z raqamli vizitkangizni yarating — Android uchun": {
     ru: 'Создайте свою цифровую визитку — для Android', en: 'Create your own digital business card — for Android' },

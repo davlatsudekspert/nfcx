@@ -10,6 +10,10 @@
 export const APP_APK_URL =
   'https://github.com/davlatsudekspert/nfcx/releases/download/play-latest/NFCSTORE-Play.apk';
 
+// Google Play sahifasi (ilova 2026-10 da Play'da chiqdi).
+export const PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=uz.nfcstore.nova';
+
 // Sahifa manzili. Tire bilan — profil kodi (harf/raqam) bo'lib
 // qolmasin: nfcstore.uz/ilova kabi so'z kimningdir harfli ID'si
 // bo'lishi mumkin edi.
