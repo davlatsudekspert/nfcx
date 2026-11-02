@@ -1,10 +1,23 @@
 name: Mobile check
 
 # Premium UI o'zgarganda APK chiqarmasdan Flutter kodini tekshirish.
-# Faqat qo'lda ishlaydi: yarim tayyor dizayn hech qachon releasega
-# aylanmaydi.
+#
+# ENDI AVTOMATIK HAM (2026-10). Ilgari faqat qo'lda ishga tushardi va
+# oqibati shu bo'ldi: `mobile/` `main`da 19 kun davomida o'z
+# tekshiruvidan o'tmay turdi — `flutter analyze` xato bilan, 9 ta test
+# yiqilgan holda — va Play Market'ga APK aynan shu holatdan chiqdi.
+# Hech kim sezmadi, chunki `main`ga push bo'lganda faqat `deploy.yml`
+# chopadi va u `mobile/` ga umuman qaramaydi.
+#
+# Faqat `mobile/` o'zgarganda ishlaydi: sayt PR'lari bu 20 daqiqalik
+# ishni kutmaydi.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile-check.yml']
+  pull_request:
+    paths: ['mobile/**', '.github/workflows/mobile-check.yml']
 
 permissions:
   contents: read

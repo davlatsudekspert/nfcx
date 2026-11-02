@@ -4082,5 +4082,13 @@
   "Profilingiz uchun o‘ziga xos NFC ID tanlang.": [
     "Выберите особый NFC ID для своего профиля.",
     "Choose a distinctive NFC ID for your profile."
+  ],
+  "Email manzilini tekshirib, qayta kiriting.": [
+    "Проверьте адрес эл. почты и введите заново.",
+    "Check the email address and enter it again."
+  ],
+  "Sizga tavsiya": [
+    "Рекомендуем вам",
+    "Recommended for you"
   ]
 }

@@ -72,7 +72,10 @@ import 'harness.dart';
 /// yo'q. Bu ham foydali: dizayn rasm KELMAGANDA qanday ko'rinishini
 /// ham shu yerda baholaymiz.
 void main() {
-  setUpAll(loadAuditFonts);
+  setUpAll(() async {
+    freezeAuditClock();
+    await loadAuditFonts();
+  });
   setUp(mockImageCacheDir);
 
   Future<void> golden(WidgetTester t, String name) =>

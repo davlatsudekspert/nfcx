@@ -73,7 +73,16 @@ void main() {
       // MARKAZIY TAB YORLIQSIZ: u brend medalyoni bilan
       // ko‘rsatiladi, ya‘ni matn bo‘yicha topib bo‘lmaydi.
       await tester.tap(
-        i == NavBar.nfcIndex ? find.byType(BrandMark) : find.text(label),
+        // `BrandMark` endi EKRANDA BIR NECHTA (lenta kartalarida
+        // ham chiziladi), shuning uchun u PASTKI PANEL ichidan
+        // qidiriladi — aks holda `tap()` "ambiguously found
+        // multiple matching widgets" bilan yiqiladi.
+        i == NavBar.nfcIndex
+            ? find.descendant(
+                of: find.byType(NavBar),
+                matching: find.byType(BrandMark),
+              )
+            : find.text(label),
       );
       await settle(tester);
       expect(tester.takeException(), isNull, reason: label);

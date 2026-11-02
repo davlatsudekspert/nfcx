@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:nfcstore/l10n/dates.dart';
 
 /// VIZUAL AUDIT UCHUN NAMUNA JAVOBLAR.
 ///
@@ -316,7 +317,7 @@ final _webOrders = [
   {
     'id': 2096, 'code': 'GLD100', 'price': 149000, 'status': 'pending',
     'kind': 'card_purchase', 'payLink': 'https://checkout.paycom.uz/x',
-    'expiresAtMs': DateTime.now().add(const Duration(hours: 7)).millisecondsSinceEpoch,
+    'expiresAtMs': now().add(const Duration(hours: 7)).millisecondsSinceEpoch,
   },
   {'id': 2090, 'code': 'VIP001', 'price': 490000, 'status': 'paid', 'kind': 'card_purchase'},
 ];
