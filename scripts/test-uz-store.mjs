@@ -293,7 +293,20 @@ try {
   }
   const dig = (t) => digestPairs(sq.prepare(`SELECT ${rowColumnsSql(cols)} FROM ${t} ORDER BY id`).all().map((r) => rowPairs(r, cols.length)));
   check('juftlik: NUL bilan matn baytma-bayt tiklanadi', sq.prepare(`SELECT length(CAST(t AS BLOB)) n FROM b WHERE id = 1`).get().n, 12);
-  check('juftlik: REAL, BLOB, 2^53+2 aniq', sq.prepare(`SELECT quote(r) r, hex(b) b, quote(n) n FROM b WHERE id = 1`).get(), { r: '3.000000000000000445e-01', b: '00FF', n: '9007199254740993' });
+  // REAL ni MANBA BILAN solishtiramiz, qattiq yozilgan matn bilan emas.
+  // SQLite float'ni matnga o'girish usulini versiyadan versiyaga
+  // o'zgartiradi: 3.50.4 da `quote(0.30000000000000004)` →
+  // "3.000000000000000445e-01", keyingi versiyada esa "0.30000000000000004".
+  // Ikkalasi ham AYNAN o'sha double, ya'ni sinov tekshirmoqchi bo'lgan
+  // narsa (nusxa manbaga bayt-bayt teng) buzilmagan — buzilgani shunchaki
+  // kutilgan MATN edi. Qattiq yozilgan qiymat tufayli CI yiqilib,
+  // saytga deploy to'xtab qolgan edi (2026-11-02).
+  const exact = (t) => sq.prepare(`SELECT quote(r) r, hex(b) b, quote(n) n FROM ${t} WHERE id = 1`).get();
+  check('juftlik: REAL, BLOB, 2^53+2 — nusxa manbaga aynan teng', exact('b'), exact('a'));
+  // Butun sonning matni versiyaga bog'liq emas: 2^53+1 ni JS `number`
+  // sifatida saqlab bo'lmaydi, shuning uchun aynan shu yerda tekshiriladi.
+  check('juftlik: 2^53+2 aniq (double ga aylanmagan)', exact('b').n, '9007199254740993');
+  check('juftlik: BLOB aynan', exact('b').b, '00FF');
   check('juftlik: turlar saqlanadi (REAL 2.0, ustunsiz 1.5)', sq.prepare(`SELECT typeof(r) r, typeof(n) n FROM b WHERE id = 4`).get(), { r: 'real', n: 'real' });
   check('juftlik: 2.5 MB matn hex siz (D1 2 MB chegarasi)', sq.prepare(`SELECT length(t) n FROM b WHERE id = 4`).get().n, 2_500_000);
   check('xesh: manba va nusxa bir xil', await dig('a') === await dig('b'), true);
