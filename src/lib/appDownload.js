@@ -15,13 +15,13 @@ export function isIos() {
 
 // ── GOOGLE PLAY / APP STORE (egasi, 2026-09-26) ─────────────────────────
 //
-// Play Market sahifasi. Ilova hozircha faqat yopiq testda — Play'dagi
-// ommaviy sahifa oddiy odamga "topilmadi" deydi. Shuning uchun
-// `PLAY_STORE_LIVE = false` ekan, "Google Play" tugmasi Play imzolagan
+// Play Market sahifasi. Ilova 2026-10 da Play'da hammaga chiqdi
+// (uz.nfcstore.nova, 1.1.1), shuning uchun `PLAY_STORE_LIVE = true`.
+// Eski holat: `false` ekan, "Google Play" tugmasi Play imzolagan
 // APK sahifasiga (/ilova-yuklash) olib boradi; ilova Play'da hammaga
 // chiqqan kuni shu bayroqni `true` qilish kifoya.
-export const PLAY_STORE_LIVE = false;
-export const PLAY_STORE_URL = APP_APK_URL;
+export const PLAY_STORE_LIVE = true;
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=uz.nfcstore.nova';
 // iPhone ilovasi (App Store) — holat va havola BITTA joyda:
 // hosting/api/app-store.js (Worker SEO sarlavhasi ham undan o'qiydi).
 // Ilova chiqqan kuni o'sha fayldagi APP_STORE_URL qatorini to'ldirish kifoya:
