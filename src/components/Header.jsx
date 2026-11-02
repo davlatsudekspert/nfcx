@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import AnchoredMenu, { anchorTo } from './AnchoredMenu.jsx';
 import { linkClick, navigate, usePathRoute } from '../lib/router.js';
 import { useAuth } from '../lib/auth.jsx';
 import { dbListNotifications, dbUnreadCount, dbList } from '../lib/db.js';
@@ -124,9 +125,74 @@ function MyProfileAvatar({ src, label, size = 'h-6 w-6' }) {
   );
 }
 
+// SARLAVHAGA SIG'MAGAN HAVOLALAR "YANA" MENYUSIGA TUSHADI (2026-11).
+//
+// Muammo (egasining shikoyati: "saytda simey qolgan"): 9 ta havola +
+// qidiruv + o'ngdagi 6 ta tugma bitta qatorga sig'masdi va `.vz-nav`
+// dagi `justify-content:center` tufayli menyu qo'shnilarining USTIGA
+// chiqib ketardi — qidiruv maydoni "Yangiliklar" ni, "Ilovani yuklab
+// olish" esa qo'ng'iroq ikonasini bosib qolardi. O'lchandi: 1280-2560
+// oralig'idagi HAR BIR kenglikda 32-151px yetishmasdi (ruschada
+// ko'proq), ya'ni bu bitta ekranning emas, butun desktopning muammosi.
+//
+// Gap va shriftni yana qisqartirish yechim emas: bitta havola
+// qo'shilsa yoki tarjima uzunroq bo'lsa hammasi qaytadan buziladi.
+// Shuning uchun o'lchab ish ko'riladi — oxiridan boshlab sig'maganlari
+// menyuga o'tkaziladi. Hech narsa kesilmaydi, hech narsa yo'qolmaydi.
+//
+// Ilova havolasi (`tailRef`) HECH QACHON yashirilmaydi — u asosiy
+// chaqiruv, shuning uchun unga joy oldindan ajratiladi.
+function useNavOverflow(lang, count) {
+  const navRef = useRef(null);
+  const itemRefs = useRef([]);
+  const tailRef = useRef(null);
+  const moreRef = useRef(null);
+  // Havolalarning TABIIY kengligi. Faqat hammasi ko'rinib turganda
+  // o'lchanadi: yashirilgani `display:none`, kengligi 0 bo'lib qoladi.
+  const widthsRef = useRef(null);
+  const [fit, setFit] = useState(count);
+
+  useLayoutEffect(() => { widthsRef.current = null; setFit(count); }, [lang, count]);
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return undefined;
+    const recalc = () => {
+      const items = itemRefs.current.slice(0, count);
+      if (!widthsRef.current) {
+        // Hali hammasi ko'rinmayapti — avval ko'rsatamiz, o'lchov
+        // keyingi yurishda bo'ladi (chizilishdan oldin, ya'ni
+        // ko'zga tashlanmaydi).
+        if (fit < count || items.length < count || items.some((el) => !el)) { setFit(count); return; }
+        widthsRef.current = items.map((el) => el.getBoundingClientRect().width);
+      }
+      const w = widthsRef.current;
+      const gap = parseFloat(getComputedStyle(nav).columnGap) || 0;
+      const tail = tailRef.current ? tailRef.current.getBoundingClientRect().width + gap : 0;
+      const avail = nav.clientWidth - tail;
+      let used = 0;
+      let n = 0;
+      while (n < w.length && used + w[n] + (n ? gap : 0) <= avail) { used += w[n] + (n ? gap : 0); n += 1; }
+      if (n < w.length) {
+        // "Yana" tugmasining o'ziga ham joy kerak. U hali chizilmagan
+        // bo'lsa taxminiy kenglik olinadi va chizilgach aniqlashtiriladi.
+        const more = (moreRef.current ? moreRef.current.getBoundingClientRect().width : 64) + gap;
+        while (n > 0 && used + more > avail) { n -= 1; used -= w[n] + (n ? gap : 0); }
+      }
+      setFit(n);
+    };
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [fit, lang, count]);
+
+  return { navRef, itemRefs, tailRef, moreRef, fit };
+}
+
 export default function Header() {
   const { user, myCards } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   // Joriy sahifa — navigatsiyada oltin rang + indikator uchun.
   const path = usePathRoute();
   const isActive = (href) => path === href || path.startsWith(href + '/');
@@ -139,6 +205,10 @@ export default function Header() {
   const [notifUnread, setNotifUnread] = useState(0);
   const [installable, setInstallable] = useState(canInstall());
   const [iosHint, setIosHint] = useState(null); // null | 'safari' | 'open-safari'
+  // Sig'magan havolalar uchun "Yana" menyusi.
+  const { navRef, itemRefs, tailRef, moreRef, fit } = useNavOverflow(lang, DESKTOP_NAV.length);
+  const [moreAt, setMoreAt] = useState(null);
+  const hidden = DESKTOP_NAV.slice(fit);
 
   useEffect(() => {
     setInstallable(canInstall());
@@ -190,8 +260,8 @@ export default function Header() {
           tushdi. Matn kaliti src/lib/translations.js da qoldirildi (kelajakda
           shunday e'lon kerak bo'lsa qaytarish oson). `marqueeScroll`
           animatsiyasi HomePage'da ishlatilgani uchun saqlanadi. */}
-      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-10">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <div className="navbar mx-auto w-full max-w-[1800px] px-6 sm:px-10 xl:px-4 2xl:px-6">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           <a href="/" onClick={linkClick('/', () => setOpen(false))} className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 no-underline font-display text-[17px] font-semibold tracking-[0.08em] text-[color:var(--accent-text)] xl:gap-2 xl:text-[15px] 2xl:gap-2.5 2xl:text-[17px]">
             {/* Logotip FAYLI o'zgarmaydi — shakl, nisbat va yozuv o'sha-o'sha.
                 `--brand-mark-filter` faqat belgining METALL RANGINI mavzuga
@@ -199,7 +269,7 @@ export default function Header() {
             <img src={logo} alt="NFCSTORE" className="h-9 w-9 object-contain drop-shadow-[0_2px_6px_var(--accent-glow)] xl:h-8 xl:w-8 2xl:h-9 2xl:w-9" style={{ filter: 'var(--brand-mark-filter)' }} />
             NFCSTORE
           </a>
-          <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-40">
+          <div className="hidden w-36 shrink-0 md:block lg:w-40 xl:w-28 2xl:w-36">
             <HeaderSearch />
           </div>
         </div>
@@ -210,31 +280,66 @@ export default function Header() {
             (--vz-gold-2) + nozik oltin indikator. O'lcham va oraliq
             `clamp()` bilan — 9 ta havola 1366/1440/1920 px ekranlarda
             bitta qatorga sig'adi, UZ/RU/EN uzun matnlarida ham. */}
-        <nav className="vz-nav hidden min-w-0 flex-1 xl:flex" aria-label={t('Asosiy menyu')}>
-          {DESKTOP_NAV.map(([label, href]) => (
+        <nav ref={navRef} className="vz-nav hidden min-w-0 flex-1 xl:flex" aria-label={t('Asosiy menyu')}>
+          {DESKTOP_NAV.map(([label, href], i) => (
             <a
               key={href}
+              ref={(el) => { itemRefs.current[i] = el; }}
               href={href}
               onClick={linkClick(href, () => setOpen(false))}
-              className="vz-nav__link no-underline"
+              className={`vz-nav__link no-underline${i >= fit ? ' hidden' : ''}`}
+              aria-hidden={i >= fit ? 'true' : undefined}
+              tabIndex={i >= fit ? -1 : undefined}
               aria-current={isActive(href) ? 'page' : undefined}
             >
               {t(label)}
             </a>
           ))}
-          <a href={APP_APK_URL} className="vz-nav__link inline-flex items-center gap-1.5" aria-label={t('Ilovani yuklab olish')}>
+          {hidden.length > 0 && (
+            <button
+              ref={moreRef}
+              type="button"
+              data-anchored-anchor
+              className="vz-nav__link inline-flex items-center gap-1"
+              aria-expanded={!!moreAt}
+              aria-haspopup="menu"
+              onClick={() => setMoreAt(moreAt ? null : anchorTo(moreRef.current, { width: 220, height: 48 * hidden.length + 12, align: 'right' }))}
+            >
+              {t('Yana')}
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+          )}
+          <a ref={tailRef} href={APP_APK_URL} className="vz-nav__link inline-flex items-center gap-1.5" aria-label={t('Ilovani yuklab olish')}>
             <IconInstall />
             <span className="flex flex-col items-start gap-0.5">
-              <span className="2xl:hidden">{t('Ilova')}</span>
-              <span className="hidden 2xl:inline">{t('Ilovani yuklab olish')}</span>
+              <span className="min-[1700px]:hidden">{t('Ilova')}</span>
+              <span className="hidden min-[1700px]:inline">{t('Ilovani yuklab olish')}</span>
               <span className="text-[10px] font-normal leading-none opacity-60">Android</span>
             </span>
           </a>
         </nav>
+        {moreAt && (
+          <AnchoredMenu at={moreAt} onClose={() => setMoreAt(null)} label={t('Qolgan bo‘limlar')}>
+            {hidden.map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                role="menuitem"
+                onClick={linkClick(href, () => setMoreAt(null))}
+                className="vz-nav-m__link no-underline"
+                aria-current={isActive(href) ? 'page' : undefined}
+              >
+                {t(label)}
+              </a>
+            ))}
+          </AnchoredMenu>
+        )}
 
         <div className="flex-1 xl:hidden" />
 
-        <div className="hidden items-center gap-2 xl:flex">
+        <div className="hidden shrink-0 items-center gap-2 xl:flex">
           {user && MESSAGING_ENABLED && (
             <button className="btn btn-ghost btn-sm relative gap-1.5" onClick={() => go('/xabarlar')}>
               <IconChat /> {t('Xabarlar')}
@@ -250,7 +355,7 @@ export default function Header() {
             </button>
           )}
           {user && (
-            <button className="btn btn-ghost btn-sm hidden 2xl:inline-flex" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
+            <button className="btn btn-ghost btn-sm hidden min-[1700px]:inline-flex" onClick={() => go('/tolovlar')}>{t("To'lovlar")}</button>
           )}
           {/* BIZNES KABINETGA O'TISH (2026-09). Kompaniya bo'limi shaxsiy
               profildan ajratilgach, unga kirish yo'li ko'rinib turishi
@@ -278,8 +383,8 @@ export default function Header() {
                boshlab to'liq matn qaytadi. Tugma, manzil va harakat
                O'ZGARMAYDI — faqat yorlig'i qisqaradi. */
             <a href="/register" className="btn btn-gold h-10 min-h-10 px-4 text-[13.5px] no-underline 2xl:px-5" onClick={linkClick('/register', () => setOpen(false))}>
-              <span className="2xl:hidden">{t("Ro'yxatdan o'tish")}</span>
-              <span className="hidden 2xl:inline">{t('Bepul profil ochish')}</span>
+              <span className="min-[1700px]:hidden">{t("Ro'yxatdan o'tish")}</span>
+              <span className="hidden min-[1700px]:inline">{t('Bepul profil ochish')}</span>
             </a>
           )}
           {/* Rang mavzusi — til tugmasi yonidagi ixcham ikona.

@@ -107,6 +107,9 @@ const DICT_BASE = {
   'Chiqish': { ru: 'Выйти', en: 'Logout' },
   'Menyu': { ru: 'Меню', en: 'Menu' },
   'Asosiy menyu': { ru: 'Главное меню', en: 'Main menu' },
+  // Sarlavhaga sig'magan havolalar shu menyuga tushadi.
+  'Yana': { ru: 'Ещё', en: 'More' },
+  'Qolgan bo‘limlar': { ru: 'Остальные разделы', en: 'More sections' },
 
   // ─────────────────────────── Footer ───────────────────────────
   'Mahsulot': { ru: 'Продукт', en: 'Product' },
