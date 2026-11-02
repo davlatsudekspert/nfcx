@@ -133,6 +133,11 @@ jobs:
       # band chiqsa kod yondirilmaydi.
       - name: Ro'yxatda band telefon/email
         run: node scripts/test-register-conflict.mjs
+      # Ijtimoiy kirish: token FAQAT serverda tekshiriladi (imzo, iss, aud,
+      # muddat, alg, nonce); tasdiqlanmagan email begona hisobga ulanmaydi;
+      # ijtimoiy hisobga parol bilan kirib bo'lmaydi.
+      - name: Apple/Google bilan kirish
+        run: node scripts/test-auth-social.mjs
       # Promokod: taklif qilinganlar ro'yxati ism/email/sana bilan.
       - name: Promokod ro'yxati
         run: node scripts/test-referrals.mjs

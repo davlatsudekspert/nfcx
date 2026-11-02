@@ -386,6 +386,28 @@ function generatePromoCode() {
 }
 
 // Har yangi foydalanuvchiga o'ziga xos promokod (UNIQUE to'qnashsa qayta uriniladi).
+// HISOB OCHISHNING YADROSI — BITTA JOYDA.
+//
+// Email+parol bilan ro'yxatdan o'tish ham (`finishRegistration`),
+// "Apple/Google bilan davom etish" ham (`api/auth-social.js`) AYNAN
+// shuni chaqiradi. Ikki nusxa yozilmadi: hisob ochishga yangi qadam
+// qo'shilganda (masalan yana bitta sovg'a yoki belgi) u ikkala yo'lda
+// ham o'zi paydo bo'ladi. Aks holda biri yangilanib, ikkinchisi
+// jimgina qolib ketardi.
+//
+// Qaytaradi: `{id, email}` yoki `null` — email band bo'lsa
+// (`createUser` dagi `ON CONFLICT (email) DO NOTHING`).
+export async function createAccountCore(env, H, { email, passwordHash, phone, botAck, tosAccepted, source }) {
+  const user = await createUser(env, H, { email, passwordHash, phone, botAck, tosAccepted, source });
+  if (!user) return null;
+  // Karta nomi HAQIQIY emaildan olinadi. Ichki (ko'rinmas) manzil bo'lsa
+  // undan nom yasash mumkin emas - aks holda kartada
+  // "p998907770001" degan yozuv turardi.
+  await createFreeAutoId(env, user.id, H.isPlaceholderEmailD1(email) ? '' : String(email).split('@')[0]);
+  await assignPromoCode(env, user.id);
+  return user;
+}
+
 async function assignPromoCode(env, userId) {
   for (let i = 0; i < 8; i++) {
     const row = await env.DB.prepare(
@@ -737,7 +759,7 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
     return H.json({ error: 'account_pending_deletion' }, 409);
   }
 
-  const user = await createUser(env, H, {
+  const user = await createAccountCore(env, H, {
     email, passwordHash: await H.hashPassword(password),
     phone: extra.phone, botAck: extra.botAck, tosAccepted: extra.tosAccepted,
     // Sayt orqalimi yoki Android ilova orqalimi — `X-Client`
@@ -745,12 +767,6 @@ async function finishRegistration(request, env, H, { email, password, extra, exi
     source: H.signupSourceD1 ? H.signupSourceD1(request) : 'web',
   });
   if (!user) return H.json({ error: 'email_taken' }, 409);
-
-  // Karta nomi HAQIQIY emaildan olinadi. Ichki (ko'rinmas) manzil bo'lsa
-  // undan nom yasash mumkin emas - aks holda kartada
-  // "p998907770001" degan yozuv turardi.
-  await createFreeAutoId(env, user.id, H.isPlaceholderEmailD1(email) ? '' : email.split('@')[0]);
-  await assignPromoCode(env, user.id);
 
   // Promokod: formadan; bo'sh bo'lsa — taklif havolasi (/i/:code)
   // qoldirgan `nfc_ref` cookie'dan. Odam oldindan to'ldirilgan kodni

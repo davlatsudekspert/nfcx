@@ -4,6 +4,7 @@
 // importni taqiqlaydi. Narx ro'yxatlari shu sabab bir marta yoziladi.
 import { exclusiveLevel, companyPremiumLevel, EXCLUSIVE_PRICE, COMPANY_PREMIUM_PRICE, COMPANY_PREMIUM_NAMES } from './exclusive-pricing.generated.js';
 import * as apiAuth from './api/auth.js';
+import * as apiAuthSocial from './api/auth-social.js';
 import * as apiAccount from './api/account.js';
 import * as apiCatalog from './api/catalog.js';
 import * as apiMedia from './api/media.js';
@@ -12596,7 +12597,7 @@ guard.setAdminNotifier(sendTelegramMessage);
 const H = {
   json, getCurrentUser, getCurrentAdmin, requireAdmin, checkIpWhitelist,
   getRecord, getRecordOwner, rowToRecord, RECORD_COLUMNS, updateRecord, validateRecordBody,
-  cleanStr, normalizePhoneD1, placeholderEmailForD1, isPlaceholderEmailD1, publicEmailD1, recSafeUrl, uploadOrSafeUrl, shortText, safeUrl, validCode, parseJsonArray, parseMusicUrls,
+  cleanStr, normalizePhoneD1, placeholderEmailForD1, isPlaceholderEmailD1, publicEmailD1, PLACEHOLDER_EMAIL_HOST_D1, recSafeUrl, uploadOrSafeUrl, shortText, safeUrl, validCode, parseJsonArray, parseMusicUrls,
   nowTs, parseDbDate, newToken, sha256Hex, hashPassword, verifyPassword,
   reqIp, logAdminActivity, logAdminLoginEvent, sendTelegramMessage, sendTelegramTo,
   personalIdTierD1, effectiveAccessD1, featureAllowedD1, paymentsEnabledD1, paymeCheckoutLinkD1,
@@ -12648,7 +12649,7 @@ const H = {
 // bilan tugashini tekshiradi — oxiriga qo'shilsa o'sha qo'riqchi
 // yiqiladi. Tartibning boshqa ahamiyati yo'q: har bir modul o'ziga
 // tegishli bo'lmagan yo'lga `null` qaytaradi.
-const API_MODULES = [apiAuth, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiUsageDigest, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
+const API_MODULES = [apiAuth, apiAuthSocial, apiAccount, apiEngagement, apiCatalog, apiMedia, apiAdminExtra, apiAdminFinance, apiTelegram, apiAssistant, apiModeration, apiComments, apiNotifications, apiFeatured, apiCatalogFeed, apiSaves, apiContentArchive, apiLegalRequests, apiAppUsage, apiUsageDigest, apiAppAdmin, apiAccountPurge, apiAdminControl, apiMusic, apiDemoBusinesses, apiHighlights, apiStoryReplies, apiMyAnalytics, apiReels, apiIapApple, apiReferrals, apiAdminApple, apiFlags, apiShowcaseAds, apiMarketplace];
 
 // Xavfsizlik header'lari — barcha javoblarga (statik va API). CSP ataylab faqat
 // framing/base/form/object ni cheklaydi (script/style ga tegmaydi — YouTube/Yandex
@@ -12922,6 +12923,37 @@ async function handleRequest(request, env, url, ctx) {
       return new Response(request.method === 'HEAD' ? null : body, {
         status: 200,
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' },
+      });
+    }
+
+    // ── APPLE BILAN KIRISH: DOMEN TASDIG'I ─────────────────────────────
+    // "Apple bilan kirish" SAYTDA va ANDROID'da ishlashi uchun Apple
+    // domenni tasdiqlashni talab qiladi: u AYNAN shu manzilga kelib,
+    // o'zi bergan faylni o'qiydi. (iOS ilovasiga bu kerak emas — u
+    // tizim oynasi orqali ishlaydi.)
+    //
+    // NIMA UCHUN ENV'DAN, repodagi fayldan emas: Apple panelida faylni
+    // yuklab olish bilan "Verify" tugmasini bosish orasida sayt uni
+    // ALLAQACHON berayotgan bo'lishi kerak. Fayl repoda bo'lsa,
+    // o'rtada PR va deploy turadi. Env orqali esa egasi matnni
+    // Cloudflare'ga qo'yadi va darhol Verify bosadi.
+    //
+    // Pastdagi `assetlinks.json` ham aynan shu sababdan env'dan.
+    //
+    // Sozlanmagan bo'lsa 404 — bo'sh fayl berish Apple'ni chalg'itadi
+    // va tasdiqlash "muvaffaqiyatsiz" bo'lib keshlanishi mumkin.
+    if (url.pathname === '/.well-known/apple-developer-domain-association.txt'
+      && ['GET', 'HEAD'].includes(request.method)) {
+      const body = String(env.APPLE_DOMAIN_ASSOCIATION || '').trim();
+      if (!body) return json({ error: 'not_found' }, 404);
+      return new Response(request.method === 'HEAD' ? null : body, {
+        status: 200,
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          // Qisqa kesh: tasdiqlashdan keyin fayl o'zgarmaydi, lekin
+          // noto'g'ri qiymat uzoq yashab qolmasin.
+          'cache-control': 'public, max-age=300',
+        },
       });
     }
 

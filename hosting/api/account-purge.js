@@ -41,6 +41,7 @@
 // Loglarga faqat SONLAR yoziladi: email, telefon va id yozilmaydi.
 
 import { archiveStmt, ensureArchiveTable } from './content-archive.js';
+import { revokeAppleTokens } from './auth-social.js';
 import { retireTargetStmts, ensureSchema as ensureCommentsSchema } from './comments.js';
 import { cardContentCleanupStmts, CARD_CONTENT_TABLES } from './card-cleanup.js';
 // Ijtimoiy jadvallar (2026-10): purge batch'i va karta tozalash ularga
@@ -507,6 +508,11 @@ export function purgeStmts(env, u, now, ref, cfg, counts = {}) {
   if (flag('PURGE_SUPPORT_MESSAGES')) add(['support_messages'], `DELETE FROM support_messages WHERE user_id = ${id}`);
   add(['content_reports'], `UPDATE content_reports SET reporter_ip = '' WHERE reporter_id = ${id}`);
   add(['sessions'], `DELETE FROM sessions WHERE user_id = ${id}`);
+  // Apple/Google kirishlari. Tashqi kalit YO'Q (D1'da CASCADE
+  // ishonchli emas), shuning uchun qator shu yerda ochiq o'chiriladi.
+  // Apple tokeni bundan OLDIN bekor qilinadi (`purgeDeletedUser`) —
+  // qator o'chgach `refresh_token` yo'qoladi.
+  add(['user_identities'], `DELETE FROM user_identities WHERE user_id = ${id}`);
   add(['password_reset_codes'], `DELETE FROM password_reset_codes WHERE user_id = ${id}`);
   add(['email_reset_tokens'], `DELETE FROM email_reset_tokens WHERE user_id = ${id}`);
   add(['upload_quota'], `DELETE FROM upload_quota WHERE key = 'user:${id}'`);
@@ -647,6 +653,27 @@ export async function purgeDeletedUser(env, H, userId, { mode = 'dry-run', cfg =
     emailHash: u.email ? await H.sha256Hex(lower(u.email)) : '',
     phoneHash: u.phone ? await H.sha256Hex(String(u.phone)) : '',
   };
+  // APPLE TOKENINI BEKOR QILISH — BATCHDAN OLDIN.
+  //
+  // Apple talab qiladi (App Store ko'rsatmasi 5.1.1(v)): "Sign in
+  // with Apple" ishlatgan ilova hisob o'chirilganda tokenni REST API
+  // orqali bekor qilishi shart. Buni qilmagan ilova App Review'dan
+  // o'tmaydi.
+  //
+  // Tartib muhim: `purgeStmts` ichida `user_identities` o'chiriladi,
+  // ya'ni batchdan KEYIN bekor qiladigan `refresh_token` qolmaydi.
+  //
+  // Apple javob bermasa purge TO'XTAMAYDI: odamning hisobi o'chmay
+  // qolishi — tashqi xizmatning uzilishidan ko'ra og'irroq. Natija
+  // jurnalga yoziladi.
+  const appleRevoke = await revokeAppleTokens(env, u.id).catch((e) => {
+    console.error('apple revoke (purge):', String(e?.message || e).slice(0, 120));
+    return { revoked: 0, skipped: 0, failed: 1 };
+  });
+  if (appleRevoke.failed) {
+    console.error('apple revoke tugallanmadi:', JSON.stringify(appleRevoke));
+  }
+
   try {
     await env.DB.batch(purgeStmts(env, user, nowT, await userRef(H, u.id), conf, counts));
   } catch (e) {
@@ -654,7 +681,7 @@ export async function purgeDeletedUser(env, H, userId, { mode = 'dry-run', cfg =
     if (/UNIQUE constraint failed: account_deletion_log/i.test(String(e?.message || ''))) return { status: 'already' };
     throw e;
   }
-  return { status: 'purged', counts };
+  return { status: 'purged', counts, appleRevoke };
 }
 
 /// Cron: 30 kunlik muddati tugagan hisoblarni purge qiladi (yoki dry-run).
