@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import PhysicalCardCta from '../components/PhysicalCardCta.jsx';
 import SampleBusinessesStrip from '../components/SampleBusinessesStrip.jsx';
 import HomeWhatsNew from '../components/HomeWhatsNew.jsx';
+import ScrollShowcase from '../components/ScrollShowcase.jsx';
 import { dbGet } from '../lib/db.js';
 import { parseAnyCode, priceForCode } from '../lib/pricing.js';
 import { reservedStatus } from '../lib/brandReserved.js';
@@ -326,6 +327,9 @@ export default function HomePage({ catalog, refreshCatalog }) {
       <div className="mx-auto w-full max-w-[1800px] px-6 pb-20 sm:px-10 lg:px-14">
         {/* ================= NFCSTORE'DA YANGI: ilova, stikerlar, yangiliklar ================= */}
         <HomeWhatsNew />
+
+        {/* ================= ILOVA: aylantirganda skrinshotlar almashadi ================= */}
+        <ScrollShowcase />
 
         {/* ================= KIMLAR UCHUN ================= */}
         <RevealSection id="kimlar-uchun">
